@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 14 WORKS · 13 PARTIAL · 41 MISSING** across 76 rows.
+**Current tally: 14 WORKS · 17 PARTIAL · 37 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -69,11 +69,11 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | --- | --- | --- | --- | --- |
 | K1 single keymap registry | P0 | **PARTIAL** | `test_every_advertised_action_has_a_handler` — 38 bindings, 0 dead; `test_registry_is_populated_from_live_bindings`; `KEYMAP.md` generated | Registry exists and is proven. **Footer and Help still render upstream's hand-maintained `ui.show_help()`**, so K1's "one source for all three surfaces" is **not met**. Known patch site, logged in `UPSTREAM_DIFF.md`. |
 | K2 nav keys on every scrollable surface | P0 | **MISSING** | — | — |
-| K3 composer editing | P0 | **MISSING** | — | — |
+| K3 composer editing | P0 | **PARTIAL** | `tests/unit_tests/niki/test_keyboard.py` — char movement, Home/End both directions, Ctrl+U, Ctrl+K, Alt+Backspace word delete, backspace, and up-arrow history recall all pass | 7 gestures proven. Multi-line (Shift+Enter / Alt+Enter / backslash-Enter) and grapheme-correct cursor with wide characters are **not** covered. |
 | K4 interrupt/exit semantics | P0 | **PARTIAL** | `test_escape_is_advertised_as_interrupt_and_dispatches` | Advertised + handler exists. The clear-then-interrupt-then-arm ladder not tested. |
 | K5 bracketed paste | P0 | **MISSING** | — | — |
-| K6 filtered slash menu | P0 | **PARTIAL** | `test_snapshot_with_slash_menu_open` ×2 widths | Opens; filtering and key handling unverified. |
-| K7 Esc close order + focus restore | P0 | **MISSING** | — | — |
+| K6 filtered slash menu | P0 | **PARTIAL** | `test_slash_menu_filters_and_narrows_to_one_row`, `test_snapshot_with_slash_menu_open` ×2 | Opens, filters, and narrows. Arrow/Tab/Enter selection and upstream's skills entries unverified. |
+| K7 Esc close order + focus restore | P0 | **PARTIAL** | `test_escape_closes_the_slash_menu_before_cancelling_input` | Esc closes the popup and retains the typed text. The full close order (modal → popup → search → detail → cancel input) and focus restoration per step unverified. |
 | K8 `?` contextual help | P0 | **PARTIAL** | `test_snapshot_with_help_open` ×2 widths | Renders; not registry-generated (see K1). |
 | K9 Ctrl+R history search | P1 | **MISSING** | — | — |
 | K10 queue messages during a run | P1 | **MISSING** | — | — |
@@ -94,7 +94,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
-| F1 message echoes instantly, focus kept | P0 | **PARTIAL** | `test_chat_input_exists_and_takes_typed_characters` | Focus + text verified; latency not measured. |
+| F1 message echoes instantly, focus kept | P0 | **PARTIAL** | `test_composer_keeps_focus_after_typing`, `test_chat_input_exists_and_takes_typed_characters` | Focus stays on the composer and text lands. Latency not measured (see S2's 173.9 ms p95 floor). |
 | F2 activity states only from real events | P0 | **MISSING** | — | — |
 | F3 streaming renders into one block | P0 | **PARTIAL** | `measure_stream` paints 4–5 times for 60 tokens | Coalescing works (upstream's 0.1 s flush). Single-block *assertion* not written. |
 | F4 scroll preserved mid-stream | P0 | **MISSING** | — | — |
@@ -137,3 +137,31 @@ it fails the suite if any harness file contains `pytest.skip`, `xfail`, or
 | **Real process, first output** | **4,546.8 ms** (assumed) | **470 ms** | ≤ 400 ms | floor measured; 400 ms unreachable |
 | **Real process, first composer** | — | **553 ms** | ≤ 400 ms | floor measured |
 | Heavy import chain | 4,546.8 ms | **4,546.8 ms** | — | **NOT MET** |
+
+---
+
+## Keyboard evidence
+
+`tests/unit_tests/niki/test_keyboard.py` — 11 tests, all passing, driving the real
+app through Textual's Pilot:
+
+| Gesture | Required by | Result |
+| --- | --- | --- |
+| `left` twice then `X` in `abc` | K3 | `aXbc` — cursor lands at index 1 |
+| `home` then `Z` | K3 | `Zabc` |
+| `home`, `Z`, `end`, `Q` | K3 | `ZabcQ` |
+| `ctrl+u` | K3 | clears the line |
+| `ctrl+k` after `left` | K3 | kills to end of line |
+| `alt+backspace` | K3 | deletes the previous word |
+| `backspace` | K3 | deletes one character |
+| `up` at the buffer boundary | K3 | recalls the previous message |
+| typing after `/` | F1 | focus stays on `#chat-input` |
+| `escape` after the slash menu | K7 | popup closes, typed text retained |
+| `/` then `clean` | K6 | suggestion list narrows, never widens |
+
+Two of these first failed and both failures were **my** wrong expectations, not
+product bugs: pressing `left` twice from `abc` correctly yields `aXbc` (I had
+written `abXc`), and the slash menu legitimately auto-completes `theme`, so the
+buffer after `Esc` holds `theme ` rather than the literal prefix. The tests were
+corrected to assert the property the checklist states rather than the string I
+had guessed.
