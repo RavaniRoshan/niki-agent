@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 20 WORKS · 26 PARTIAL · 23 MISSING** across 76 rows.
+**Current tally: 21 WORKS · 26 PARTIAL · 22 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -27,7 +27,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | S3 per-token render flat, ratio ≤1.5 | P0 | **WORKS** | `test_render_cost_is_flat_across_transcript_depth` — 2.089x → **1.205x** | Root cause was a full-tree layout pass per token (19,811 callbacks, 3,658 `stylesheet.apply` at depth 500). Fixed by bounding the mount window. |
 | S4 idle zero redraws, CPU <1% | P0 | **WORKS** | `test_niki_app_is_perfectly_still_when_idle` — 10 → **0** repaints/5 s; CPU 0.47% | Root cause was the composer cursor blink, not the cache timers I first suspected. |
 | S5 5k msgs: scroll p95 ≤50 ms, memory bounded | P0 | **PARTIAL** | RSS 395.8 → **254.9 MB** measured | Scroll p95 never probed. 5,000 messages never driven end-to-end through the real store — the cap is asserted, the pruning is not. |
-| S6 3 s blocking tool never freezes keys | P0 | **MISSING** | — | Needs a slow-tool fixture. |
+| S6 3 s blocking tool never freezes keys | P0 | **WORKS** | `tests/unit_tests/niki/test_blocking_tool.py` — keys land, the transcript scrolls, a resize reaches 120x38 with a painted screen, and `Esc` is handled, all **while a worker is still running** | Each test asserts the worker `is_finished` is False, so a tool that ended early cannot make the row pass vacuously. The fake tool uses `asyncio.sleep`, not `time.sleep` -- a blocking sleep here would block the loop and 'prove' the opposite of the point. `blockbuster` is asserted importable so the detector cannot silently stop working. |
 | S7 100-resize storm in 2 s | P0 | **PARTIAL** | `test_resize_storm_settles_on_a_correct_layout` — 100 resizes, no crash, correct final 80x24, still painting | Storm runs in **11.4 s** headless vs the 2 s target, but that duration is dominated by per-resize `pause()` overhead and is not a resize-latency measurement. Outcome verified; latency unverified. |
 | S8 10 MB tool output bounded | P0 | **WORKS** | `test_ten_megabyte_tool_output_stays_bounded_in_the_ui` — 10.0 MB in, **1** widget mounted, **28** visible, RSS < 2 GB | The card receives the whole payload and renders bounded. Full-output-on-disk is upstream's behaviour and is **not** verified here. |
 
