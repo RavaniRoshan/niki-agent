@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 22 WORKS · 29 PARTIAL · 19 MISSING** across 76 rows.
+**Current tally: 23 WORKS · 29 PARTIAL · 18 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -51,7 +51,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V1 all colors from theme tokens | P0 | **WORKS** | `test_niki_writes_colors_only_in_its_theme_module`, `test_the_fork_adds_no_new_color_literal_files` | Scoped to the fork: upstream already keeps `.tcss` on tokens and has exactly 3 files with real hex. |
 | V2 Niki branding, no upstream leaks | P0 | **PARTIAL** | `test_niki_theme_is_registered_and_active`, `test_snapshot_frames_do_not_show_the_upstream_product_name` | Header is `Niki Agent`. **`dcode` still shows in the welcome banner** (`welcome.py:471`, hardcoded in `_build_banner`). **Not met.** |
 | V3 layout tiers at four sizes | P0 | **WORKS** | 12 committed snapshots at 50x16 / 80x24 / 120x38 / 160x45 | Generate **and** re-verify; splash-tip randomness pinned. |
-| V4 transcript user/assistant distinction | P0 | **MISSING** | — | Snapshot exists but is upstream's unstyled layout. |
+| V4 transcript user/assistant distinction | P0 | **WORKS** | `tests/unit_tests/niki/test_transcript_roles.py` — assistant is unboxed with a fully transparent background; the user turn carries `border-left: wide` **and** a 15 %-alpha raised background; the gutter is drawn in Niki's `$primary`; exactly **one** border edge is used across the transcript | Asserted at the style level, which states the rule rather than a picture of it. The gutter being drawn in `$primary` is the property that makes the rebrand hold: swapping the theme recolours it with no extra work, and a hardcoded literal would survive a theme change and leave the old palette behind. |
 | V5 composer: ruled, glyph, placeholder, queue | P0 | **PARTIAL** | `test_snapshot_with_text_typed` ×4, `test_chat_input_exists_and_takes_typed_characters` | Upstream composer; no Niki restyle, no queue indicator. |
 | V6 footer truthful + collapses by width | P0 | **PARTIAL** | `test_v6_the_footer_reports_real_facts` ×4 sizes — the permission mode and git branch are checked against facts established **outside** the app; `test_v6_the_footer_never_claims_more_than_it_knows`; `test_v6_the_footer_fits_its_width` ×4 | Truthfulness is proven: the footer matches the real branch and mode, invents no token/cost/context numbers it cannot know, is one row high at every size, and the cwd appears only where there is room — i.e. it **collapses by width** rather than wrapping. Model, queue, and context *use* are not populated under a mock agent, and the 16-colour appearance is OWNER-VERIFY. |
 | V7 tool cards | P0 | **PARTIAL** | `test_v7_a_tool_card_shows_tool_intent_and_status`, `test_v7_no_card_appears_without_a_real_tool_event`, `test_v7_card_reports_a_result_or_elapsed_time` | Card names the tool (`bash`) and its intent (`ls -la`), survives an empty result, and never appears without a tool event. Expand/collapse by key and click, and auto-expand on failure, are unverified. |
