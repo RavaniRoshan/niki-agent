@@ -29,9 +29,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
+from textual.theme import Theme
+
 import deepagents_code
 from deepagents_code.app import DeepAgentsApp
+from deepagents_code.niki import theme as niki_theme
 from deepagents_code.niki.message_store import NikiMessageStore
+from deepagents_code.theme import DEFAULT_THEME as _UPSTREAM_DEFAULT_THEME
 from deepagents_code.tui.widgets.chat_input import ChatTextArea
 from deepagents_code.tui.widgets.message_store import MessageStore
 
@@ -48,6 +52,10 @@ class NikiApp(DeepAgentsApp):
     #: the instance before mounting to override.
     blink_cursor: bool = False
 
+    #: The theme Niki starts in. Upstream defaults to `"langchain"`
+    #: (`theme.DEFAULT_THEME`); an owner can still switch with `/theme`.
+    DEFAULT_THEME_NAME: ClassVar[str] = niki_theme.NIKI_THEME_NAME
+
     #: Textual resolves `CSS_PATH` relative to the *subclass's* module, so
     #: inheriting upstream's bare `"app.tcss"` would look for a stylesheet in
     #: `deepagents_code/niki/`. Point at the real file explicitly instead, and
@@ -56,14 +64,94 @@ class NikiApp(DeepAgentsApp):
         str(Path(deepagents_code.__file__).parent / "app.tcss"),
     ]
 
+    def _register_custom_themes(self) -> None:
+        """Register upstream's themes, then add Niki's through the same path.
+
+        Upstream builds `Theme` objects from `theme.get_registry()` and hands them
+        to Textual's `register_theme` (app.py:24963). Niki registers through that
+        same mechanism rather than around it, so `/theme` lists the Niki theme
+        beside the built-ins and any owner CSS override keeps working.
+
+        Both palettes are registered so a light-terminal owner has somewhere to
+        switch to; Niki defaults to the dark one.
+        """
+        super()._register_custom_themes()
+        for name, palette, dark in (
+            (niki_theme.NIKI_THEME_NAME, niki_theme.NIKI_DARK, True),
+            (f"{niki_theme.NIKI_THEME_NAME}-light", niki_theme.NIKI_LIGHT, False),
+        ):
+            self.register_theme(self._build_niki_theme(name, palette, dark))
+
+    @staticmethod
+    def _build_niki_theme(name: str, palette: dict[str, str], dark: bool) -> Theme:
+        """Build a Textual `Theme` from a Niki token palette.
+
+        Every token is also emitted as a CSS variable so `$niki-*` resolves in
+        Niki's own `.tcss` overrides. Upstream's `get_css_variable_defaults`
+        covers seven tokens with no Textual equivalent; registering all of them
+        keeps a single naming scheme across both palettes.
+
+        Args:
+            name: Registry name for the theme.
+            palette: Token name to `#RRGGBB` value.
+            dark: Whether Textual should treat this as a dark theme.
+
+        Returns:
+            A `Theme` ready for Textual's `register_theme`.
+        """
+        return Theme(
+            name=name,
+            primary=palette["primary"],
+            secondary=palette["secondary"],
+            accent=palette["accent"],
+            foreground=palette["foreground"],
+            background=palette["background"],
+            surface=palette["surface"],
+            panel=palette["panel"],
+            warning=palette["warning"],
+            error=palette["error"],
+            success=palette["success"],
+            dark=dark,
+            variables={
+                **{
+                    f"niki-{token.replace('_', '-')}": value
+                    for token, value in palette.items()
+                },
+                "footer-key-foreground": palette["primary"],
+            },
+        )
+
     async def on_mount(self) -> None:
         """Mount upstream's app, then schedule the Niki presentation defaults."""
         await super().on_mount()
+        self._prefer_niki_theme()
         self._install_niki_message_store()
         # The composer is built after mount, so `on_mount` alone finds nothing.
         # `call_after_refresh` runs once the first frame is up, by which point
         # the chat input exists.
         self.call_after_refresh(self._apply_cursor_blink)
+
+    def _prefer_niki_theme(self) -> None:
+        """Switch to the Niki theme unless the owner explicitly chose another.
+
+        Upstream resolves the theme through a module-level function
+        (`_load_theme_preference`, app.py:1487) whose final fallback is
+        `theme.DEFAULT_THEME`. Mutating that module attribute was the obvious way
+        to change Niki's default and it leaked: a `NikiApp` built earlier in the
+        process left `DEFAULT_THEME` pointing at `"niki"`, so a later plain
+        `DeepAgentsApp` asked for a theme it had never registered and failed.
+        Real apps run one per process and never noticed; the test suite did.
+
+        So instead: if the app landed on the upstream default, nothing chose it,
+        and Niki's default applies. Managed policy, `DEEPAGENTS_CODE_THEME`, and
+        a saved user preference all still win, because each of those resolves to
+        something other than the default.
+        """
+        if (
+            self.theme == _UPSTREAM_DEFAULT_THEME
+            and self.DEFAULT_THEME_NAME in self.available_themes
+        ):
+            self.theme = self.DEFAULT_THEME_NAME
 
     def _install_niki_message_store(self) -> None:
         """Swap in the bounded-window store.

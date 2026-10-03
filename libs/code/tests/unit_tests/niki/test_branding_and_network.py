@@ -167,3 +167,52 @@ def test_snapshot_frames_show_niki_agent() -> None:
     assert "Niki&#160;Agent" in text or "Niki Agent" in text, (
         "the first-run frame does not show the Niki name"
     )
+
+
+async def test_niki_theme_is_registered_and_active() -> None:
+    """V1/V13: Niki's palette must reach the running app, not just the module."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+    from deepagents_code.niki.theme import NIKI_DARK
+    from deepagents_code.theme import get_theme_colors
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-theme")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        available = set(app.available_themes)
+        active = app.theme
+        colors = get_theme_colors(app)
+
+    assert "niki" in available, f"Niki theme not registered; got {sorted(available)}"
+    assert "niki-light" in available, "no light palette registered for light terminals"
+    assert active == "niki", f"active theme is {active!r}, expected the Niki default"
+    assert colors.primary == NIKI_DARK["primary"]
+    assert colors.background == NIKI_DARK["background"]
+
+
+async def test_building_a_plain_upstream_app_does_not_inherit_the_niki_theme() -> None:
+    """Regression: setting Niki's default must not mutate process-wide state.
+
+    An earlier version reassigned `theme.DEFAULT_THEME`, which leaked: a
+    `NikiApp` built first left a later `DeepAgentsApp` asking for a theme it had
+    never registered. Real apps run one per process and never saw it; the suite
+    did, and this is the test that keeps it honest.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.app import DeepAgentsApp
+    from deepagents_code.niki.app import NikiApp
+
+    async def _theme_for(cls: type[DeepAgentsApp]) -> str:
+        app = cls(agent=MagicMock(), thread_id="niki-isolation")  # type: ignore[call-arg]
+        app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+            return str(app.theme)
+
+    assert await _theme_for(NikiApp) == "niki"
+    assert await _theme_for(DeepAgentsApp) != "niki", (
+        "a plain DeepAgentsApp adopted the Niki theme; Niki's default leaked"
+    )
