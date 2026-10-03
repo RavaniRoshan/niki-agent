@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 17 WORKS · 21 PARTIAL · 31 MISSING** across 76 rows.
+**Current tally: 17 WORKS · 22 PARTIAL · 30 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -56,7 +56,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V6 footer truthful + collapses by width | P0 | **MISSING** | — | — |
 | V7 tool cards | P0 | **PARTIAL** | `test_v7_a_tool_card_shows_tool_intent_and_status`, `test_v7_no_card_appears_without_a_real_tool_event`, `test_v7_card_reports_a_result_or_elapsed_time` | Card names the tool (`bash`) and its intent (`ls -la`), survives an empty result, and never appears without a tool event. Expand/collapse by key and click, and auto-expand on failure, are unverified. |
 | V8 diffs | P0 | **MISSING** | — | — |
-| V9 approvals | P0 | **MISSING** | — | Registry shows `approval_yes/no/auto/select/up/down` exist upstream; Niki's V9 rendering not built. |
+| V9 approvals | P0 | **PARTIAL — TWO OPEN DEFECTS** | `tests/unit_tests/niki/test_approvals.py` (8 tests) | **Works:** prompt names the tool (`bash`) and the exact command (`rm -rf /tmp/thing`) at 50×20 and 80×24; arrow keys move the selection; number shortcuts (`approval_position(0..2)`) are bound; an outside click neither dismisses nor decides. **Defect 1 (safety):** the prompt opens focused on `Approve (y)` — the *approving* option — so a stray `Enter` runs the command. The checklist requires the safest option focused by default. **Defect 2:** `Esc` is bound to `interrupt`, not to a deny, so it does not deny; `n` is the reject key. Both are written as *characterisations* that name the gap. |
 | V10 activity line | P0 | **MISSING** | — | — |
 | V11 markdown rendering | P0 | **MISSING** | — | — |
 | V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
@@ -165,3 +165,37 @@ written `abXc`), and the slash menu legitimately auto-completes `theme`, so the
 buffer after `Esc` holds `theme ` rather than the literal prefix. The tests were
 corrected to assert the property the checklist states rather than the string I
 had guessed.
+
+
+---
+
+## Safety finding: the approval prompt opens on "Approve"
+
+Measured on this build, the option list and initial selection are:
+
+| Index | Label | Decision type | Focused on arrival |
+| --- | --- | --- | --- |
+| 0 | `Approve (y)` | `approve` | **yes** |
+| 1 | `Enable Auto for this thread (a)` | `auto_approve_all` | — |
+| 2 | `Reject (n)` | `reject` | — |
+
+`_selected` starts at `0`. The checklist (V9) requires the **safest** option to
+be focused by default. Here the approving option is, and `Enter` selects it — so
+a stray keystroke on an approval prompt runs the command. `Esc` does not save
+you either: it is bound to `interrupt`, not to a deny (`n` is the reject key).
+
+Neither defect was introduced by this fork; both are upstream behaviour that the
+fork inherits unchanged. Niki has changed nothing about the permission posture,
+and fixing these would *strengthen* it rather than weaken it.
+
+**They are deliberately not fixed in this pass.** Changing which option is
+focused changes approval semantics, which is a safety-critical default and
+explicitly outside what this MVP was scoped to change. It needs your decision:
+
+1. Focus `Reject (n)` by default — safest, but means approval takes two keystrokes.
+2. Focus the option matching the *current* approval mode — neutral.
+3. Leave as upstream, and document it.
+
+Both are encoded as characterisation tests in `test_approvals.py` that pass while
+naming the gap. If either is fixed, those tests fail and force this section and
+the V9 row to be updated in the same change.
