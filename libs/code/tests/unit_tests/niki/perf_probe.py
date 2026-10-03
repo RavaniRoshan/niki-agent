@@ -21,6 +21,7 @@ Measurements backing the checklist:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import pathlib
 import resource
@@ -215,3 +216,144 @@ __all__ = [
     "measure_stream",
     "rss_megabytes",
 ]
+
+
+@dataclass
+class EchoSample:
+    """Composer key-echo latency, measured while a stream is running."""
+
+    presses: int
+    samples_ms: list[float]
+
+    @property
+    def p95_ms(self) -> float:
+        if not self.samples_ms:
+            return 0.0
+        ordered = sorted(self.samples_ms)
+        # Nearest-rank p95; at these sample counts an interpolation would imply
+        # precision the probe does not have.
+        index = min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))
+        return ordered[index]
+
+    @property
+    def median_ms(self) -> float:
+        ordered = sorted(self.samples_ms)
+        return ordered[len(ordered) // 2] if ordered else 0.0
+
+
+async def measure_input_echo(
+    app: DeepAgentsApp,
+    size: tuple[int, int],
+    *,
+    presses: int = 20,
+    while_streaming: bool = True,
+) -> EchoSample:
+    """Time each keypress from `pilot.press` to the character reaching the composer.
+
+    With `while_streaming`, a background stream keeps appending to a mounted
+    assistant message for the duration, which is the condition S2 asks for: a
+    tool flood plus a stream, not a quiet screen.
+    """
+    from deepagents_code.tui.widgets.messages import AssistantMessage
+
+    samples: list[float] = []
+    async with app.run_test(size=size) as pilot:
+        await pilot.pause()
+        chat_input = app.query_one("#chat-input")
+        target = AssistantMessage(content="")
+        await app.query_one("#messages").mount(target)
+        await pilot.pause()
+
+        async def _stream() -> None:
+            for _ in range(200):
+                await target.append_content("token ")
+                await asyncio.sleep(0.01)
+
+        streamer = asyncio.create_task(_stream()) if while_streaming else None
+        try:
+            for _ in range(presses):
+                before = str(getattr(chat_input, "text", ""))
+                started = time.perf_counter()
+                await pilot.press("x")
+                await pilot.pause()
+                elapsed = (time.perf_counter() - started) * 1000
+                if str(getattr(chat_input, "text", "")) != before:
+                    samples.append(elapsed)
+        finally:
+            if streamer is not None:
+                streamer.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await streamer
+    return EchoSample(presses=presses, samples_ms=samples)
+
+
+async def measure_resize_storm(
+    app: DeepAgentsApp, size: tuple[int, int], *, resizes: int = 100
+) -> float:
+    """Drive `resizes` resizes as fast as possible and return the elapsed seconds.
+
+    Returns:
+        Wall-clock seconds for the storm, including the settle pass afterwards.
+    """
+    import random
+
+    started = time.perf_counter()
+    async with app.run_test(size=size) as pilot:
+        await pilot.pause()
+        rng = random.Random(0)
+        for index in range(resizes):
+            width = 50 + rng.randrange(0, 120)
+            height = 16 + rng.randrange(0, 30)
+            await pilot.resize_terminal(width, height)
+            await pilot.pause()
+            if index % 10 == 0:
+                await asyncio.sleep(0.002)
+        # Settle on a known size and let the layout finish.
+        await pilot.resize_terminal(*size)
+        await pilot.pause()
+        await pilot.pause()
+    return time.perf_counter() - started
+
+
+async def measure_large_tool_output(
+    app: DeepAgentsApp, size: tuple[int, int], *, megabytes: int = 10
+) -> tuple[int, int, int]:
+    """Push a very large tool result through a tool card and report the size.
+
+    Returns:
+        `(input_chars, rendered_lines, mounted_widgets)` after the card renders.
+        A bounded UI keeps `rendered_lines` small even though `input_chars` is
+        in the millions.
+    """
+    from deepagents_code.tui.widgets.messages import ToolCallMessage
+
+    payload = "x" * (megabytes * 1024 * 1024)
+    async with app.run_test(size=size) as pilot:
+        await pilot.pause()
+        messages = app.query_one("#messages")
+        before = len(messages.children)
+        card = ToolCallMessage(tool_name="bash", args={"cmd": "cat huge.log"})
+        await messages.mount(card)
+        await pilot.pause()
+
+        # The card stores output on `_output` and re-renders through
+        # `_update_output_display`; both are private, so a rename upstream breaks
+        # this probe loudly rather than silently measuring nothing.
+        card._output = payload
+        card._update_output_display()
+        await pilot.pause()
+        await asyncio.sleep(0.2)
+        await pilot.pause()
+
+        rendered_lines = len(app.screen._compositor.visible_widgets)
+        mounted = len(messages.children) - before
+    return len(payload), rendered_lines, mounted
+
+
+def rss_growth_megabytes(before: float) -> float:
+    """RSS growth since `before`.
+
+    Returns:
+        The increase in resident set size, in MB.
+    """
+    return rss_megabytes() - before

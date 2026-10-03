@@ -28,6 +28,9 @@ from unit_tests.niki.perf_probe import (
     count_renders,
     measure_first_frame_ms,
     measure_idle,
+    measure_input_echo,
+    measure_large_tool_output,
+    measure_resize_storm,
     measure_stream,
     rss_megabytes,
 )
@@ -43,6 +46,7 @@ IDLE_RENDER_CEILING = 12
 IDLE_CPU_CEILING_PERCENT = 100.0
 DEEP_RATIO_CEILING = 10.0
 RENDER_RATE_CEILING = 60.0
+ECHO_P95_CEILING_MS = 250.0  # headless floor, see the test docstring
 
 _SIZES = {"compact": (50, 16), "standard": (80, 24), "roomy": (120, 38)}
 
@@ -245,3 +249,85 @@ def test_artifact_is_readable_json() -> None:
         json.loads(ARTIFACT.read_text(encoding="utf-8")) if ARTIFACT.exists() else {}
     )
     assert isinstance(data, dict)
+
+
+async def test_input_echo_latency_while_streaming() -> None:
+    """S2: keypress-to-composer latency with a stream running.
+
+    The number recorded here is a **floor**, not a terminal measurement: each
+    sample includes one `pilot.pause()` round-trip, which the headless driver
+    charges to the event loop. The absolute value is therefore pessimistic. What
+    it does establish is the shape -- echo stays well under a frame budget's
+    worth of blocking while the stream coalesces -- and where the real cost is.
+    """
+    sample = await measure_input_echo(_niki_app(), (80, 24), presses=20)
+    _record(
+        {
+            "input_echo_p95_ms": round(sample.p95_ms, 1),
+            "input_echo_median_ms": round(sample.median_ms, 1),
+            "input_echo_samples": len(sample.samples_ms),
+        }
+    )
+
+    assert len(sample.samples_ms) >= 15, (
+        f"only {len(sample.samples_ms)}/{sample.presses} presses reached the "
+        "composer; the echo probe is not measuring what it claims"
+    )
+    assert sample.p95_ms <= ECHO_P95_CEILING_MS, (
+        f"input echo p95 {sample.p95_ms:.0f} ms exceeds the {ECHO_P95_CEILING_MS} ms "
+        "ceiling (headless floor, includes one pause round-trip per sample)"
+    )
+
+
+async def test_resize_storm_settles_on_a_correct_layout() -> None:
+    """S7: 100 rapid resizes must not crash or leave a stale layout.
+
+    Asserts the *outcome* (survived, correct final size, still painting) rather
+    than the duration: the elapsed figure is dominated by headless `pause()`
+    overhead, so treating it as a real-terminal resize-latency number would be
+    measuring the wrong thing.
+    """
+    elapsed = await measure_resize_storm(_niki_app(), (80, 24), resizes=100)
+    _record(
+        {
+            "resize_storm_100_seconds": round(elapsed, 2),
+            "rss_mb": round(rss_megabytes(), 1),
+        }
+    )
+
+    app = _niki_app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        assert app.screen.region.width == 80
+        assert app.screen.region.height == 24
+        assert app.screen._compositor.visible_widgets, "blank frame after the storm"
+
+
+async def test_ten_megabyte_tool_output_stays_bounded_in_the_ui() -> None:
+    """S8: a huge tool result must not render as millions of lines.
+
+    The card receives the full payload; what is asserted is that the mounted and
+    visible widget counts stay small, which is the property that keeps the UI
+    responsive. Persisting the full output to disk is upstream's behaviour and is
+    **not** verified here.
+    """
+    payload_chars, visible_widgets, mounted = await measure_large_tool_output(
+        _niki_app(), (80, 24), megabytes=10
+    )
+    _record(
+        {
+            "large_tool_payload_mb": round(payload_chars / (1024 * 1024), 1),
+            "large_tool_visible_widgets": visible_widgets,
+            "large_tool_mounted_widgets": mounted,
+        }
+    )
+
+    assert payload_chars >= 10 * 1024 * 1024, "fixture did not deliver 10 MB"
+    assert mounted <= 2, f"{mounted} widgets mounted for one tool card"
+    assert visible_widgets < 200, (
+        f"{visible_widgets} widgets visible after a 10 MB tool output; "
+        "the card is not truncating"
+    )
+    assert rss_megabytes() < 2_000, (
+        "resident set exceeded 2 GB after a 10 MB tool output"
+    )

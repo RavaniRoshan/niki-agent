@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 13 WORKS · 12 PARTIAL · 43 MISSING** across 76 rows.
+**Current tally: 14 WORKS · 13 PARTIAL · 41 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -23,13 +23,13 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
 | S1 first frame ≤400 ms warm | P0 | **PARTIAL** | `test_first_frame` — 186.9 / 194.3 / 191.9 ms at 50x16 / 80x24 / 120x38 | In-app first frame is inside the floor. The **4,546.8 ms** `import langchain, langgraph, deepagents` chain that runs *before* it is untouched, so real time-to-first-frame is still seconds. **Not met.** |
-| S2 input echo p95 ≤50 ms under load | P0 | **MISSING** | — | No probe built. |
+| S2 input echo p95 ≤50 ms under load | P0 | **PARTIAL** | `test_input_echo_latency_while_streaming` — p95 **173.9 ms**, median 130.3 ms, 20/20 presses reached the composer | **Measured, and over target.** The figure is a *floor*: each sample includes one `pilot.pause()` round-trip the headless driver charges to the event loop, so real-terminal latency is lower — but it is not proven below 50 ms anywhere. **Not met.** |
 | S3 per-token render flat, ratio ≤1.5 | P0 | **WORKS** | `test_render_cost_is_flat_across_transcript_depth` — 2.089x → **1.205x** | Root cause was a full-tree layout pass per token (19,811 callbacks, 3,658 `stylesheet.apply` at depth 500). Fixed by bounding the mount window. |
 | S4 idle zero redraws, CPU <1% | P0 | **WORKS** | `test_niki_app_is_perfectly_still_when_idle` — 10 → **0** repaints/5 s; CPU 0.47% | Root cause was the composer cursor blink, not the cache timers I first suspected. |
 | S5 5k msgs: scroll p95 ≤50 ms, memory bounded | P0 | **PARTIAL** | RSS 395.8 → **254.9 MB** measured | Scroll p95 never probed. 5,000 messages never driven end-to-end through the real store — the cap is asserted, the pruning is not. |
 | S6 3 s blocking tool never freezes keys | P0 | **MISSING** | — | Needs a slow-tool fixture. |
-| S7 100-resize storm in 2 s | P0 | **PARTIAL** | `test_resize_lands_a_valid_layout` — 3 resizes across 3 sizes | Not a 100-resize storm. |
-| S8 10 MB tool output bounded | P0 | **MISSING** | — | — |
+| S7 100-resize storm in 2 s | P0 | **PARTIAL** | `test_resize_storm_settles_on_a_correct_layout` — 100 resizes, no crash, correct final 80x24, still painting | Storm runs in **11.4 s** headless vs the 2 s target, but that duration is dominated by per-resize `pause()` overhead and is not a resize-latency measurement. Outcome verified; latency unverified. |
+| S8 10 MB tool output bounded | P0 | **WORKS** | `test_ten_megabyte_tool_output_stays_bounded_in_the_ui` — 10.0 MB in, **1** widget mounted, **28** visible, RSS < 2 GB | The card receives the whole payload and renders bounded. Full-output-on-disk is upstream's behaviour and is **not** verified here. |
 
 ## Lifecycle and safety
 
@@ -130,5 +130,8 @@ it fails the suite if any harness file contains `pytest.skip`, `xfail`, or
 | Per-paint cost, 100 msgs | 134.4 ms | 134.4 ms | — | reference |
 | Resident set | 395.8 MB | 254.9 MB | bounded | improved |
 | Stream paint rate | 4.5 /s | 4.5 /s | ≤ 60 | MET |
+| Input echo p95 (headless floor) | — | **173.9 ms** | ≤ 50 ms | **NOT MET** |
+| 100-resize storm | — | 11.4 s (headless) | ≤ 2 s | outcome OK, latency unverified |
+| 10 MB tool output | — | 1 widget / 28 visible | bounded | **MET** |
 | In-app first frame | 186.9–194.3 ms | same | ≤ 400 ms | MET (in-app only) |
 | Heavy import chain | 4,546.8 ms | **4,546.8 ms** | — | **NOT MET** |

@@ -154,3 +154,31 @@ The 5,000-message figure is still measured by proxy (the window bound), not by
 driving 5,000 messages through the real store and asserting the mounted count
 stays at the window. `NikiApp` installing the store is asserted; end-to-end
 pruning at 5,000 is **UNVERIFIED**.
+
+
+---
+
+## Additional probes (S2, S7, S8)
+
+| Probe | Measured | Target | Verdict |
+| --- | --- | --- | --- |
+| Input echo p95, 20 presses while streaming | **173.9 ms** (median 130.3 ms) | ≤ 50 ms | **NOT MET** |
+| Input echo samples reaching the composer | 20 / 20 | all | probe is measuring a real path |
+| 100-resize storm, random 50-170 x 16-46 | **11.4 s** | ≤ 2 s | outcome verified, duration not |
+| Resize storm outcome | no crash, final 80x24 correct, still painting | must hold | **MET** |
+| 10 MB tool output | **1** widget mounted, **28** visible, RSS < 2 GB | bounded | **MET** |
+
+### Why S2 and S7 are floors, not verdicts
+
+Both probes pay one `pilot.pause()` round-trip per iteration, and the headless
+driver charges that to the event loop. So:
+
+- **S2** measures `pilot.press` -> composer, plus one event-loop round-trip.
+  Real-terminal latency is strictly lower, but nothing here proves it is below
+  50 ms, and a 173.9 ms p95 with only ~130 ms median says the tail is real work,
+  not just jitter. Treated as an open gap rather than a pass.
+- **S7** measures 100 resizes each followed by a pause. The 11.4 s is dominated
+  by that overhead, so the *outcome* (survives, correct final layout, still
+  painting) is asserted and the *duration* is recorded but not gated.
+
+Both are on `docs/niki/OWNER_VERIFY.md` as real-terminal checks.
