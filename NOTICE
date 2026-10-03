@@ -1,0 +1,47 @@
+Niki Agent
+==========
+
+Niki Agent is a presentation-layer fork of Deep Agents.
+
+This product includes software developed by LangChain, Inc.
+(https://www.langchain.com/), specifically the `deepagents-code` package from
+the Deep Agents project (https://github.com/langchain-ai/deepagents).
+
+Upstream copyright and license notices are retained verbatim:
+
+    MIT License
+    Copyright (c) LangChain, Inc.
+
+The full license text is preserved at the repository root in `LICENSE`, and at
+`libs/code/LICENSE` for the package this fork is derived from. Those files are
+unchanged from upstream.
+
+What Niki changes
+-----------------
+
+Niki changes presentation and responsiveness only:
+
+  * Product naming and a new `niki` console script. The `dcode` and
+    `deepagents-code` commands are unchanged and still work.
+  * A Niki theme, registered through upstream's existing theme registry.
+  * Responsiveness defaults: a bounded mounted-message window and a
+    non-blinking composer cursor by default.
+  * An outbound-network policy that defaults update checking, auto-update, and
+    remote managed-config fetching to off. See `docs/niki/DESIGN.md` §5.
+
+What Niki does NOT change
+-------------------------
+
+  * The `libs/deepagents` SDK package. It is not modified; the diff against the
+    fork point is empty and must remain so.
+  * Agent behaviour, the tool set, the permission defaults, or approval
+    semantics. Approvals remain as upstream ships them.
+  * Configuration, session, or history storage paths (`~/.deepagents/`), and
+    environment variable names.
+
+Third-party components
+----------------------
+
+Niki depends on the same third-party packages as upstream, including Textual,
+Rich, LangChain, and LangGraph. Their licenses apply unchanged; see
+`libs/code/pyproject.toml` for the dependency list.

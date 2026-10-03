@@ -1,0 +1,134 @@
+# Niki Agent — Checklist
+
+Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
+
+**This file is not a victory lap.** Several P0 rows are not met, and they are
+marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
+`[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
+
+**Current tally: 13 WORKS · 12 PARTIAL · 43 MISSING** across 76 rows.
+The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
+**the MVP is not done.** What follows is the accurate picture.
+
+Run everything with:
+
+```bash
+cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
+```
+
+---
+
+## Speed and responsiveness
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| S1 first frame ≤400 ms warm | P0 | **PARTIAL** | `test_first_frame` — 186.9 / 194.3 / 191.9 ms at 50x16 / 80x24 / 120x38 | In-app first frame is inside the floor. The **4,546.8 ms** `import langchain, langgraph, deepagents` chain that runs *before* it is untouched, so real time-to-first-frame is still seconds. **Not met.** |
+| S2 input echo p95 ≤50 ms under load | P0 | **MISSING** | — | No probe built. |
+| S3 per-token render flat, ratio ≤1.5 | P0 | **WORKS** | `test_render_cost_is_flat_across_transcript_depth` — 2.089x → **1.205x** | Root cause was a full-tree layout pass per token (19,811 callbacks, 3,658 `stylesheet.apply` at depth 500). Fixed by bounding the mount window. |
+| S4 idle zero redraws, CPU <1% | P0 | **WORKS** | `test_niki_app_is_perfectly_still_when_idle` — 10 → **0** repaints/5 s; CPU 0.47% | Root cause was the composer cursor blink, not the cache timers I first suspected. |
+| S5 5k msgs: scroll p95 ≤50 ms, memory bounded | P0 | **PARTIAL** | RSS 395.8 → **254.9 MB** measured | Scroll p95 never probed. 5,000 messages never driven end-to-end through the real store — the cap is asserted, the pruning is not. |
+| S6 3 s blocking tool never freezes keys | P0 | **MISSING** | — | Needs a slow-tool fixture. |
+| S7 100-resize storm in 2 s | P0 | **PARTIAL** | `test_resize_lands_a_valid_layout` — 3 resizes across 3 sizes | Not a 100-resize storm. |
+| S8 10 MB tool output bounded | P0 | **MISSING** | — | — |
+
+## Lifecycle and safety
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| L1 terminal restored on all exits | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty`, `test_terminal_is_restored_after_a_killed_child`, `test_signal_is_delivered_to_the_child` | Clean exit + SIGTERM delivery covered. SIGHUP and crash paths not probed. |
+| L2 non-TTY / TERM=dumb clean | P0 | **WORKS** | `test_non_tty_run_emits_no_escape_sequences`, `test_help_renders_as_readable_text_in_a_terminal` | Rendered through `pyte` at 200x200 so nothing clips. |
+| L3 no stray stdout/stderr while TUI live | P0 | **WORKS** | `test_nothing_writes_to_stdout_or_stderr_while_the_tui_is_live`, `test_no_warning_escapes_while_the_tui_is_live` | Runtime capture, not a grep — upstream legitimately prints 119 times for headless output. |
+| L4 untrusted text never interpreted as markup | P0 | **MISSING** | — | Upstream has strong handling (`Content.from_markup`, `_escape_markdown`, `markup=False`); **unverified in this fork**. Hostile fixtures not written. |
+| L5 crash → traceback to file + friendly message | P0 | **MISSING** | — | — |
+| L6 outbound audit; phone-home off/opt-in | P0 | **WORKS** | `test_network_behavior_is_off_by_default`, `test_network_policy_never_overrides_an_explicit_owner_choice` | Update check, auto-update, remote managed-config all default **off** (upstream: check and auto-update default **on**). |
+| L7 Ctrl+Z suspend/resume | P1 | **MISSING** | — | — |
+| L8 clean exit prints summary + exit code | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty` asserts exit 0 | No session-id / resume-hint summary asserted. |
+
+## Visual and brand
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| V1 all colors from theme tokens | P0 | **WORKS** | `test_niki_writes_colors_only_in_its_theme_module`, `test_the_fork_adds_no_new_color_literal_files` | Scoped to the fork: upstream already keeps `.tcss` on tokens and has exactly 3 files with real hex. |
+| V2 Niki branding, no upstream leaks | P0 | **PARTIAL** | `test_niki_theme_is_registered_and_active`, `test_snapshot_frames_do_not_show_the_upstream_product_name` | Header is `Niki Agent`. **`dcode` still shows in the welcome banner** (`welcome.py:471`, hardcoded in `_build_banner`). **Not met.** |
+| V3 layout tiers at four sizes | P0 | **WORKS** | 12 committed snapshots at 50x16 / 80x24 / 120x38 / 160x45 | Generate **and** re-verify; splash-tip randomness pinned. |
+| V4 transcript user/assistant distinction | P0 | **MISSING** | — | Snapshot exists but is upstream's unstyled layout. |
+| V5 composer: ruled, glyph, placeholder, queue | P0 | **PARTIAL** | `test_snapshot_with_text_typed` ×4, `test_chat_input_exists_and_takes_typed_characters` | Upstream composer; no Niki restyle, no queue indicator. |
+| V6 footer truthful + collapses by width | P0 | **MISSING** | — | — |
+| V7 tool cards | P0 | **MISSING** | — | — |
+| V8 diffs | P0 | **MISSING** | — | — |
+| V9 approvals | P0 | **MISSING** | — | Registry shows `approval_yes/no/auto/select/up/down` exist upstream; Niki's V9 rendering not built. |
+| V10 activity line | P0 | **MISSING** | — | — |
+| V11 markdown rendering | P0 | **MISSING** | — | — |
+| V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
+| V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `test_every_token_pair_meets_its_contrast_floor` — **0 violations**, tightest 5.56:1 dark / 4.12:1 light | Contrast is measured and passing. NO_COLOR, ASCII fallback, and light-terminal rendering unprobed. |
+| V14 inline errors with recovery | P0 | **MISSING** | — | — |
+
+## Keyboard
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| K1 single keymap registry | P0 | **PARTIAL** | `test_every_advertised_action_has_a_handler` — 38 bindings, 0 dead; `test_registry_is_populated_from_live_bindings`; `KEYMAP.md` generated | Registry exists and is proven. **Footer and Help still render upstream's hand-maintained `ui.show_help()`**, so K1's "one source for all three surfaces" is **not met**. Known patch site, logged in `UPSTREAM_DIFF.md`. |
+| K2 nav keys on every scrollable surface | P0 | **MISSING** | — | — |
+| K3 composer editing | P0 | **MISSING** | — | — |
+| K4 interrupt/exit semantics | P0 | **PARTIAL** | `test_escape_is_advertised_as_interrupt_and_dispatches` | Advertised + handler exists. The clear-then-interrupt-then-arm ladder not tested. |
+| K5 bracketed paste | P0 | **MISSING** | — | — |
+| K6 filtered slash menu | P0 | **PARTIAL** | `test_snapshot_with_slash_menu_open` ×2 widths | Opens; filtering and key handling unverified. |
+| K7 Esc close order + focus restore | P0 | **MISSING** | — | — |
+| K8 `?` contextual help | P0 | **PARTIAL** | `test_snapshot_with_help_open` ×2 widths | Renders; not registry-generated (see K1). |
+| K9 Ctrl+R history search | P1 | **MISSING** | — | — |
+| K10 queue messages during a run | P1 | **MISSING** | — | — |
+| K11 command palette | P1 | **MISSING** | — | — |
+| K12 escape-sequence fuzz / AltGr | P0 | **MISSING** | — | — |
+
+## Mouse
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| M1 wheel scrolls, no snap-back | P0 | **MISSING** | — | — |
+| M2 click: focus, cards, approvals, rows | P0 | **PARTIAL** | `test_click_is_delivered_to_the_app` | One click delivered; the four named behaviours unverified. |
+| M3 hover throttled, no redraw storm | P0 | **MISSING** | — | — |
+| M4 selection/copy, OSC 52, mouse release | P1 | **MISSING** | — | — |
+| M5 every mouse action has a key equivalent | P0 | **MISSING** | — | — |
+
+## Flow
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| F1 message echoes instantly, focus kept | P0 | **PARTIAL** | `test_chat_input_exists_and_takes_typed_characters` | Focus + text verified; latency not measured. |
+| F2 activity states only from real events | P0 | **MISSING** | — | — |
+| F3 streaming renders into one block | P0 | **PARTIAL** | `measure_stream` paints 4–5 times for 60 tokens | Coalescing works (upstream's 0.1 s flush). Single-block *assertion* not written. |
+| F4 scroll preserved mid-stream | P0 | **MISSING** | — | — |
+| F5 session resume picker | P1 | **MISSING** | — | — |
+| F6 concise post-run summary | P0 | **MISSING** | — | — |
+
+## Docs and pack
+
+| Row | P | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- |
+| D1 README + screenshots + credit | P0 | **MISSING** | — | — |
+| D2 `UPSTREAM_DIFF.md` matches the diff | P0 | **WORKS** | `UPSTREAM_DIFF.md`; `git diff niki-base --stat` | One upstream file touched: `libs/code/pyproject.toml`. |
+| D3 `KEYMAP.md` generated from registry | P0 | **WORKS** | `scripts/gen_keymap.py` | 38 rows, header says "do not edit by hand". |
+| D4 `OWNER_VERIFY.md` + review images | P0 | **MISSING** | — | — |
+
+---
+
+## What a passing row has in common
+
+Every WORKS row above cites a named test that passes in the run printed in the
+conversation, and none was made to pass by skipping, weakening, or deleting
+anything. `test_the_harness_never_disables_a_check` enforces that mechanically:
+it fails the suite if any harness file contains `pytest.skip`, `xfail`, or
+`@pytest.mark.skip`. It has already caught one real skip I wrote.
+
+## Perf table (before → after)
+
+| Metric | Before | After | Target | Verdict |
+| --- | --- | --- | --- | --- |
+| Idle repaints / 5 s | 10 | **0** | 0 | **MET** |
+| Idle CPU / 5 s | 0.459 % | 0.472 % | < 1 % | MET |
+| Per-paint cost ratio (worst vs 100 msgs) | 2.089 | **1.205** | ≤ 1.5 | **MET** |
+| Per-paint cost, 100 msgs | 134.4 ms | 134.4 ms | — | reference |
+| Resident set | 395.8 MB | 254.9 MB | bounded | improved |
+| Stream paint rate | 4.5 /s | 4.5 /s | ≤ 60 | MET |
+| In-app first frame | 186.9–194.3 ms | same | ≤ 400 ms | MET (in-app only) |
+| Heavy import chain | 4,546.8 ms | **4,546.8 ms** | — | **NOT MET** |
