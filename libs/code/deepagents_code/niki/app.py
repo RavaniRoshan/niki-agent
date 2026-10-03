@@ -39,6 +39,11 @@ from deepagents_code.tui.widgets.message_store import MessageStore
 class NikiApp(DeepAgentsApp):
     """`DeepAgentsApp` with Niki's presentation defaults applied."""
 
+    TITLE = "Niki Agent"
+    """Window and header title. Upstream sets `TITLE = "Deep Agents"`
+    (`app.py:3331`); it is a plain class attribute, so rebranding needs no
+    string surgery anywhere else."""
+
     #: Blink is opt-in; see the module docstring for the measurement. Assign to
     #: the instance before mounting to override.
     blink_cursor: bool = False

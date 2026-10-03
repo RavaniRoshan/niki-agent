@@ -23,9 +23,9 @@ from unittest.mock import AsyncMock, MagicMock
 os.environ["DEEPAGENTS_CODE_HIDE_SPLASH_TIPS"] = "1"
 random.seed(0)
 
-from deepagents_code.app import DeepAgentsApp  # noqa: E402
+from deepagents_code.niki.app import NikiApp  # noqa: E402
 
-_niki_snapshot_app = DeepAgentsApp(agent=MagicMock(), thread_id="niki-snapshot")
+_niki_snapshot_app = NikiApp(agent=MagicMock(), thread_id="niki-snapshot")
 _niki_snapshot_app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
 
 app = _niki_snapshot_app
