@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 21 WORKS · 26 PARTIAL · 22 MISSING** across 76 rows.
+**Current tally: 21 WORKS · 28 PARTIAL · 20 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -41,7 +41,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | L4 untrusted text never interpreted as markup | P0 | **WORKS** | `tests/unit_tests/niki/test_untrusted_text.py` — 17 tests: 10 hostile control sequences (OSC title, OSC 52 clipboard, cursor move, screen clear, SGR, BEL, backspace-overwrite, CSI, bidi override) and 5 hostile markup payloads (Rich bold, closing-tag, markdown link, heading injection, HTML tag) | Control chars are stripped by `sanitize_control_chars`; `Content` preserves text verbatim with **zero style spans** and re-emits escaped brackets; the end-to-end check feeds rendered output through `pyte` and asserts the terminal title is unchanged and the cursor stays in bounds. |
 | L5 crash → traceback to file + friendly message | P0 | **PARTIAL** | `test_l5_the_file_handler_needs_a_known_thread` | **Not decidable headlessly, with the reason measured.** `libs/code/AGENTS.md`: the file handler attaches only when `DEEPAGENTS_CODE_DEBUG` is truthy *and the active thread is known* — the thread exists only once the real CLI starts the app. Measured: with debug on and a real directory, the package logger's handlers are exactly `[InMemoryLogBuffer]` and **no file is written**. Two dead ends recorded (env set too late; subprocess with env from process start). The in-app Debug Console (`Ctrl+\\`) and the friendly-message half are OWNER-VERIFY. |
 | L6 outbound audit; phone-home off/opt-in | P0 | **WORKS** | `test_network_behavior_is_off_by_default`, `test_network_policy_never_overrides_an_explicit_owner_choice` | Update check, auto-update, remote managed-config all default **off** (upstream: check and auto-update default **on**). |
-| L7 Ctrl+Z suspend/resume | P1 | **MISSING** | — | — |
+| L7 Ctrl+Z suspend/resume | P1 | **PARTIAL** | `test_l7_ctrl_z_suspends_and_the_process_can_be_resumed` — a real `Ctrl+Z` byte, then `SIGCONT`; the process is still alive and resumable afterwards | Automated through a pty. Whether the resumed screen **redraws correctly** is not asserted — that needs a human watching a real terminal. |
 | L8 clean exit prints summary + exit code | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty` asserts exit 0 | No session-id / resume-hint summary asserted. |
 
 ## Visual and brand
@@ -71,7 +71,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | K2 nav keys on every scrollable surface | P0 | **PARTIAL** | `test_pageup_is_bound_but_does_not_reach_the_transcript` | **Open defect, characterised not hidden.** `pageup` *is* bound — to `VerticalScroll.page_up` — but the composer holds focus (F1 requires it) and consumes the key, so PgUp does not move the transcript. K2 requires PgUp/PgDn on every scrollable surface. The test asserts current behaviour with the gap named; fixing the key will fail it, which is the intent. |
 | K3 composer editing | P0 | **PARTIAL** | `tests/unit_tests/niki/test_keyboard.py` — char movement, Home/End both directions, Ctrl+U, Ctrl+K, Alt+Backspace word delete, backspace, and up-arrow history recall all pass | 7 gestures proven. Multi-line (Shift+Enter / Alt+Enter / backslash-Enter) and grapheme-correct cursor with wide characters are **not** covered. |
 | K4 interrupt/exit semantics | P0 | **PARTIAL** | `test_escape_is_advertised_as_interrupt_and_dispatches` | Advertised + handler exists. The clear-then-interrupt-then-arm ladder not tested. |
-| K5 bracketed paste | P0 | **MISSING** | — | — |
+| K5 bracketed paste | P0 | **PARTIAL** | `tests/unit_tests/niki/test_pty_paste_and_suspend.py` — real bracketed-paste bytes (`ESC[200~ ... ESC[201~`) through a pty: pasted text lands, `/help` pasted does **not** submit, a 20,000-character paste neither wedges nor kills the process and typing still works afterwards | Runs against a real terminal protocol, which the Pilot driver cannot reach. Whether a large paste **collapses to a visible placeholder** (rather than simply being absorbed) is not asserted, and the host clipboard path is not exercised. |
 | K6 filtered slash menu | P0 | **PARTIAL** | `test_slash_menu_filters_and_narrows_to_one_row`, `test_snapshot_with_slash_menu_open` ×2 | Opens, filters, and narrows. Arrow/Tab/Enter selection and upstream's skills entries unverified. |
 | K7 Esc close order + focus restore | P0 | **PARTIAL** | `test_escape_closes_the_slash_menu_before_cancelling_input` | Esc closes the popup and retains the typed text. The full close order (modal → popup → search → detail → cancel input) and focus restoration per step unverified. |
 | K8 `?` contextual help | P0 | **PARTIAL** | `test_snapshot_with_help_open` ×2 widths | Renders; not registry-generated (see K1). |
