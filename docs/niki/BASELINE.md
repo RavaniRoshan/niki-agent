@@ -102,3 +102,55 @@ default changes.
 Blink is a **setting, not a hard-off**: `app.blink_cursor = True` before mounting
 restores 10 repaints in 5 s. Both directions are asserted by tests, so the row
 cannot pass by the feature simply being broken.
+
+---
+
+## After — S3 fix (`NikiMessageStore`)
+
+| Probe | Before | After | Target | Verdict |
+| --- | --- | --- | --- | --- |
+| Per-paint cost, 100 msgs | 134.4 ms | 134.4 ms | — | reference |
+| Per-paint cost, worst mounted tree | **223.8 ms** (500 widgets) | **161.9 ms** (150-widget window) | — | cheaper |
+| **Ratio, worst case vs 100 msgs** | **2.089** | **1.205** | ≤ 1.5 | **MET** |
+| Resident set | 395.8 MB | 254.9 MB | bounded | improved |
+
+### Root cause
+
+Profiling the deep case (`cProfile` over a 60-token stream at depth 500) showed
+the cost is a **full-tree layout pass per streamed token**, not anything
+token-specific:
+
+| Signal | depth 500 |
+| --- | --- |
+| asyncio callback invocations | 19,811 |
+| `textual/css/stylesheet.py:470 apply` | 3,658 calls, 2.03 s cumulative |
+| `textual/screen.py:1316 _refresh_layout` | 14 calls, 1.95 s cumulative |
+
+So per-paint cost is **O(mounted widgets)**. Upstream mounts up to
+`WINDOW_SIZE = 800` / `HARD_WINDOW_SIZE = 900`, which is what lets the tree grow
+into that cost. Because the cost tracks *mounted* widgets rather than total
+messages, capping the window is what flattens the ratio: a 5,000-message
+transcript now mounts about as many widgets as a 150-message one.
+
+### The fix
+
+`NikiMessageStore(MessageStore)` with `WINDOW_SIZE = 150`, `HARD_WINDOW_SIZE = 180`.
+`NikiApp` swaps it in after `super().__init__()` by overwriting the
+`_message_store` attribute that `app.py:4535` assigns. **No upstream file
+touched.**
+
+### Honest caveat — this is a taste trade, not a free win
+
+A smaller window means less of the transcript stays resident, so far-back
+scrolling leans harder on upstream's hydration path. `INITIAL_WINDOW_SIZE` was
+deliberately left at 30 so resumed sessions never mount incomplete. Whether 150
+scrolls as well as 800 is a judgment call, not a measurement, and it is listed in
+`docs/niki/OWNER_VERIFY.md`. The constants are class attributes precisely so
+they can be moved without touching upstream.
+
+### Still owed
+
+The 5,000-message figure is still measured by proxy (the window bound), not by
+driving 5,000 messages through the real store and asserting the mounted count
+stays at the window. `NikiApp` installing the store is asserted; end-to-end
+pruning at 5,000 is **UNVERIFIED**.

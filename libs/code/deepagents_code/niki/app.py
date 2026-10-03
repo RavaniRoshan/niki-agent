@@ -31,7 +31,9 @@ from typing import ClassVar
 
 import deepagents_code
 from deepagents_code.app import DeepAgentsApp
+from deepagents_code.niki.message_store import NikiMessageStore
 from deepagents_code.tui.widgets.chat_input import ChatTextArea
+from deepagents_code.tui.widgets.message_store import MessageStore
 
 
 class NikiApp(DeepAgentsApp):
@@ -52,10 +54,23 @@ class NikiApp(DeepAgentsApp):
     async def on_mount(self) -> None:
         """Mount upstream's app, then schedule the Niki presentation defaults."""
         await super().on_mount()
+        self._install_niki_message_store()
         # The composer is built after mount, so `on_mount` alone finds nothing.
         # `call_after_refresh` runs once the first frame is up, by which point
         # the chat input exists.
         self.call_after_refresh(self._apply_cursor_blink)
+
+    def _install_niki_message_store(self) -> None:
+        """Swap in the bounded-window store.
+
+        `DeepAgentsApp.__init__` assigns `self._message_store = MessageStore()`
+        (app.py:4535). Overwriting the attribute afterwards is the extension
+        route -- upstream's constructor takes no store argument, and adding one
+        would edit the 31,916-line module for a single line of effect.
+        """
+        if not isinstance(self._message_store, MessageStore):
+            return
+        self._message_store = NikiMessageStore()
 
     def _apply_cursor_blink(self) -> None:
         """Push the blink preference onto every composer text area."""
