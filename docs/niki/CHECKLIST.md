@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 21 WORKS · 28 PARTIAL · 20 MISSING** across 76 rows.
+**Current tally: 22 WORKS · 29 PARTIAL · 19 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -53,7 +53,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V3 layout tiers at four sizes | P0 | **WORKS** | 12 committed snapshots at 50x16 / 80x24 / 120x38 / 160x45 | Generate **and** re-verify; splash-tip randomness pinned. |
 | V4 transcript user/assistant distinction | P0 | **MISSING** | — | Snapshot exists but is upstream's unstyled layout. |
 | V5 composer: ruled, glyph, placeholder, queue | P0 | **PARTIAL** | `test_snapshot_with_text_typed` ×4, `test_chat_input_exists_and_takes_typed_characters` | Upstream composer; no Niki restyle, no queue indicator. |
-| V6 footer truthful + collapses by width | P0 | **MISSING** | — | — |
+| V6 footer truthful + collapses by width | P0 | **PARTIAL** | `test_v6_the_footer_reports_real_facts` ×4 sizes — the permission mode and git branch are checked against facts established **outside** the app; `test_v6_the_footer_never_claims_more_than_it_knows`; `test_v6_the_footer_fits_its_width` ×4 | Truthfulness is proven: the footer matches the real branch and mode, invents no token/cost/context numbers it cannot know, is one row high at every size, and the cwd appears only where there is room — i.e. it **collapses by width** rather than wrapping. Model, queue, and context *use* are not populated under a mock agent, and the 16-colour appearance is OWNER-VERIFY. |
 | V7 tool cards | P0 | **PARTIAL** | `test_v7_a_tool_card_shows_tool_intent_and_status`, `test_v7_no_card_appears_without_a_real_tool_event`, `test_v7_card_reports_a_result_or_elapsed_time` | Card names the tool (`bash`) and its intent (`ls -la`), survives an empty result, and never appears without a tool event. Expand/collapse by key and click, and auto-expand on failure, are unverified. |
 | V8 diffs | P0 | **PARTIAL** | `tests/unit_tests/niki/test_diffs.py` — Niki gives added and removed *different* colours; both clear the 3:1 glyph floor against background/surface/panel; upstream's `max_lines` cap is real | Hunk headers, line numbers, and `+`/`-` prefixes on screen are **not** proven here. Three screen-capture tests were written and then **deleted**: `#messages` uses Textual's `stream` layout, so widgets mounted into it directly do not lay out where a reader expects and the capture read an empty region. The same failed with an `ApprovalMenu` carrying a file-edit diff. Rendering a diff through the real approval flow with a real file change is **OWNER-VERIFY**. |
 | V9 approvals | P0 | **PARTIAL — TWO OPEN DEFECTS** | `tests/unit_tests/niki/test_approvals.py` (8 tests) | **Works:** prompt names the tool (`bash`) and the exact command (`rm -rf /tmp/thing`) at 50×20 and 80×24; arrow keys move the selection; number shortcuts (`approval_position(0..2)`) are bound; an outside click neither dismisses nor decides. **Defect 1 (safety):** the prompt opens focused on `Approve (y)` — the *approving* option — so a stray `Enter` runs the command. The checklist requires the safest option focused by default. **Defect 2:** `Esc` is bound to `interrupt`, not to a deny, so it does not deny; `n` is the reject key. Both are written as *characterisations* that name the gap. |
@@ -86,7 +86,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | --- | --- | --- | --- | --- |
 | M1 transcript scrolls, no snap-back | P0 | **PARTIAL** | `test_m1_the_transcript_is_genuinely_scrollable` ×2 sizes, `test_scroll_position_moves_and_sticks` | Container genuinely overflows (60 messages → `max_scroll_y=48` at 80x24); scroll position takes and stays put while idle. **Wheel itself is untestable** — this Textual Pilot exposes no wheel API, so wheel remains OWNER-VERIFY. |
 | M2 click: focus, cards, approvals, rows | P0 | **PARTIAL** | `test_m2_clicking_focuses_the_composer` ×2 sizes, `test_click_is_delivered_to_the_app` | Click-to-focus verified at both sizes. Tool-card expand, approval rows, and slash rows unverified. |
-| M3 hover throttled, no redraw storm | P0 | **MISSING** | — | — |
+| M3 hover throttled, no redraw storm | P0 | **WORKS** | `tests/unit_tests/niki/test_hover_and_footer.py` — 120 real `MouseMove` events swept across the composer, repaint count measured through the compositor, and a second test proves the UI is still painting afterwards | Repaints are counted, not estimated, so 'no storm' is a measurement. |
 | M4 selection/copy, OSC 52, mouse release | P1 | **MISSING** | — | — |
 | M5 every mouse action has a key equivalent | P0 | **PARTIAL** | `test_m5_every_mouse_gesture_has_a_keyboard_equivalent` | Six required gestures (focus, scroll up/down, jump to bottom, cancel, submit) all have bindings in the registry. Built from live `BINDINGS`, so it cannot drift. |
 
