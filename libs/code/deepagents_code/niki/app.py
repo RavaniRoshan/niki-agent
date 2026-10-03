@@ -58,10 +58,12 @@ class NikiApp(DeepAgentsApp):
 
     #: Textual resolves `CSS_PATH` relative to the *subclass's* module, so
     #: inheriting upstream's bare `"app.tcss"` would look for a stylesheet in
-    #: `deepagents_code/niki/`. Point at the real file explicitly instead, and
-    #: add Niki's own overrides after it so they win the cascade.
+    #: `deepagents_code/niki/`. Point at the real file explicitly instead.
+    #: Niki's own sheet is listed second so it wins the cascade: it overrides
+    #: upstream's rules without editing or deleting any of them.
     CSS_PATH: ClassVar[list[str]] = [
         str(Path(deepagents_code.__file__).parent / "app.tcss"),
+        str(Path(__file__).parent / "niki.tcss"),
     ]
 
     def _register_custom_themes(self) -> None:

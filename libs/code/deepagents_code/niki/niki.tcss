@@ -1,0 +1,147 @@
+/* Niki Agent — the look.
+ *
+ * Loaded after upstream's `app.tcss` so these rules win the cascade. Everything
+ * here is a *layer*, not a rewrite: upstream's layout, widgets, and behaviour
+ * are untouched, and every selector targets something upstream already ships.
+ *
+ * The design direction, and where each rule comes from:
+ *
+ *   - Assistant text is unboxed on the base background. Boxes everywhere is what
+ *     makes a terminal feel like a log file rather than a conversation.
+ *   - User turns are marked by a thin left gutter and a slightly raised
+ *     surface, so the eye can find "what did I say" without reading it.
+ *   - Hierarchy comes from weight, dimness, and whitespace. Exactly one border
+ *     level is permitted, and it is spent on the composer.
+ *   - Colours come only from tokens. Textual exposes the `Theme` colour fields
+ *     registered by `NikiApp` as `$primary`, `$background`, `$surface`,
+ *     `$panel`, `$text`, `$error`, `$success`, and friends; the seven tokens
+ *     Textual has no field for are published as `$niki-*`. There is not one
+ *     literal in this file, which is what lets `test_lint_rules.py` enforce V1.
+ *
+ * A first draft used `$niki-background` for everything. Textual has no such
+ * variable, so the whole sheet failed to parse, Textual dropped it, and every
+ * snapshot still passed -- a silent no-op. `test_niki_stylesheet_actually_applies`
+ * now fails if these rules ever stop reaching the widgets.
+ */
+
+/* ---------------------------------------------------------------- transcript */
+
+#chat {
+    background: $background;
+}
+
+/* The transcript sits directly on the base background: no panel, no border. */
+#messages {
+    background: $background;
+    padding: 0 1 0 1;
+}
+
+#welcome-banner {
+    background: $background;
+}
+
+/* Timestamps are de-emphasised hard. They answer "when", never "what". */
+.message-timestamp-footer {
+    color: $text-muted;
+    text-style: none;
+}
+
+/* -------------------------------------------------------------- bottom stack */
+
+#bottom-app-container {
+    background: $background;
+}
+
+/* The composer is the one bordered element on screen. One rule, one accent,
+ * so it reads as the single place the user can act. */
+#input-area {
+    border: round $primary;
+    background: $surface;
+    padding: 0 1;
+}
+
+#input-area:focus-within {
+    border: round $primary;
+    background: $surface;
+}
+
+/* --------------------------------------------------------------- status bar */
+
+#status-bar {
+    background: $background;
+    color: $text-muted;
+    height: 1;
+}
+
+/* ------------------------------------------------------------ approvals */
+
+/* Approvals are the one place a second surface is justified: the user is being
+ * asked to authorise something, and it should not read as ordinary text. */
+.approval-menu {
+    background: $panel;
+    border: none;
+    padding: 0 1;
+}
+
+.approval-menu .approval-title {
+    color: $text;
+    text-style: bold;
+}
+
+.approval-menu .approval-info,
+.approval-menu .approval-command {
+    color: $text-muted;
+}
+
+/* The safest option is focused by default (K4/V9). The accent marks it; the
+ * label still carries the meaning, so this is not colour-only signalling. */
+.approval-menu .approval-option-selected {
+    background: $surface;
+    color: $text;
+    text-style: bold;
+}
+
+.approval-menu .approval-help {
+    color: $text-muted;
+}
+
+/* ------------------------------------------------------------------- diffs */
+
+/* Colour is reinforcement here; the +/- prefix carries the meaning on its own,
+ * which is what keeps diffs readable with NO_COLOR set. */
+.diff-removed {
+    color: $error;
+    background: $surface;
+}
+
+.diff-added {
+    color: $success;
+    background: $surface;
+}
+
+.diff-line-removed {
+    color: $error;
+}
+
+.diff-line-added {
+    color: $success;
+}
+
+.diff-hunk-break {
+    color: $text-muted;
+}
+
+/* --------------------------------------------------------------- tool cards */
+
+.tool-approval-widget {
+    background: $surface;
+}
+
+/* ------------------------------------------------------------------ notices */
+
+.auto-mode-notice,
+.yolo-mode-notice,
+.startup-tip {
+    color: $text-muted;
+    background: $background;
+}

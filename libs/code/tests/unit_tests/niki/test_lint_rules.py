@@ -156,3 +156,42 @@ def test_no_color_literal_survives_in_the_niki_test_harness() -> None:
     """The harness must not smuggle a color past the theme module."""
     offenders = _files_with_color_literals(Path(__file__).parent) - {"theme.py"}
     assert not offenders, f"test harness spells colors directly: {sorted(offenders)}"
+
+
+async def test_niki_stylesheet_actually_applies() -> None:
+    """The Niki stylesheet must reach the widgets, not just parse.
+
+    Regression guard for a silent no-op. A first draft of `niki.tcss` referenced
+    `$niki-background` for every colour. Textual has no such variable, so the
+    sheet failed to parse, Textual discarded it wholesale -- and **every snapshot
+    still passed**, because the app rendered exactly as it had before. Nothing
+    in the suite noticed that the look had not changed at all.
+
+    This asserts the concrete outcome instead: the composer carries Niki's
+    accent border and Niki's surface, and the transcript sits on Niki's
+    background.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+    from deepagents_code.niki.theme import NIKI_DARK
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-css")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        composer = app.query_one("#input-area")
+        messages = app.query_one("#messages")
+
+    border = composer.styles.border
+    assert border.top is not None, f"composer has no top border: {border!r}"
+    assert border.top[0] == "round", (
+        f"composer border is {border.top[0]}, expected round"
+    )
+    assert border.top[1].hex.lower().endswith(NIKI_DARK["primary"][1:].lower()), (
+        f"composer border is {border.top[1].hex}, not Niki's primary"
+    )
+    assert messages.styles.background.hex.lower().endswith(
+        NIKI_DARK["background"][1:].lower()
+    ), f"transcript background is {messages.styles.background.hex}, not Niki's base"
