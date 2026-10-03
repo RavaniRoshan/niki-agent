@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 17 WORKS · 24 PARTIAL · 28 MISSING** across 76 rows.
+**Current tally: 17 WORKS · 26 PARTIAL · 26 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -60,7 +60,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V10 activity line | P0 | **MISSING** | — | — |
 | V11 markdown rendering | P0 | **PARTIAL** | `tests/unit_tests/niki/test_markdown.py` — the Markdown renderer is wired at `#assistant-content`, and 10 streamed appends feed **one** widget rather than accumulating renderers | **On-screen rendering is not proven, and the reason is measured, not assumed.** A synthetic assistant message mounts (`children` grows by one) but lays out at **height 0** (`Region(x=1, y=5, width=78, height=0)`, `virtual_size.height == 0`), so it paints nothing — through the app's own `_mount_message` path as well, and it does not improve with more event-loop time. The markdown sub-widget is never measured because the transcript's height measurement is scheduled by the agent/thread lifecycle. Headings, lists, tables, links, code-block language labels, and streaming stability are **OWNER-VERIFY**. |
 | V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
-| V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `test_every_token_pair_meets_its_contrast_floor` — **0 violations**, tightest 5.56:1 dark / 4.12:1 light | Contrast is measured and passing. NO_COLOR, ASCII fallback, and light-terminal rendering unprobed. |
+| V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `tests/unit_tests/niki/test_color_depth_and_input.py` — contrast **0 violations** (tightest 5.56:1 dark / 4.12:1 light); the ASCII glyph set contains **no** non-ASCII; no glyph is blank in ASCII mode; **Niki ships no hardcoded structural glyph**; the app starts and paints with `NO_COLOR=1` | The ASCII *set* is verified and the app survives `NO_COLOR`. 16-colour rendering and the light-terminal *appearance* are OWNER-VERIFY. |
 | V14 inline errors with recovery | P0 | **MISSING** | — | — |
 
 ## Keyboard
@@ -78,7 +78,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | K9 Ctrl+R history search | P1 | **MISSING** | — | — |
 | K10 queue messages during a run | P1 | **MISSING** | — | — |
 | K11 command palette | P1 | **MISSING** | — | — |
-| K12 escape-sequence fuzz / AltGr | P0 | **MISSING** | — | — |
+| K12 escape-sequence fuzz / AltGr | P0 | **PARTIAL** | `test_k12_hostile_input_never_wedges_the_composer` (lone Esc, Alt+key, non-ASCII, AltGr), `test_k12_repeated_split_sequences_still_type` (50 hostile presses), `test_k12_shift_tab_steals_the_composer` | Lone `Esc`, `Alt`+key, and non-ASCII input all leave the composer accepting typing; 50 split sequences in a row do not wedge it. **Open gap, characterised:** `shift+tab` (bound app-level to `toggle_auto_approve`) moves focus off the composer, so the next keystrokes land nowhere. Split *partial byte sequences* at the pty level are not driven. |
 
 ## Mouse
 

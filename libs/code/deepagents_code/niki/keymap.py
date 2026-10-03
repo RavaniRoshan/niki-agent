@@ -33,6 +33,21 @@ if TYPE_CHECKING:
     from textual.dom import DOMNode
 
 
+def _separator() -> str:
+    """The charset-aware separator between footer hints.
+
+    Returns:
+        Upstream's separator glyph for the active terminal, or two spaces if it
+        cannot be resolved (rendering must never fail over a divider).
+    """
+    try:
+        from deepagents_code.config import get_glyphs
+
+        return str(get_glyphs().separator)
+    except Exception:  # noqa: BLE001 - a hint divider must never break the footer
+        return " "
+
+
 @dataclass(frozen=True)
 class KeymapEntry:
     """One advertised key.
@@ -113,10 +128,15 @@ def render_footer_hint(keymap: Iterable[KeymapEntry], *, limit: int = 6) -> str:
         limit: Maximum entries before the rest are dropped.
 
     Returns:
-        A single line such as `"ctrl+t panels · ? help"`, or `""` when empty.
+        A single line such as `"ctrl+t panels <sep> ? help"`, where `<sep>`
+        is the charset-aware separator, or `""` when there is nothing to show.
     """
     parts = [f"{e.key} {e.description}".strip() for e in keymap if e.key]
-    return " · ".join(parts[:limit])
+    # Pull the separator from the charset-aware glyph set rather than inlining
+    # one: a hardcoded middot is exactly the thing that turns into mojibake on
+    # an ASCII terminal, and `test_niki_ships_no_hardcoded_unicode_in_its_own_
+    # source` fails the build if it comes back.
+    return f" {_separator()} ".join(parts[:limit])
 
 
 def render_help(keymap: Iterable[KeymapEntry]) -> str:
