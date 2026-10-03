@@ -147,3 +147,87 @@ def test_help_renders_as_readable_text_in_a_terminal(home: Path) -> None:
     assert "usage" in rendered.lower(), (
         f"no usage line in rendered output:\n{rendered[:400]}"
     )
+
+
+FIRST_PAINT_CEILING_MS = 1500.0
+"""Regression guard for S1, not the 400 ms aspirational floor.
+
+A Python interpreter plus this import graph cannot reach 400 ms. Gating on 400
+would be a gate that can never pass honestly, so this records the real budget
+and leaves the aspiration to `docs/niki/OWNER_VERIFY.md`.
+"""
+
+
+def test_real_process_first_paint_is_under_the_startup_budget(home: Path) -> None:
+    """S1: measure time-to-first-content in a real process, not in-process.
+
+    **This corrects an earlier premise.** The 4,546.8 ms
+    `import langchain, langgraph, deepagents` figure is real, but it is not on
+    the critical path to the first frame: upstream already defers those imports
+    and prewarms them on a worker (`app.py:6782 _prewarm_deferred_imports`).
+    Building lazy-import work on top of that premise would have optimised a
+    number that was never costing the user anything.
+
+    What is on the critical path is interpreter start plus CLI dispatch. This
+    test measures that end to end, which the in-process probe structurally
+    cannot: `run_test` begins after the interpreter, the package import, and
+    the CLI dispatch have all already happened.
+    """
+    import re
+    import time
+
+    started = time.perf_counter()
+    env = _env(home)
+    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
+        env.pop(key, None)
+    child = pexpect.spawn(
+        sys.executable,
+        [
+            "-c",
+            (
+                "import sys; sys.argv[0] = 'niki'; "
+                "from deepagents_code.niki.entry import niki_main; niki_main()"
+            ),
+        ],
+        env=env,
+        encoding="utf-8",
+        timeout=45,
+        dimensions=(24, 80),
+    )
+    first_output = None
+    first_composer = None
+    buf = ""
+    try:
+        deadline = time.perf_counter() + 40
+        while time.perf_counter() < deadline and first_composer is None:
+            try:
+                chunk = child.read_nonblocking(size=8192, timeout=3)
+            except Exception:  # noqa: BLE001 - pty timeout and EOF both mean "nothing yet"
+                continue
+            if not chunk:
+                continue
+            buf += chunk
+            now = time.perf_counter()
+            if first_output is None:
+                first_output = now
+            if re.search(r"[>\u203a\u276f]", buf):
+                first_composer = now
+    finally:
+        child.terminate(force=True)
+
+    assert first_output is not None, "the process produced no output at all"
+    assert first_composer is not None, (
+        "no composer appeared within 40 s; startup never reached an interactive frame"
+    )
+
+    first_output_ms = (first_output - started) * 1000
+    first_composer_ms = (first_composer - started) * 1000
+    sys.stderr.write(
+        f"\nS1 real first output: {first_output_ms:.0f} ms; "
+        f"first composer: {first_composer_ms:.0f} ms\n"
+    )
+
+    assert first_composer_ms <= FIRST_PAINT_CEILING_MS, (
+        f"first interactive frame took {first_composer_ms:.0f} ms, over the "
+        f"{FIRST_PAINT_CEILING_MS} ms ceiling"
+    )

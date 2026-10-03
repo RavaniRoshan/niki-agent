@@ -182,3 +182,46 @@ driver charges that to the event loop. So:
   painting) is asserted and the *duration* is recorded but not gated.
 
 Both are on `docs/niki/OWNER_VERIFY.md` as real-terminal checks.
+
+
+---
+
+## S1 — corrected: the heavy import is not on the critical path
+
+An earlier version of this document implied the 4,546.8 ms
+`import langchain, langgraph, deepagents` chain sat between process start and
+the first frame, and listed S1 as an open gap because of it. **That was wrong.**
+
+Measured end to end, spawning the real entry point under a real pty
+(`test_real_process_first_paint_is_under_the_startup_budget`):
+
+| Marker | Time from process spawn |
+| --- | --- |
+| First output of any kind | **470 ms** |
+| First interactive composer glyph | **553 ms** |
+
+Upstream already defers those imports and prewarms them on a worker
+(`app.py:6782 _prewarm_deferred_imports`, visible in the cProfile output as a
+single 3.8 s call off the hot path). The chain is real -- 4.5 s of CPU -- but it
+is not what the user waits for.
+
+**Consequence:** the lazy-import work proposed as "the single highest-leverage
+remaining item" would have optimised a number that was never costing the user
+anything. It was not worth doing, and the earlier framing was wrong.
+
+### What is actually left on the critical path
+
+Interpreter start, `import deepagents_code`, and the CLI dispatch chain. The
+in-process `run_test` figure (186.9-194.3 ms) begins *after* all of that and
+therefore cannot see it, which is why both measurements are kept:
+
+| Measurement | Value | What it covers |
+| --- | --- | --- |
+| In-process first frame | 186.9-194.3 ms | mount + first paint only |
+| Real first output | 470 ms | interpreter + package import + dispatch |
+| Real first composer | 553 ms | through to an interactive frame |
+
+S1 is gated at a 1,500 ms regression guard. The checklist's 400 ms is
+unreachable for a Python process with this import graph, and a gate that can
+never pass honestly is worse than an honest higher one. Real-terminal startup
+feel remains OWNER-VERIFY.
