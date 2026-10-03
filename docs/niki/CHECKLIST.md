@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 15 WORKS · 17 PARTIAL · 36 MISSING** across 76 rows.
+**Current tally: 16 WORKS · 20 PARTIAL · 32 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -68,7 +68,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
 | K1 single keymap registry | P0 | **PARTIAL** | `test_every_advertised_action_has_a_handler` — 38 bindings, 0 dead; `test_registry_is_populated_from_live_bindings`; `KEYMAP.md` generated | Registry exists and is proven. **Footer and Help still render upstream's hand-maintained `ui.show_help()`**, so K1's "one source for all three surfaces" is **not met**. Known patch site, logged in `UPSTREAM_DIFF.md`. |
-| K2 nav keys on every scrollable surface | P0 | **MISSING** | — | — |
+| K2 nav keys on every scrollable surface | P0 | **PARTIAL** | `test_pageup_is_bound_but_does_not_reach_the_transcript` | **Open defect, characterised not hidden.** `pageup` *is* bound — to `VerticalScroll.page_up` — but the composer holds focus (F1 requires it) and consumes the key, so PgUp does not move the transcript. K2 requires PgUp/PgDn on every scrollable surface. The test asserts current behaviour with the gap named; fixing the key will fail it, which is the intent. |
 | K3 composer editing | P0 | **PARTIAL** | `tests/unit_tests/niki/test_keyboard.py` — char movement, Home/End both directions, Ctrl+U, Ctrl+K, Alt+Backspace word delete, backspace, and up-arrow history recall all pass | 7 gestures proven. Multi-line (Shift+Enter / Alt+Enter / backslash-Enter) and grapheme-correct cursor with wide characters are **not** covered. |
 | K4 interrupt/exit semantics | P0 | **PARTIAL** | `test_escape_is_advertised_as_interrupt_and_dispatches` | Advertised + handler exists. The clear-then-interrupt-then-arm ladder not tested. |
 | K5 bracketed paste | P0 | **MISSING** | — | — |
@@ -84,11 +84,11 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
-| M1 wheel scrolls, no snap-back | P0 | **MISSING** | — | — |
-| M2 click: focus, cards, approvals, rows | P0 | **PARTIAL** | `test_click_is_delivered_to_the_app` | One click delivered; the four named behaviours unverified. |
+| M1 transcript scrolls, no snap-back | P0 | **PARTIAL** | `test_m1_the_transcript_is_genuinely_scrollable` ×2 sizes, `test_scroll_position_moves_and_sticks` | Container genuinely overflows (60 messages → `max_scroll_y=48` at 80x24); scroll position takes and stays put while idle. **Wheel itself is untestable** — this Textual Pilot exposes no wheel API, so wheel remains OWNER-VERIFY. |
+| M2 click: focus, cards, approvals, rows | P0 | **PARTIAL** | `test_m2_clicking_focuses_the_composer` ×2 sizes, `test_click_is_delivered_to_the_app` | Click-to-focus verified at both sizes. Tool-card expand, approval rows, and slash rows unverified. |
 | M3 hover throttled, no redraw storm | P0 | **MISSING** | — | — |
 | M4 selection/copy, OSC 52, mouse release | P1 | **MISSING** | — | — |
-| M5 every mouse action has a key equivalent | P0 | **MISSING** | — | — |
+| M5 every mouse action has a key equivalent | P0 | **PARTIAL** | `test_m5_every_mouse_gesture_has_a_keyboard_equivalent` | Six required gestures (focus, scroll up/down, jump to bottom, cancel, submit) all have bindings in the registry. Built from live `BINDINGS`, so it cannot drift. |
 
 ## Flow
 
@@ -97,7 +97,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | F1 message echoes instantly, focus kept | P0 | **PARTIAL** | `test_composer_keeps_focus_after_typing`, `test_chat_input_exists_and_takes_typed_characters` | Focus stays on the composer and text lands. Latency not measured (see S2's 173.9 ms p95 floor). |
 | F2 activity states only from real events | P0 | **MISSING** | — | — |
 | F3 streaming renders into one block | P0 | **PARTIAL** | `measure_stream` paints 4–5 times for 60 tokens | Coalescing works (upstream's 0.1 s flush). Single-block *assertion* not written. |
-| F4 scroll preserved mid-stream | P0 | **MISSING** | — | — |
+| F4 scroll preserved mid-stream | P0 | **WORKS** | `test_f4_scroll_position_survives_a_streaming_update` — scrolled to y=10, streamed 20 appends, offset held at 10 | The transcript does not drag a reading user back to the bottom. |
 | F5 session resume picker | P1 | **MISSING** | — | — |
 | F6 concise post-run summary | P0 | **MISSING** | — | — |
 
