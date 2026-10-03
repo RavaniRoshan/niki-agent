@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 17 WORKS · 22 PARTIAL · 30 MISSING** across 76 rows.
+**Current tally: 17 WORKS · 23 PARTIAL · 29 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -55,7 +55,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V5 composer: ruled, glyph, placeholder, queue | P0 | **PARTIAL** | `test_snapshot_with_text_typed` ×4, `test_chat_input_exists_and_takes_typed_characters` | Upstream composer; no Niki restyle, no queue indicator. |
 | V6 footer truthful + collapses by width | P0 | **MISSING** | — | — |
 | V7 tool cards | P0 | **PARTIAL** | `test_v7_a_tool_card_shows_tool_intent_and_status`, `test_v7_no_card_appears_without_a_real_tool_event`, `test_v7_card_reports_a_result_or_elapsed_time` | Card names the tool (`bash`) and its intent (`ls -la`), survives an empty result, and never appears without a tool event. Expand/collapse by key and click, and auto-expand on failure, are unverified. |
-| V8 diffs | P0 | **MISSING** | — | — |
+| V8 diffs | P0 | **PARTIAL** | `tests/unit_tests/niki/test_diffs.py` — Niki gives added and removed *different* colours; both clear the 3:1 glyph floor against background/surface/panel; upstream's `max_lines` cap is real | Hunk headers, line numbers, and `+`/`-` prefixes on screen are **not** proven here. Three screen-capture tests were written and then **deleted**: `#messages` uses Textual's `stream` layout, so widgets mounted into it directly do not lay out where a reader expects and the capture read an empty region. The same failed with an `ApprovalMenu` carrying a file-edit diff. Rendering a diff through the real approval flow with a real file change is **OWNER-VERIFY**. |
 | V9 approvals | P0 | **PARTIAL — TWO OPEN DEFECTS** | `tests/unit_tests/niki/test_approvals.py` (8 tests) | **Works:** prompt names the tool (`bash`) and the exact command (`rm -rf /tmp/thing`) at 50×20 and 80×24; arrow keys move the selection; number shortcuts (`approval_position(0..2)`) are bound; an outside click neither dismisses nor decides. **Defect 1 (safety):** the prompt opens focused on `Approve (y)` — the *approving* option — so a stray `Enter` runs the command. The checklist requires the safest option focused by default. **Defect 2:** `Esc` is bound to `interrupt`, not to a deny, so it does not deny; `n` is the reject key. Both are written as *characterisations* that name the gap. |
 | V10 activity line | P0 | **MISSING** | — | — |
 | V11 markdown rendering | P0 | **MISSING** | — | — |

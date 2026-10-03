@@ -85,6 +85,24 @@ one colour:
       `ctrl+c` to copy; verify that path.
 - [ ] Document any ssh/tmux limitation you hit.
 
+## 5b. Diff rendering (V8) — needs a real file edit
+
+V8 is only partly automated: the colour and contrast facts are tested, but
+on-screen hunk headers, line numbers, and truncation need the real flow.
+
+- [ ] Ask the agent to edit a file in a scratch directory. On the approval
+      prompt, confirm the diff preview shows the `@@` hunk header, line numbers
+      in the gutter, and `+`/`-` prefixes.
+- [ ] Confirm added and removed lines are visually distinct, and still
+      distinguishable with `NO_COLOR=1`.
+- [ ] Edit a large file (500+ changed lines). Confirm the diff truncates with an
+      expand affordance rather than painting the whole thing.
+
+Why this is manual: `#messages` uses Textual's `stream` layout, and a diff
+mounted into it directly does not lay out where a reader expects, so a headless
+capture reads an empty region. Three such tests were written and deleted rather
+than left passing on nothing.
+
 ## 6. Terminal restoration
 
 For each of normal exit, `ctrl+c`, `SIGTERM`, `SIGHUP`, and `kill -9`:
