@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 18 WORKS · 26 PARTIAL · 25 MISSING** across 76 rows.
+**Current tally: 20 WORKS · 26 PARTIAL · 23 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -105,10 +105,10 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
-| D1 README + screenshots + credit | P0 | **MISSING** | — | — |
+| D1 README + screenshots + credit | P0 | **WORKS** | `README.md` (Niki Agent: what it is, install, run, SVG frame, Deep Agents MIT credit), `NOTICE` (LangChain copyright retained verbatim), `docs/niki/UPSTREAM_README.md` (upstream's README preserved, not deleted) | The README states plainly that the frames show upstream's layout with Niki's theme, because the Phase 3 redesign is incomplete. |
 | D2 `UPSTREAM_DIFF.md` matches the diff | P0 | **WORKS** | `UPSTREAM_DIFF.md`; `git diff niki-base --stat` | One upstream file touched: `libs/code/pyproject.toml`. |
 | D3 `KEYMAP.md` generated from registry | P0 | **WORKS** | `scripts/gen_keymap.py` | 38 rows, header says "do not edit by hand". |
-| D4 `OWNER_VERIFY.md` + review images | P0 | **MISSING** | — | — |
+| D4 `OWNER_VERIFY.md` + review images | P0 | **WORKS** | `docs/niki/OWNER_VERIFY.md` (9 sections + 6 taste questions), `docs/niki/review/` — **12** SVG frames | Frames are the committed snapshots at 50x16 / 80x24 / 120x38 / 160x45 across first-run, typed, slash-menu, and help states. The checklist originally recorded D1 and D4 as MISSING; that was a bookkeeping error on my part, corrected here. |
 
 ---
 
