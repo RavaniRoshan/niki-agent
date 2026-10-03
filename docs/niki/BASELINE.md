@@ -64,3 +64,41 @@ The heavy chain dominates. This is the S1 lever.
   drives the real sliding window rather than mounting raw widgets.
 - **No real terminal.** Every number above is headless. First-frame feel, flicker, truecolor,
   mouse in tmux, and resize feel are **OWNER-VERIFY** and are not measured here.
+
+---
+
+## After — S4 fix (`NikiApp`, commit `niki` layer)
+
+Measured with the same probes, same machine, same size:
+
+| Probe | Before (upstream) | After (Niki) | Target | Verdict |
+| --- | --- | --- | --- | --- |
+| Idle repaints, 5 s @80x24 | **10** (1.99/s) | **0** (0/s) | 0 | **MET** |
+| Idle CPU, 5 s @80x24 | 0.459 % | 0.472 % | < 1 % | meets |
+
+### Root cause, and how it was found
+
+The first hypothesis was wrong and is worth recording: the two unconditional
+1 s timers at `app.py:5473-5474` (`_check_cache_expiry`, `_check_cache_expiring`)
+look like a textbook idle-repaint source — `_check_cache_expiring` spawns a
+`run_worker` every second regardless of whether there is a cache to track,
+because the guard sits inside the coroutine. Stubbing both to no-ops changed the
+count by **zero**. They were not the cause.
+
+Attributing `Widget.refresh` call sites during a 5 s idle window located it
+immediately: **20 refreshes, every one of them the composer `ChatTextArea`**.
+Textual's `TextArea.cursor_blink` is a reactive defaulting to `True`, and its
+blink timer only pauses when the widget is *unfocused*
+(`text_area.py:1918`). The composer holds focus at all times, so it blinked
+forever.
+
+### The fix
+
+`NikiApp` sets `cursor_blink = False` on every composer text area from
+`call_after_refresh` (`on_mount` alone finds nothing — the composer is built
+after mount). No upstream file is touched; no agent behavior, tool, or permission
+default changes.
+
+Blink is a **setting, not a hard-off**: `app.blink_cursor = True` before mounting
+restores 10 repaints in 5 s. Both directions are asserted by tests, so the row
+cannot pass by the feature simply being broken.

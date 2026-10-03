@@ -120,6 +120,60 @@ async def test_idle_redraws_and_cpu() -> None:
     )
 
 
+async def test_niki_app_is_perfectly_still_when_idle() -> None:
+    """S4: the Niki app must paint zero frames over 5 idle seconds.
+
+    Upstream's composer is a `TextArea` whose `cursor_blink` reactive defaults
+    to True, and because the composer holds focus the blink timer runs forever:
+    10 repaints in 5 s at BASE_SHA. `NikiApp` turns it off, which takes that to
+    zero. The `blink_cursor=True` case is asserted separately so this stays a
+    default rather than a hard-off.
+    """
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-idle")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+
+    sample = await measure_idle(app, (80, 24), seconds=5.0)
+    _record({"niki_idle_renders_5s": sample.renders})
+
+    assert sample.renders == 0, (
+        f"NikiApp painted {sample.renders} frames while idle "
+        f"({sample.renders_per_second:.1f}/s)"
+    )
+
+
+async def test_blink_cursor_stays_available_as_a_setting() -> None:
+    """The S4 fix must not become a hard-off: opt-in blink still works."""
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-blink")
+    app.blink_cursor = True
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+
+    sample = await measure_idle(app, (80, 24), seconds=2.0)
+
+    assert sample.renders > 0, (
+        "blink_cursor=True painted nothing, so the setting is not actually wired"
+    )
+
+
+async def test_upstream_baseline_is_recorded_for_comparison() -> None:
+    """Pin the upstream idle cost so the Niki number has something to beat."""
+    from deepagents_code.app import DeepAgentsApp
+
+    app = DeepAgentsApp(agent=MagicMock(), thread_id="base-idle")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+
+    sample = await measure_idle(app, (80, 24), seconds=5.0)
+    _record({"upstream_idle_renders_5s": sample.renders})
+
+    assert sample.renders > 0, (
+        "upstream now paints nothing when idle; the S4 comparison is stale and "
+        "the baseline in docs/niki/BASELINE.md needs re-measuring"
+    )
+
+
 async def test_render_cost_is_flat_across_transcript_depth() -> None:
     """S3: streaming stays bounded and cost per paint does not drift with depth."""
     shallow = await measure_stream(_app(), (80, 24), depth=100)
