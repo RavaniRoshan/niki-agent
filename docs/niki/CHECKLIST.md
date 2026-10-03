@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 14 WORKS · 17 PARTIAL · 37 MISSING** across 76 rows.
+**Current tally: 15 WORKS · 17 PARTIAL · 36 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -38,7 +38,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | L1 terminal restored on all exits | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty`, `test_terminal_is_restored_after_a_killed_child`, `test_signal_is_delivered_to_the_child` | Clean exit + SIGTERM delivery covered. SIGHUP and crash paths not probed. |
 | L2 non-TTY / TERM=dumb clean | P0 | **WORKS** | `test_non_tty_run_emits_no_escape_sequences`, `test_help_renders_as_readable_text_in_a_terminal` | Rendered through `pyte` at 200x200 so nothing clips. |
 | L3 no stray stdout/stderr while TUI live | P0 | **WORKS** | `test_nothing_writes_to_stdout_or_stderr_while_the_tui_is_live`, `test_no_warning_escapes_while_the_tui_is_live` | Runtime capture, not a grep — upstream legitimately prints 119 times for headless output. |
-| L4 untrusted text never interpreted as markup | P0 | **MISSING** | — | Upstream has strong handling (`Content.from_markup`, `_escape_markdown`, `markup=False`); **unverified in this fork**. Hostile fixtures not written. |
+| L4 untrusted text never interpreted as markup | P0 | **WORKS** | `tests/unit_tests/niki/test_untrusted_text.py` — 17 tests: 10 hostile control sequences (OSC title, OSC 52 clipboard, cursor move, screen clear, SGR, BEL, backspace-overwrite, CSI, bidi override) and 5 hostile markup payloads (Rich bold, closing-tag, markdown link, heading injection, HTML tag) | Control chars are stripped by `sanitize_control_chars`; `Content` preserves text verbatim with **zero style spans** and re-emits escaped brackets; the end-to-end check feeds rendered output through `pyte` and asserts the terminal title is unchanged and the cursor stays in bounds. |
 | L5 crash → traceback to file + friendly message | P0 | **MISSING** | — | — |
 | L6 outbound audit; phone-home off/opt-in | P0 | **WORKS** | `test_network_behavior_is_off_by_default`, `test_network_policy_never_overrides_an_explicit_owner_choice` | Update check, auto-update, remote managed-config all default **off** (upstream: check and auto-update default **on**). |
 | L7 Ctrl+Z suspend/resume | P1 | **MISSING** | — | — |
