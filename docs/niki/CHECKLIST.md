@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 17 WORKS · 23 PARTIAL · 29 MISSING** across 76 rows.
+**Current tally: 17 WORKS · 24 PARTIAL · 28 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -58,7 +58,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V8 diffs | P0 | **PARTIAL** | `tests/unit_tests/niki/test_diffs.py` — Niki gives added and removed *different* colours; both clear the 3:1 glyph floor against background/surface/panel; upstream's `max_lines` cap is real | Hunk headers, line numbers, and `+`/`-` prefixes on screen are **not** proven here. Three screen-capture tests were written and then **deleted**: `#messages` uses Textual's `stream` layout, so widgets mounted into it directly do not lay out where a reader expects and the capture read an empty region. The same failed with an `ApprovalMenu` carrying a file-edit diff. Rendering a diff through the real approval flow with a real file change is **OWNER-VERIFY**. |
 | V9 approvals | P0 | **PARTIAL — TWO OPEN DEFECTS** | `tests/unit_tests/niki/test_approvals.py` (8 tests) | **Works:** prompt names the tool (`bash`) and the exact command (`rm -rf /tmp/thing`) at 50×20 and 80×24; arrow keys move the selection; number shortcuts (`approval_position(0..2)`) are bound; an outside click neither dismisses nor decides. **Defect 1 (safety):** the prompt opens focused on `Approve (y)` — the *approving* option — so a stray `Enter` runs the command. The checklist requires the safest option focused by default. **Defect 2:** `Esc` is bound to `interrupt`, not to a deny, so it does not deny; `n` is the reject key. Both are written as *characterisations* that name the gap. |
 | V10 activity line | P0 | **MISSING** | — | — |
-| V11 markdown rendering | P0 | **MISSING** | — | — |
+| V11 markdown rendering | P0 | **PARTIAL** | `tests/unit_tests/niki/test_markdown.py` — the Markdown renderer is wired at `#assistant-content`, and 10 streamed appends feed **one** widget rather than accumulating renderers | **On-screen rendering is not proven, and the reason is measured, not assumed.** A synthetic assistant message mounts (`children` grows by one) but lays out at **height 0** (`Region(x=1, y=5, width=78, height=0)`, `virtual_size.height == 0`), so it paints nothing — through the app's own `_mount_message` path as well, and it does not improve with more event-loop time. The markdown sub-widget is never measured because the transcript's height measurement is scheduled by the agent/thread lifecycle. Headings, lists, tables, links, code-block language labels, and streaming stability are **OWNER-VERIFY**. |
 | V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
 | V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `test_every_token_pair_meets_its_contrast_floor` — **0 violations**, tightest 5.56:1 dark / 4.12:1 light | Contrast is measured and passing. NO_COLOR, ASCII fallback, and light-terminal rendering unprobed. |
 | V14 inline errors with recovery | P0 | **MISSING** | — | — |

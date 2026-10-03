@@ -103,6 +103,20 @@ mounted into it directly does not lay out where a reader expects, so a headless
 capture reads an empty region. Three such tests were written and deleted rather
 than left passing on nothing.
 
+## 5c. Markdown rendering (V11) — needs the real agent loop
+
+V11 is only partly automated. The renderer is proven to be wired; the on-screen
+rendering is not, because a synthetic assistant message lays out at height 0 and
+paints nothing (measured, including through the app's own mount path).
+
+- [ ] Ask the agent for a response containing a `#` heading, a bulleted list, a
+      markdown table, an inline `[link](url)`, and a fenced code block with a
+      language. Confirm each renders as structure, not as raw `##` / `|` text.
+- [ ] Confirm the fenced block shows its language label.
+- [ ] Stream a long response and watch the heading: it must not jump or reflow
+      while body text arrives underneath it.
+- [ ] Confirm `NO_COLOR=1` leaves the structure readable.
+
 ## 6. Terminal restoration
 
 For each of normal exit, `ctrl+c`, `SIGTERM`, `SIGHUP`, and `kill -9`:
