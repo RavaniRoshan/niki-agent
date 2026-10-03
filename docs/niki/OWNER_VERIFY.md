@@ -127,6 +127,20 @@ For each of normal exit, `ctrl+c`, `SIGTERM`, `SIGHUP`, and `kill -9`:
 Checklist L1 is PARTIAL: clean exit and SIGTERM delivery are automated; SIGHUP
 and the crash path are not.
 
+## 6b. Crash handling (L5) — needs a real failing run
+
+The on-disk traceback cannot be verified headlessly: the debug file handler
+attaches only when the active thread is known, which happens once the real CLI
+starts the app.
+
+- [ ] Run with `DEEPAGENTS_CODE_DEBUG=1 DEEPAGENTS_CODE_DEBUG_DIRECTORY=/tmp/nikilog niki`.
+- [ ] Force a real failure (ask for something that errors, or interrupt during a
+      tool run). Confirm the traceback appears in a file under `/tmp/nikilog`
+      and that the path is printed.
+- [ ] Confirm the user-facing message is friendly and names the file — never a
+      raw traceback in the frame.
+- [ ] Press `Ctrl+\` and confirm the in-app Debug Console tails the same records.
+
 ## 7. Long-session stability
 
 - [ ] Scroll through a 5,000-message transcript. Watch for stutter.

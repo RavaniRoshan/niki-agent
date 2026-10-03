@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 17 WORKS · 26 PARTIAL · 26 MISSING** across 76 rows.
+**Current tally: 18 WORKS · 26 PARTIAL · 25 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -35,11 +35,11 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
-| L1 terminal restored on all exits | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty`, `test_terminal_is_restored_after_a_killed_child`, `test_signal_is_delivered_to_the_child` | Clean exit + SIGTERM delivery covered. SIGHUP and crash paths not probed. |
+| L1 terminal restored on all exits | P0 | **WORKS** | `tests/unit_tests/niki/test_pty_lifecycle{,_extra}.py` — clean exit, SIGTERM delivery, terminal reusable after exit, **SIGHUP** | SIGHUP exits promptly rather than hanging, and the pty still echoes afterwards — the assertion that actually proves the tty was restored, rather than just that the process died. |
 | L2 non-TTY / TERM=dumb clean | P0 | **WORKS** | `test_non_tty_run_emits_no_escape_sequences`, `test_help_renders_as_readable_text_in_a_terminal` | Rendered through `pyte` at 200x200 so nothing clips. |
 | L3 no stray stdout/stderr while TUI live | P0 | **WORKS** | `test_nothing_writes_to_stdout_or_stderr_while_the_tui_is_live`, `test_no_warning_escapes_while_the_tui_is_live` | Runtime capture, not a grep — upstream legitimately prints 119 times for headless output. |
 | L4 untrusted text never interpreted as markup | P0 | **WORKS** | `tests/unit_tests/niki/test_untrusted_text.py` — 17 tests: 10 hostile control sequences (OSC title, OSC 52 clipboard, cursor move, screen clear, SGR, BEL, backspace-overwrite, CSI, bidi override) and 5 hostile markup payloads (Rich bold, closing-tag, markdown link, heading injection, HTML tag) | Control chars are stripped by `sanitize_control_chars`; `Content` preserves text verbatim with **zero style spans** and re-emits escaped brackets; the end-to-end check feeds rendered output through `pyte` and asserts the terminal title is unchanged and the cursor stays in bounds. |
-| L5 crash → traceback to file + friendly message | P0 | **MISSING** | — | — |
+| L5 crash → traceback to file + friendly message | P0 | **PARTIAL** | `test_l5_the_file_handler_needs_a_known_thread` | **Not decidable headlessly, with the reason measured.** `libs/code/AGENTS.md`: the file handler attaches only when `DEEPAGENTS_CODE_DEBUG` is truthy *and the active thread is known* — the thread exists only once the real CLI starts the app. Measured: with debug on and a real directory, the package logger's handlers are exactly `[InMemoryLogBuffer]` and **no file is written**. Two dead ends recorded (env set too late; subprocess with env from process start). The in-app Debug Console (`Ctrl+\\`) and the friendly-message half are OWNER-VERIFY. |
 | L6 outbound audit; phone-home off/opt-in | P0 | **WORKS** | `test_network_behavior_is_off_by_default`, `test_network_policy_never_overrides_an_explicit_owner_choice` | Update check, auto-update, remote managed-config all default **off** (upstream: check and auto-update default **on**). |
 | L7 Ctrl+Z suspend/resume | P1 | **MISSING** | — | — |
 | L8 clean exit prints summary + exit code | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty` asserts exit 0 | No session-id / resume-hint summary asserted. |
