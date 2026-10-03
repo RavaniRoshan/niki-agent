@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 16 WORKS · 20 PARTIAL · 32 MISSING** across 76 rows.
+**Current tally: 17 WORKS · 21 PARTIAL · 31 MISSING** across 76 rows.
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -54,7 +54,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V4 transcript user/assistant distinction | P0 | **MISSING** | — | Snapshot exists but is upstream's unstyled layout. |
 | V5 composer: ruled, glyph, placeholder, queue | P0 | **PARTIAL** | `test_snapshot_with_text_typed` ×4, `test_chat_input_exists_and_takes_typed_characters` | Upstream composer; no Niki restyle, no queue indicator. |
 | V6 footer truthful + collapses by width | P0 | **MISSING** | — | — |
-| V7 tool cards | P0 | **MISSING** | — | — |
+| V7 tool cards | P0 | **PARTIAL** | `test_v7_a_tool_card_shows_tool_intent_and_status`, `test_v7_no_card_appears_without_a_real_tool_event`, `test_v7_card_reports_a_result_or_elapsed_time` | Card names the tool (`bash`) and its intent (`ls -la`), survives an empty result, and never appears without a tool event. Expand/collapse by key and click, and auto-expand on failure, are unverified. |
 | V8 diffs | P0 | **MISSING** | — | — |
 | V9 approvals | P0 | **MISSING** | — | Registry shows `approval_yes/no/auto/select/up/down` exist upstream; Niki's V9 rendering not built. |
 | V10 activity line | P0 | **MISSING** | — | — |
@@ -95,8 +95,8 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | Row | P | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- |
 | F1 message echoes instantly, focus kept | P0 | **PARTIAL** | `test_composer_keeps_focus_after_typing`, `test_chat_input_exists_and_takes_typed_characters` | Focus stays on the composer and text lands. Latency not measured (see S2's 173.9 ms p95 floor). |
-| F2 activity states only from real events | P0 | **MISSING** | — | — |
-| F3 streaming renders into one block | P0 | **PARTIAL** | `measure_stream` paints 4–5 times for 60 tokens | Coalescing works (upstream's 0.1 s flush). Single-block *assertion* not written. |
+| F2 activity states only from real events | P0 | **PARTIAL** | `test_f2_no_activity_state_without_a_real_event` | A freshly started app claims no busy state (`running`/`working`/`thinking`/`streaming` all absent) with no event behind it. The converse -- that a real event *does* flip the state -- is not driven, so this catches the false-positive direction only. |
+| F3 streaming renders into one block | P0 | **WORKS** | `test_f3_streaming_renders_into_one_block`, `test_f3_streaming_paints_far_fewer_frames_than_chunks` | 40 chunks into one assistant widget add **zero** extra widgets, and repaints stay below the chunk count. Coalescing is real, not assumed. |
 | F4 scroll preserved mid-stream | P0 | **WORKS** | `test_f4_scroll_position_survives_a_streaming_update` — scrolled to y=10, streamed 20 appends, offset held at 10 | The transcript does not drag a reading user back to the bottom. |
 | F5 session resume picker | P1 | **MISSING** | — | — |
 | F6 concise post-run summary | P0 | **MISSING** | — | — |
