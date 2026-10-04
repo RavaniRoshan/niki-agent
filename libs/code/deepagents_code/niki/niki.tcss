@@ -54,14 +54,19 @@
 
 /* The composer is the one bordered element on screen. One rule, one accent,
  * so it reads as the single place the user can act. */
+/* One rule, not a box. See the module note: a four-sided panel competes with
+   the transcript, and the brief permits a single border level. The accent
+   carries focus; nothing else on screen carries a border. */
 #input-area {
-    border: round $primary;
+    border: none;
+    border-top: tall $primary;
     background: $surface;
     padding: 0 1;
 }
 
 #input-area:focus-within {
-    border: round $primary;
+    border: none;
+    border-top: tall $primary;
     background: $surface;
 }
 

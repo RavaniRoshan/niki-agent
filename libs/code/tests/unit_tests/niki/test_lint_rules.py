@@ -187,13 +187,25 @@ async def test_niki_stylesheet_actually_applies() -> None:
         messages = app.query_one("#messages")
 
     border = composer.styles.border
-    assert border.top is not None, f"composer has no top border: {border!r}"
-    assert border.top[0] == "round", (
-        f"composer border is {border.top[0]}, expected round"
+    assert border.top is not None, f"composer has no rule: {border!r}"
+    assert border.top[0] == "tall", (
+        f"composer rule is {border.top[0]!r}, expected the single tall rule that "
+        "replaced the old four-sided box"
     )
     assert border.top[1].hex.lower().endswith(NIKI_DARK["primary"][1:].lower()), (
-        f"composer border is {border.top[1].hex}, not Niki's primary"
+        f"composer rule is {border.top[1].hex}, not Niki's primary"
     )
+    # "At most one border level" means the other three edges must stay clear. A
+    # box again would pass the checks above and fail here, which is the point.
+    for edge, label in (
+        (border.left, "left"),
+        (border.right, "right"),
+        (border.bottom, "bottom"),
+    ):
+        assert not edge[0], (
+            f"composer has a {label} border ({edge[0]!r}); Niki permits a "
+            "single rule, not a box"
+        )
     assert messages.styles.background.hex.lower().endswith(
         NIKI_DARK["background"][1:].lower()
     ), f"transcript background is {messages.styles.background.hex}, not Niki's base"
