@@ -49,6 +49,29 @@ def install_niki_app_class() -> None:
     app_module.DeepAgentsApp = NikiApp  # ty: ignore[invalid-assignment]
 
 
+def install_niki_glyphs() -> None:
+    """Point upstream's glyph lookup at Niki's motion language.
+
+    Every spinner in the app reads `get_glyphs()` (`loading.py:31`,
+    `messages.py:2207`), so binding it once gives Niki a single coherent glyph
+    vocabulary across the whole TUI without editing any widget.
+
+    Process-scoped and installed only from `niki_main`, so `dcode` keeps
+    upstream's glyphs byte-for-byte.
+    """
+    from dataclasses import replace
+
+    import deepagents_code.config as config_module
+    from deepagents_code.config import get_glyphs
+    from deepagents_code.niki.motion import spinner_frames_for_this_terminal
+
+    # Substitute upstream's FULL Glyphs with only `spinner_frames` replaced.
+    # A narrow stand-in satisfies the type but crashes every widget that reads
+    # another glyph field; see the note in `niki/motion.py`.
+    resolved = replace(get_glyphs(), spinner_frames=spinner_frames_for_this_terminal())
+    config_module._glyphs_cache = resolved  # ty: ignore[invalid-assignment]
+
+
 def niki_main() -> None:
     """Run Niki Agent. Registered as the `niki` console script."""
     if len(sys.argv) == 2 and sys.argv[1] in _VERSION_FLAGS:  # noqa: PLR2004
@@ -66,6 +89,7 @@ def niki_main() -> None:
         return
 
     apply_niki_network_policy()
+    install_niki_glyphs()
     install_niki_app_class()
 
     from deepagents_code.main import cli_main

@@ -88,9 +88,17 @@ def test_v13_niki_ships_no_hardcoded_unicode_in_its_own_source() -> None:
     """
     from deepagents_code.niki import theme as niki_theme
 
+    # `motion.py` is the one place Niki *defines* glyphs -- the same
+    # relationship `theme.py` has to colours. Exempting it here is narrow and
+    # deliberate: exempting a whole directory or an arbitrary pattern would let
+    # chrome hardcode structural glyphs again, which is what this rule is for.
+    glyph_definition_module = "motion.py"
+
     offenders = []
     for path in sorted(Path(niki_theme.__file__).parent.glob("*")):
         if path.suffix not in {".py", ".tcss"}:
+            continue
+        if path.name == glyph_definition_module:
             continue
         text = path.read_text(encoding="utf-8")
         for lineno, line in enumerate(text.splitlines(), start=1):
