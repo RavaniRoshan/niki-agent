@@ -138,6 +138,65 @@ GLYPH_TOKENS: Final[frozenset[str]] = frozenset(
     {"primary", "secondary", "accent", "success", "warning", "error", "skill", "tool"}
 )
 
+#: High-contrast variant. For a bright room, a low-quality panel, or any
+#: display where the default palette reads as muddy. Pushes foreground to pure
+#: white and lifts every status hue, so the tightest pair is 6.22:1 rather than
+#: the default's 4.99:1. Costs some of the "calm" the default is tuned for --
+#: which is why this is a variant and not the default.
+NIKI_CONTRAST: Final[dict[str, str]] = {
+    "background": "#0B0C0E",
+    "surface": "#131418",
+    "panel": "#1B1D22",
+    "foreground": "#FFFFFF",
+    "muted": "#A8AEB8",
+    "primary": "#8FB0FF",
+    "secondary": "#9AA1AD",
+    "accent": "#5FC7B8",
+    "success": "#7FD69A",
+    "warning": "#EFB457",
+    "error": "#F07A75",
+    "mode_bash": "#8FB0FF",
+    "mode_command": "#9AA1AD",
+    "mode_incognito": "#AFA0C2",
+    "skill": "#C0A2E8",
+    "skill_hover": "#D6BEF6",
+    "tool": "#7FC4DE",
+    "tool_hover": "#9BD8EC",
+}
+
+#: Low-luminance variant. For a dark room where the default's greys sit too
+#: brightly against the terminal. Darker overall, with the accent held back so
+#: it does not become the loudest thing on screen. Sits closest to its own
+#: floors of the four, which is the honest cost of turning everything down.
+NIKI_DIM: Final[dict[str, str]] = {
+    "background": "#101216",
+    "surface": "#171A1F",
+    "panel": "#1F2229",
+    "foreground": "#C9CDD4",
+    "muted": "#878D98",
+    "primary": "#5C7FD6",
+    "secondary": "#7B828D",
+    "accent": "#3C8F84",
+    "success": "#4E8F68",
+    "warning": "#B07E33",
+    "error": "#B85450",
+    "mode_bash": "#5C7FD6",
+    "mode_command": "#7B828D",
+    "mode_incognito": "#8478A0",
+    "skill": "#8F76B0",
+    "skill_hover": "#A491C4",
+    "tool": "#4E8AA2",
+    "tool_hover": "#69A3B8",
+}
+
+#: Every Niki variant, by the name it registers under.
+NIKI_PALETTES: Final[dict[str, dict[str, str]]] = {
+    "niki": NIKI_DARK,
+    "niki-light": NIKI_LIGHT,
+    "niki-contrast": NIKI_CONTRAST,
+    "niki-dim": NIKI_DIM,
+}
+
 #: Every token is checked against the base background it renders on.
 _BACKGROUNDS: Final[tuple[str, ...]] = ("background", "surface", "panel")
 
@@ -170,8 +229,11 @@ def contrast_violations(
 __all__ = [
     "GLYPH_CONTRAST_MIN",
     "GLYPH_TOKENS",
+    "NIKI_CONTRAST",
     "NIKI_DARK",
+    "NIKI_DIM",
     "NIKI_LIGHT",
+    "NIKI_PALETTES",
     "NIKI_THEME_NAME",
     "TEXT_CONTRAST_MIN",
     "TEXT_TOKENS",

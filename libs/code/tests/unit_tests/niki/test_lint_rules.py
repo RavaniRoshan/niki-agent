@@ -232,3 +232,59 @@ def test_the_palette_is_not_a_copy(palette_name: str) -> None:
         f"{palette_name} reuses values from the palettes it drew direction "
         f"from: {sorted(collisions)}. Direction is fine; values are not."
     )
+
+
+@pytest.mark.parametrize(
+    "palette_name", ["niki", "niki-light", "niki-contrast", "niki-dim"]
+)
+def test_every_registered_variant_clears_its_contrast_floor(palette_name: str) -> None:
+    """Every variant offered in `/theme` must pass the same floors.
+
+    A variant that fails its own contrast rule is worse than no variant: the
+    user picks it precisely because they need it to be legible.
+    """
+    from deepagents_code.niki.theme import NIKI_PALETTES, contrast_violations
+
+    assert palette_name in NIKI_PALETTES, f"{palette_name} is not registered"
+    violations = contrast_violations(NIKI_PALETTES[palette_name])
+    assert not violations, "\n".join(
+        f"{token} on {background} ({kind}): {actual:.2f} < {required:.1f}"
+        for token, background, kind, actual, required in violations
+    )
+
+
+def test_every_variant_defines_the_same_tokens() -> None:
+    """A variant missing a token would render a default colour mid-UI."""
+    from deepagents_code.niki.theme import NIKI_PALETTES
+
+    reference = set(NIKI_PALETTES["niki"])
+    for name, palette in NIKI_PALETTES.items():
+        assert set(palette) == reference, (
+            f"{name} does not define the same tokens as 'niki': "
+            f"missing {reference - set(palette)}, extra {set(palette) - reference}"
+        )
+
+
+async def test_every_variant_is_registered_and_switchable() -> None:
+    """`/theme` must offer them and the app must actually apply one."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+    from deepagents_code.niki.theme import NIKI_PALETTES
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-variants")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        available = {name for name in app.available_themes if name in NIKI_PALETTES}
+        default = app.theme
+
+        app.theme = "niki-contrast"
+        await pilot.pause()
+        switched = app.theme
+
+    assert available == set(NIKI_PALETTES), (
+        f"/theme offers {sorted(available)}, expected {sorted(NIKI_PALETTES)}"
+    )
+    assert default == "niki", f"the default variant is {default!r}, expected 'niki'"
+    assert switched == "niki-contrast", "switching variants did not take effect"

@@ -78,11 +78,10 @@ class NikiApp(DeepAgentsApp):
         switch to; Niki defaults to the dark one.
         """
         super()._register_custom_themes()
-        for name, palette, dark in (
-            (niki_theme.NIKI_THEME_NAME, niki_theme.NIKI_DARK, True),
-            (f"{niki_theme.NIKI_THEME_NAME}-light", niki_theme.NIKI_LIGHT, False),
-        ):
-            self.register_theme(self._build_niki_theme(name, palette, dark))
+        for name, palette in niki_theme.NIKI_PALETTES.items():
+            self.register_theme(
+                self._build_niki_theme(name, palette, dark=name != "niki-light")
+            )
 
     @staticmethod
     def _build_niki_theme(name: str, palette: dict[str, str], dark: bool) -> Theme:

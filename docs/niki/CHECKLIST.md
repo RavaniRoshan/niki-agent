@@ -16,7 +16,9 @@ Three ideas taken, **no hex value**:
 2. **One accent; `error` is the only hue that may mean removal** (both) — so a diff reads without relying on position.
 3. **Status colours desaturated relative to the accent** (Codex keeps its diff backgrounds subtle so they never fight syntax colours).
 
-| Token | Dark | Light |
+Four variants register under `/theme`: **`niki`** (default), **`niki-light`**, **`niki-contrast`** (bright room / low-quality panel; tightest pair 6.22:1), **`niki-dim`** (dark room; sits closest to its floors at 3.35:1, which is the honest cost of turning everything down). All four measure **0 contrast violations**.
+
+| Token | Dark (`niki`) | Light (`niki-light`) |
 | --- | --- | --- |
 | background / surface / panel | `#14161A` `#1B1E25` `#232831` | `#FAFAFB` `#F1F2F4` `#E7E9ED` |
 | foreground / muted | `#E4E7EC` `#9AA1AD` | `#1F2328` `#5C636E` |
