@@ -7,6 +7,15 @@ marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
 **Current tally: 23 WORKS · 30 PARTIAL · 17 MISSING** across 76 rows.
+
+### Owner decisions recorded (2026-10-04)
+
+| Decision | Answer |
+| --- | --- |
+| Approval prompt focus | **Leave as upstream.** Asked to match Claude Code; Niki's behaviour is unchanged (first option focused) and V9 stays an open, documented gap. |
+| Auto-update / update check | **Match upstream — ON by default**, with `NIKI_DISABLE_*` opt-outs. Reverses the earlier opt-in posture. |
+| Mount window | **Keep 150** (measured 1.259x render ratio, −140 MB RSS). Owner will verify scrolling. |
+| Remaining effort | **Stop.** Owner takes the OWNER-VERIFY pass. |
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
 **the MVP is not done.** What follows is the accurate picture.
 
@@ -40,7 +49,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | L3 no stray stdout/stderr while TUI live | P0 | **WORKS** | `test_nothing_writes_to_stdout_or_stderr_while_the_tui_is_live`, `test_no_warning_escapes_while_the_tui_is_live` | Runtime capture, not a grep — upstream legitimately prints 119 times for headless output. |
 | L4 untrusted text never interpreted as markup | P0 | **WORKS** | `tests/unit_tests/niki/test_untrusted_text.py` — 17 tests: 10 hostile control sequences (OSC title, OSC 52 clipboard, cursor move, screen clear, SGR, BEL, backspace-overwrite, CSI, bidi override) and 5 hostile markup payloads (Rich bold, closing-tag, markdown link, heading injection, HTML tag) | Control chars are stripped by `sanitize_control_chars`; `Content` preserves text verbatim with **zero style spans** and re-emits escaped brackets; the end-to-end check feeds rendered output through `pyte` and asserts the terminal title is unchanged and the cursor stays in bounds. |
 | L5 crash → traceback to file + friendly message | P0 | **PARTIAL** | `test_l5_the_file_handler_needs_a_known_thread` | **Not decidable headlessly, with the reason measured.** `libs/code/AGENTS.md`: the file handler attaches only when `DEEPAGENTS_CODE_DEBUG` is truthy *and the active thread is known* — the thread exists only once the real CLI starts the app. Measured: with debug on and a real directory, the package logger's handlers are exactly `[InMemoryLogBuffer]` and **no file is written**. Two dead ends recorded (env set too late; subprocess with env from process start). The in-app Debug Console (`Ctrl+\\`) and the friendly-message half are OWNER-VERIFY. |
-| L6 outbound audit; phone-home off/opt-in | P0 | **WORKS** | `test_network_behavior_is_off_by_default`, `test_network_policy_never_overrides_an_explicit_owner_choice` | Update check, auto-update, remote managed-config all default **off** (upstream: check and auto-update default **on**). |
+| L6 outbound audit; documented posture | P0 | **WORKS** | `test_network_matches_upstream_by_default_and_can_be_disabled` ×3, `test_network_policy_never_overrides_an_explicit_owner_choice`, `test_the_upstream_install_script_is_identified_as_a_live_concern` | **Owner decision: match upstream — all three default ON**, with `NIKI_DISABLE_*` opt-outs. This reverses an earlier opt-in posture; see the correction below. |
 | L7 Ctrl+Z suspend/resume | P1 | **PARTIAL** | `test_l7_ctrl_z_suspends_and_the_process_can_be_resumed` — a real `Ctrl+Z` byte, then `SIGCONT`; the process is still alive and resumable afterwards | Automated through a pty. Whether the resumed screen **redraws correctly** is not asserted — that needs a human watching a real terminal. |
 | L8 clean exit prints summary + exit code | P0 | **PARTIAL** | `test_version_exits_cleanly_in_a_real_pty` asserts exit 0 | No session-id / resume-hint summary asserted. |
 
@@ -199,3 +208,32 @@ explicitly outside what this MVP was scoped to change. It needs your decision:
 Both are encoded as characterisation tests in `test_approvals.py` that pass while
 naming the gap. If either is fixed, those tests fail and force this section and
 the V9 row to be updated in the same change.
+
+
+---
+
+## Correction: the earlier network-policy reasoning was wrong
+
+The original `network.py` defaulted all three phone-home paths **OFF**, arguing
+that a Niki user following upstream's `uv tool install -U deepagents-code`
+would "silently get a different product". That was checked and it does not hold:
+**the fork never renamed the distribution** — it is still `deepagents-code`, with
+`niki` added as a third console script — so that upgrade command upgrades the
+package that provides `niki`. The upgrade path is functionally correct here.
+
+The owner then chose parity, and the policy is now upstream-matching with
+`NIKI_DISABLE_UPDATE_CHECK` / `NIKI_DISABLE_AUTO_UPDATE` /
+`NIKI_DISABLE_REMOTE_CONFIG` opt-outs.
+
+### One residual problem that parity does not fix
+
+`INSTALL_SCRIPT_COMMAND` (`update_check.py:233`) is:
+
+    curl -LsSf https://langch.in/dcode | bash
+
+That fetches **upstream's** installer script, not Niki's. With auto-update now on
+by default, a Niki user can be offered a command that installs upstream tooling
+over a Niki install. `test_the_upstream_install_script_is_identified_as_a_live_concern`
+asserts the string so it cannot drift unnoticed, but **it is not fixed** — whether
+to hide the install-script offering or to replace the command is an owner
+decision, and it is the one live outbound-network risk left in the fork.

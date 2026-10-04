@@ -103,28 +103,33 @@ def test_dcode_command_still_exists_and_is_unchanged() -> None:
 @pytest.mark.parametrize(
     ("policy", "owner_env"),
     [
-        (network.update_check_allowed, network.NIKI_ALLOW_UPDATE_CHECK_ENV),
-        (network.auto_update_allowed, network.NIKI_ALLOW_AUTO_UPDATE_ENV),
-        (network.remote_config_allowed, network.NIKI_ALLOW_REMOTE_CONFIG_ENV),
+        (network.update_check_allowed, network.NIKI_DISABLE_UPDATE_CHECK_ENV),
+        (network.auto_update_allowed, network.NIKI_DISABLE_AUTO_UPDATE_ENV),
+        (network.remote_config_allowed, network.NIKI_DISABLE_REMOTE_CONFIG_ENV),
     ],
 )
-def test_network_behavior_is_off_by_default(
+def test_network_matches_upstream_by_default_and_can_be_disabled(
     policy: Callable[[], bool], owner_env: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """L6: nothing phones home unless an owner turns it on by name."""
+    """L6: Niki matches upstream -- on by default -- with an owner opt-out.
+
+    The owner chose parity over the opt-in posture this originally shipped. See
+    the module docstring in `network.py` for why the original reasoning was
+    wrong: the distribution was never renamed, so upstream's upgrade command
+    upgrades the package that provides `niki`.
+    """
     monkeypatch.delenv(owner_env, raising=False)
-    assert policy() is False
+    assert policy() is True, "Niki must match upstream's on-by-default posture"
 
     monkeypatch.setenv(owner_env, "1")
-    assert policy() is True
+    assert policy() is False, "the owner opt-out must work"
 
 
 def test_network_policy_never_overrides_an_explicit_owner_choice(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A value already in the environment is a decision, and must survive."""
-    monkeypatch.delenv(network.NIKI_ALLOW_UPDATE_CHECK_ENV, raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", raising=False)
+    monkeypatch.delenv(network.NIKI_DISABLE_UPDATE_CHECK_ENV, raising=False)
     monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "0")
 
     network.apply_niki_network_policy()
@@ -133,6 +138,22 @@ def test_network_policy_never_overrides_an_explicit_owner_choice(
 
     assert os.environ["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] == "0", (
         "the policy overwrote an explicit owner setting; it must only supply defaults"
+    )
+
+
+def test_the_upstream_install_script_is_identified_as_a_live_concern() -> None:
+    """The one network path that is still wrong for a fork.
+
+    `INSTALL_SCRIPT_COMMAND` fetches *upstream's* installer over curl. With
+    auto-update now on by default, a Niki user can be offered a script that
+    installs upstream's tooling. Asserted so the string cannot change without
+    this test noticing.
+    """
+    command = network.upstream_install_script_command()
+
+    assert "langch.in/dcode" in command, (
+        f"the upstream install script changed to {command!r}; re-check whether it "
+        "still installs upstream tooling rather than Niki"
     )
 
 
