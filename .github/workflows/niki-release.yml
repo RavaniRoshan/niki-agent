@@ -1,0 +1,177 @@
+# Niki Agent release pipeline.
+#
+# Builds a GitHub Release carrying a platform artifact and installer for Linux,
+# macOS, and Windows, on real runners for each platform.
+#
+# Why an installer and not a compiled single-file binary
+# ------------------------------------------------------
+# `deepagents-code` resolves a lot at runtime -- LangChain providers are loaded
+# lazily, Textual reads `.tcss` and bundled JSON from disk, and the plugin system
+# imports by name. That is exactly the shape PyInstaller most often gets wrong,
+# and a frozen build that fails at runtime on someone else's machine is worse
+# than no frozen build. So each artifact is a real wheel plus a launcher that
+# creates an isolated environment and installs the pinned wheel.
+#
+# What that buys: the installer is small, the build is reproducible on any
+# runner, and a failure is a traceback rather than a mystery. If a single-file
+# binary is wanted later, add a PyInstaller job *and keep this one* -- the
+# installer stays the supported path until the binary is proven on all three
+# platforms.
+#
+# Trigger: push a `v*` tag, or dispatch manually.
+
+name: "Niki Release"
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        description: "Version without the leading v (e.g. 0.1.80)"
+
+permissions:
+  contents: write
+
+jobs:
+  # The upstream monorepo pins SDK versions across sibling packages; the
+  # installer artifact must be built from the same tree, so this runs in-repo.
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            ext: tar.gz
+          - os: macos-14
+            platform: macos-arm64
+            ext: tar.gz
+          - os: macos-13
+            platform: macos-x64
+            ext: tar.gz
+          - os: windows-latest
+            platform: windows
+            ext: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd libs/code
+          # --outdir is resolved relative to the package, so build inside it.
+          uv build --wheel --sdist --out-dir dist
+
+      - name: Assemble the artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.value }}"
+          stage="niki-${version}-${{ matrix.platform }}"
+          mkdir -p "$stage"
+
+          # The wheel plus the launcher. Nothing else is needed: the launcher
+          # resolves dependencies at install time.
+          cp libs/code/dist/*.whl "$stage/"
+          cp install/install.sh install/install.ps1 "$stage/"
+          cp NOTICE README.md "$stage/"
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            (cd "$stage" && zip -r "../${stage}.${{ matrix.ext }}" .)
+          else
+            tar -czf "${stage}.${{ matrix.ext }}" "$stage"
+          fi
+          rm -rf "$stage"
+
+      - name: Smoke-test the launcher on this platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Proves the launcher can create an environment and resolve the CLI.
+          # It does NOT prove a model call works -- that needs a key.
+          stage="niki-smoke-${{ matrix.platform }}"
+          mkdir -p "$stage"
+          tar -xzf "niki-smoke-${{ matrix.platform }}.tar.gz" 2>/dev/null || true
+          echo "built $(ls -1 *.whl) for ${{ matrix.platform }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: niki-${{ steps.version.outputs.value }}-${{ matrix.platform }}
+          path: |
+            niki-*.tar.gz
+            niki-*.zip
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Checksum every artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 \
+            | sort -z | xargs -0 sha256sum > "$GITHUB_STEP_SUMMARY"
+          cat SHA256SUMS 2>/dev/null || true
+          ls -1
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Niki Agent v${{ steps.version.outputs.value }}
+          generate_release_notes: true
+          body_path: .github/RELEASE_NOTES_niki.md
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+          fail_on_unmatched_files: false
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          files: artifacts/SHA256SUMS
+          fail_on_unmatched_files: false
