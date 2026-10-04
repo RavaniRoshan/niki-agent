@@ -13,7 +13,7 @@ A calm, fast terminal coding agent — a presentation-layer fork of
 | Command | `niki` (`dcode` and `deepagents-code` still work, unchanged) |
 | Tests | 237 in the Niki harness |
 | Key bindings | 38 documented in [`KEYMAP.md`](docs/niki/KEYMAP.md) |
-| Checklist | 24 WORKS · 31 PARTIAL · 15 MISSING — see [`CHECKLIST.md`](docs/niki/CHECKLIST.md) |
+| Checklist | 26 WORKS · 33 PARTIAL · 11 MISSING — see [`CHECKLIST.md`](docs/niki/CHECKLIST.md) |
 | Theme variants | `niki` · `niki-light` · `niki-contrast` · `niki-dim` (switch with `/theme`) |
 | Built on | Deep Agents, MIT |
 
