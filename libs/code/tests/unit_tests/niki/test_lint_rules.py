@@ -17,7 +17,9 @@ Two of these encode checklist rows directly.
 
 from __future__ import annotations
 
+import ast
 import io
+import json
 import re
 import sys
 import warnings
@@ -195,3 +197,38 @@ async def test_niki_stylesheet_actually_applies() -> None:
     assert messages.styles.background.hex.lower().endswith(
         NIKI_DARK["background"][1:].lower()
     ), f"transcript background is {messages.styles.background.hex}, not Niki's base"
+
+
+_RESEARCHED = json.loads(
+    (Path(__file__).parent / "researched_palettes.json").read_text(encoding="utf-8")
+)
+_RESEARCHED_PALETTE_VALUES = {
+    key: set(values) for key, values in _RESEARCHED.items() if not key.startswith("_")
+}
+
+
+@pytest.mark.parametrize("palette_name", ["NIKI_DARK", "NIKI_LIGHT"])
+def test_the_palette_is_not_a_copy(palette_name: str) -> None:
+    """The brief forbids reproducing another tool's palette.
+
+    The palette took *direction* from Codex and Kimi Code; this asserts it took
+    no *values*. Without this, "inspired by" quietly becomes "reproduced" the
+    first time someone tunes a hex by eye against a screenshot.
+
+    The compared values live in `researched_palettes.json` rather than inline,
+    because the harness lint rule forbids colour literals in test code -- and
+    that rule should not be weakened to make this test expressible.
+    """
+    from deepagents_code.niki.theme import NIKI_DARK, NIKI_LIGHT
+
+    palette = {"NIKI_DARK": NIKI_DARK, "NIKI_LIGHT": NIKI_LIGHT}[palette_name]
+    mine = {value.upper() for value in palette.values()}
+    theirs = {
+        v.upper() for values in _RESEARCHED_PALETTE_VALUES.values() for v in values
+    }
+
+    collisions = mine & theirs
+    assert not collisions, (
+        f"{palette_name} reuses values from the palettes it drew direction "
+        f"from: {sorted(collisions)}. Direction is fine; values are not."
+    )

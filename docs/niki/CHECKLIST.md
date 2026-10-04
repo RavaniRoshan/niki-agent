@@ -8,6 +8,24 @@ marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot
 
 **Current tally: 23 WORKS · 31 PARTIAL · 16 MISSING** across 76 rows.
 
+### Palette v2 — direction from Codex + Kimi, original values
+
+Three ideas taken, **no hex value**:
+
+1. **Flat, untinted grey scale** (Kimi) — `foreground`, `muted`, `secondary` carry no hue, so colour is spent only on meaning. The previous palette's warm-tinted grey made `secondary` read as a fourth accent.
+2. **One accent; `error` is the only hue that may mean removal** (both) — so a diff reads without relying on position.
+3. **Status colours desaturated relative to the accent** (Codex keeps its diff backgrounds subtle so they never fight syntax colours).
+
+| Token | Dark | Light |
+| --- | --- | --- |
+| background / surface / panel | `#14161A` `#1B1E25` `#232831` | `#FAFAFB` `#F1F2F4` `#E7E9ED` |
+| foreground / muted | `#E4E7EC` `#9AA1AD` | `#1F2328` `#5C636E` |
+| primary / secondary / accent | `#6B8EF2` `#8B93A3` `#43AFA0` | `#3355CC` `#4B535F` `#1F7A70` |
+| success / warning / error | `#5FAE7A` `#D99A3E` `#D2605C` | `#2E7D4F` `#8A5E12` `#A83232` |
+| mode_bash / command / incognito | `#6B8EF2` `#8B93A3` `#9B8AAE` | `#3355CC` `#4B535F` `#6B4E86` |
+| skill / skill_hover | `#A98BD0` `#C0A6DE` | `#6B3FA0` `#573089` |
+| tool / tool_hover | `#5FA8C4` `#7FC2D8` | `#1F6C86` `#17566B` |
+
 ### Owner decisions recorded (2026-10-04)
 
 | Decision | Answer |
@@ -69,7 +87,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V10 activity line | P0 | **PARTIAL** | `tests/unit_tests/niki/test_motion.py` (24 tests) + `test_activity_line.py` — Niki's own activity motif (`◐◓◑◒`, ping-pong), adaptive cadence (0.10 / 0.12 / 0.20 s), **`NIKI_REDUCED_MOTION` and `NO_MOTION` both honoured**, ASCII fallback, and **reduced motion costs zero idle repaints** | **The reduced-motion gap is closed.** Verb wording, elapsed time, and token counts need a real agent turn, so those are OWNER-VERIFY. The glyph set is deliberately *not* a copy of any other tool's — a test asserts it is disjoint from both upstream's braille and the asterisk family. |
 | V11 markdown rendering | P0 | **PARTIAL** | `tests/unit_tests/niki/test_markdown.py` — the Markdown renderer is wired at `#assistant-content`, and 10 streamed appends feed **one** widget rather than accumulating renderers | **On-screen rendering is not proven, and the reason is measured, not assumed.** A synthetic assistant message mounts (`children` grows by one) but lays out at **height 0** (`Region(x=1, y=5, width=78, height=0)`, `virtual_size.height == 0`), so it paints nothing — through the app's own `_mount_message` path as well, and it does not improve with more event-loop time. The markdown sub-widget is never measured because the transcript's height measurement is scheduled by the agent/thread lifecycle. Headings, lists, tables, links, code-block language labels, and streaming stability are **OWNER-VERIFY**. |
 | V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
-| V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `tests/unit_tests/niki/test_color_depth_and_input.py` — contrast **0 violations** (tightest 5.56:1 dark / 4.12:1 light); the ASCII glyph set contains **no** non-ASCII; no glyph is blank in ASCII mode; **Niki ships no hardcoded structural glyph**; the app starts and paints with `NO_COLOR=1` | The ASCII *set* is verified and the app survives `NO_COLOR`. 16-colour rendering and the light-terminal *appearance* are OWNER-VERIFY. |
+| V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `test_every_token_pair_meets_its_contrast_floor` — **0 violations**, tightest text pair 4.99:1; `test_the_palette_is_not_a_copy` — Niki reuses **zero** hex values from the Codex or Kimi palettes it drew direction from; ASCII set clean; no hardcoded structural glyph; app paints with `NO_COLOR=1` | **New palette shipped** (see below). The ASCII *set* is verified and the app survives `NO_COLOR`; 16-colour rendering and the light-terminal *appearance* are OWNER-VERIFY. |
 | V14 inline errors with recovery | P0 | **MISSING** | — | — |
 
 ## Keyboard

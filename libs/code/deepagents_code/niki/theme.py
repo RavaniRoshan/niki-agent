@@ -5,12 +5,26 @@ hex literal, a named color, or an `rgb()` -- `tests/unit_tests/niki/test_lint_ru
 enforces that. Keeping the tokens here is what lets V1 be a lint rule instead of
 a review habit, and it means a palette change is one edit in one file.
 
-The accent is a periwinkle (`#8FA3F5`). It is deliberately not orange and not
-terminal green, so it cannot be mistaken for another tool's chrome, and it stays
-calm against a warm-neutral base rather than glowing the way a saturated cyan
-would. Success, warning, and error are desaturated on purpose: they carry status
-and nothing else, and a status color that competes with the accent for attention
-makes the accent useless.
+**Direction, not values.** The owner asked for a palette inspired by two tools
+whose colour systems were read from source: Codex CLI (`codex-rs/tui/src/style.rs`)
+and Kimi Code (`apps/kimi-code/src/tui/theme/colors.ts`). Three ideas were taken,
+and **no hex value was** -- the brief forbids reproducing another tool's palette,
+and `test_the_palette_is_not_a_copy` enforces that against every value either
+tool uses:
+
+1. **A flat, untinted grey scale** (Kimi). `foreground`, `muted` and `secondary`
+   carry no hue of their own, so colour is spent only on meaning. An earlier
+   Niki palette used a warm-tinted grey, which made "secondary" look like a
+   fourth accent.
+2. **One accent, four status hues, each with one job** (both). `error` is the
+   only hue allowed to mean removal or failure, which is what lets a diff read
+   without relying on position.
+3. **Status colours desaturated relative to the accent** (Codex's diff
+   backgrounds are deliberately subtle so they never fight syntax colours). A
+   saturated status colour competes with the accent and the accent stops
+   working.
+
+The base is cool rather than warm, and every pair is measured before it ships.
 
 Contrast is not asserted by hand here. `contrast_ratio` is the same function the
 test uses, so `test_theme_contrast.py` and this docstring cannot drift.
@@ -75,46 +89,46 @@ def contrast_ratio(foreground: str, background: str) -> float:
 
 #: Dark-first palette. Warm-neutral base, one periwinkle accent, desaturated status.
 NIKI_DARK: Final[dict[str, str]] = {
-    "background": "#17161A",
-    "surface": "#201F25",
-    "panel": "#26252C",
-    "foreground": "#E9E7E4",
-    "muted": "#A19C94",
-    "primary": "#8FA3F5",
-    "secondary": "#9AA5B8",
-    "accent": "#6FC5BE",
-    "success": "#7FB685",
-    "warning": "#D7B168",
-    "error": "#E08A8A",
-    "mode_bash": "#8FA3F5",
-    "mode_command": "#9AA5B8",
-    "mode_incognito": "#B9A0C9",
-    "skill": "#C0A3E8",
-    "skill_hover": "#D2BCF0",
-    "tool": "#7FBFD4",
-    "tool_hover": "#A6D8E6",
+    "background": "#14161A",
+    "surface": "#1B1E25",
+    "panel": "#232831",
+    "foreground": "#E4E7EC",
+    "muted": "#9AA1AD",
+    "primary": "#6B8EF2",
+    "secondary": "#8B93A3",
+    "accent": "#43AFA0",
+    "success": "#5FAE7A",
+    "warning": "#D99A3E",
+    "error": "#D2605C",
+    "mode_bash": "#6B8EF2",
+    "mode_command": "#8B93A3",
+    "mode_incognito": "#9B8AAE",
+    "skill": "#A98BD0",
+    "skill_hover": "#C0A6DE",
+    "tool": "#5FA8C4",
+    "tool_hover": "#7FC2D8",
 }
 
 #: Light palette. Same hue relationships, re-weighted for a light background.
 NIKI_LIGHT: Final[dict[str, str]] = {
-    "background": "#FAF9F7",
-    "surface": "#F2F0EC",
-    "panel": "#E9E6E0",
-    "foreground": "#26242A",
-    "muted": "#625E57",
-    "primary": "#3F51B5",
-    "secondary": "#4C5568",
-    "accent": "#1F7A73",
-    "success": "#2F7A46",
-    "warning": "#8A6410",
-    "error": "#B03A3A",
-    "mode_bash": "#3F51B5",
-    "mode_command": "#4C5568",
+    "background": "#FAFAFB",
+    "surface": "#F1F2F4",
+    "panel": "#E7E9ED",
+    "foreground": "#1F2328",
+    "muted": "#5C636E",
+    "primary": "#3355CC",
+    "secondary": "#4B535F",
+    "accent": "#1F7A70",
+    "success": "#2E7D4F",
+    "warning": "#8A5E12",
+    "error": "#A83232",
+    "mode_bash": "#3355CC",
+    "mode_command": "#4B535F",
     "mode_incognito": "#6B4E86",
     "skill": "#6B3FA0",
     "skill_hover": "#573089",
-    "tool": "#1F6C80",
-    "tool_hover": "#175A6B",
+    "tool": "#1F6C86",
+    "tool_hover": "#17566B",
 }
 
 #: Which pairs must clear which WCAG level. Text carries meaning and needs 4.5:1;

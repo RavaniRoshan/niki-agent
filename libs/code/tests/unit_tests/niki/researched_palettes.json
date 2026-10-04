@@ -1,0 +1,8 @@
+{
+  "_comment": "Hex values used by the palettes Niki drew DIRECTION from: OpenAI Codex CLI (codex-rs/tui/src/style.rs, diff_render.rs) and Kimi Code (apps/kimi-code/src/tui/theme/colors.ts). Held as a JSON fixture rather than inline Python so the 'no colour literals in the harness' lint rule does not have to be weakened. test_the_palette_is_not_a_copy asserts Niki uses none of these.",
+  "codex-chatgpt-blue": ["#63A8F8", "#A4CDFB", "#1C64C8"],
+  "codex-diff-dark": ["#213A2B", "#4A221D"],
+  "kimi-brand": ["#4FA8FF", "#1565C0", "#5BC0BE", "#00838F"],
+  "kimi-state": ["#E0E0E0", "#F5F5F5", "#888888", "#6B6B6B", "#5A5A5A", "#E8A838", "#92660A", "#4EC87E", "#0E7A38", "#E85454", "#B91C1C"],
+  "kimi-roles": ["#FFCB6B", "#BD93F9"]
+}
