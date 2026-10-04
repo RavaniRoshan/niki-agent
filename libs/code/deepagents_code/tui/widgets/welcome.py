@@ -15,7 +15,7 @@ from textual.widgets import Static
 if TYPE_CHECKING:
     from textual.events import Click, MouseMove
 
-from deepagents_code import theme
+from deepagents_code import _invocation, theme
 from deepagents_code._env_vars import (
     DEBUG,
     EXPERIMENTAL,
@@ -466,9 +466,14 @@ class WelcomeBanner(Static):
         )
         warn_color: str = "bold yellow" if ansi else colors.warning
 
+        # Render the name this process was actually launched with. `AGENTS.md`
+        # already requires this ("hints that tell the user to run something must
+        # render `_invocation.invoked_name()` rather than a literal `dcode`"),
+        # and the welcome banner was the surface that broke the rule -- so a
+        # `niki` launch greeted itself as `dcode`.
         parts: list[str | tuple[str, str | TStyle]] = [
             (f"{get_glyphs().cursor} ", title_style),
-            ("dcode", "bold"),
+            (_invocation.invoked_name(), "bold"),
         ]
         if not self._hide_version:
             parts.append((f"  v{self._version}", "dim"))

@@ -27,6 +27,7 @@ from deepagents_code.niki.branding import version_line
 from deepagents_code.niki.network import apply_niki_network_policy
 
 _VERSION_FLAGS = frozenset({"-v", "--version"})
+_HELP_FLAGS = frozenset({"-h", "--help"})
 
 
 def install_niki_app_class() -> None:
@@ -53,6 +54,15 @@ def niki_main() -> None:
     if len(sys.argv) == 2 and sys.argv[1] in _VERSION_FLAGS:  # noqa: PLR2004
         # Answered before any heavy import, matching upstream's own fast path.
         print(version_line())  # noqa: T201 - console script output, not a library
+        return
+
+    if len(sys.argv) == 2 and sys.argv[1] in _HELP_FLAGS:  # noqa: PLR2004
+        # Niki's own screen, generated from the keymap registry. Upstream's
+        # hand-maintained help is left byte-for-byte intact for `dcode`.
+        from deepagents_code.niki.help import print_help
+        from deepagents_code.ui import console
+
+        print_help(console)
         return
 
     apply_niki_network_policy()
