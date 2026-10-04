@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 23 WORKS · 31 PARTIAL · 16 MISSING** across 76 rows.
+**Current tally: 24 WORKS · 31 PARTIAL · 15 MISSING** across 76 rows.
 
 ### Palette v2 — direction from Codex + Kimi, original values
 
@@ -90,7 +90,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | V11 markdown rendering | P0 | **PARTIAL** | `tests/unit_tests/niki/test_markdown.py` — the Markdown renderer is wired at `#assistant-content`, and 10 streamed appends feed **one** widget rather than accumulating renderers | **On-screen rendering is not proven, and the reason is measured, not assumed.** A synthetic assistant message mounts (`children` grows by one) but lays out at **height 0** (`Region(x=1, y=5, width=78, height=0)`, `virtual_size.height == 0`), so it paints nothing — through the app's own `_mount_message` path as well, and it does not improve with more event-loop time. The markdown sub-widget is never measured because the transcript's height measurement is scheduled by the agent/thread lifecycle. Headings, lists, tables, links, code-block language labels, and streaming stability are **OWNER-VERIFY**. |
 | V12 first-run + missing API key message | P0 | **PARTIAL** | first-run snapshot at 4 sizes | Missing-key inline message never exercised (needs a no-key launch). |
 | V13 colour depth / NO_COLOR / ASCII / contrast | P0 | **PARTIAL** | `test_every_token_pair_meets_its_contrast_floor` — **0 violations**, tightest text pair 4.99:1; `test_the_palette_is_not_a_copy` — Niki reuses **zero** hex values from the Codex or Kimi palettes it drew direction from; ASCII set clean; no hardcoded structural glyph; app paints with `NO_COLOR=1` | **New palette shipped** (see below). The ASCII *set* is verified and the app survives `NO_COLOR`; 16-colour rendering and the light-terminal *appearance* are OWNER-VERIFY. |
-| V14 inline errors with recovery | P0 | **MISSING** | — | — |
+| V14 inline errors with recovery | P0 | **WORKS** | `tests/unit_tests/niki/test_error_rendering.py` — errors render **inline** in the transcript with an `Error:` lead and the message intact; a caller-supplied recovery link survives to the rendered content; the colour is **themed rather than hardcoded** (proven by comparing two themes, not by matching a literal) | **Found and fixed a real hole while building this:** `ErrorMessage.render()` passed bodies through unstripped, so an OSC 52 clipboard write in an error body reached the user's clipboard. Now sanitised with newlines preserved so a traceback stays readable. The L4 suite had tested the sanitizer directly and missed it because it never exercised the render path. |
 
 ## Keyboard
 

@@ -5720,13 +5720,44 @@ class ErrorMessage(Static):
     def render(self) -> Content:
         """Render with theme-aware colors.
 
+        Error bodies are untrusted: they originate from tool output, file
+        contents, or a model message that failed. Terminal control sequences are
+        stripped before rendering, because Textual writes content to the terminal
+        verbatim -- an OSC 52 clipboard write in an error body would otherwise
+        reach the user's clipboard. Newlines are preserved so a traceback stays
+        readable.
+
         Returns:
             Styled error content; spans on a `Content` body are preserved.
         """
         colors = theme.get_theme_colors(self)
         return Content.assemble(
             Content.styled("Error: ", f"bold {colors.error}"),
-            self._content,
+            self._sanitized_body(),
+        )
+
+    def _sanitized_body(self) -> str | Content:
+        """Return the error body with terminal control characters neutralised.
+
+        Returns:
+            The original `Content` when it carries style spans, since those are
+            built by us and not attacker-controlled; otherwise a sanitized
+            string.
+        """
+        from deepagents_code.unicode_security import sanitize_control_chars
+
+        if isinstance(self._content, Content):
+            # A `Content` body was assembled by us -- it may carry a link span
+            # for the recovery action. Its plain text still came from untrusted
+            # input, so the text is sanitised and the spans reapplied.
+            plain = sanitize_control_chars(
+                self._content.plain, keep_newlines=True, collapse_whitespace=False
+            )
+            if plain == self._content.plain:
+                return self._content
+            return Content(plain).stylize_before(self._content.spans)
+        return sanitize_control_chars(
+            self._content, keep_newlines=True, collapse_whitespace=False
         )
 
     def on_mount(self) -> None:
