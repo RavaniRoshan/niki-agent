@@ -200,7 +200,13 @@ class ApprovalMenu(Container):
         self._options = self._build_options()
         self._num_options = len(self._options)
         self._reject_index = self._num_options - 1
-        self._selected = 0
+        # Focus the option that matches the current approval mode rather than
+        # always focusing Approve. Upstream opened on option 0, so a stray Enter
+        # ran the command. In `manual` mode the user asked to decide each action,
+        # so the default keystroke must not decide it for them; in `auto`/`yolo`
+        # they already opted into automatic execution, and making them arrow
+        # over to Approve argues against the mode they chose.
+        self._selected = 0 if self._focus_approve() else self._reject_index
         self._future: asyncio.Future[dict[str, str]] | None = None
         self._option_widgets: list[Static] = []
         self._tool_info_container: Vertical | None = None
@@ -474,6 +480,23 @@ class ApprovalMenu(Container):
                 )
             approval_widget = widget_class(data)
             await self._tool_info_container.mount(approval_widget)
+
+    def _focus_approve(self) -> bool:
+        """Whether Approve should hold focus for the app's current mode.
+
+        Reading `self.app` here is safe: this runs during `__init__`, which
+        Textual calls inside the widget's mount context, and the app's approval
+        mode is set in its constructor long before any approval can be raised.
+        Anything other than an explicit automatic mode resolves to Reject --
+        the safe direction when the mode cannot be read.
+
+        Returns:
+            `True` to focus Approve, `False` to focus Reject.
+        """
+        from deepagents_code.approval_mode import ApprovalMode
+
+        mode = getattr(self.app, "approval_mode", None)
+        return str(mode) in {ApprovalMode.AUTO, ApprovalMode.YOLO}
 
     def _build_options(self) -> list[tuple[str, str]]:
         """Build the visible options as `(label, decision_type)` pairs.

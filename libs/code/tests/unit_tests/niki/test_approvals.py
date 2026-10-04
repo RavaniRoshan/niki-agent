@@ -44,6 +44,13 @@ def _app() -> App:  # type: ignore[type-arg]
 
 
 def _menu() -> ApprovalMenu:
+    """Build the menu the way the app does.
+
+    Through the *module attribute*, not a direct import: `app.py` resolves
+    `ApprovalMenu` by name when it constructs one, which is exactly the seam
+    `install_niki_app_class` rebinds. Importing the class directly here would
+    bypass the rebind and silently test upstream's behaviour.
+    """
     from deepagents_code.tui.widgets.approval import ApprovalMenu
 
     return ApprovalMenu(REQUEST)
@@ -116,15 +123,12 @@ async def test_v9b_the_default_focus_is_not_the_accepting_option() -> None:
     )
     focused_kind = options[selected][1] if selected < len(options) else "<out of range>"
 
-    # CHARACTERISATION of a known gap, not an endorsement. The checklist wants
-    # the safest option focused by default; this build focuses the *approving*
-    # one, so a stray Enter runs the command. Asserting today's state keeps the
-    # suite green while making the gap impossible to miss -- and re-running this
-    # test after a fix tells you to update V9 in the same change.
-    assert (focused_label, focused_kind) == ("Approve (y)", "approve"), (
-        f"V9: the prompt now opens on {focused_label!r} rather than the "
-        "previously-measured 'Approve (y)'. If that is the intended fix, update "
-        "V9 in docs/niki/CHECKLIST.md in this same change."
+    # FIXED -- it previously opened on 'Approve (y)'. The focused option now
+    # follows the current approval mode, which in manual mode is Reject: the
+    # mode that exists precisely so the user decides each action.
+    assert (focused_label, focused_kind) == ("Reject (n)", "reject"), (
+        f"V9: the prompt opens on {focused_label!r}. In manual mode it must "
+        "focus Reject, so a stray Enter denies rather than running the command."
     )
 
 
@@ -139,14 +143,14 @@ async def test_v9_escape_denies() -> None:
         await pilot.pause()
         menu = app.query_one(".approval-menu")
         selected_after_esc = int(getattr(menu, "_selected", -1))
-        reject_index = int(getattr(menu, "_reject_index", -1))
 
-    # CHARACTERISATION of a known gap: Esc is bound to `interrupt` upstream, so
-    # it does not move the approval selection to the reject option.
-    assert (selected_after_esc, reject_index) == (0, 2), (
-        f"V9: Esc now lands on option {selected_after_esc} with reject at "
-        f"{reject_index}, where it previously left both at (0, 2). If Esc now "
-        "denies, update V9 in docs/niki/CHECKLIST.md in this same change."
+    # Esc is bound to `interrupt` upstream, so it does not select Reject. What
+    # matters now is the security consequence: Esc must never leave the
+    # APPROVING option focused.
+    assert selected_after_esc != 0, (
+        f"V9: Esc moved the selection onto option {selected_after_esc}, which "
+        "is Approve. Esc must never leave the prompt one Enter from running "
+        "the command."
     )
 
 

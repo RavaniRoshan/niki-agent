@@ -382,12 +382,17 @@ class TestRejectWithReason:
         }
 
     @pytest.mark.parametrize(
-        ("auto_mode_eligible", "down_presses", "start_index"),
-        [(True, 0, 0), (False, 0, 0), (True, 1, 1)],
+        ("auto_mode_eligible", "start_index"),
+        # The row to start from, not the row the menu happens to open on. The
+        # initial selection now follows the app's approval mode (see
+        # `ApprovalMenu._focus_approve`), so relying on the old "always opens on
+        # Approve" would make this test assert a default it was never about.
+        # Index 0 is Approve; index 1 is the Auto row when it is shown.
+        [(True, 0), (False, 0), (True, 1)],
         ids=["from-approve", "from-approve-auto-hidden", "from-auto-row"],
     )
     async def test_tab_from_non_reject_row_submits_reason(
-        self, *, auto_mode_eligible: bool, down_presses: int, start_index: int
+        self, *, auto_mode_eligible: bool, start_index: int
     ) -> None:
         """Tab moves the cursor and submits, from any row and either layout."""
         from textual.app import App, ComposeResult
@@ -408,8 +413,11 @@ class TestRejectWithReason:
         async with ApprovalTestApp().run_test() as pilot:
             await pilot.pause()
             menu = pilot.app.query_one(ApprovalMenu)
-            if down_presses:
-                await pilot.press(*(["down"] * down_presses))
+            # Position the cursor explicitly: this test is about Tab, not about
+            # which row the menu opens on.
+            menu._selected = start_index
+            menu._update_options()
+            await pilot.pause()
             assert menu._selected == start_index
             assert start_index != menu._reject_index
             await pilot.press("tab")
@@ -563,6 +571,12 @@ class TestRejectWithReason:
         async with ApprovalTestApp().run_test() as pilot:
             await pilot.pause()
             menu = pilot.app.query_one(ApprovalMenu)
+            # Start from Approve explicitly. This test covers the Tab-then-cancel
+            # flow; which row the menu opens on is covered elsewhere and now
+            # follows the app's approval mode.
+            menu._selected = 0
+            menu._update_options()
+            await pilot.pause()
             assert menu._selected == 0
             await pilot.press("tab")
             await pilot.pause()
