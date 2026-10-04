@@ -9,11 +9,11 @@ A calm, fast terminal coding agent — a presentation-layer fork of
 
 | | |
 | --- | --- |
-| Version | `0.1.80` |
+| Version | `{version}` |
 | Command | `niki` (`dcode` and `deepagents-code` still work, unchanged) |
-| Tests | 237 in the Niki harness |
-| Key bindings | 38 documented in [`KEYMAP.md`](docs/niki/KEYMAP.md) |
-| Checklist | 24 WORKS · 31 PARTIAL · 15 MISSING — see [`CHECKLIST.md`](docs/niki/CHECKLIST.md) |
+| Tests | {tests} in the Niki harness |
+| Key bindings | {keymap} documented in [`KEYMAP.md`](docs/niki/KEYMAP.md) |
+| Checklist | {works} WORKS · {partial} PARTIAL · {missing} MISSING — see [`CHECKLIST.md`](docs/niki/CHECKLIST.md) |
 | Theme variants | `niki` · `niki-light` · `niki-contrast` · `niki-dim` (switch with `/theme`) |
 | Built on | Deep Agents, MIT |
 
@@ -25,7 +25,7 @@ uv sync --all-extras
 
 uv run niki                      # start
 uv run niki --help               # generated from the live key bindings
-uv run niki --version            # Niki Agent 0.1.80, built on Deep Agents
+uv run niki --version            # Niki Agent {version}, built on Deep Agents
 ```
 
 Set a provider key first — see [`docs/niki/PROVIDERS.md`](docs/niki/PROVIDERS.md)
@@ -48,7 +48,7 @@ for all supported providers and the three gateway ones.
 
 ## Screenshot
 
-![First run at 120x38](docs/niki/review/test_first_run_snapshot[120x38].raw)
+![First run at 120x38](docs/niki/review/{frame}.raw)
 
 These frames show upstream's layout with Niki's theme, title, and motion applied.
 The full visual redesign is not finished, and the checklist says which rows that

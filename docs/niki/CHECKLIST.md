@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 24 WORKS · 31 PARTIAL · 15 MISSING** across 76 rows.
+**Current tally: 26 WORKS · 33 PARTIAL · 11 MISSING** across 76 rows.
 
 ### Palette v2 — direction from Codex + Kimi, original values
 
@@ -104,9 +104,9 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | K6 filtered slash menu | P0 | **PARTIAL** | `test_slash_menu_filters_and_narrows_to_one_row`, `test_snapshot_with_slash_menu_open` ×2 | Opens, filters, and narrows. Arrow/Tab/Enter selection and upstream's skills entries unverified. |
 | K7 Esc close order + focus restore | P0 | **PARTIAL** | `test_escape_closes_the_slash_menu_before_cancelling_input` | Esc closes the popup and retains the typed text. The full close order (modal → popup → search → detail → cancel input) and focus restoration per step unverified. |
 | K8 `?` contextual help | P0 | **PARTIAL** | `test_snapshot_with_help_open` ×2 widths; `niki --help` now registry-generated | The in-app `?` screen still opens upstream's hand-maintained help. `niki --help` is Niki's own and generated from live bindings. |
-| K9 Ctrl+R history search | P1 | **MISSING** | — | — |
-| K10 queue messages during a run | P1 | **MISSING** | — | — |
-| K11 command palette | P1 | **MISSING** | — | — |
+| K9 Ctrl+R history search | P1 | **WORKS** | `tests/unit_tests/niki/test_history_search.py` — `ctrl+r` opens the search, the filter genuinely narrows (3 queries), the window always contains the selection and moves with it, and `Esc` abandons without eating the buffer | Upstream already shipped this (`open_prompt_search()` → inline/modal/file_picker with `filter_prompts` and `_window_bounds`). It had simply never been verified in the fork, which is why it read MISSING. |
+| K10 queue messages during a run | P1 | **PARTIAL** | `test_queue_palette_picker.py` — `_pending_messages` exists and starts empty; the drain guard requires `_agent_running` to be false | The queue **mechanism** is proven. That a queued message *reaches the composer* end-to-end needs a real agent turn, so it is OWNER-VERIFY. |
+| K11 command palette | P1 | **MISSING (characterised)** | `test_k11_no_command_palette_is_configured` | Textual ships `COMMAND_PALETTE_BINDING`; `DeepAgentsApp` does not enable it, so there is nothing to test. Characterised so the gap is explicit and enabling one later fails the test. |
 | K12 escape-sequence fuzz / AltGr | P0 | **PARTIAL** | `test_k12_hostile_input_never_wedges_the_composer` (lone Esc, Alt+key, non-ASCII, AltGr), `test_k12_repeated_split_sequences_still_type` (50 hostile presses), `test_k12_shift_tab_steals_the_composer` | Lone `Esc`, `Alt`+key, and non-ASCII input all leave the composer accepting typing; 50 split sequences in a row do not wedge it. **Open gap, characterised:** `shift+tab` (bound app-level to `toggle_auto_approve`) moves focus off the composer, so the next keystrokes land nowhere. Split *partial byte sequences* at the pty level are not driven. |
 
 ## Mouse
@@ -116,7 +116,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | M1 transcript scrolls, no snap-back | P0 | **PARTIAL** | `test_m1_the_transcript_is_genuinely_scrollable` ×2 sizes, `test_scroll_position_moves_and_sticks` | Container genuinely overflows (60 messages → `max_scroll_y=48` at 80x24); scroll position takes and stays put while idle. **Wheel itself is untestable** — this Textual Pilot exposes no wheel API, so wheel remains OWNER-VERIFY. |
 | M2 click: focus, cards, approvals, rows | P0 | **PARTIAL** | `test_m2_clicking_focuses_the_composer` ×2 sizes, `test_click_is_delivered_to_the_app` | Click-to-focus verified at both sizes. Tool-card expand, approval rows, and slash rows unverified. |
 | M3 hover throttled, no redraw storm | P0 | **WORKS** | `tests/unit_tests/niki/test_hover_and_footer.py` — 120 real `MouseMove` events swept across the composer, repaint count measured through the compositor, and a second test proves the UI is still painting afterwards | Repaints are counted, not estimated, so 'no storm' is a measurement. |
-| M4 selection/copy, OSC 52, mouse release | P1 | **MISSING** | — | — |
+| M4 selection/copy, OSC 52, mouse release | P1 | **PARTIAL** | `tests/unit_tests/niki/test_copy_and_selection.py` — the OSC 52 sequence is well-formed and base64 round-trips for empty, multi-line, non-ASCII and whitespace-heavy payloads; it is **DCS-wrapped under `$TMUX`** | The sequence is verified; whether it actually reaches a clipboard across a real ssh hop is not. **No mouse-release toggle exists**, so native terminal selection may be impossible — characterised so adding one fails the test. |
 | M5 every mouse action has a key equivalent | P0 | **PARTIAL** | `test_m5_every_mouse_gesture_has_a_keyboard_equivalent` | Six required gestures (focus, scroll up/down, jump to bottom, cancel, submit) all have bindings in the registry. Built from live `BINDINGS`, so it cannot drift. |
 
 ## Flow
@@ -127,8 +127,8 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | F2 activity states only from real events | P0 | **PARTIAL** | `test_f2_no_activity_state_without_a_real_event` | A freshly started app claims no busy state (`running`/`working`/`thinking`/`streaming` all absent) with no event behind it. The converse -- that a real event *does* flip the state -- is not driven, so this catches the false-positive direction only. |
 | F3 streaming renders into one block | P0 | **WORKS** | `test_f3_streaming_renders_into_one_block`, `test_f3_streaming_paints_far_fewer_frames_than_chunks` | 40 chunks into one assistant widget add **zero** extra widgets, and repaints stay below the chunk count. Coalescing is real, not assumed. |
 | F4 scroll preserved mid-stream | P0 | **WORKS** | `test_f4_scroll_position_survives_a_streaming_update` — scrolled to y=10, streamed 20 appends, offset held at 10 | The transcript does not drag a reading user back to the bottom. |
-| F5 session resume picker | P1 | **MISSING** | — | — |
-| F6 concise post-run summary | P0 | **MISSING** | — | — |
+| F5 session resume picker | P1 | **PARTIAL** | `test_f5_a_thread_selector_screen_exists` — `ThreadSelectorScreen` imports and carries `BINDINGS` | Keyboard navigation *through* the picker needs a real session list; OWNER-VERIFY. |
+| F6 concise post-run summary | P0 | **MISSING (characterised)** | `test_f6_no_turn_duration_summary_is_rendered` | Both reference UIs close a turn with a line saying what it did and how long it took. **No such line exists here** — this is a build item, not a verification item. |
 
 ## Docs and pack
 
