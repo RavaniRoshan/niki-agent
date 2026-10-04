@@ -72,6 +72,7 @@ from deepagents_code.model_config import (
     is_service,
     resolved_env_var_name,
 )
+from deepagents_code.niki.product import PRODUCT_NAME
 from deepagents_code.tui.key_hints import modal_navigation_hint
 from deepagents_code.tui.widgets._links import open_style_link
 
@@ -860,7 +861,7 @@ class AuthPromptScreen(ModalScreen[AuthResult]):
             storage_note: Content | None
             if self._is_langsmith:
                 storage_note = Content.from_markup(
-                    "dcode stores the above key locally and turns on "
+                    f"{PRODUCT_NAME} stores the above key locally and turns on "
                     "LangSmith tracing. To pause tracing without removing the key, "
                     "set [bold]DEEPAGENTS_CODE_LANGSMITH_TRACING=false[/bold]."
                 )
@@ -871,7 +872,7 @@ class AuthPromptScreen(ModalScreen[AuthResult]):
                 storage_note = None
             else:
                 storage_note = Content.from_markup(
-                    "dcode stores the above key locally and uses it "
+                    f"{PRODUCT_NAME} stores the above key locally and uses it "
                     "when you select [bold]$provider[/bold] models.",
                     provider=provider_label,
                 )

@@ -30,6 +30,7 @@ from deepagents_code.extras_info import (
     SANDBOX_EXTRAS,
     STANDALONE_EXTRAS,
 )
+from deepagents_code.niki.product import PRODUCT_NAME
 from deepagents_code.tui.key_hints import modal_navigation_hint
 
 logger = logging.getLogger(__name__)
@@ -153,8 +154,8 @@ class LaunchGoalCriteriaPreferenceScreen(ModalScreen[bool]):
                 classes="launch-init-title",
             )
             yield Static(
-                "When you create or update a goal, dcode drafts acceptance "
-                "criteria before starting.",
+                f"When you create or update a goal, {PRODUCT_NAME} drafts "
+                "acceptance criteria before starting.",
                 classes="launch-init-copy",
             )
             options = OptionList(
@@ -322,9 +323,9 @@ class LaunchNameScreen(ModalScreen[str | None]):
             Widgets for the modal content.
         """
         with Vertical():
-            yield Static("Welcome to Deep Agents Code", classes="launch-init-title")
+            yield Static(f"Welcome to {PRODUCT_NAME}", classes="launch-init-title")
             yield Static(
-                Content.assemble("What should Deep Agents call you?"),
+                Content.assemble(f"What should {PRODUCT_NAME} call you?"),
                 classes="launch-init-copy",
             )
             yield Input(
