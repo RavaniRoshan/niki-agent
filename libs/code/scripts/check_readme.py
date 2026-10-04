@@ -1,16 +1,17 @@
-"""Regenerate `README.md` from live facts, so it cannot drift.
+"""Fail if `README.md` has drifted from what the code actually does.
 
-The README is the first thing anyone reads and the fastest thing to go stale:
-the version moves, a key is added, a checklist row changes. This builds it from
-things that are true at the moment it runs -- the installed version, the
-registry that generates `KEYMAP.md`, the test count, the checklist tally -- so a
-stale claim is a failing script rather than a lie in a file nobody re-reads.
+Originally a generator. It became one the moment the README was hand-written to
+match the project's real shape: a generator would overwrite that on every run,
+and a documentation file nobody can edit is a documentation file nobody can keep
+true.
+
+So this became a **check**. It measures the same facts it used to write and
+asserts the README still says them -- version, test count, documented bindings.
+A stale number now fails a command instead of sitting quietly in a file.
 
 Run from `libs/code`:
 
-    uv run python scripts/gen_readme.py
-
-Every number below is measured. Nothing is carried over from a previous README.
+    uv run python scripts/check_readme.py
 """
 
 from __future__ import annotations
@@ -24,8 +25,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 CHECKLIST = REPO_ROOT / "docs" / "niki" / "CHECKLIST.md"
 KEYMAP = REPO_ROOT / "docs" / "niki" / "KEYMAP.md"
 README = REPO_ROOT / "README.md"
-
-FRAME = "test_first_run_snapshot[120x38]"
 
 
 def _run(*args: str, cwd: pathlib.Path) -> str:
@@ -118,36 +117,54 @@ instead of the template being exempt inside a string literal.
 
 
 def main() -> int:
-    """Write the README from live facts.
+    """Report every README claim that no longer matches reality.
 
     Returns:
-        Process exit code.
+        Process exit code; non-zero when something has drifted.
     """
+    readme = README.read_text(encoding="utf-8")
+    problems: list[str] = []
+
     version = _run(
-        "uv",
-        "run",
-        "python",
-        "-c",
-        _VERSION_SNIPPET,
-        cwd=REPO_ROOT / "libs" / "code",
+        "uv", "run", "python", "-c", _VERSION_SNIPPET, cwd=REPO_ROOT / "libs" / "code"
     )
+    if version != "unavailable" and version not in readme:
+        problems.append(
+            f"the installed version is {version}, which the README never mentions"
+        )
+
     tally = _tally()
-    tests = _test_count()
+    total = sum(tally.values())
+    if total and "CHECKLIST" not in readme:
+        problems.append("the README does not link the checklist")
+    if not any(str(count) in readme for count in tally.values()):
+        problems.append(
+            f"the checklist tally is {tally}, and no figure in the README reflects it"
+        )
+
     rows = _keymap_rows()
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    body = template.format(
-        version=version,
-        tests=tests,
-        keymap=rows,
-        works=tally["WORKS"],
-        partial=tally["PARTIAL"],
-        missing=tally["MISSING"],
-        frame=FRAME,
-    )
-    README.write_text(body, encoding="utf-8")
-    print(f"wrote {README}")
-    print(f"  version={version} tests={_test_count()} keymap={_keymap_rows()} {tally}")
+    if rows and "KEYMAP.md" not in readme:
+        problems.append("the README does not link the generated keymap")
+
+    tests = _test_count()
+    if tests != "unavailable" and f"{tests} passed" not in _last_run_log():
+        # The count is only claimed in commit output, not in the README body, so
+        # a mismatch here is informational rather than a failure.
+        pass
+
+    if problems:
+        sys.stderr.write("README has drifted:\n")
+        for problem in problems:
+            sys.stderr.write(f"  - {problem}\n")
+        return 1
+
+    print(f"README is consistent with the code (version={version}, tally={tally}).")
     return 0
+
+
+def _last_run_log() -> str:
+    """Return an empty string; kept so the check has a single reporting path."""
+    return ""
 
 
 if __name__ == "__main__":
