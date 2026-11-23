@@ -177,3 +177,9 @@ help: ## Show this help message
 	@echo ""
 	@echo "Targets:"
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  %-28s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+run-niki-terminal-bench: ## Run Niki on Terminal-Bench
+	harbor run -d terminal-bench/terminal-bench-2 $(HARBOR_AGENT_ARGS) -e $(HARBOR_SANDBOX_ENV) -l $(MAX_TASKS) -o harbor-jobs/niki-terminal-bench/
+
+run-claude-code-terminal-bench: ## Run Claude Code on Terminal-Bench
+	harbor run -d terminal-bench/terminal-bench-2 --agent claude-code -e $(HARBOR_SANDBOX_ENV) -l $(MAX_TASKS) -o harbor-jobs/claude-code-terminal-bench/
