@@ -128,6 +128,13 @@ class ResumeRequest:
         object.__setattr__(self, "decision", validated)
 
 
+@dataclass(frozen=True, slots=True)
+class GoalProgressEvent:
+    session_id: str
+    status: str  # active | paused | complete | blocked
+    note: str
+
+
 def encode_run_event(event: RunEvent) -> str:
     if not isinstance(event, RunEvent):
         raise ValueError("event must be a RunEvent")
