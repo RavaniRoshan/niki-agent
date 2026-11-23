@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from deepagents_code.domain.events import (
     ResumeRequest,
@@ -12,6 +12,7 @@ from deepagents_code.domain.events import (
 )
 
 
+@runtime_checkable
 class AgentRuntime(Protocol):
     def stream_turn(self, request: TurnRequest) -> AsyncIterator[RunEvent]:
         ...
