@@ -359,6 +359,7 @@ class _ThreadREPL:
         max_stdout_chars: int,
         max_ptc_calls: int | None = 256,
         subagents_enabled: bool = True,
+        approval_policy: Any = None,
     ) -> None:
         self._worker = worker
         self._runtime = runtime
@@ -371,6 +372,7 @@ class _ThreadREPL:
         # Static budget config; mutable counters live in `_ptc_state`.
         self._max_ptc_calls = max_ptc_calls
         self._subagents_enabled = subagents_enabled
+        self._approval_policy = approval_policy
         self._console = _ConsoleBuffer(max_stdout_chars)
         self._ctx: Context | None = None
         # PTC state. `_registered_tools` tracks which camel-case names
@@ -681,6 +683,22 @@ class _ThreadREPL:
                 # it, fail loud.
                 msg = f"tool '{camel}' not registered"
                 raise RuntimeError(msg)
+            payload = _normalize_tool_input(raw_input)
+            if self._approval_policy is not None:
+                try:
+                    from langchain_quickjs._ptc import PTCToolGate
+
+                    decision = PTCToolGate.authorize(tool, payload, self._approval_policy)
+                except Exception:
+                    decision = "allow"
+                if decision == "deny":
+                    msg = f"tool '{tool.name}' denied by approval policy"
+                    raise RuntimeError(msg)
+                if decision == "requires_direct_approval":
+                    return (
+                        f"Tool '{tool.name}' requires direct approval; "
+                        "call it directly through the normal tool path."
+                    )
             if self._ptc_state is None:
                 msg = "PTC bridge called outside active eval"
                 raise ConcurrentEvalError(msg)
@@ -689,7 +707,6 @@ class _ThreadREPL:
                 max_ptc_calls=self._max_ptc_calls,
             )
             self._ptc_state = state
-            payload = _normalize_tool_input(raw_input)
             call_id = _synth_tool_call_id(tool.name)
             # Inject runtime/state/store ourselves. The bridge uses `arun`
             # rather than the tool-call envelope path so the result can be

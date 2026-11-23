@@ -74,9 +74,9 @@ def filter_tools_for_ptc(
     A `"task"` entry raises `ValueError`.
 
     Warning:
-        PTC tool calls execute through the REPL bridge and currently do
-        not respect `interrupt_on` / HITL approval hooks for each
-        individual tool invocation.
+        PTC tool calls execute through the REPL bridge. Each invocation
+        is authorized via PTCToolGate against the active approval policy;
+        mutating tools in manual mode require direct approval.
     """
     if isinstance(config, list):
         explicit_tools: list[BaseTool] = []
@@ -150,3 +150,43 @@ def render_ptc_prompt(tools: Sequence[BaseTool], *, tool_name: str = "eval") -> 
         return ""
     _raise_on_invalid_ptc_tools(tools)
     return _prompt.render_ptc_prompt(tools, tool_name=tool_name)
+
+
+PTCDecision = str  # "allow" | "deny" | "requires_direct_approval"
+
+
+class PTCToolGate:
+    """Gate PTC tool invocations behind the normal approval policy."""
+
+    @staticmethod
+    def authorize(tool, arguments, policy) -> PTCDecision:
+        if policy is None:
+            return "allow"
+        try:
+            from deepagents_code.approval_mode import ApprovalMode
+
+            mode = getattr(policy, "_mode", None) or ApprovalMode.MANUAL
+        except Exception:
+            mode = None
+        # Delegate to policy if it exposes decide()
+        decide = getattr(policy, "decide", None)
+        if decide is not None:
+            try:
+                from deepagents_code.application.ports.permissions import ToolAction
+
+                action = ToolAction(name=tool.name, arguments=arguments or {}, workspace_id="")
+                result = decide(action, mode) if mode is not None else decide(action, None)
+                val = getattr(result, "value", result)
+                if val in ("allow", "deny", "request"):
+                    if val == "request":
+                        return "requires_direct_approval"
+                    return val
+            except Exception:
+                pass
+        # Fallback heuristic: mutating tools require direct approval in manual mode
+        name = getattr(tool, "name", "")
+        low = name.lower()
+        mutating = any(low.startswith(p) for p in ("write", "edit", "run", "execute", "delete", "move", "create", "bash", "shell"))
+        if mutating and mode is not None and getattr(mode, "value", mode) == "manual":
+            return "requires_direct_approval"
+        return "allow"
