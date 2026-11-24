@@ -52,6 +52,15 @@ HARBOR_TERMINAL_BENCH_JOBS_DIR ?= harbor-jobs/terminal-bench
 HARBOR_TERMINAL_BENCH_DATASET ?= terminal-bench/terminal-bench-2
 HARBOR_LANGSMITH_EXPERIMENT ?= deepagents-harbor-local
 
+# Matched Terminal-Bench 4.1 Niki vs Claude Code comparison settings.
+NIKI_BENCH_MODEL ?= anthropic:claude-opus-5-5
+NIKI_BENCH_REASONING_EFFORT ?= max
+NIKI_BENCH_MODEL_HARBOR = $(subst :,/,$(NIKI_BENCH_MODEL))
+HARBOR_SANDBOX_ENV ?= langsmith
+HARBOR_AGENT_TIMEOUT_MULTIPLIER ?= 1.0
+HARBOR_RETRIES ?= 0
+HARBOR_CONFIG ?= terminal-bench-4.1.yaml
+
 stage-harbor-local-deps: ## Stage checked-out packages for Harbor LangGraph sandboxes
 	@mkdir -p $(HARBOR_LOCAL_DEPS_DIR)/partners
 	rsync -a --delete --exclude '.venv' --exclude '__pycache__' --exclude '.pytest_cache' --exclude 'build' --exclude 'dist' --exclude '*.egg-info' ../deepagents/ $(HARBOR_LOCAL_DEPS_DIR)/deepagents/
@@ -178,8 +187,39 @@ help: ## Show this help message
 	@echo "Targets:"
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  %-28s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-run-niki-terminal-bench: ## Run Niki on Terminal-Bench
-	harbor run -d terminal-bench/terminal-bench-2 $(HARBOR_AGENT_ARGS) -e $(HARBOR_SANDBOX_ENV) -l $(MAX_TASKS) -o harbor-jobs/niki-terminal-bench/
+run-niki-terminal-bench: ## Run Niki on Terminal-Bench 4.1
+	@mkdir -p harbor-jobs/niki-terminal-bench
+	uv run harbor run \
+	  --config $(HARBOR_CONFIG) \
+	  --dataset terminal-bench/terminal-bench@4.1.0 \
+	  $(HARBOR_AGENT_ARGS) \
+	  --model $(NIKI_BENCH_MODEL_HARBOR) \
+	  --agent-kwarg model_kwargs='{"reasoning_effort":"$(NIKI_BENCH_REASONING_EFFORT)"}' \
+	  $(HARBOR_AGENT_ENV_ARGS) \
+	  --env $(HARBOR_SANDBOX_ENV) \
+	  --plugin langsmith \
+	  --plugin-kwarg dataset_name=terminal-bench/terminal-bench@4.1.0 \
+	  --plugin-kwarg experiment_name=niki-terminal-bench \
+	  --agent-timeout-multiplier $(HARBOR_AGENT_TIMEOUT_MULTIPLIER) \
+	  --max-retries $(HARBOR_RETRIES) \
+	  --jobs-dir harbor-jobs/niki-terminal-bench/ \
+	  $(if $(MAX_TASKS),--n-tasks $(MAX_TASKS),)
 
-run-claude-code-terminal-bench: ## Run Claude Code on Terminal-Bench
-	harbor run -d terminal-bench/terminal-bench-2 --agent claude-code -e $(HARBOR_SANDBOX_ENV) -l $(MAX_TASKS) -o harbor-jobs/claude-code-terminal-bench/
+run-claude-code-terminal-bench: ## Run Claude Code on Terminal-Bench 4.1
+	@mkdir -p harbor-jobs/claude-code-terminal-bench
+	uv run harbor run \
+	  --config $(HARBOR_CONFIG) \
+	  --dataset terminal-bench/terminal-bench@4.1.0 \
+	  --agent claude-code \
+	  --model $(NIKI_BENCH_MODEL_HARBOR) \
+	  --agent-kwarg reasoning_effort=$(NIKI_BENCH_REASONING_EFFORT) \
+	  --agent-kwarg permission_mode=bypassPermissions \
+	  $(HARBOR_AGENT_ENV_ARGS) \
+	  --env $(HARBOR_SANDBOX_ENV) \
+	  --plugin langsmith \
+	  --plugin-kwarg dataset_name=terminal-bench/terminal-bench@4.1.0 \
+	  --plugin-kwarg experiment_name=claude-code-terminal-bench \
+	  --agent-timeout-multiplier $(HARBOR_AGENT_TIMEOUT_MULTIPLIER) \
+	  --max-retries $(HARBOR_RETRIES) \
+	  --jobs-dir harbor-jobs/claude-code-terminal-bench/ \
+	  $(if $(MAX_TASKS),--n-tasks $(MAX_TASKS),)
