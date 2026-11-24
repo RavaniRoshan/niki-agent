@@ -1,56 +1,150 @@
-"""Tests for integration port boundaries."""
+"""Tests for runtime and integration boundaries."""
 
 from __future__ import annotations
 
+import subprocess
+import sys
+from contextlib import AsyncExitStack
+from typing import TYPE_CHECKING
+
 import pytest
 
-from deepagents_code.application.ports.models import ModelPort, ModelResult
-from deepagents_code.application.ports.tools import ToolRegistryPort, ToolResult
+from deepagents_code.adapters.runtime.langgraph_remote import LangGraphRemoteRuntime
+from deepagents_code.application.run_turn import RunTurnCoordinator
+from deepagents_code.domain.events import RunEvent, RunEventKind, TurnRequest
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Mapping, Sequence
 
 
-def test_ports_importable():
-    # ensure ports are protocols
-    assert ModelPort is not None
-    assert ToolRegistryPort is not None
+class _FailingProviderStream:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def astream(
+        self,
+        _graph_input: object,
+        *,
+        stream_mode: Sequence[str],  # noqa: ARG002
+        subgraphs: bool,  # noqa: ARG002
+        config: Mapping[str, object],  # noqa: ARG002
+        context: Mapping[str, object] | None = None,  # noqa: ARG002
+    ) -> AsyncIterator[object]:
+        raise self.error
+        yield None  # Make this an async generator; execution never reaches this.
+
+
+async def _failure_event(error: Exception) -> list[RunEvent]:
+    runtime = LangGraphRemoteRuntime(_FailingProviderStream(error))
+    request = TurnRequest("session-1", "turn-1", "implement change", "/workspace")
+    return [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
 
 
 @pytest.mark.asyncio
-async def test_provider_port_maps_provider_errors_to_runtime_events():
-    class FakeModelPort:
-        async def generate(self, messages, *, model, timeout):
-            raise TimeoutError("provider timeout")
+async def test_provider_error_maps_to_terminal_failure() -> None:
+    error = OSError("provider connection lost")
+    events = await _failure_event(error)
 
-    port = FakeModelPort()
-    with pytest.raises(TimeoutError):
-        await port.generate([], model="m", timeout=1.0)
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.turn_failed,
+    ]
+    assert events[-1].payload == {"error": str(error), "recoverable": False}
+
+
+@pytest.mark.asyncio
+async def test_provider_timeout_emits_recoverable_failure() -> None:
+    error = TimeoutError("provider request timed out")
+    events = await _failure_event(error)
+
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.turn_failed,
+    ]
+    assert events[-1].payload == {"error": str(error), "recoverable": True}
 
 
 @pytest.mark.asyncio
 async def test_mcp_disconnect_is_visible_and_cleanup_is_idempotent():
-    # placeholder for MCP lifecycle; ensure no crash on repeated cleanup
-    calls = {"n": 0}
+    from deepagents_code.mcp_tools import (
+        MCPSessionManager,
+        _classify_connect_failure,
+    )
 
-    async def cleanup():
-        calls["n"] += 1
+    class Client:
+        close_count = 0
 
-    await cleanup()
-    await cleanup()
-    assert calls["n"] == 2
+        async def close(self) -> None:
+            self.close_count += 1
 
+    backend_close_count = 0
 
-def test_untrusted_skill_requires_workspace_trust():
-    # placeholder: trust state lives in skills module
-    import deepagents_code.skills  # noqa: F401
-    assert True
+    def close_backend() -> None:
+        nonlocal backend_close_count
+        backend_close_count += 1
+
+    status, message = _classify_connect_failure(
+        "workspace-tools", ConnectionError("MCP server disconnected"), redact=False
+    )
+    assert status == "error"
+    assert "MCP server disconnected" in message
+
+    client = Client()
+    backend_stack = AsyncExitStack()
+    backend_stack.callback(close_backend)
+    manager = MCPSessionManager()
+    manager.adopt(client, backend_stack)
+
+    await manager.cleanup()
+    await manager.cleanup()
+
+    assert client.close_count == 1
+    assert backend_close_count == 1
+    assert manager.client is None
 
 
 def test_domain_application_do_not_import_integration_adapters():
-    import sys
+    script = """
+import importlib
+import sys
 
-    before = set(sys.modules)
-    import deepagents_code.domain  # noqa: F401
-    import deepagents_code.application  # noqa: F401
-    new = set(sys.modules) - before
-    forbidden_roots = {"textual", "rich", "deepagents", "langchain", "langgraph"}
-    heavy = {m.split(".")[0] for m in new if m.split(".")[0] in forbidden_roots}
-    assert not heavy
+for module in ("deepagents_code.domain", "deepagents_code.application"):
+    importlib.import_module(module)
+
+forbidden = {"textual", "rich", "deepagents", "langchain", "langgraph"}
+heavy = sorted(
+    {name.split(".")[0] for name in sys.modules if name.split(".")[0] in forbidden}
+)
+if heavy:
+    raise SystemExit(f"inner layers imported integration dependencies: {heavy}")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_integration_adapters_do_not_import_textual():
+    script = """
+import importlib
+import sys
+
+for module in (
+    "deepagents_code.mcp_tools",
+    "deepagents_code.plugins.adapters.hooks",
+    "deepagents_code.plugins.adapters.skills",
+):
+    importlib.import_module(module)
+
+textual = sorted(
+    name
+    for name in sys.modules
+    if name == "textual" or name.startswith("textual.")
+)
+if textual:
+    raise SystemExit(f"integration adapters imported Textual: {textual}")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
