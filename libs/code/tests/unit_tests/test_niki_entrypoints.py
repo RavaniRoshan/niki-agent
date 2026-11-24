@@ -40,6 +40,7 @@ class FakeAgent:
         config: Mapping[str, object],
         stream_mode: Sequence[str],
         subgraphs: bool,
+        **_kwargs: object,
     ) -> AsyncIterator[object]:
         self.calls.append((graph_input, dict(config)))
         assert stream_mode == ["messages", "updates", "custom"]
@@ -109,6 +110,137 @@ async def test_acp_runtime_maps_streamed_text_to_run_event():
 
 
 @pytest.mark.asyncio
+async def test_acp_runtime_forwards_native_input_and_chunks():
+    chunks = [
+        ((), "messages", (AIMessageChunk(content="hello"), {})),
+        (
+            (),
+            "updates",
+            {"tools": {"todos": [{"content": "inspect", "status": "pending"}]}},
+        ),
+    ]
+    native_input = {
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "inspect"},
+                    {"type": "image", "base64": "AA=="},
+                ],
+            }
+        ]
+    }
+    context = object()
+
+    class ConfiguredAgent:
+        def __init__(self) -> None:
+            self.calls: list[
+                tuple[object, dict[str, object], list[str], bool, dict[str, object]]
+            ] = []
+
+        async def astream(
+            self,
+            graph_input: object,
+            *,
+            config: Mapping[str, object],
+            stream_mode: Sequence[str],
+            subgraphs: bool,
+            **kwargs: object,
+        ) -> AsyncIterator[object]:
+            self.calls.append(
+                (graph_input, dict(config), list(stream_mode), subgraphs, kwargs)
+            )
+            for chunk in chunks:
+                yield chunk
+
+    agent = ConfiguredAgent()
+    received: list[object] = []
+    config = {
+        "configurable": {"thread_id": "acp-session"},
+        "metadata": {"cwd": "/workspace"},
+    }
+    runtime = ACPAgentRuntime(
+        agent,
+        on_chunk=received.append,
+        stream_input=native_input,
+        config=config,
+        stream_mode=("messages", "updates"),
+        stream_kwargs={"context": context},
+    )
+    request = TurnRequest("acp-session", "turn-1", "inspect", "/workspace")
+
+    events = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+    assert agent.calls == [
+        (native_input, config, ["messages", "updates"], True, {"context": context})
+    ]
+    assert received == chunks
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.text_delta,
+        RunEventKind.turn_finished,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_acp_runtime_resumes_with_server_config_and_sequence():
+    interrupt = {"__interrupt__": [{"id": "approval-1"}]}
+
+    class ConfiguredAgent:
+        def __init__(self) -> None:
+            self.calls: list[tuple[object, dict[str, object]]] = []
+
+        async def astream(
+            self,
+            graph_input: object,
+            *,
+            config: Mapping[str, object],
+            stream_mode: Sequence[str],
+            subgraphs: bool,
+            **_kwargs: object,
+        ) -> AsyncIterator[object]:
+            assert list(stream_mode) == ["messages", "updates"]
+            assert subgraphs is True
+            self.calls.append((graph_input, dict(config)))
+            yield ((), "updates", interrupt) if len(self.calls) == 1 else None
+
+    agent = ConfiguredAgent()
+    config = {
+        "configurable": {"thread_id": "acp-session"},
+        "metadata": {"cwd": "/workspace", "acp_mode": "auto"},
+    }
+    runtime = ACPAgentRuntime(
+        agent,
+        stream_input={"messages": [{"role": "user", "content": "review"}]},
+        config=config,
+        stream_mode=("messages", "updates"),
+    )
+    coordinator = RunTurnCoordinator(runtime)
+    request = TurnRequest("acp-session", "turn-1", "review", "/workspace")
+    first = [event async for event in coordinator.stream_turn(request)]
+    resume = ResumeRequest(
+        "acp-session",
+        "turn-1",
+        {"decisions": [{"type": "approve"}]},
+        first[-1].sequence,
+        TurnStatus.waiting_for_approval,
+    )
+
+    resumed = [event async for event in coordinator.resume_turn(resume)]
+
+    assert [event.sequence for event in resumed] == [3, 4, 5]
+    assert [event.kind for event in resumed] == [
+        RunEventKind.session_resumed,
+        RunEventKind.turn_started,
+        RunEventKind.turn_finished,
+    ]
+    graph_input, graph_config = agent.calls[1]
+    assert isinstance(graph_input, Command)
+    assert graph_input.resume == resume.decision
+    assert graph_config == config
+
+
+@pytest.mark.asyncio
 async def test_interrupted_turn_resumes_without_repeating_completed_tool():
     agent = FakeAgent([[], []])
     rt = ACPAgentRuntime(agent)
@@ -132,7 +264,7 @@ async def test_interrupted_turn_resumes_without_repeating_completed_tool():
 
 
 @pytest.mark.asyncio
-async def test_cancel_turn_cancels_owned_graph_stream():
+async def test_acp_runtime_cancel_stops_owned_graph_stream():
     started = asyncio.Event()
 
     class BlockingAgent:
@@ -143,6 +275,7 @@ async def test_cancel_turn_cancels_owned_graph_stream():
             config: Mapping[str, object],
             stream_mode: Sequence[str],
             subgraphs: bool,
+            **_kwargs: object,
         ) -> AsyncIterator[object]:
             assert graph_input == {"messages": [{"role": "user", "content": "hi"}]}
             assert config == {"configurable": {"thread_id": "s1"}}
@@ -177,6 +310,7 @@ async def test_provider_timeout_emits_recoverable_failure():
             config: Mapping[str, object],
             stream_mode: Sequence[str],
             subgraphs: bool,
+            **_kwargs: object,
         ) -> AsyncIterator[object]:
             assert graph_input == {"messages": [{"role": "user", "content": "hi"}]}
             assert config == {"configurable": {"thread_id": "s1"}}

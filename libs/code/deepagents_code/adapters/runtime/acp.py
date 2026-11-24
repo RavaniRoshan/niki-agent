@@ -24,8 +24,8 @@ class _PregelGraph(Protocol):
         config: Mapping[str, object],
         stream_mode: Sequence[str],
         subgraphs: bool,
-    ) -> AsyncIterator[object]:
-        ...
+        **kwargs: object,
+    ) -> AsyncIterator[object]: ...
 
 
 _STREAM_CHUNK_LENGTH = 3
@@ -35,9 +35,25 @@ _MESSAGE_CHUNK_LENGTH = 2
 class ACPAgentRuntime:
     """Run and resume a graph using the thread checkpoint as its state."""
 
-    def __init__(self, agent: _PregelGraph) -> None:
-        """Bind the compiled graph whose checkpoints own turn state."""
+    def __init__(
+        self,
+        agent: _PregelGraph,
+        *,
+        on_chunk: Callable[[object], Awaitable[None] | None] | None = None,
+        stream_input: object | None = None,
+        config: Mapping[str, object] | None = None,
+        stream_mode: Sequence[str] = ("messages", "updates", "custom"),
+        subgraphs: bool = True,
+        stream_kwargs: Mapping[str, object] | None = None,
+    ) -> None:
+        """Bind a checkpointed graph and optional native stream configuration."""
         self.agent = agent
+        self.on_chunk = on_chunk
+        self.stream_input = stream_input
+        self.config = config
+        self.stream_mode = tuple(stream_mode)
+        self.subgraphs = subgraphs
+        self.stream_kwargs = dict(stream_kwargs or {})
         self._active_tasks: dict[tuple[str, str], asyncio.Task[object]] = {}
         self._cancel_requested: set[tuple[str, str]] = set()
 
@@ -51,10 +67,15 @@ class ACPAgentRuntime:
         self._record_active_task(task_key)
         yield _event(request.session_id, request.turn_id, 1, RunEventKind.turn_started)
         try:
+            graph_input = self.stream_input
+            if graph_input is None:
+                graph_input = {
+                    "messages": [{"role": "user", "content": request.prompt}]
+                }
             async for event in self._stream_graph(
                 request.session_id,
                 request.turn_id,
-                {"messages": [{"role": "user", "content": request.prompt}]},
+                graph_input,
                 first_sequence=2,
                 task_key=task_key,
             ):
@@ -132,10 +153,15 @@ class ACPAgentRuntime:
         try:
             async for chunk in self.agent.astream(
                 graph_input,
-                config={"configurable": {"thread_id": session_id}},
-                stream_mode=["messages", "updates", "custom"],
-                subgraphs=True,
+                config=self._graph_config(session_id),
+                stream_mode=list(self.stream_mode),
+                subgraphs=self.subgraphs,
+                **self.stream_kwargs,
             ):
+                if self.on_chunk is not None:
+                    callback_result = self.on_chunk(chunk)
+                    if callback_result is not None:
+                        await callback_result
                 if not isinstance(chunk, tuple) or len(chunk) != _STREAM_CHUNK_LENGTH:
                     continue
                 namespace, mode, data = chunk
@@ -181,6 +207,14 @@ class ACPAgentRuntime:
             )
         else:
             yield _event(session_id, turn_id, sequence, RunEventKind.turn_finished)
+
+    def _graph_config(self, session_id: str) -> dict[str, object]:
+        config = dict(self.config or {})
+        configurable = config.get("configurable", {})
+        values = dict(cast("Mapping[str, object]", configurable))
+        values["thread_id"] = session_id
+        config["configurable"] = values
+        return config
 
 
 def _message_text(data: object) -> str:
