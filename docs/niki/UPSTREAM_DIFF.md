@@ -17,6 +17,10 @@ Records edits to upstream-owned files made while evolving Niki.
   returns native chunks to the existing Textual processing loop while the
   coordinator validates lifecycle and resume state. Other entry points retain
   direct streaming.
-- Production ACP server routing remains separate work. The current ACP server
-  continues to own ACP protocol rendering and session behavior; the ACP runtime
-  adapter is not yet wired into that server.
+- Niki ACP prompt graphs now pass through `RunTurnCoordinator` inside the
+  existing `_AutoGraph` adapter. Native LangGraph chunks still feed the current
+  ACP prompt handler, which retains ownership of session IDs, checkpoints,
+  permission requests, replay, and protocol rendering. The same runtime turn ID
+  and validated event sequence continue through ACP's internal approval resume.
+- `dcode` and `deepagents-code` retain the direct ACP graph stream path because
+  coordinator routing is enabled only inside `niki_runtime_scope()`.
