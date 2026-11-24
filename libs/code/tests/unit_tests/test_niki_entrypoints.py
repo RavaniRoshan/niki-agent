@@ -294,6 +294,7 @@ async def test_acp_runtime_cancel_stops_owned_graph_stream():
 
     events = await task
     assert events[-1].kind == RunEventKind.turn_cancelled
+    assert not runtime._active_tasks
 
 
 async def _collect_events(runtime: ACPAgentRuntime, req: TurnRequest) -> list[RunEvent]:

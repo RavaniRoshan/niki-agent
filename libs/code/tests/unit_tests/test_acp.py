@@ -104,7 +104,7 @@ async def test_auto_graph_bypasses_coordinator_outside_niki_scope(monkeypatch) -
 async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) -> None:
     from deepagents_code import acp as acp_module
     from deepagents_code.acp import AgentServerACP, _RuntimeProgress
-    from deepagents_code.domain.events import RunEvent, RunEventKind
+    from deepagents_code.domain.events import RunEvent, RunEventKind, TurnStatus
     from deepagents_code.niki.runtime_mode import niki_runtime_scope
 
     class Graph:
@@ -119,6 +119,15 @@ async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) ->
             config = cast("dict[str, object]", kwargs["config"])
             self.calls.append((value, config, kwargs["context"]))
             yield ((), "messages", (AIMessageChunk(content="ready"), {}))
+            yield (
+                (),
+                "updates",
+                {
+                    "tools": {
+                        "todos": [{"content": "inspect file", "status": "pending"}]
+                    }
+                },
+            )
             tool_call = AIMessageChunk(
                 content="",
                 tool_call_chunks=[
@@ -150,12 +159,12 @@ async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) ->
     client = Client()
     server.on_connect(cast("Any", client))
     session = await server.new_session(cwd="/workspace", mcp_servers=[])
-    progress_events: list[tuple[RunEventKind, int]] = []
+    progress_events: list[tuple[RunEventKind, int, TurnStatus]] = []
     record_event = acp_module._record_runtime_event
 
     def record(progress: _RuntimeProgress, event: RunEvent) -> None:
         record_event(progress, event)
-        progress_events.append((event.kind, event.sequence))
+        progress_events.append((event.kind, event.sequence, progress.status))
 
     monkeypatch.setattr(acp_module, "_record_runtime_event", record)
     with niki_runtime_scope():
@@ -164,17 +173,19 @@ async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) ->
         )
 
     assert response.stop_reason == "end_turn"
-    assert [kind for kind, _sequence in progress_events] == [
+    assert [kind for kind, _sequence, _status in progress_events] == [
         RunEventKind.turn_started,
         RunEventKind.text_delta,
         RunEventKind.turn_finished,
     ]
-    assert [sequence for _kind, sequence in progress_events] == [1, 2, 3]
+    assert [sequence for _kind, sequence, _status in progress_events] == [1, 2, 3]
+    assert progress_events[-1][2] == TurnStatus.completed
     configurable = cast("dict[str, object]", graph.calls[0][1]["configurable"])
     assert configurable["thread_id"] == session.session_id
     update_kinds = [getattr(event, "session_update", None) for event in client.events]
     assert "agent_message_chunk" in update_kinds
     assert "tool_call" in update_kinds
+    assert "plan" in update_kinds
 
 
 async def test_niki_acp_approval_resume_keeps_runtime_turn_identity(
@@ -213,10 +224,14 @@ async def test_niki_acp_approval_resume_keeps_runtime_turn_identity(
             return SimpleNamespace(next=(), interrupts=())
 
     class Client:
+        def __init__(self) -> None:
+            self.permission_requests = 0
+
         async def session_update(self, **_kwargs: object) -> None:
             return None
 
         async def request_permission(self, **_kwargs: object) -> object:
+            self.permission_requests += 1
             return SimpleNamespace(
                 outcome=SimpleNamespace(outcome="selected", option_id="approve")
             )
@@ -226,14 +241,17 @@ async def test_niki_acp_approval_resume_keeps_runtime_turn_identity(
         lambda _context: cast("Pregel[Any, Any, Any, Any]", graph),
         store=InMemoryStore(),
     )
-    server.on_connect(cast("Any", Client()))
+    client = Client()
+    server.on_connect(cast("Any", client))
     session = await server.new_session(cwd="/workspace", mcp_servers=[])
     progress_events: list[tuple[RunEventKind, int]] = []
+    progress_objects: set[int] = set()
     record_event = acp_module._record_runtime_event
 
     def record(progress: _RuntimeProgress, event: RunEvent) -> None:
         record_event(progress, event)
         progress_events.append((event.kind, event.sequence))
+        progress_objects.add(id(progress))
 
     monkeypatch.setattr(acp_module, "_record_runtime_event", record)
     with niki_runtime_scope():
@@ -253,6 +271,8 @@ async def test_niki_acp_approval_resume_keeps_runtime_turn_identity(
     assert [sequence for _kind, sequence in progress_events] == [1, 2, 3, 4, 5, 6]
     assert isinstance(graph.calls[1][0], Command)
     assert graph.calls[1][0].resume == {"decisions": [{"type": "approve"}]}
+    assert client.permission_requests == 1
+    assert len(progress_objects) == 1
     first_context = cast("CLIContextSchema", graph.calls[0][2])
     resumed_context = cast("CLIContextSchema", graph.calls[1][2])
     assert resumed_context.turn_id == first_context.turn_id
