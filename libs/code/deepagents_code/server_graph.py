@@ -61,6 +61,7 @@ if TYPE_CHECKING:
         [Mapping[str, str] | None], AbstractContextManager[None]
     ]
 
+    from deepagents_code.application.ports.workspace import WorkspacePort
     from deepagents_code.config import CredentialsSnapshot
     from deepagents_code.extensions.registry import ExtensionRegistry
     from deepagents_code.mcp_tools import MCPServerInfo
@@ -328,6 +329,30 @@ class ServerRuntime(NamedTuple):
 
     mcp_server_info: list[MCPServerInfo] | None = None
     """Workspace-scoped MCP metadata for the interactive client."""
+
+    workspace: WorkspacePort | None = None
+    """Workspace port bound to the identity selected for this runtime."""
+
+
+def _bind_runtime_workspace(
+    runtime: ServerRuntime, binding: WorkspaceBinding
+) -> ServerRuntime:
+    """Return runtime resources bound to the already-validated workspace."""
+    from deepagents_code.adapters.workspace.deepagents_backend import (
+        DeepAgentsWorkspaceAdapter,
+    )
+
+    if isinstance(runtime.workspace, DeepAgentsWorkspaceAdapter):
+        workspace_root = (
+            str(runtime.workspace.workspace_root)
+            if binding.workspace_config().get("sandbox_type")
+            else binding.cwd
+        )
+        runtime.workspace.bind_workspace(
+            workspace_id=binding.workspace_id,
+            workspace_root=workspace_root,
+        )
+    return runtime
 
 
 async def _make_graphs(
@@ -600,11 +625,34 @@ async def _make_graphs_in_environment(
                 "/offload has no server implementation."
             )
             raise RuntimeError(msg)
+        from deepagents_code.adapters.workspace.deepagents_backend import (
+            DeepAgentsWorkspaceAdapter,
+        )
+
+        if config.sandbox_type:
+            from deepagents_code.integrations.sandbox_factory import (
+                get_default_working_dir,
+            )
+
+            workspace_root = Path(get_default_working_dir(config.sandbox_type))
+        else:
+            workspace_root = (
+                Path(config.cwd)
+                if config.cwd is not None
+                else project_context.user_cwd
+                if project_context is not None
+                else Path.cwd()
+            )
         return ServerRuntime(
             agent=agent,
             backend=composite_backend,
             offload=offload,
             mcp_server_info=mcp_server_info,
+            workspace=DeepAgentsWorkspaceAdapter(
+                composite_backend,
+                workspace_id="process-default",
+                workspace_root=str(workspace_root),
+            ),
         )
 
     from deepagents_code._env_vars import EXPERIMENTAL, is_env_truthy
@@ -1046,6 +1094,7 @@ async def _workspace_runtime(binding: WorkspaceBinding) -> ServerRuntime:
                 _sandbox_backend if current_config.sandbox_type else None
             ),
         )
+        runtime = _bind_runtime_workspace(runtime, binding)
         _remember_workspace_runtime(
             binding, runtime, current_config_fingerprint=runtime_fp
         )
@@ -1082,7 +1131,7 @@ async def get_server_runtime() -> ServerRuntime:
         if cached is not None:
             return cached
         _claim_sandbox_workspace(config.sandbox_type, binding)
-        runtime = await _get_runtime()
+        runtime = _bind_runtime_workspace(await _get_runtime(), binding)
         _remember_workspace_runtime(binding, runtime)
         return runtime
 

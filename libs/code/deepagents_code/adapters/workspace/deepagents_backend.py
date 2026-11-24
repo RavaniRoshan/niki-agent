@@ -1,123 +1,216 @@
-"""Workspace adapter wrapping current backend facilities."""
+"""Workspace adapters for in-memory use and Deep Agents backends."""
 
 from __future__ import annotations
 
-import os
-from typing import Any, Sequence
+import math
+import shlex
+from collections.abc import Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
-from deepagents_code.application.ports.permissions import (
-    ApprovalDecision,
-    ToolAction,
-)
-from deepagents_code.application.ports.workspace import CommandResult, WorkspacePort
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.domain.events import JsonObject
+if TYPE_CHECKING:
+    from deepagents.backends.protocol import BackendProtocol, SandboxBackendProtocol
 
-_MUTATING_PREFIXES = ("write", "edit", "run", "execute", "delete", "move", "create", "patch")
-_MUTATING_NAMES = {"write_file", "edit_file", "run_command", "bash", "shell"}
+from deepagents_code.application.ports.workspace import CommandResult
 
 
-def _is_mutating(name: str) -> bool:
-    low = name.lower()
-    if low in _MUTATING_NAMES:
-        return True
-    return any(low.startswith(p) for p in _MUTATING_PREFIXES)
+def _resolve_workspace_path(root: Path, path: str) -> Path:
+    """Resolve a path while keeping traversal and symlink escapes inside `root`.
 
+    Args:
+        root: Server-selected root directory for the workspace.
+        path: Absolute path or a path relative to `root`.
 
-class DefaultApprovalPolicy:
-    def decide(self, action: ToolAction, mode: ApprovalMode) -> ApprovalDecision:
-        if mode in (ApprovalMode.AUTO, ApprovalMode.YOLO):
-            return ApprovalDecision.allow
-        if mode == ApprovalMode.MANUAL:
-            if _is_mutating(action.name):
-                return ApprovalDecision.request
-            return ApprovalDecision.allow
-        return ApprovalDecision.deny
+    Returns:
+        The resolved path, guaranteed to be inside `root`.
+
+    Raises:
+        ValueError: If the path is empty, invalid, or escapes the workspace.
+    """
+    if not isinstance(path, str) or not path:
+        msg = "path must be non-empty str"
+        raise ValueError(msg)
+    candidate = Path(path)
+    full = candidate if candidate.is_absolute() else root / candidate
+    try:
+        resolved_root = root.resolve(strict=False)
+        resolved_full = full.resolve(strict=False)
+    except (OSError, RuntimeError) as exc:
+        msg = "path cannot be resolved within the workspace"
+        raise ValueError(msg) from exc
+    if resolved_full != resolved_root and resolved_root not in resolved_full.parents:
+        msg = "path escapes workspace"
+        raise ValueError(msg)
+    return resolved_full
 
 
 class InMemoryWorkspaceAdapter:
-    """In-memory WorkspacePort for tests and lightweight use."""
+    """In-memory WorkspacePort used by tests and lightweight callers."""
 
     def __init__(self, root: str = "/workspace") -> None:
-        self.root = os.path.normpath(root)
+        """Create an isolated in-memory workspace.
+
+        Args:
+            root: Path boundary used for every operation.
+        """
+        self.root = Path(root).resolve(strict=False)
         self._files: dict[str, str] = {}
 
     def _contain(self, path: str) -> str:
-        if not isinstance(path, str) or not path:
-            raise ValueError("path must be non-empty str")
-        # Resolve symlinks/realpath if the path exists on disk; otherwise normpath.
-        candidate = path
-        if os.path.isabs(candidate):
-            full = os.path.normpath(candidate)
-        else:
-            full = os.path.normpath(os.path.join(self.root, candidate))
-        # symlink escape check against real filesystem
-        try:
-            real = os.path.realpath(full)
-        except OSError:
-            real = full
-        root_real = os.path.realpath(self.root) if os.path.exists(self.root) else self.root
-        if real != root_real and not real.startswith(root_real + os.sep):
-            raise ValueError("path escapes workspace")
-        if full != self.root and not full.startswith(self.root + os.sep):
-            raise ValueError("path escapes workspace")
-        return full
+        return str(_resolve_workspace_path(self.root, path))
 
     async def read_text(self, path: str) -> str:
+        """Read a text file from this workspace.
+
+        Returns:
+            The stored text content.
+
+        Raises:
+            FileNotFoundError: If the file has not been written.
+        """
         full = self._contain(path)
         if full not in self._files:
             raise FileNotFoundError(path)
         return self._files[full]
 
     async def write_text(self, path: str, content: str) -> None:
-        full = self._contain(path)
-        self._files[full] = content
+        """Write a text file after enforcing the workspace path boundary."""
+        self._files[self._contain(path)] = content
 
     async def run_command(
-        self, argv: Sequence[str], *, cwd: str, timeout: float
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: str,
+        timeout: float,  # noqa: ASYNC109
     ) -> CommandResult:
-        self._contain(cwd) if cwd else None
-        return CommandResult(returncode=0, stdout="", stderr="")
+        """Validate a command directory without launching a process.
+
+        Returns:
+            A successful empty result for this non-executing test adapter.
+        """
+        del argv, timeout
+        _resolve_workspace_path(self.root, cwd)
+        return CommandResult(returncode=0)
 
 
 class DeepAgentsWorkspaceAdapter:
-    """Thin adapter wrapping a backend (BackendProtocol-like)."""
+    """Adapt an already workspace-bound backend to the application port."""
 
-    def __init__(self, backend: Any, workspace_id: str) -> None:
+    def __init__(
+        self, backend: BackendProtocol, *, workspace_id: str, workspace_root: str
+    ) -> None:
+        """Wrap a backend already selected for one workspace.
+
+        Args:
+            backend: Deep Agents backend that owns file and command execution.
+            workspace_id: Validated server identity for this workspace.
+            workspace_root: Canonical root directory bound to the runtime.
+
+        Raises:
+            ValueError: If `workspace_id` or `workspace_root` is empty.
+        """
+        if not workspace_id or not workspace_root:
+            msg = "workspace_id and workspace_root must be non-empty"
+            raise ValueError(msg)
         self.backend = backend
         self.workspace_id = workspace_id
+        self.workspace_root = Path(workspace_root).resolve(strict=False)
+        self._workspace_identity_bound = workspace_id != "process-default"
+
+    def bind_workspace(self, *, workspace_id: str, workspace_root: str) -> None:
+        """Bind this adapter to the server-validated workspace identity.
+
+        Raises:
+            ValueError: If the identity or root is empty, or conflicts with an
+                existing binding.
+        """
+        if not workspace_id or not workspace_root:
+            msg = "workspace_id and workspace_root must be non-empty"
+            raise ValueError(msg)
+        resolved_root = Path(workspace_root).resolve(strict=False)
+        if self._workspace_identity_bound and (
+            workspace_id != self.workspace_id or resolved_root != self.workspace_root
+        ):
+            msg = "workspace adapter is already bound to a different identity"
+            raise ValueError(msg)
+        self.workspace_id = workspace_id
+        self.workspace_root = resolved_root
+        self._workspace_identity_bound = True
+
+    def _path(self, path: str) -> str:
+        return str(_resolve_workspace_path(self.workspace_root, path))
 
     async def read_text(self, path: str) -> str:
-        if hasattr(self.backend, "read"):
-            return await _maybe_await(self.backend.read, path)
-        raise NotImplementedError
+        """Read UTF-8 text through the backend.
+
+        Returns:
+            The file's text content.
+
+        Raises:
+            FileNotFoundError: If the backend returned no file content.
+            OSError: If the backend reports a read error.
+            UnicodeError: If the backend returned non-text content.
+        """
+        full_path = self._path(path)
+        result = await self.backend.aread(full_path)
+        if result.error is not None:
+            raise OSError(result.error)
+        if result.file_data is None:
+            raise FileNotFoundError(full_path)
+        if result.file_data.get("encoding") != "utf-8":
+            msg = f"workspace file is not UTF-8 text: {full_path}"
+            raise UnicodeError(msg)
+        return result.file_data["content"]
 
     async def write_text(self, path: str, content: str) -> None:
-        if hasattr(self.backend, "write"):
-            await _maybe_await(self.backend.write, path, content)
-            return
-        raise NotImplementedError
+        """Write text through the backend and surface backend failures.
+
+        Raises:
+            OSError: If the backend reports a write error.
+        """
+        result = await self.backend.awrite(self._path(path), content)
+        if result.error is not None:
+            raise OSError(result.error)
 
     async def run_command(
-        self, argv: Sequence[str], *, cwd: str, timeout: float
+        self,
+        argv: Sequence[str],
+        *,
+        cwd: str,
+        timeout: float,  # noqa: ASYNC109
     ) -> CommandResult:
-        if hasattr(self.backend, "execute"):
-            res = await _maybe_await(self.backend.execute, list(argv), cwd=cwd, timeout=timeout)
-            if isinstance(res, CommandResult):
-                return res
-            return CommandResult(
-                returncode=getattr(res, "returncode", 0),
-                stdout=getattr(res, "stdout", str(res)),
-                stderr=getattr(res, "stderr", ""),
-            )
-        raise NotImplementedError
+        """Run an argv command in a workspace directory.
 
+        Returns:
+            Combined backend output and its exit status.
 
-async def _maybe_await(fn, *a, **kw):
-    import asyncio
-    import inspect
-
-    result = fn(*a, **kw)
-    if inspect.isawaitable(result):
-        return await result
-    return result
+        Raises:
+            ValueError: If arguments, timeout, or `cwd` are invalid.
+        """
+        if (
+            not isinstance(argv, Sequence)
+            or isinstance(argv, (str, bytes))
+            or not argv
+            or any(not isinstance(part, str) or "\x00" in part for part in argv)
+        ):
+            msg = "argv must contain at least one NUL-free string"
+            raise ValueError(msg)
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or timeout < 0
+        ):
+            msg = "timeout must be a finite non-negative number"
+            raise ValueError(msg)
+        full_cwd = self._path(cwd)
+        command = f"cd -- {shlex.quote(full_cwd)} && {shlex.join(argv)}"
+        timeout_seconds = math.ceil(timeout) if timeout else 0
+        response = await cast("SandboxBackendProtocol", self.backend).aexecute(
+            command, timeout=timeout_seconds
+        )
+        return CommandResult(
+            returncode=response.exit_code if response.exit_code is not None else -1,
+            stdout=response.output,
+        )

@@ -692,6 +692,26 @@ def _bind(config: ServerConfig, cwd: Any) -> Any:  # noqa: ANN401
 class TestWorkspaceRuntime:
     """Workspace runtimes retain trusted server-only configuration."""
 
+    def test_runtime_workspace_port_is_bound_to_validated_identity(
+        self, tmp_path: Path
+    ) -> None:
+        from deepagents_code.adapters.workspace import DeepAgentsWorkspaceAdapter
+
+        module = _import_fresh_server_graph()
+        binding = _bind(ServerConfig(), tmp_path)
+        workspace = DeepAgentsWorkspaceAdapter(
+            object(), workspace_id="process-default", workspace_root=str(tmp_path)
+        )
+        runtime = module.ServerRuntime(
+            object(), object(), object(), workspace=workspace
+        )
+
+        bound = module._bind_runtime_workspace(runtime, binding)
+
+        assert bound is runtime
+        assert workspace.workspace_id == binding.workspace_id
+        assert workspace.workspace_root == tmp_path.resolve()
+
     async def test_validation_does_not_build_or_reserve_resources(
         self, tmp_path
     ) -> None:

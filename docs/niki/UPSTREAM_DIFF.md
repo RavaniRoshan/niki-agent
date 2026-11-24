@@ -24,3 +24,17 @@ Records edits to upstream-owned files made while evolving Niki.
   and validated event sequence continue through ACP's internal approval resume.
 - `dcode` and `deepagents-code` retain the direct ACP graph stream path because
   coordinator routing is enabled only inside `niki_runtime_scope()`.
+
+## Task 5
+
+- The server runtime now exposes a `WorkspacePort` adapter over the existing
+  composite backend. Each workspace runtime binds that adapter to the validated
+  workspace ID and root before use; file and command operations reject paths
+  outside that root, including symlink escapes.
+- The backend adapter uses `aread`, `awrite`, and `aexecute`, translates their
+  result types, surfaces backend failures, and safely quotes shell arguments.
+- `DefaultApprovalPolicy` now translates the live approval mode used by the
+  existing `interrupt_on` predicate. It does not infer permissions from tool
+  name prefixes or introduce a separate approval-mode store.
+- The `ServerRuntime` tuple gained an optional trailing workspace port field;
+  existing three-argument construction remains compatible.

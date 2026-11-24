@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from langgraph.types import Command
 
     from deepagents_code.config import CredentialsSnapshot, ModelResult
+    from deepagents_code.domain.events import JsonObject
     from deepagents_code.extensions.registry import ExtensionRegistry
     from deepagents_code.mcp_tools import MCPServerInfo
     from deepagents_code.output import OutputFormat
@@ -98,6 +99,8 @@ from deepagents_code._repository_bounds import (
     RepositoryBounds,
 )
 from deepagents_code._reserved_names import is_reserved_agent_dir_name
+from deepagents_code.adapters.permissions.hitl import DefaultApprovalPolicy
+from deepagents_code.application.ports.permissions import ApprovalDecision, ToolAction
 from deepagents_code.approval_mode import (
     ApprovalMode,
     aread_approval_mode_from_store,
@@ -2154,6 +2157,9 @@ def _should_interrupt_tool_call(
 
     Returns:
         `True` to interrupt, or `False` for Auto/YOLO bypass.
+
+    Raises:
+        PermissionError: If the pending action is bound to a different workspace.
     """
     from deepagents_code.hooks.server_middleware import hook_decided_permission
 
@@ -2170,11 +2176,45 @@ def _should_interrupt_tool_call(
             getattr(runtime, "store", None),
         )
 
-    if mode is ApprovalMode.YOLO:
-        return False
-    if mode is ApprovalMode.AUTO:
-        return not auto_mode_enabled
-    return True
+    context = getattr(runtime, "context", None)
+    workspace = (
+        context.workspace
+        if isinstance(context, CLIContextSchema)
+        else context.get("workspace")
+        if isinstance(context, dict)
+        else None
+    )
+    workspace_id = (
+        workspace.get("workspace_id")
+        if isinstance(workspace, dict)
+        and isinstance(workspace.get("workspace_id"), str)
+        else None
+    )
+    raw_arguments = (
+        tool_call.get("args", tool_call.get("arguments", {}))
+        if isinstance(tool_call, dict)
+        else {}
+    )
+    action = ToolAction(
+        name=(
+            tool_call.get("name", "")
+            if isinstance(tool_call, dict)
+            and isinstance(tool_call.get("name", ""), str)
+            else ""
+        ),
+        arguments=cast(
+            "JsonObject", raw_arguments if isinstance(raw_arguments, dict) else {}
+        ),
+        workspace_id=workspace_id or "",
+    )
+    decision = DefaultApprovalPolicy(
+        workspace_id=workspace_id,
+        auto_mode_enabled=auto_mode_enabled,
+    ).decide(action, mode)
+    if decision is ApprovalDecision.deny:
+        msg = "Tool action does not match the active workspace"
+        raise PermissionError(msg)
+    return decision is ApprovalDecision.request
 
 
 class AsyncApprovalHITLMiddleware(HumanInTheLoopMiddleware[Any, Any, Any]):

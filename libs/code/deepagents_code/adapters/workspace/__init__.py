@@ -2,4 +2,9 @@
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from deepagents_code.adapters.workspace.deepagents_backend import (
+    DeepAgentsWorkspaceAdapter,
+    InMemoryWorkspaceAdapter,
+)
+
+__all__ = ["DeepAgentsWorkspaceAdapter", "InMemoryWorkspaceAdapter"]
