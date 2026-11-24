@@ -13,6 +13,10 @@ Records edits to upstream-owned files made while evolving Niki.
   `LangGraphRemoteRuntime`. The adapter forwards native chunks to the existing
   headless renderer, preserving its output and hook behavior. The legacy
   `dcode` path remains on its existing stream path.
-- The TUI migration and production ACP server routing remain separate work.
-  The current ACP server continues to own ACP protocol rendering and session
-  behavior; the ACP runtime adapter is not yet wired into that server.
+- Niki TUI turns now pass through the same managed runtime. A bounded queue
+  returns native chunks to the existing Textual processing loop while the
+  coordinator validates lifecycle and resume state. Other entry points retain
+  direct streaming.
+- Production ACP server routing remains separate work. The current ACP server
+  continues to own ACP protocol rendering and session behavior; the ACP runtime
+  adapter is not yet wired into that server.

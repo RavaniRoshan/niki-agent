@@ -3481,7 +3481,7 @@ async def test_niki_headless_stream_uses_coordinated_runtime(
             assert graph_input == {
                 "messages": [{"role": "assistant", "content": "hello"}]
             }
-            assert stream_mode == ("messages", "updates", "custom")
+            assert stream_mode == ["messages", "updates", "custom"]
             assert subgraphs is True
             configurable = config.get("configurable")
             assert isinstance(configurable, Mapping)

@@ -9,6 +9,7 @@ import logging
 import math
 import time
 import uuid
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 import httpx
@@ -130,6 +131,13 @@ from deepagents_code._tool_stream import (
 )
 from deepagents_code._tracing import stream_trace_config
 from deepagents_code.config import build_stream_config, get_glyphs
+from deepagents_code.domain.events import (
+    ResumeRequest,
+    RunEvent,
+    RunEventKind,
+    TurnRequest,
+    TurnStatus,
+)
 from deepagents_code.file_ops import FileOpTracker, record_display_caveat
 from deepagents_code.hooks import (
     dispatch_hook,
@@ -1685,6 +1693,107 @@ async def _mount_diff_note(adapter: Any, text: str) -> None:  # noqa: ANN401  # 
         logger.exception("Failed to mount diff note: %s", text)
 
 
+@dataclass(slots=True)
+class _RuntimeProgress:
+    """Lifecycle identity retained across one prompt's approval resumes."""
+
+    turn_id: str
+    sequence: int = 0
+    status: str = TurnStatus.created.value
+
+
+def _niki_runtime_enabled() -> bool:
+    from deepagents_code.niki.runtime_mode import is_niki_runtime_enabled
+
+    return is_niki_runtime_enabled()
+
+
+def _runtime_progress_for_turn(turn_id: str | None) -> _RuntimeProgress | None:
+    if not _niki_runtime_enabled():
+        return None
+    return _RuntimeProgress(str(turn_id or uuid.uuid4()))
+
+
+def _record_runtime_event(progress: _RuntimeProgress, event: RunEvent) -> None:
+    progress.sequence = event.sequence
+    if event.kind == RunEventKind.turn_started:
+        progress.status = TurnStatus.running.value
+    elif event.kind == RunEventKind.approval_required:
+        progress.status = TurnStatus.waiting_for_approval.value
+    elif event.kind == RunEventKind.turn_finished:
+        progress.status = TurnStatus.completed.value
+    elif event.kind == RunEventKind.turn_failed:
+        progress.status = TurnStatus.failed.value
+    elif event.kind == RunEventKind.turn_cancelled:
+        progress.status = TurnStatus.cancelled.value
+
+
+def _runtime_request(
+    stream_input: dict[str, Any] | Command,
+    user_input: str,
+    thread_id: str,
+    progress: _RuntimeProgress,
+) -> TurnRequest | ResumeRequest:
+    from pathlib import Path
+
+    from langgraph.types import Command
+
+    if isinstance(stream_input, Command):
+        decision = stream_input.resume
+        if not isinstance(decision, dict):
+            msg = "runtime resume requires an approval decision object"
+            raise TypeError(msg)
+        return ResumeRequest(
+            thread_id,
+            progress.turn_id,
+            decision,
+            progress.sequence,
+            TurnStatus(progress.status),
+        )
+    return TurnRequest(thread_id, progress.turn_id, user_input, str(Path.cwd()))
+
+
+def _thread_id_for_runtime(config: RunnableConfig) -> str:
+    configurable = config.get("configurable", {})
+    thread_id = (
+        configurable.get("thread_id") if isinstance(configurable, dict) else None
+    )
+    return thread_id if isinstance(thread_id, str) else ""
+
+
+async def _coordinated_native_stream(
+    agent: Any,  # noqa: ANN401  # Dynamic managed remote agent
+    stream_input: dict[str, Any] | Command,
+    config: RunnableConfig,
+    context: CLIContext,
+    user_input: str,
+    progress: _RuntimeProgress,
+) -> AsyncIterator[object]:
+    from deepagents_code.adapters.runtime.langgraph_remote import LangGraphRemoteRuntime
+    from deepagents_code.application.native_stream import stream_native_chunks
+    from deepagents_code.application.run_turn import RunTurnCoordinator
+
+    chunks: asyncio.Queue[object] = asyncio.Queue(maxsize=1)
+    runtime = LangGraphRemoteRuntime(
+        agent,
+        on_chunk=chunks.put,
+        stream_input=stream_input,
+        config=stream_trace_config(config, stream_input),
+        context=context,
+        stream_mode=("messages", "updates", "custom"),
+    )
+    request = _runtime_request(
+        stream_input, user_input, _thread_id_for_runtime(config), progress
+    )
+    async for chunk in stream_native_chunks(
+        RunTurnCoordinator(runtime),
+        request,
+        chunks,
+        on_event=lambda event: _record_runtime_event(progress, event),
+    ):
+        yield chunk
+
+
 async def execute_task_textual(
     user_input: str,
     agent: Any,  # noqa: ANN401  # Dynamic agent graph type
@@ -1820,6 +1929,7 @@ async def execute_task_textual(
         turn_id, turn_number = advance_turn()
     else:
         turn_id, turn_number = None, None
+    runtime_progress = _runtime_progress_for_turn(turn_id)
     # `build_stream_config` does blocking git filesystem reads and may shell out
     # to `git`; offload it so the Textual event loop stays responsive. Advancing
     # the turn markers above is pure/cheap and stays on the loop.
@@ -2103,14 +2213,24 @@ async def execute_task_textual(
             if adapter._set_spinner and not adapter._current_tool_messages:
                 await adapter._set_spinner("Thinking")
 
-            stream = agent.astream(
-                stream_input,
-                stream_mode=["messages", "updates", "custom"],
-                subgraphs=True,
-                config=stream_trace_config(config, stream_input),
-                context=context,
-                durability="exit",
-            )
+            if runtime_progress is None:
+                stream = agent.astream(
+                    stream_input,
+                    stream_mode=["messages", "updates", "custom"],
+                    subgraphs=True,
+                    config=stream_trace_config(config, stream_input),
+                    context=context,
+                    durability="exit",
+                )
+            else:
+                stream = _coordinated_native_stream(
+                    agent,
+                    stream_input,
+                    config,
+                    context,
+                    user_input,
+                    runtime_progress,
+                )
             async for chunk in _finalize_usage_round(
                 stream,
                 recorded_usage_requests,

@@ -8,9 +8,10 @@ import sys
 
 def test_domain_and_application_import_no_heavy_deps():
     before = set(sys.modules)
-    import deepagents_code.domain  # noqa: F401
-    import deepagents_code.application  # noqa: F401
-    import deepagents_code.application.ports  # noqa: F401
+    import deepagents_code.application
+    import deepagents_code.application.native_stream
+    import deepagents_code.application.ports
+    import deepagents_code.domain
 
     new = set(sys.modules) - before
     forbidden = {"textual", "rich", "deepagents", "langchain", "langgraph"}

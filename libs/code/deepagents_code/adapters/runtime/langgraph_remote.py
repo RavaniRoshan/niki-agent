@@ -183,7 +183,7 @@ class LangGraphRemoteRuntime:
         try:
             async for chunk in self.remote_agent.astream(
                 graph_input,
-                stream_mode=self.stream_mode,
+                stream_mode=list(self.stream_mode),
                 subgraphs=True,
                 config=self._config(session_id),
                 context=self.context,
