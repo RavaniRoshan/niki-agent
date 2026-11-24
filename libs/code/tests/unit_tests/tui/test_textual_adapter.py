@@ -1242,6 +1242,46 @@ class TestIsRenderableAutoModeEvent:
         assert _is_renderable_auto_mode_event(payload, is_main_agent=True) is False
 
 
+class TestTeamEventBridge:
+    async def test_forwards_team_lifecycle_events_only(self) -> None:
+        received: list[RunEvent] = []
+        adapter = TextualUIAdapter(
+            mount_message=_mock_mount,
+            update_status=_noop_status,
+            request_approval=_mock_approval,
+            on_team_event=received.append,
+        )
+        task_event = RunEvent(
+            schema_version=1,
+            event_id="task-started",
+            session_id="session",
+            turn_id="team",
+            sequence=1,
+            kind=RunEventKind.task_started,
+            payload={
+                "task_id": "task",
+                "task_order": 0,
+                "agent_name": "research",
+                "status": "running",
+                "summary": "inspect repository",
+            },
+        )
+        text_event = RunEvent(
+            schema_version=1,
+            event_id="text",
+            session_id="session",
+            turn_id="team",
+            sequence=2,
+            kind=RunEventKind.text_delta,
+            payload={"text": "hidden from the team panel"},
+        )
+
+        adapter.handle_team_event(task_event)
+        adapter.handle_team_event(text_event)
+
+        assert received == [task_event]
+
+
 class TestParseAutoModeReviewEvent:
     """Tests for strict Auto classifier lifecycle event validation."""
 

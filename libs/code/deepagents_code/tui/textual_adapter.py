@@ -846,6 +846,7 @@ class TextualUIAdapter:
         ) = None,
         on_approval_mode_fallback: Callable[[str], None] | None = None,
         *,
+        on_team_event: Callable[[RunEvent], None] | None = None,
         show_diff_line_numbers: bool = True,
     ) -> None:
         """Initialize the adapter."""
@@ -899,6 +900,9 @@ class TextualUIAdapter:
 
         self._on_subagent_event = on_subagent_event
         """Sync callback fired for each validated `subagent` custom-stream event."""
+
+        self._on_team_event = on_team_event
+        """Callback for application coordinator events rendered by the team panel."""
 
         self._on_auto_mode_event = on_auto_mode_event
         """Callback for compact sanitized Auto denial and fallback events."""
@@ -956,6 +960,20 @@ class TextualUIAdapter:
 
         self._on_stream_complete: Callable[[], None] | None = None
         """Called only after the agent stream reaches a clean end."""
+
+    def handle_team_event(self, event: RunEvent) -> None:
+        """Forward one coordinator event to the UI without owning coordination."""
+        if (
+            event.kind
+            in {
+                RunEventKind.task_started,
+                RunEventKind.task_finished,
+                RunEventKind.task_failed,
+                RunEventKind.task_skipped,
+            }
+            and self._on_team_event is not None
+        ):
+            self._on_team_event(event)
 
     def _reset_auto_mode_review_tracking(self) -> None:
         """Start each user turn with no in-flight batch and no replay guard.

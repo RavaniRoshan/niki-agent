@@ -1243,6 +1243,7 @@ if TYPE_CHECKING:
     from deepagents_code.config import ModelResult
     from deepagents_code.config_manifest import CursorStyle
     from deepagents_code.configuration.types import ProviderStatus
+    from deepagents_code.domain.events import RunEvent
     from deepagents_code.event_bus import EventSource, ExternalEvent
     from deepagents_code.goal_rubric import GoalCreateRequest, GoalCriteriaRequest
     from deepagents_code.hooks.manager import HookSessionIdentity, HooksManager
@@ -5443,6 +5444,7 @@ class DeepAgentsApp(App):
             request_ask_user=self._request_ask_user,
             on_tool_complete=self._schedule_git_branch_refresh,
             on_subagent_event=self._on_subagent_event,
+            on_team_event=self._on_team_event,
             on_auto_mode_event=self._on_auto_mode_event,
             on_approval_mode_fallback=self._on_approval_mode_fallback,
             show_diff_line_numbers=self._show_diff_line_numbers,
@@ -23258,6 +23260,12 @@ class DeepAgentsApp(App):
         panel = self._get_subagent_panel()
         if panel is not None:
             panel.on_subagent_event(event)
+
+    def _on_team_event(self, event: RunEvent) -> None:
+        """Forward an application team event to the subagent panel."""
+        panel = self._get_subagent_panel()
+        if panel is not None:
+            panel.on_team_event(event)
 
     async def _on_auto_mode_event(self, event: dict[str, Any]) -> None:
         """Render one compact sanitized Auto control-state notice.
