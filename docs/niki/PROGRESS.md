@@ -106,3 +106,39 @@ its recorded status and priority until the owner decides keep/change/defer.
 ### Next queued work
 Continue with Task 4 on independent P0 rows that are neither blocked nor
 owner-gated. Reopen S1/S2/S7 only after the owner records a decision.
+
+## Task 4 — dynamic P0 task-card loop (stopped at owner gate)
+
+Every open P0 row was examined against its cited test/probe and notes. No row
+was upgraded: each PARTIAL row's own evidence records a real remaining gap
+(owner-only terminal observation, real agent turn, or an unresolved product
+decision), so marking it WORKS would repeat the exact failure the workflow is
+meant to prevent. The controller now blocks all 29 open P0 rows and the four
+unclassified P1 rows with specific reasons; `next` reports "No eligible item;
+only the phase gate remains." `readiness --phase python` exits 1, as it must
+while any P0 is blocked. No implementation change was made in this task.
+
+## Tasks 5–7 — not started, gates recorded as blocked
+
+- **Task 5 (owner verification + `niki -n` smoke):** blocked. `OWNER_VERIFY.md`
+  needs a human at a real terminal (16-colour dark/light, `/theme`, palette
+  Escape focus, completed/failed/cancelled summaries, approval pause/resume).
+  The CLI smoke needs a provider with context above the ~19,271-token system
+  prompt; all provider keys are unset, so no parser run was attempted and
+  `SMOKE.md` stays `NOT RUN`. The SDK-level evidence is not substituted.
+- **Task 6 (matched Python evaluation):** blocked. No `ANTHROPIC_API_KEY`,
+  `LANGSMITH_API_KEY`, working container runtime, or published branch. No
+  two-task smoke, no full benchmark, no comparison JSON, and no competitiveness
+  claim. `workflow-state.json` records `python_evaluation: blocked`.
+- **Task 7 (Rust parity):** not started. `RUST_MIGRATION_GATE.md` requires the
+  Python readiness gate and matched benchmark to pass first; neither has, so
+  no Rust file was created and the `niki` entry point stays Python.
+
+### Final handoff
+Completed in this run: Task 1 (evaluator repair, `a1746d94`), Task 2 (workflow
+controller/skill, `77af5d54`), repository Ruff cleanup (`ea8f52d0`), Task 3
+(checklist reconciliation, `19a31c69`). The plan is stopped at its documented
+owner/credential gate. To resume, supply the owner observations and provider
+credentials, record the owner decisions in the packet above, then call
+`unblock` per item and rerun `readiness --phase python` before any benchmark or
+Rust work.
