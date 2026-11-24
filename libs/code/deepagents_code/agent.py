@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from langchain.messages import ToolCall
     from langchain_core.language_models import BaseChatModel
     from langchain_core.messages import ToolMessage
-    from langchain_quickjs import PTCOption
+    from langchain_quickjs import PTCAuthorizer, PTCDecision, PTCOption
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.prebuilt.tool_node import ToolCallRequest
     from langgraph.pregel import Pregel
@@ -2217,6 +2217,75 @@ def _should_interrupt_tool_call(
     return decision is ApprovalDecision.request
 
 
+def _make_ptc_authorizer(
+    *,
+    gated_tool_names: frozenset[str],
+    shell_allow_list: list[str] | None,
+) -> PTCAuthorizer:
+    """Build the server-owned authorization callback for QuickJS host calls.
+
+    PTC host calls bypass `ToolNode` middleware, so the gate must resolve the
+    live approval mode and apply the same configured tool boundaries itself.
+    Repository text and tool arguments are data only: neither can supply an
+    approval decision.
+
+    Returns:
+        An async callback that returns an allow, deny, or direct-approval
+        decision for a PTC host-tool call.
+    """
+
+    async def authorize(
+        tool: BaseTool,
+        arguments: dict[str, Any],
+        runtime: ToolRuntime[None, Any],
+    ) -> PTCDecision:
+        if tool.name == "execute" and shell_allow_list is not None:
+            from deepagents_code.config import is_shell_command_allowed
+
+            command = arguments.get("command")
+            if not isinstance(command, str) or not is_shell_command_allowed(
+                command, shell_allow_list
+            ):
+                return "deny"
+            # Shell-only approval mode replaces HITL with this command policy.
+            return "allow"
+
+        mode = await _aresolve_approval_mode(runtime.context, runtime.store)
+        context = runtime.context
+        workspace = (
+            context.workspace
+            if isinstance(context, CLIContextSchema)
+            else context.get("workspace")
+            if isinstance(context, dict)
+            else None
+        )
+        workspace_id = (
+            workspace.get("workspace_id")
+            if isinstance(workspace, dict)
+            and isinstance(workspace.get("workspace_id"), str)
+            else None
+        )
+        action = ToolAction(
+            name=tool.name,
+            arguments=arguments,
+            workspace_id=workspace_id or "",
+        )
+        decision = DefaultApprovalPolicy(
+            workspace_id=workspace_id,
+            gated_tool_names=gated_tool_names,
+            # Auto normally runs a classifier in AutoModeHITLMiddleware. PTC
+            # bypasses that path, so gated calls must go through it directly.
+            auto_mode_enabled=False,
+        ).decide(action, mode)
+        if decision is ApprovalDecision.allow:
+            return "allow"
+        if decision is ApprovalDecision.request:
+            return "requires_direct_approval"
+        return "deny"
+
+    return authorize
+
+
 class AsyncApprovalHITLMiddleware(HumanInTheLoopMiddleware[Any, Any, Any]):
     """Stock HITL routing with an async live-mode read after model completion.
 
@@ -2698,17 +2767,17 @@ def create_cli_agent(
             `enable_interpreter=True` raises `ValueError`. Subagents do not
             receive the interpreter in v1.
 
-            PTC (`tools.*` host bridge) calls bypass `interrupt_on`/HITL
-            approval, so `InterpreterConfig.ptc` is the only effective
-            control over which host tools can be invoked from inside the
-            REPL. `js_eval` itself is intentionally not gated by HITL —
-            per-call approval would be unusably noisy and would not block
-            PTC fan-out anyway. The `"safe"` preset is therefore restricted
-            to tools that are already non-HITL outside the REPL (read-only
-            file inspection); exposing HITL-gated tools — network fetch,
-            subagent dispatch, shell, file writes — requires an explicit
-            list or `interpreter_ptc="all"` with
-            `interpreter_ptc_acknowledge_unsafe=True`.
+            PTC (`tools.*` host bridge) calls bypass `ToolNode`, so the
+            interpreter receives a server-owned authorization gate that
+            applies the live approval mode and existing HITL tool map before
+            each host call. A tool requiring a human decision returns an
+            instruction to call it directly through the normal approval
+            path. `InterpreterConfig.ptc` controls which tools are exposed;
+            acknowledging the `"all"` preset does not bypass per-call
+            approval. In shell-only approval mode, PTC `execute` calls are
+            checked against the same restrictive command allow-list.
+            `js_eval` itself is not gated: approval is checked for every
+            `tools.*` call inside it.
 
             Requires the core `langchain-quickjs` dependency.
         interpreter_config: Resolver-backed interpreter settings snapshot.
@@ -3207,6 +3276,10 @@ def create_cli_agent(
         ptc_option: PTCOption | None = (
             cast("PTCOption", list(ptc_names)) if ptc_names is not None else None
         )
+        ptc_authorizer = _make_ptc_authorizer(
+            gated_tool_names=frozenset(resolved_interrupt_on or ()),
+            shell_allow_list=restrictive_shell_allow_list,
+        )
         # `CodeInterpreterMiddleware` is decorated `@beta()`, which emits a
         # `LangChainBetaWarning` on every instantiation. We intentionally use it
         # and the warning is not actionable for users, so suppress it.
@@ -3219,6 +3292,7 @@ def create_cli_agent(
                     max_ptc_calls=interpreter.max_ptc_calls,
                     max_result_chars=interpreter.max_result_chars,
                     ptc=ptc_option,
+                    ptc_authorizer=ptc_authorizer,
                 )
             )
 

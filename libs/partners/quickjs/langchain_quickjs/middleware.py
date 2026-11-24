@@ -37,7 +37,9 @@ from langchain_quickjs._prompt import (
     render_subagent_system_prompt,
 )
 from langchain_quickjs._ptc import (
+    PTCAuthorizer,
     PTCOption,
+    PTCToolGate,
     filter_tools_for_ptc,
     render_ptc_prompt,
 )
@@ -178,13 +180,17 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
             Duplicate names are deduplicated.
 
             !!! warning
-                PTC calls currently execute through the REPL bridge and
-                do **not** go through the normal `ToolNode` path. As a
-                result, `interrupt_on` / HITL approval workflows are not
-                enforced per PTC-invoked tool call.
+                PTC calls execute through the REPL bridge instead of the
+                normal `ToolNode` path. Applications with approval rules
+                should inject `ptc_authorizer` so every host-tool invocation
+                is authorized before execution.
 
             The REPL's own tool is always excluded; a model asking for
             `tools.eval("...")` would recurse pointlessly.
+        ptc_authorizer: Optional server-owned authorization callback for each
+            `tools.*` invocation. A `deny` or authorization error prevents the
+            tool from running; `requires_direct_approval` returns guidance to
+            invoke the tool through the application's normal approval path.
         mode: REPL state persistence mode.
             - `"thread"`: state persists across calls and across turns.
             - `"turn"`: state persists across calls within a turn only.
@@ -236,6 +242,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
         capture_console: bool = True,
         subagents: bool = True,
         ptc: PTCOption | None = None,
+        ptc_authorizer: PTCAuthorizer | None = None,
         mode: PersistenceMode | None = None,
         max_snapshot_bytes: int | None = None,
         snapshot_signing_key: str | bytes | None = None,
@@ -256,6 +263,9 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
         self._capture_console = capture_console
         self._subagents = subagents
         self._ptc = ptc
+        self._ptc_tool_gate = (
+            PTCToolGate(ptc_authorizer) if ptc_authorizer is not None else None
+        )
         self._mode = _resolve_mode(mode=mode)
         self._max_snapshot_bytes = (
             memory_limit if max_snapshot_bytes is None else max_snapshot_bytes
@@ -272,6 +282,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
             max_stdout_chars=max_result_chars,
             max_ptc_calls=max_ptc_calls,
             subagents_enabled=subagents,
+            ptc_tool_gate=self._ptc_tool_gate,
         )
         self._memory_limit_mb = memory_limit // (1024 * 1024)
         self._base_prompt_cache: dict[bool, str] = {}
@@ -525,6 +536,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
                 memory_limit_mb=self._memory_limit_mb,
                 mode=self._mode,
                 ptc_attached=ptc_attached,
+                approval_gated=(ptc_attached and self._ptc_tool_gate is not None),
             )
             self._base_prompt_cache[ptc_attached] = cached
         return cached

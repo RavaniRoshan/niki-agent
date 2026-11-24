@@ -46,14 +46,14 @@ from langchain_quickjs._format import (
     format_handle,
     stringify,
 )
-from langchain_quickjs._ptc import is_valid_js_identifier, to_camel_case
+from langchain_quickjs._ptc import PTCToolGate, is_valid_js_identifier, to_camel_case
 from langchain_quickjs._subagent import (
     call_subagent_task_tool,
     find_subagent_task_tool,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Coroutine, Sequence
 
     from langchain_core.tools import BaseTool
     from langgraph.prebuilt import ToolRuntime
@@ -359,7 +359,7 @@ class _ThreadREPL:
         max_stdout_chars: int,
         max_ptc_calls: int | None = 256,
         subagents_enabled: bool = True,
-        approval_policy: Any = None,
+        ptc_tool_gate: PTCToolGate | None = None,
     ) -> None:
         self._worker = worker
         self._runtime = runtime
@@ -372,7 +372,7 @@ class _ThreadREPL:
         # Static budget config; mutable counters live in `_ptc_state`.
         self._max_ptc_calls = max_ptc_calls
         self._subagents_enabled = subagents_enabled
-        self._approval_policy = approval_policy
+        self._ptc_tool_gate = ptc_tool_gate
         self._console = _ConsoleBuffer(max_stdout_chars)
         self._ctx: Context | None = None
         # PTC state. `_registered_tools` tracks which camel-case names
@@ -569,12 +569,17 @@ class _ThreadREPL:
             )
 
         outer_loop = state.outer_loop
-        if outer_loop is None:
-            return await _call()
-        current_loop = asyncio.get_running_loop()
-        if current_loop is outer_loop:
-            return await _call()
-        future = asyncio.run_coroutine_threadsafe(_call(), outer_loop)
+        return await self._await_on_outer_loop(_call(), outer_loop)
+
+    async def _await_on_outer_loop(
+        self,
+        awaitable: Coroutine[Any, Any, Any],
+        outer_loop: asyncio.AbstractEventLoop | None,
+    ) -> Any:
+        """Await an operation on the eval caller's loop when one was captured."""
+        if outer_loop is None or asyncio.get_running_loop() is outer_loop:
+            return await awaitable
+        future = asyncio.run_coroutine_threadsafe(awaitable, outer_loop)
         try:
             return await asyncio.wrap_future(future)
         except asyncio.CancelledError:
@@ -651,17 +656,7 @@ class _ThreadREPL:
                 ),
             )
 
-        if outer_loop is None:
-            return await _call()
-        current_loop = asyncio.get_running_loop()
-        if current_loop is outer_loop:
-            return await _call()
-        future = asyncio.run_coroutine_threadsafe(_call(), outer_loop)
-        try:
-            return await asyncio.wrap_future(future)
-        except asyncio.CancelledError:
-            future.cancel()
-            raise
+        return await self._await_on_outer_loop(_call(), outer_loop)
 
     def _register_tool_bridge(self, camel: str) -> str:
         """Install a host-function bridge for one camel-cased tool name.
@@ -684,21 +679,6 @@ class _ThreadREPL:
                 msg = f"tool '{camel}' not registered"
                 raise RuntimeError(msg)
             payload = _normalize_tool_input(raw_input)
-            if self._approval_policy is not None:
-                try:
-                    from langchain_quickjs._ptc import PTCToolGate
-
-                    decision = PTCToolGate.authorize(tool, payload, self._approval_policy)
-                except Exception:
-                    decision = "allow"
-                if decision == "deny":
-                    msg = f"tool '{tool.name}' denied by approval policy"
-                    raise RuntimeError(msg)
-                if decision == "requires_direct_approval":
-                    return (
-                        f"Tool '{tool.name}' requires direct approval; "
-                        "call it directly through the normal tool path."
-                    )
             if self._ptc_state is None:
                 msg = "PTC bridge called outside active eval"
                 raise ConcurrentEvalError(msg)
@@ -707,6 +687,25 @@ class _ThreadREPL:
                 max_ptc_calls=self._max_ptc_calls,
             )
             self._ptc_state = state
+            if self._ptc_tool_gate is not None:
+                if state.outer_runtime is None:
+                    decision = "deny"
+                else:
+                    decision = await self._await_on_outer_loop(
+                        self._ptc_tool_gate.authorize(
+                            tool,
+                            payload,
+                            state.outer_runtime,
+                        ),
+                        state.outer_loop,
+                    )
+                if decision == "deny":
+                    return f"Tool '{tool.name}' was denied by the approval policy."
+                if decision == "requires_direct_approval":
+                    return (
+                        f"Tool '{tool.name}' requires direct approval; "
+                        "call it directly through the normal tool path."
+                    )
             call_id = _synth_tool_call_id(tool.name)
             # Inject runtime/state/store ourselves. The bridge uses `arun`
             # rather than the tool-call envelope path so the result can be
@@ -941,6 +940,7 @@ class _Registry:
     max_stdout_chars: int
     max_ptc_calls: int | None = 256
     subagents_enabled: bool = True
+    ptc_tool_gate: PTCToolGate | None = None
     _slots: dict[str, _Slot] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -989,6 +989,7 @@ class _Registry:
             max_stdout_chars=self.max_stdout_chars,
             max_ptc_calls=self.max_ptc_calls,
             subagents_enabled=self.subagents_enabled,
+            ptc_tool_gate=self.ptc_tool_gate,
         )
 
         with self._lock:
@@ -1012,6 +1013,7 @@ class _Registry:
             max_stdout_chars=self.max_stdout_chars,
             max_ptc_calls=self.max_ptc_calls,
             subagents_enabled=self.subagents_enabled,
+            ptc_tool_gate=self.ptc_tool_gate,
         )
         return _Slot(worker=worker, runtime=runtime, repl=repl)
 

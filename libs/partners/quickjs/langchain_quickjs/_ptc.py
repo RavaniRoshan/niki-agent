@@ -22,8 +22,11 @@ The host-function bridge that actually invokes each tool lives in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Literal
 
+from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool
 
 from langchain_quickjs import _prompt
@@ -33,6 +36,12 @@ if TYPE_CHECKING:
 
 
 PTCOption = list[str | BaseTool]
+PTCDecision = Literal["allow", "deny", "requires_direct_approval"]
+PTCAuthorizer = Callable[
+    [BaseTool, dict[str, Any], ToolRuntime], Awaitable[PTCDecision]
+]
+
+logger = logging.getLogger(__name__)
 
 _RESERVED_SUBAGENT_TASK_NAME = "task"
 
@@ -74,9 +83,10 @@ def filter_tools_for_ptc(
     A `"task"` entry raises `ValueError`.
 
     Warning:
-        PTC tool calls execute through the REPL bridge. Each invocation
-        is authorized via PTCToolGate against the active approval policy;
-        mutating tools in manual mode require direct approval.
+        PTC tool calls execute through the REPL bridge. Applications with
+        approval rules must inject a server-owned authorizer into
+        `CodeInterpreterMiddleware`; the bridge invokes it before each host
+        call and denies calls if authorization fails.
     """
     if isinstance(config, list):
         explicit_tools: list[BaseTool] = []
@@ -152,41 +162,38 @@ def render_ptc_prompt(tools: Sequence[BaseTool], *, tool_name: str = "eval") -> 
     return _prompt.render_ptc_prompt(tools, tool_name=tool_name)
 
 
-PTCDecision = str  # "allow" | "deny" | "requires_direct_approval"
-
-
 class PTCToolGate:
-    """Gate PTC tool invocations behind the normal approval policy."""
+    """Run a server-injected approval decision before a PTC tool invocation.
 
-    @staticmethod
-    def authorize(tool, arguments, policy) -> PTCDecision:
-        if policy is None:
-            return "allow"
+    The authorizer owns policy resolution (including live approval-mode and
+    workspace checks). QuickJS treats it as a trusted server callback; guest
+    JavaScript, tool arguments, and repository text cannot replace it.
+    """
+
+    def __init__(self, authorizer: PTCAuthorizer) -> None:
+        """Bind the server-owned authorization callback for this middleware."""
+        self._authorizer = authorizer
+
+    async def authorize(
+        self,
+        tool: BaseTool,
+        arguments: dict[str, Any],
+        runtime: ToolRuntime,
+    ) -> PTCDecision:
+        """Resolve one tool call, failing closed on callback errors or bad data."""
         try:
-            from deepagents_code.approval_mode import ApprovalMode
-
-            mode = getattr(policy, "_mode", None) or ApprovalMode.MANUAL
+            decision = await self._authorizer(tool, arguments, runtime)
         except Exception:
-            mode = None
-        # Delegate to policy if it exposes decide()
-        decide = getattr(policy, "decide", None)
-        if decide is not None:
-            try:
-                from deepagents_code.application.ports.permissions import ToolAction
-
-                action = ToolAction(name=tool.name, arguments=arguments or {}, workspace_id="")
-                result = decide(action, mode) if mode is not None else decide(action, None)
-                val = getattr(result, "value", result)
-                if val in ("allow", "deny", "request"):
-                    if val == "request":
-                        return "requires_direct_approval"
-                    return val
-            except Exception:
-                pass
-        # Fallback heuristic: mutating tools require direct approval in manual mode
-        name = getattr(tool, "name", "")
-        low = name.lower()
-        mutating = any(low.startswith(p) for p in ("write", "edit", "run", "execute", "delete", "move", "create", "bash", "shell"))
-        if mutating and mode is not None and getattr(mode, "value", mode) == "manual":
-            return "requires_direct_approval"
-        return "allow"
+            logger.warning(
+                "PTC authorization failed for tool %r; denying call",
+                tool.name,
+                exc_info=True,
+            )
+            return "deny"
+        if decision in ("allow", "deny", "requires_direct_approval"):
+            return decision
+        logger.warning(
+            "PTC authorization returned an invalid decision for tool %r; denying call",
+            tool.name,
+        )
+        return "deny"
