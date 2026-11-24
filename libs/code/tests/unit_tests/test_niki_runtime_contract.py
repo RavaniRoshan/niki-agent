@@ -31,7 +31,7 @@ def test_run_event_json_round_trip():
 
 
 def test_run_event_rejects_invalid_envelope():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unsupported schema_version"):
         decode_run_event(
             json.dumps(
                 {
@@ -45,7 +45,7 @@ def test_run_event_rejects_invalid_envelope():
                 }
             )
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"sequence must be >= 1"):
         decode_run_event(
             json.dumps(
                 {
@@ -59,7 +59,7 @@ def test_run_event_rejects_invalid_envelope():
                 }
             )
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="non-JSON value"):
         RunEvent(
             schema_version=1,
             event_id="e1",
@@ -69,7 +69,7 @@ def test_run_event_rejects_invalid_envelope():
             kind=RunEventKind.text_delta,
             payload={"bad": {1, 2}},
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="invalid kind"):
         decode_run_event(
             json.dumps(
                 {
@@ -93,7 +93,7 @@ def test_run_event_rejects_invalid_envelope():
         kind=RunEventKind.text_delta,
         payload={"text": big},
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"encoded event exceeds"):
         encode_run_event(evt)
 
 
@@ -108,7 +108,7 @@ def test_run_event_rejects_oversized_payload():
         kind=RunEventKind.text_delta,
         payload={"text": big},
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"encoded event exceeds"):
         encode_run_event(evt)
 
 
@@ -123,10 +123,24 @@ def test_turn_status_values():
 
 def test_run_event_kind_count():
     expected = {
-        "session_created", "session_resumed", "turn_started", "text_delta",
-        "tool_started", "tool_finished", "approval_required", "task_started",
-        "task_finished", "task_failed", "task_skipped", "workflow_started",
-        "workflow_finished", "workflow_failed", "goal_progress", "context_compacted",
-        "turn_finished", "turn_failed", "turn_cancelled",
+        "session_created",
+        "session_resumed",
+        "turn_started",
+        "text_delta",
+        "tool_started",
+        "tool_finished",
+        "approval_required",
+        "task_started",
+        "task_finished",
+        "task_failed",
+        "task_skipped",
+        "workflow_started",
+        "workflow_finished",
+        "workflow_failed",
+        "goal_progress",
+        "context_compacted",
+        "turn_finished",
+        "turn_failed",
+        "turn_cancelled",
     }
     assert {k.value for k in RunEventKind} == expected

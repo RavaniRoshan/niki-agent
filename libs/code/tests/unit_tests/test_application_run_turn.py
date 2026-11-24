@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from deepagents_code.application.run_turn import RunProtocolError, RunTurnCoordinator
 from deepagents_code.domain.events import (
+    ResumeRequest,
     RunEvent,
     RunEventKind,
     TurnRequest,
     TurnStatus,
-    ResumeRequest,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 class FakeRuntime:
@@ -22,11 +24,11 @@ class FakeRuntime:
         self._events = events
         self.cancelled: list[tuple[str, str]] = []
 
-    async def stream_turn(self, request: TurnRequest) -> AsyncIterator[RunEvent]:
+    async def stream_turn(self, _request: TurnRequest) -> AsyncIterator[RunEvent]:
         for e in self._events:
             yield e
 
-    async def resume_turn(self, request: ResumeRequest) -> AsyncIterator[RunEvent]:
+    async def resume_turn(self, _request: ResumeRequest) -> AsyncIterator[RunEvent]:
         for e in self._events:
             yield e
 

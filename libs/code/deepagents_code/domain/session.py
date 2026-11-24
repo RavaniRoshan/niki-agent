@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class SessionSummary:
+    """Framework-free view of one stored session."""
+
     session_id: str
     workspace_root: str
     title: str | None

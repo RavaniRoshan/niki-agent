@@ -36,15 +36,16 @@ pairs = [
 for old, new in pairs:
     if old in s:
         s = s.replace(old, new)
-        print(f"patched: {old[:48]}...")
 
 # Add the import next to the module's other imports.
 anchor = "from deepagents_code.tui.widgets"
 if "from deepagents_code.niki.product import PRODUCT_NAME" not in s:
     lines = s.splitlines(keepends=True)
-    last = max(i for i, line in enumerate(lines) if line.startswith("from ") or line.startswith("import "))
+    imports = (
+        i for i, line in enumerate(lines) if line.startswith(("from ", "import "))
+    )
+    last = max(imports)
     lines.insert(last + 1, "from deepagents_code.niki.product import PRODUCT_NAME\n")
     s = "".join(lines)
 
 launch.write_text(s, encoding="utf-8")
-print("done")

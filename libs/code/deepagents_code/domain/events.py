@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 SCHEMA_VERSION = 1
 MAX_ENCODED_BYTES = 65536
 
 
 class RunEventKind(StrEnum):
+    """Kinds of runtime events carried by the versioned envelope."""
+
     session_created = "session_created"
     session_resumed = "session_resumed"
     turn_started = "turn_started"
@@ -34,6 +37,8 @@ class RunEventKind(StrEnum):
 
 
 class TurnStatus(StrEnum):
+    """Lifecycle states reported for a turn."""
+
     created = "created"
     running = "running"
     waiting_for_approval = "waiting_for_approval"
@@ -44,31 +49,37 @@ class TurnStatus(StrEnum):
 
 # Recursive JSON value types (stdlib only).
 JsonPrimitive = str | int | float | bool | None
-JsonValue = "JsonPrimitive | list[JsonValue] | dict[str, JsonValue]"
-JsonObject = dict[str, Any]
+JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+JsonObject = dict[str, JsonValue]
 GoalProgressStatus = Literal["active", "paused", "complete", "blocked"]
 
 
-def _validate_json_value(value: Any, path: str = "") -> Any:
-    if value is None or isinstance(value, bool) or isinstance(value, (str, int, float)):
-        if isinstance(value, float):
-            if value != value or value in (float("inf"), float("-inf")):
-                raise ValueError(f"non-finite float at {path}")
+def _validate_json_value(value: JsonValue, path: str = "") -> JsonValue:
+    if value is None or isinstance(value, (bool, str, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            msg = f"non-finite float at {path}"
+            raise ValueError(msg)
         return value
     if isinstance(value, list):
         return [_validate_json_value(v, f"{path}[]") for v in value]
     if isinstance(value, dict):
-        result: dict[str, Any] = {}
+        result: dict[str, JsonValue] = {}
         for key, val in value.items():
             if not isinstance(key, str):
-                raise ValueError(f"non-string key at {path}")
+                msg = f"non-string key at {path}"
+                raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
             result[key] = _validate_json_value(val, f"{path}.{key}")
         return result
-    raise ValueError(f"non-JSON value at {path}: {type(value)!r}")
+    msg = f"non-JSON value at {path}: {type(value)!r}"
+    raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
 class RunEvent:
+    """One validated, versioned runtime event."""
+
     schema_version: int
     event_id: str
     session_id: str
@@ -78,29 +89,42 @@ class RunEvent:
     payload: JsonObject
 
     def __post_init__(self) -> None:
+        """Validate and normalise the envelope fields.
+
+        Raises:
+            ValueError: If any field fails validation.
+        """
         if isinstance(self.schema_version, bool) or not isinstance(
             self.schema_version, int
         ):
-            raise ValueError("schema_version must be int")
+            msg = "schema_version must be int"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         if self.schema_version != SCHEMA_VERSION:
-            raise ValueError(f"unsupported schema_version: {self.schema_version}")
+            msg = f"unsupported schema_version: {self.schema_version}"
+            raise ValueError(msg)
         if isinstance(self.sequence, bool) or not isinstance(self.sequence, int):
-            raise ValueError("sequence must be int")
+            msg = "sequence must be int"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         if self.sequence < 1:
-            raise ValueError(f"sequence must be >= 1, got {self.sequence}")
+            msg = f"sequence must be >= 1, got {self.sequence}"
+            raise ValueError(msg)
         if not isinstance(self.kind, RunEventKind):
             try:
                 object.__setattr__(self, "kind", RunEventKind(self.kind))
             except (ValueError, TypeError) as exc:
-                raise ValueError(f"invalid kind: {self.kind!r}") from exc
+                msg = f"invalid kind: {self.kind!r}"
+                raise ValueError(msg) from exc
         validated = _validate_json_value(self.payload)
         if not isinstance(validated, dict):
-            raise ValueError("payload must be a JSON object")
+            msg = "payload must be a JSON object"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         object.__setattr__(self, "payload", validated)
 
 
 @dataclass(frozen=True, slots=True)
 class TurnRequest:
+    """A prompt and workspace for one turn."""
+
     session_id: str
     turn_id: str
     prompt: str
@@ -109,6 +133,8 @@ class TurnRequest:
 
 @dataclass(frozen=True, slots=True)
 class ResumeRequest:
+    """An approval decision that resumes a waiting turn."""
+
     session_id: str
     turn_id: str
     decision: JsonObject
@@ -116,22 +142,29 @@ class ResumeRequest:
     prior_status: TurnStatus
 
     def __post_init__(self) -> None:
+        """Validate and normalise the resume decision.
+
+        Raises:
+            ValueError: If any field fails validation.
+        """
         if isinstance(self.last_sequence, bool) or not isinstance(
             self.last_sequence, int
         ):
-            raise ValueError("last_sequence must be int")
+            msg = "last_sequence must be int"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         if self.last_sequence < 0:
-            raise ValueError(f"last_sequence must be >= 0, got {self.last_sequence}")
+            msg = f"last_sequence must be >= 0, got {self.last_sequence}"
+            raise ValueError(msg)
         if not isinstance(self.prior_status, TurnStatus):
             try:
                 object.__setattr__(self, "prior_status", TurnStatus(self.prior_status))
             except (ValueError, TypeError) as exc:
-                raise ValueError(
-                    f"invalid prior_status: {self.prior_status!r}"
-                ) from exc
+                msg = f"invalid prior_status: {self.prior_status!r}"
+                raise ValueError(msg) from exc
         validated = _validate_json_value(self.decision)
         if not isinstance(validated, dict):
-            raise ValueError("decision must be a JSON object")
+            msg = "decision must be a JSON object"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         object.__setattr__(self, "decision", validated)
 
 
@@ -144,23 +177,39 @@ class GoalProgressEvent:
     note: str
 
     def __post_init__(self) -> None:
+        """Validate the projected goal status.
+
+        Raises:
+            ValueError: If any field fails validation.
+        """
         if not isinstance(self.session_id, str) or not self.session_id.strip():
-            raise ValueError("session_id must be a non-empty string")
+            msg = "session_id must be a non-empty string"
+            raise ValueError(msg)
         if not isinstance(self.status, str) or self.status not in {
             "active",
             "paused",
             "complete",
             "blocked",
         }:
-            raise ValueError(f"invalid goal progress status: {self.status!r}")
+            msg = f"invalid goal progress status: {self.status!r}"
+            raise ValueError(msg)
         if not isinstance(self.note, str):
-            raise ValueError("goal progress note must be a string")
+            msg = "goal progress note must be a string"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
 
     @classmethod
     def from_run_event(cls, event: RunEvent) -> GoalProgressEvent:
-        """Decode the validated payload of a `goal_progress` envelope."""
+        """Decode the validated payload of a `goal_progress` envelope.
+
+        Returns:
+            The validated goal progress data.
+
+        Raises:
+            ValueError: If the envelope or payload is not goal progress.
+        """
         if event.kind != RunEventKind.goal_progress:
-            raise ValueError("event kind must be goal_progress")
+            msg = "event kind must be goal_progress"
+            raise ValueError(msg)
         status = event.payload.get("status")
         note = event.payload.get("note", "")
         if not isinstance(status, str) or status not in {
@@ -169,11 +218,14 @@ class GoalProgressEvent:
             "complete",
             "blocked",
         }:
-            raise ValueError(f"invalid goal progress status: {status!r}")
+            msg = f"invalid goal progress status: {status!r}"
+            raise ValueError(msg)
         if not isinstance(note, str):
-            raise ValueError("goal progress note must be a string")
+            msg = "goal progress note must be a string"
+            raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
         if status == "complete" and event.payload.get("verified") is not True:
-            raise ValueError("complete goal progress requires checkpoint verification")
+            msg = "complete goal progress requires checkpoint verification"
+            raise ValueError(msg)
         return cls(
             session_id=event.session_id,
             status=cast("GoalProgressStatus", status),
@@ -182,8 +234,17 @@ class GoalProgressEvent:
 
 
 def encode_run_event(event: RunEvent) -> str:
+    """Serialise one validated event into its compact JSON envelope.
+
+    Returns:
+        The compact JSON string.
+
+    Raises:
+        ValueError: If the event is invalid or too large.
+    """
     if not isinstance(event, RunEvent):
-        raise ValueError("event must be a RunEvent")
+        msg = "event must be a RunEvent"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     obj = {
         "schema_version": event.schema_version,
         "event_id": event.event_id,
@@ -195,19 +256,31 @@ def encode_run_event(event: RunEvent) -> str:
     }
     raw = json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
     if len(raw.encode("utf-8")) > MAX_ENCODED_BYTES:
-        raise ValueError("encoded event exceeds 65536 bytes")
+        msg = "encoded event exceeds 65536 bytes"
+        raise ValueError(msg)
     return raw
 
 
 def decode_run_event(raw: str) -> RunEvent:
+    """Decode and validate one compact JSON event envelope.
+
+    Returns:
+        The decoded event.
+
+    Raises:
+        ValueError: If the envelope is malformed or invalid.
+    """
     if not isinstance(raw, str):
-        raise ValueError("raw must be str")
+        msg = "raw must be str"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     try:
         obj = json.loads(raw)
     except (json.JSONDecodeError, ValueError) as exc:
-        raise ValueError(f"invalid JSON: {exc}") from exc
+        msg = f"invalid JSON: {exc}"
+        raise ValueError(msg) from exc
     if not isinstance(obj, dict):
-        raise ValueError("envelope must be an object")
+        msg = "envelope must be an object"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     required = {
         "schema_version",
         "event_id",
@@ -218,28 +291,36 @@ def decode_run_event(raw: str) -> RunEvent:
         "payload",
     }
     if not required.issubset(obj.keys()):
-        raise ValueError("missing required fields")
+        msg = "missing required fields"
+        raise ValueError(msg)
     schema_version = obj["schema_version"]
     if isinstance(schema_version, bool) or not isinstance(schema_version, int):
-        raise ValueError("schema_version must be int")
+        msg = "schema_version must be int"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     if schema_version != SCHEMA_VERSION:
-        raise ValueError(f"unsupported schema_version: {schema_version}")
+        msg = f"unsupported schema_version: {schema_version}"
+        raise ValueError(msg)
     sequence = obj["sequence"]
     if isinstance(sequence, bool) or not isinstance(sequence, int):
-        raise ValueError("sequence must be int")
+        msg = "sequence must be int"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     if sequence < 1:
-        raise ValueError(f"sequence must be >= 1, got {sequence}")
+        msg = f"sequence must be >= 1, got {sequence}"
+        raise ValueError(msg)
     kind_raw = obj["kind"]
     try:
         kind = RunEventKind(kind_raw)
     except (ValueError, TypeError) as exc:
-        raise ValueError(f"invalid kind: {kind_raw!r}") from exc
+        msg = f"invalid kind: {kind_raw!r}"
+        raise ValueError(msg) from exc
     payload = obj["payload"]
     if not isinstance(payload, dict):
-        raise ValueError("payload must be an object")
+        msg = "payload must be an object"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     validated_payload = _validate_json_value(payload)
     if not isinstance(validated_payload, dict):
-        raise ValueError("payload must be a JSON object")
+        msg = "payload must be a JSON object"
+        raise ValueError(msg)  # noqa: TRY004 - validation uses one ValueError contract
     return RunEvent(
         schema_version=schema_version,
         event_id=str(obj["event_id"]),
