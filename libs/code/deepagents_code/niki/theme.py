@@ -197,6 +197,58 @@ NIKI_PALETTES: Final[dict[str, dict[str, str]]] = {
     "niki-dim": NIKI_DIM,
 }
 
+# Textual ANSI color names use an `ansi_` prefix. Set `NIKI_COLOR_DEPTH=16` to
+# register semantic 16-color variants while keeping the measured RGB palettes
+# as the default.
+NIKI_ANSI16_DARK: Final[dict[str, str]] = {
+    "background": "ansi_black",
+    "surface": "ansi_black",
+    "panel": "ansi_bright_black",
+    "foreground": "ansi_bright_white",
+    "muted": "ansi_white",
+    "primary": "ansi_bright_blue",
+    "secondary": "ansi_bright_white",
+    "accent": "ansi_bright_cyan",
+    "success": "ansi_bright_green",
+    "warning": "ansi_bright_yellow",
+    "error": "ansi_bright_red",
+    "mode_bash": "ansi_bright_blue",
+    "mode_command": "ansi_white",
+    "mode_incognito": "ansi_bright_magenta",
+    "skill": "ansi_bright_magenta",
+    "skill_hover": "ansi_bright_white",
+    "tool": "ansi_bright_cyan",
+    "tool_hover": "ansi_bright_white",
+}
+
+NIKI_ANSI16_LIGHT: Final[dict[str, str]] = {
+    "background": "ansi_bright_white",
+    "surface": "ansi_white",
+    "panel": "ansi_white",
+    "foreground": "ansi_black",
+    "muted": "ansi_bright_black",
+    "primary": "ansi_blue",
+    "secondary": "ansi_bright_black",
+    "accent": "ansi_green",
+    "success": "ansi_green",
+    "warning": "ansi_yellow",
+    "error": "ansi_red",
+    "mode_bash": "ansi_blue",
+    "mode_command": "ansi_bright_black",
+    "mode_incognito": "ansi_magenta",
+    "skill": "ansi_magenta",
+    "skill_hover": "ansi_blue",
+    "tool": "ansi_cyan",
+    "tool_hover": "ansi_blue",
+}
+
+NIKI_ANSI16_PALETTES: Final[dict[str, dict[str, str]]] = {
+    "niki": NIKI_ANSI16_DARK,
+    "niki-light": NIKI_ANSI16_LIGHT,
+    "niki-contrast": NIKI_ANSI16_DARK,
+    "niki-dim": NIKI_ANSI16_DARK,
+}
+
 #: Every token is checked against the base background it renders on.
 _BACKGROUNDS: Final[tuple[str, ...]] = ("background", "surface", "panel")
 
@@ -229,6 +281,9 @@ def contrast_violations(
 __all__ = [
     "GLYPH_CONTRAST_MIN",
     "GLYPH_TOKENS",
+    "NIKI_ANSI16_DARK",
+    "NIKI_ANSI16_LIGHT",
+    "NIKI_ANSI16_PALETTES",
     "NIKI_CONTRAST",
     "NIKI_DARK",
     "NIKI_DIM",

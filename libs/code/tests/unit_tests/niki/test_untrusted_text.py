@@ -134,6 +134,82 @@ async def test_hostile_tool_output_never_reaches_the_terminal_as_escapes() -> No
     assert screen.cursor.y < 24, "cursor moved out of bounds"
 
 
+async def test_untrusted_stream_text_is_sanitized_at_render_boundary() -> None:
+    """Assistant streaming keeps source text but sanitizes every render write."""
+    from deepagents_code.tui.widgets.messages import AssistantMessage
+
+    class StreamProbe:
+        def __init__(self) -> None:
+            self.writes: list[str] = []
+            self.stopped = False
+
+        async def write(self, text: str) -> None:
+            self.writes.append(text)
+
+        async def stop(self) -> None:
+            self.stopped = True
+
+    class MarkdownProbe:
+        def __init__(self) -> None:
+            self.updates: list[str] = []
+
+        async def update(self, text: str) -> None:
+            self.updates.append(text)
+
+    class TimerProbe:
+        def __init__(self) -> None:
+            self.stopped = False
+
+        def stop(self) -> None:
+            self.stopped = True
+
+    payload = "before" + HOSTILE_SEQUENCES["osc_title_change"] + "after"
+    stream = StreamProbe()
+    markdown = MarkdownProbe()
+    timer = TimerProbe()
+    message = AssistantMessage()
+    message._stream = stream  # type: ignore[assignment]
+    message._ensure_stream = lambda: stream  # type: ignore[method-assign]
+    message._get_markdown = lambda: markdown  # type: ignore[method-assign]
+    message.set_interval = lambda *_args: timer  # type: ignore[method-assign]
+
+    await message.append_content(payload)
+    await message.stop_stream()
+
+    assert message._content == payload
+    assert stream.stopped
+    assert timer.stopped
+    assert len(stream.writes) == 1
+    assert len(markdown.updates) == 1
+    for rendered_text in (*stream.writes, *markdown.updates):
+        assert "before" in rendered_text
+        assert "after" in rendered_text
+        assert "\x1b" not in rendered_text
+
+
+async def test_untrusted_reasoning_stream_text_is_sanitized_at_render_boundary() -> (
+    None
+):
+    """Provider-visible reasoning uses the same terminal-control boundary."""
+    from textual.app import App, ComposeResult
+
+    from deepagents_code.tui.widgets.messages import ReasoningMessage
+
+    class HostileReasoning(App[None]):
+        def compose(self) -> ComposeResult:
+            yield ReasoningMessage(id="hostile-reasoning")
+
+    app = HostileReasoning()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        message = app.query_one(ReasoningMessage)
+        await message.append_content(HOSTILE_SEQUENCES["osc_title_change"])
+        await message.stop_stream()
+        body = message.query_one("#reasoning-body")
+        rendered = body.render().plain
+    assert "\x1b" not in rendered
+
+
 def test_sanitisation_is_not_bypassable_via_the_markup_helper() -> None:
     """`Content.from_markup` auto-escapes `$var`; prove it for a hostile value."""
     from textual.content import Content

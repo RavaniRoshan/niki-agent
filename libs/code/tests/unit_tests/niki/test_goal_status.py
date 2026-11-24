@@ -77,7 +77,7 @@ def test_goal_status_panel_rejects_unverified_completion_event():
         panel.apply_event(event, session_id="session-1", objective="goal")
 
 
-def test_textual_adapter_forwards_goal_and_compaction_events():
+def test_textual_adapter_forwards_summary_and_goal_runtime_events():
     received: list[RunEvent] = []
     adapter = TextualUIAdapter(
         mount_message=lambda *_args, **_kwargs: None,
@@ -96,10 +96,30 @@ def test_textual_adapter_forwards_goal_and_compaction_events():
         kind=RunEventKind.context_compacted,
         payload={"cutoff_index": 7},
     )
+    tool_event = RunEvent(
+        schema_version=1,
+        event_id="turn-1:4",
+        session_id="session-1",
+        turn_id="turn-1",
+        sequence=4,
+        kind=RunEventKind.tool_started,
+        payload={"call_id": "call-1", "tool_name": "read_file"},
+    )
+    finished_event = RunEvent(
+        schema_version=1,
+        event_id="turn-1:5",
+        session_id="session-1",
+        turn_id="turn-1",
+        sequence=5,
+        kind=RunEventKind.turn_finished,
+        payload={},
+    )
     adapter.handle_runtime_event(goal_event)
     adapter.handle_runtime_event(compaction_event)
+    adapter.handle_runtime_event(tool_event)
+    adapter.handle_runtime_event(finished_event)
 
-    assert received == [goal_event, compaction_event]
+    assert received == [goal_event, compaction_event, tool_event, finished_event]
 
 
 @pytest.mark.asyncio

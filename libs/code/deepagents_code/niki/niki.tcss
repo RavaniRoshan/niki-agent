@@ -26,6 +26,40 @@
 
 /* ---------------------------------------------------------------- transcript */
 
+CommandPaletteScreen {
+    align: center middle;
+    background: $background 70%;
+}
+
+#command-palette {
+    width: 80%;
+    max-width: 76;
+    height: 80%;
+    max-height: 80%;
+    border: round $primary;
+    background: $panel;
+    padding: 1 2;
+}
+
+#command-palette-title {
+    height: 1;
+    margin-bottom: 1;
+    color: $text;
+    text-style: bold;
+}
+
+#command-palette-query {
+    margin-bottom: 1;
+}
+
+#command-palette-options {
+    height: 1fr;
+    min-height: 2;
+    max-height: 18;
+    border: none;
+    background: $panel;
+}
+
 #chat {
     background: $background;
 }

@@ -31,6 +31,7 @@ this same registry -- so no surface can advertise a dead key.
 | `ctrl+pagedown` | `page_right` | Page Right | `VerticalScroll` |
 | `ctrl+pageup` | `page_left` | Page Left | `VerticalScroll` |
 | `ctrl+r` | `open_prompt_clipboard` | Prompt Clipboard | `NikiApp` |
+| `ctrl+shift+p` | `open_command_palette` | Command Palette | `NikiApp` |
 | `ctrl+t` | `toggle_subagent_panel` | Toggle Subagents | `NikiApp` |
 | `down` | `approval_down` | Down | `NikiApp` |
 | `down` | `scroll_down` | Scroll Down | `VerticalScroll` |

@@ -75,7 +75,10 @@ from deepagents_code.tui.widgets.diff import (
     format_diff_stats,
     highlight_source_prefixes,
 )
-from deepagents_code.unicode_security import render_with_unicode_markers
+from deepagents_code.unicode_security import (
+    render_with_unicode_markers,
+    sanitize_control_chars,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -1580,7 +1583,11 @@ class AssistantMessage(_StreamedTextParts, Vertical):
         self._pending_append = ""
         try:
             stream = self._ensure_stream()
-            await stream.write(pending)
+            await stream.write(
+                sanitize_control_chars(
+                    pending, keep_newlines=True, collapse_whitespace=False
+                )
+            )
         except Exception:  # a render hiccup must not crash the app
             self._pending_append = pending + self._pending_append
             logger.exception("Failed to flush streamed markdown fragment")
@@ -1588,7 +1595,11 @@ class AssistantMessage(_StreamedTextParts, Vertical):
     async def write_initial_content(self) -> None:
         """Write initial content if provided at construction time."""
         if self._content:
-            await self._get_markdown().update(self._content)
+            await self._get_markdown().update(
+                sanitize_control_chars(
+                    self._content, keep_newlines=True, collapse_whitespace=False
+                )
+            )
 
     async def stop_stream(self) -> None:
         """Stop the streaming and finalize the content."""
@@ -1597,7 +1608,11 @@ class AssistantMessage(_StreamedTextParts, Vertical):
         if self._stream is not None:
             await self._stream.stop()
             self._stream = None
-            await self._get_markdown().update(self._content)
+            await self._get_markdown().update(
+                sanitize_control_chars(
+                    self._content, keep_newlines=True, collapse_whitespace=False
+                )
+            )
 
     async def set_content(self, content: str) -> None:
         """Set the full message content.
@@ -1616,7 +1631,11 @@ class AssistantMessage(_StreamedTextParts, Vertical):
             self._stream = None
         self._content = content
         if self._markdown:
-            await self._markdown.update(content)
+            await self._markdown.update(
+                sanitize_control_chars(
+                    content, keep_newlines=True, collapse_whitespace=False
+                )
+            )
 
 
 class _ReasoningToggle(Static):
@@ -1673,7 +1692,14 @@ class ReasoningMessage(_StreamedTextParts, Vertical):
             Header, plain-text body, and toggle hint widgets.
         """
         yield _ReasoningToggle(Content.styled("Reasoning", "bold"))
-        yield Static(Content(self._content), id="reasoning-body")
+        yield Static(
+            Content(
+                sanitize_control_chars(
+                    self._content, keep_newlines=True, collapse_whitespace=False
+                )
+            ),
+            id="reasoning-body",
+        )
         # A toggle, not a plain Static: the hint says "click", so clicking the
         # hint itself has to work as well as clicking the header.
         yield _ReasoningToggle(id="reasoning-hint")
@@ -1708,7 +1734,13 @@ class ReasoningMessage(_StreamedTextParts, Vertical):
             self._hint = self.query_one("#reasoning-hint", Static)
         content = self._content
         has_content = bool(content) and not content.isspace()
-        self._body.update(Content(content))
+        self._body.update(
+            Content(
+                sanitize_control_chars(
+                    content, keep_newlines=True, collapse_whitespace=False
+                )
+            )
+        )
         hint_state = (has_content, self._expanded)
         if hint_state == self._hint_state:
             return

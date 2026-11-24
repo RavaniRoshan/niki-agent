@@ -94,28 +94,6 @@ def test_k10_queued_messages_are_bounded() -> None:
     )
 
 
-# ------------------------------------------------------------ K11 palette
-
-
-def test_k11_no_command_palette_is_configured() -> None:
-    """K11: CHARACTERISED GAP -- there is no command palette to drive.
-
-    Textual provides `COMMAND_PALETTE_BINDING`; `DeepAgentsApp` does not enable
-    it. Asserted as current state so the gap is visible rather than assumed, and
-    so enabling a palette later fails this test and forces the row to be
-    updated in the same change.
-    """
-    from textual.app import App as TextualApp
-
-    assert getattr(TextualApp, "COMMAND_PALETTE_BINDING", None) is None or not getattr(
-        _app(), "ENABLE_COMMAND_PALETTE", False
-    ), (
-        "K11: a command palette now exists on the Niki app. Implement its "
-        "selection contract, then mark K11 complete in docs/niki/CHECKLIST.md "
-        "in this same change."
-    )
-
-
 # --------------------------------------------------------------- F5 picker
 
 
@@ -131,22 +109,4 @@ def test_f5_a_thread_selector_screen_exists() -> None:
     assert hasattr(ThreadSelectorScreen, "BINDINGS"), (
         "F5: the thread selector has no bindings, so it would be unreachable "
         "by keyboard"
-    )
-
-
-# -------------------------------------------------------------- F6 summary
-
-
-def test_f6_no_turn_duration_summary_is_rendered() -> None:
-    """F6: CHARACTERISED GAP -- no post-run summary line exists.
-
-    Both reference UIs close a turn with a line saying what it did and how long
-    it took. Nothing in this app renders one, so F6 is a build item rather than
-    a verification item.
-    """
-    from deepagents_code.app import DeepAgentsApp
-
-    assert not hasattr(DeepAgentsApp, "TURN_SUMMARY_TEMPLATE"), (
-        "F6: a turn-summary template now exists. Implement its rendering, then "
-        "mark F6 complete in docs/niki/CHECKLIST.md in this same change."
     )

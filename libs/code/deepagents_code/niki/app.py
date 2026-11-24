@@ -26,15 +26,22 @@ defaults are inherited untouched from `DeepAgentsApp`.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from time import monotonic
 from typing import ClassVar
 
+from textual.binding import Binding
 from textual.theme import Theme
 
 import deepagents_code
 from deepagents_code.app import DeepAgentsApp
+from deepagents_code.command_registry import COMMANDS, SlashCommand, get_slash_commands
+from deepagents_code.domain.events import RunEvent, RunEventKind
 from deepagents_code.niki import theme as niki_theme
+from deepagents_code.niki.command_palette import CommandPaletteScreen
 from deepagents_code.niki.message_store import NikiMessageStore
+from deepagents_code.niki.turn_summary import TurnSummary, TurnSummaryData
 from deepagents_code.theme import DEFAULT_THEME as _UPSTREAM_DEFAULT_THEME
 from deepagents_code.tui.widgets.chat_input import ChatTextArea
 from deepagents_code.tui.widgets.message_store import MessageStore
@@ -51,6 +58,20 @@ class NikiApp(DeepAgentsApp):
     #: Blink is opt-in; see the module docstring for the measurement. Assign to
     #: the instance before mounting to override.
     blink_cursor: bool = False
+
+    BINDINGS: ClassVar[list[Binding]] = [
+        *DeepAgentsApp.BINDINGS,
+        Binding(
+            "ctrl+shift+p",
+            "open_command_palette",
+            "Command Palette",
+            show=False,
+            priority=True,
+        ),
+    ]
+
+    _turn_summary_events: dict[tuple[str, str], list[RunEvent]]
+    _turn_summary_started_at: dict[tuple[str, str], float]
 
     #: The theme Niki starts in. Upstream defaults to `"langchain"`
     #: (`theme.DEFAULT_THEME`); an owner can still switch with `/theme`.
@@ -74,17 +95,30 @@ class NikiApp(DeepAgentsApp):
         same mechanism rather than around it, so `/theme` lists the Niki theme
         beside the built-ins and any owner CSS override keeps working.
 
-        Both palettes are registered so a light-terminal owner has somewhere to
-        switch to; Niki defaults to the dark one.
+        Every Niki palette is registered so a light-terminal owner has
+        somewhere to switch to; Niki defaults to the dark one. Set
+        `NIKI_COLOR_DEPTH=16` to register the same variants with native ANSI
+        colors for limited-color terminals.
         """
         super()._register_custom_themes()
+        ansi16 = os.environ.get("NIKI_COLOR_DEPTH", "").strip() == "16"
         for name, palette in niki_theme.NIKI_PALETTES.items():
+            selected_palette = (
+                niki_theme.NIKI_ANSI16_PALETTES[name] if ansi16 else palette
+            )
             self.register_theme(
-                self._build_niki_theme(name, palette, dark=name != "niki-light")
+                self._build_niki_theme(
+                    name,
+                    selected_palette,
+                    dark=name != "niki-light",
+                    ansi=ansi16,
+                )
             )
 
     @staticmethod
-    def _build_niki_theme(name: str, palette: dict[str, str], dark: bool) -> Theme:
+    def _build_niki_theme(
+        name: str, palette: dict[str, str], dark: bool, *, ansi: bool = False
+    ) -> Theme:
         """Build a Textual `Theme` from a Niki token palette.
 
         Every token is also emitted as a CSS variable so `$niki-*` resolves in
@@ -94,8 +128,9 @@ class NikiApp(DeepAgentsApp):
 
         Args:
             name: Registry name for the theme.
-            palette: Token name to `#RRGGBB` value.
+            palette: Token name to RGB hex or a Textual ANSI color value.
             dark: Whether Textual should treat this as a dark theme.
+            ansi: Whether palette colors are native ANSI indices rather than RGB.
 
         Returns:
             A `Theme` ready for Textual's `register_theme`.
@@ -113,6 +148,7 @@ class NikiApp(DeepAgentsApp):
             error=palette["error"],
             success=palette["success"],
             dark=dark,
+            ansi=ansi,
             variables={
                 **{
                     f"niki-{token.replace('_', '-')}": value
@@ -124,6 +160,8 @@ class NikiApp(DeepAgentsApp):
 
     async def on_mount(self) -> None:
         """Mount upstream's app, then schedule the Niki presentation defaults."""
+        self._turn_summary_events = {}
+        self._turn_summary_started_at = {}
         await super().on_mount()
         self._prefer_niki_theme()
         self._install_niki_message_store()
@@ -170,6 +208,58 @@ class NikiApp(DeepAgentsApp):
         """Push the blink preference onto every composer text area."""
         for text_area in self.query(ChatTextArea):
             text_area.cursor_blink = self.blink_cursor
+
+    def action_open_command_palette(self) -> None:
+        """Open a searchable picker over commands enabled by the registry."""
+        enabled = {entry.name for entry in get_slash_commands()}
+        commands = [command for command in COMMANDS if command.name in enabled]
+        self.push_screen(
+            CommandPaletteScreen(commands), self._dispatch_palette_selection
+        )
+
+    async def _dispatch_palette_selection(self, command: SlashCommand | None) -> None:
+        """Return palette selections to the existing slash-command handler."""
+        if command is not None:
+            await self._handle_command(command.name)
+
+    def _on_runtime_event(self, event: RunEvent) -> None:
+        """Keep a turn's minimal tool evidence and render its terminal summary."""
+        super()._on_runtime_event(event)
+        key = (event.session_id, event.turn_id)
+
+        if event.kind == RunEventKind.turn_started:
+            self._turn_summary_events.setdefault(key, [])
+            self._turn_summary_started_at.setdefault(key, monotonic())
+            return
+
+        if event.kind in {RunEventKind.tool_started, RunEventKind.tool_finished}:
+            self._turn_summary_events.setdefault(key, []).append(event)
+            return
+
+        if event.kind not in {
+            RunEventKind.turn_finished,
+            RunEventKind.turn_failed,
+            RunEventKind.turn_cancelled,
+        }:
+            return
+
+        events = self._turn_summary_events.pop(key, [])
+        events.append(event)
+        started_at = self._turn_summary_started_at.pop(key, monotonic())
+        summary = TurnSummary.from_events(events, max(0.0, monotonic() - started_at))
+        self.call_later(
+            lambda: self.run_worker(
+                self._render_turn_summary(summary),
+                group="niki-turn-summary",
+                exit_on_error=False,
+            )
+        )
+
+    async def _render_turn_summary(self, summary: TurnSummaryData) -> None:
+        """Mount the event-derived result line in the transcript."""
+        from deepagents_code.tui.widgets.messages import AppMessage
+
+        await self._mount_message(AppMessage(TurnSummary.render(summary)))
 
 
 __all__ = ["NikiApp"]

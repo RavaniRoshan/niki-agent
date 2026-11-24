@@ -980,9 +980,19 @@ class TextualUIAdapter:
             self._on_team_event(event)
 
     def handle_runtime_event(self, event: RunEvent) -> None:
-        """Forward goal and context events after runtime-envelope validation."""
+        """Forward validated runtime lifecycle events to the presentation layer."""
         if (
-            event.kind in {RunEventKind.goal_progress, RunEventKind.context_compacted}
+            event.kind
+            in {
+                RunEventKind.turn_started,
+                RunEventKind.tool_started,
+                RunEventKind.tool_finished,
+                RunEventKind.goal_progress,
+                RunEventKind.context_compacted,
+                RunEventKind.turn_finished,
+                RunEventKind.turn_failed,
+                RunEventKind.turn_cancelled,
+            }
             and self._on_runtime_event is not None
         ):
             self._on_runtime_event(event)

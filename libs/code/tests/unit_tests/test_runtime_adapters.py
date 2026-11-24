@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langgraph.types import Command
 
 from deepagents_code.adapters.runtime.langgraph_remote import (
@@ -105,6 +105,73 @@ async def test_remote_runtime_projects_goal_and_compaction_custom_events():
     assert [event.sequence for event in events] == [1, 2, 3, 4]
     assert events[1].payload == {"status": "blocked", "note": "need API credentials"}
     assert events[2].payload == {"cutoff_index": 7}
+
+
+@pytest.mark.asyncio
+async def test_remote_runtime_projects_tool_calls_and_results():
+    chunks = [
+        (
+            (),
+            "updates",
+            {
+                "model": {
+                    "messages": [
+                        AIMessage(
+                            content="",
+                            tool_calls=[
+                                {
+                                    "name": "write_file",
+                                    "args": {"file_path": "src/agent.py"},
+                                    "id": "call-write",
+                                    "type": "tool_call",
+                                }
+                            ],
+                        )
+                    ]
+                }
+            },
+        ),
+        (
+            (),
+            "updates",
+            {
+                "tools": {
+                    "messages": [
+                        ToolMessage(
+                            content="written",
+                            name="write_file",
+                            tool_call_id="call-write",
+                            status="success",
+                        )
+                    ]
+                }
+            },
+        ),
+    ]
+    runtime = LangGraphRemoteRuntime(FakeRemoteAgent(chunks))
+    request = TurnRequest("session-1", "turn-1", "write a file", "/workspace")
+
+    events = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.tool_started,
+        RunEventKind.tool_finished,
+        RunEventKind.turn_finished,
+    ]
+    started, finished = events[1:3]
+    assert started.payload == {
+        "call_id": "call-write",
+        "tool_name": "write_file",
+        "file_id": started.payload["file_id"],
+    }
+    assert len(started.payload["file_id"]) == 64
+    assert "src/agent.py" not in str(started.payload)
+    assert finished.payload == {
+        "call_id": "call-write",
+        "tool_name": "write_file",
+        "status": "success",
+    }
 
 
 @pytest.mark.asyncio

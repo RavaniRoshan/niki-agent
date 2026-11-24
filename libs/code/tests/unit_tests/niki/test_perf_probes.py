@@ -243,6 +243,37 @@ async def test_niki_app_installs_the_bounded_message_store() -> None:
     )
 
 
+def test_five_thousand_message_history_stays_bounded_and_hydratable() -> None:
+    """S5: scrolling to the oldest row keeps only a small mount window live."""
+    from deepagents_code.niki.message_store import NikiMessageStore
+    from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+
+    store = NikiMessageStore()
+    messages = [
+        MessageData(type=MessageType.USER, content=f"message {index}", id=f"m-{index}")
+        for index in range(5_000)
+    ]
+    archived, visible = store.bulk_load(messages)
+    assert len(archived) == 4_970
+    assert len(visible) == 30
+    assert store.visible_count <= store.HARD_WINDOW_SIZE
+
+    first_visible_batch: list[MessageData] = []
+    while store.has_messages_above:
+        batch = store.get_messages_to_hydrate()
+        assert batch
+        store.mark_hydrated(len(batch))
+        first_visible_batch = batch
+        pruned = store.get_messages_to_prune_below(len(batch))
+        assert len(pruned) == len(batch)
+        store.mark_pruned_below([message.id for message in pruned])
+        assert store.visible_count <= store.HARD_WINDOW_SIZE
+
+    assert first_visible_batch[0].id == "m-0"
+    assert store.get_message("m-0") is messages[0]
+    assert store.visible_count == 30
+
+
 def test_artifact_is_readable_json() -> None:
     """The artifact is cited by docs/niki/BASELINE.md, so it must stay parseable."""
     data: Any = (

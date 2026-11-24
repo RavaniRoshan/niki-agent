@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
@@ -204,6 +206,16 @@ class LangGraphRemoteRuntime:
                 if projected is not None:
                     yield projected
                     sequence = projected.sequence + 1
+                tool_events = _tool_runtime_events(
+                    chunk,
+                    session_id=session_id,
+                    turn_id=turn_id,
+                    first_sequence=sequence,
+                )
+                for event in tool_events:
+                    yield event
+                if tool_events:
+                    sequence = tool_events[-1].sequence + 1
                 text = _message_text(chunk)
                 if text:
                     for event in _text_events(session_id, turn_id, sequence, text):
@@ -277,6 +289,102 @@ def _message_text(chunk: object) -> str:
             and isinstance(block.get("text"), str)
         )
     return ""
+
+
+_FILE_MUTATION_TOOLS = frozenset({"write_file", "edit_file", "delete"})
+
+
+def _tool_runtime_events(
+    chunk: object,
+    *,
+    session_id: str,
+    turn_id: str,
+    first_sequence: int,
+) -> list[RunEvent]:
+    """Project public tool lifecycle facts from LangGraph node updates.
+
+    Only call identity, tool name, status, and a one-way file identifier leave
+    the adapter. Tool arguments and outputs remain in the execution layer.
+
+    Returns:
+        Zero or more normalized tool lifecycle events in stream order.
+    """
+    if not isinstance(chunk, tuple) or len(chunk) != _STREAM_CHUNK_LENGTH:
+        return []
+    _namespace, mode, data = chunk
+    if mode != "updates" or not isinstance(data, dict):
+        return []
+
+    node_updates = [data] if "messages" in data else list(data.values())
+    events: list[RunEvent] = []
+    sequence = first_sequence
+    for update in node_updates:
+        if not isinstance(update, dict):
+            continue
+        messages = update.get("messages")
+        if not isinstance(messages, (list, tuple)):
+            continue
+        for message in messages:
+            if getattr(message, "type", "") == "ai":
+                calls = getattr(message, "tool_calls", ())
+                if not isinstance(calls, (list, tuple)):
+                    continue
+                for call in calls:
+                    if not isinstance(call, dict):
+                        continue
+                    call_id = call.get("id")
+                    tool_name = call.get("name")
+                    args = call.get("args")
+                    if (
+                        not isinstance(call_id, str)
+                        or not call_id
+                        or not isinstance(tool_name, str)
+                        or not tool_name
+                    ):
+                        continue
+                    payload: dict[str, object] = {
+                        "call_id": call_id,
+                        "tool_name": tool_name,
+                    }
+                    if tool_name in _FILE_MUTATION_TOOLS and isinstance(args, dict):
+                        path = args.get("file_path")
+                        if isinstance(path, str) and path:
+                            normalized_path = os.path.normcase(os.path.normpath(path))
+                            payload["file_id"] = hashlib.sha256(
+                                normalized_path.encode("utf-8")
+                            ).hexdigest()
+                    events.append(
+                        _event_for_ids(
+                            session_id,
+                            turn_id,
+                            sequence,
+                            RunEventKind.tool_started,
+                            payload,
+                        )
+                    )
+                    sequence += 1
+            elif getattr(message, "type", "") == "tool":
+                call_id = getattr(message, "tool_call_id", None)
+                tool_name = getattr(message, "name", None)
+                status = getattr(message, "status", None)
+                if not isinstance(call_id, str) or not call_id:
+                    continue
+                payload = {"call_id": call_id}
+                if isinstance(tool_name, str) and tool_name:
+                    payload["tool_name"] = tool_name
+                if isinstance(status, str) and status:
+                    payload["status"] = status
+                events.append(
+                    _event_for_ids(
+                        session_id,
+                        turn_id,
+                        sequence,
+                        RunEventKind.tool_finished,
+                        payload,
+                    )
+                )
+                sequence += 1
+    return events
 
 
 def _custom_runtime_event(
