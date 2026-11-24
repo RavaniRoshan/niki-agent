@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "architecture-patterns": {
+      "source": "wshobson/agents",
+      "commit": "34e50fee32114afd9475f25d81492712f08cb71c",
+      "sourceType": "github",
+      "skillPath": "plugins/backend-development/skills/architecture-patterns/SKILL.md",
+      "computedHash": "bfd02e3b52c08838d3a93ac17def96318a41a00f77798f162bfb78669d38e713"
+    }
+  }
+}

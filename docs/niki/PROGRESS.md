@@ -48,3 +48,24 @@ Fixture model, Pilot driver, snapshots at four tiers, PTY lifecycle, perf probes
 - **Owner-gated:** auto-update sign-off was implemented as instructed and still wants explicit confirmation; a real API key; real-terminal verification via `docs/niki/OWNER_VERIFY.md`.
 - **Not built:** K11 command palette, F6 post-run summary, mouse-release toggle, 16-colour and light-terminal appearance, and every on-screen rendering row a synthetic mount cannot decide (layout height 0).
 - **Open gaps by design:** PgUp does not reach the transcript while the composer holds focus; `Esc` still interrupts rather than denying; no reduced-motion redraw cost regression.
+
+## Session 3 — dynamic completion workflow (in progress)
+
+Plan: `docs/superpowers/plans/2026-11-24-niki-product-completion-dynamic-workflow.md`.
+`CHECKLIST.md` remains the only product-acceptance source; `workflow-state.json` holds orchestration state only.
+
+### Completed
+- **Evaluator repair** (`fix(evals): complete local benchmark verification`, `a1746d94`): strict paired-result validation, focused comparator helpers, required `--niki-agent`, and the missing contract tests. Local gate: 92 tests pass, `make lint`/`ty` clean, Harbor `0.25.0`, `git diff --check` clean, SDK diff empty. No live Harbor job was run.
+- **Workflow controller and skill**: `libs/code/scripts/niki_workflow.py` parses both Python/Rust checklist columns, selects one item at a time, keeps blocked items visible and unclaimable, records saved steps, requires WORKS evidence plus a resolving full commit SHA for `finish`, and gates phase advances on checklist readiness and a passed matched evaluation. `evaluation-readiness` records pass/fail in state; `reopen` returns to an implementation phase with a reason.
+- `docs/niki/CHECKLIST.md` now has separate Python/Rust status and evidence columns. Non-item tables (palette, metrics) were left in their original shape.
+- `.agents/skills/architecture-patterns/` installed via `npx skills add https://github.com/wshobson/agents --skill architecture-patterns`; source revision pinned in `skills-lock.json` (`34e50fee32114afd9475f25d81492712f08cb71c`). Used only when a backlog item changes a port or adapter.
+- `.agents/skills/niki-product-completion/SKILL.md` defines the task-card loop, status view, stop conditions, and handoff.
+
+### State at this handoff
+- Phase `python`; no active item; no blockers; no benchmark or Rust work performed.
+- Current `next` card: `S1 first frame ≤400 ms warm` (P0, PARTIAL).
+- Checklist recount from the live file: 57 item rows, 22 Python WORKS, 29 PARTIAL, 6 P1; the older `26 WORKS / 33 PARTIAL / 11 MISSING` tally is stale.
+- Workflow tests: 13 passed in 3.67 s. `status` and `next` run cleanly against the live checklist.
+
+### Next queued work
+- Task 3: re-audit the live checklist, decide whether provider/LangSmith credentials permit a current regression baseline, and bundle P0 owner decisions. Continue with Task 4 only after that reconciliation.
