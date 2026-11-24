@@ -15786,6 +15786,62 @@ class DeepAgentsApp(App):
         )
         return model, iterations
 
+    async def _handle_workflow_command(self, command: str) -> None:
+        """List or inspect profile-saved reusable workflow definitions."""
+        from deepagents_code.application.workflows import ProfileWorkflowRepository
+
+        parts = command.strip().split(maxsplit=2)
+        arguments = parts[1:]
+        if arguments:
+            arguments[0] = arguments[0].lower()
+        repository = ProfileWorkflowRepository()
+        try:
+            match arguments:
+                case [] | ["list"]:
+                    definitions = repository.list()
+                    if not definitions:
+                        message = "No workflows saved in this profile."
+                    else:
+                        message = "Saved workflows:\n" + "\n".join(
+                            f"  {definition.name} (v{definition.version}, "
+                            f"{len(definition.steps)} stages)"
+                            for definition in definitions
+                        )
+                    await self._mount_message(AppMessage(message))
+                    return
+                case ["show", name]:
+                    definition = repository.load(name)
+                    if definition is None:
+                        await self._mount_message(
+                            AppMessage(f"Workflow {name!r} was not found.")
+                        )
+                        return
+                    stages = []
+                    for step in definition.steps:
+                        dependencies = (
+                            f" after {', '.join(step.depends_on)}"
+                            if step.depends_on
+                            else ""
+                        )
+                        stages.append(
+                            f"  {step.step_id}{dependencies}: {step.instruction}"
+                        )
+                    message = (
+                        f"Workflow {definition.name} (v{definition.version})\n"
+                        + "\n".join(stages)
+                    )
+                    await self._mount_message(AppMessage(message))
+                    return
+                case _:
+                    pass
+        except (OSError, TypeError, ValueError) as exc:
+            await self._mount_message(ErrorMessage(f"Could not read workflow: {exc}"))
+            return
+
+        await self._mount_message(
+            AppMessage("Usage: /workflow list | /workflow show <name>")
+        )
+
     async def _handle_goal_command(self, command: str) -> None:
         """Handle `/goal` as a user-approved rubric proposal workflow."""
         remainder = command.strip()[len("/goal") :].strip()
@@ -17562,6 +17618,8 @@ class DeepAgentsApp(App):
             await self._handle_approval_mode_command(ApprovalMode(cmd.lstrip("/")))
         elif cmd == "/goal" or cmd.startswith("/goal "):
             await self._handle_goal_command(command)
+        elif cmd == "/workflow" or cmd.startswith("/workflow "):
+            await self._handle_workflow_command(command)
         elif cmd in {"/rubric", "/criteria"} or cmd.startswith(
             ("/rubric ", "/criteria ")
         ):

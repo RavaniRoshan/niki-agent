@@ -366,6 +366,24 @@ def get_db_path() -> Path:
     return _db_path
 
 
+def get_workflows_dir() -> Path:
+    """Return the private per-profile directory for reusable workflow files.
+
+    Workflow definitions are user configuration, while execution state stays
+    in the owning LangGraph checkpoint. Keeping the files below the active
+    profile's state directory follows the same profile selection and
+    permissions as session storage.
+
+    Returns:
+        A private directory containing JSON workflow definitions.
+    """
+    from deepagents_code.model_config import DEFAULT_STATE_DIR
+
+    workflow_dir = DEFAULT_STATE_DIR / "workflows"
+    harden_state_dir(workflow_dir)
+    return workflow_dir
+
+
 def generate_thread_id() -> str:
     """Generate a new thread ID as a full UUID7 string.
 

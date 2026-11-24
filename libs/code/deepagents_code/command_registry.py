@@ -172,6 +172,13 @@ COMMANDS: tuple[SlashCommand, ...] = (
         ),
     ),
     SlashCommand(
+        name="/workflow",
+        description="List or inspect saved staged workflows",
+        bypass_tier=BypassTier.QUEUED,
+        hidden_keywords="stages reusable tasks automation",
+        argument_hint="[list | show <name>]",
+    ),
+    SlashCommand(
         name="/editor",
         description="Open prompt in an external editor ($EDITOR)",
         bypass_tier=BypassTier.QUEUED,
