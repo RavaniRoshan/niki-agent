@@ -2,32 +2,132 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import pytest
+from langchain_core.messages import AIMessageChunk
+from langgraph.types import Command
 
 from deepagents_code.adapters.runtime.langgraph_remote import (
     LangGraphEventEncoder,
     LangGraphRemoteRuntime,
 )
-from deepagents_code.application.run_turn import RunProtocolError
-from deepagents_code.domain.events import RunEvent, RunEventKind
+from deepagents_code.application.run_turn import RunProtocolError, RunTurnCoordinator
+from deepagents_code.domain.events import (
+    ResumeRequest,
+    RunEvent,
+    RunEventKind,
+    TurnRequest,
+    TurnStatus,
+    encode_run_event,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Mapping, Sequence
 
 
 class FakeRemoteAgent:
-    def __init__(self, events):
+    def __init__(self, events: Sequence[object]) -> None:
         self._events = events
-        self.cancelled = []
+        self.cancelled: list[Mapping[str, object]] = []
+        self.calls: list[
+            tuple[object, Sequence[str], bool, Mapping[str, object], object]
+        ] = []
 
-    async def astream(self, *a, **kw):
-        for e in self._events:
-            yield e
+    async def astream(
+        self,
+        graph_input: object,
+        *,
+        stream_mode: Sequence[str],
+        subgraphs: bool,
+        config: Mapping[str, object],
+        context: Mapping[str, object] | None = None,
+    ) -> AsyncIterator[object]:
+        self.calls.append((graph_input, stream_mode, subgraphs, config, context))
+        for event in self._events:
+            yield event
 
-    async def acancel_active_runs(self, config):
+    async def acancel_active_runs(self, config: Mapping[str, object]) -> None:
         self.cancelled.append(config)
 
 
-def _ev(seq, kind, sid="s1", tid="t1"):
+@pytest.mark.asyncio
+async def test_remote_runtime_delivers_native_chunks_and_approval_lifecycle():
+    chunks = [
+        ((), "messages", (AIMessageChunk(content="hello"), {})),
+        ((), "updates", {"__interrupt__": [{"id": "approval-1"}]}),
+    ]
+    received: list[object] = []
+
+    def receive(chunk: object) -> None:
+        received.append(chunk)
+
+    runtime = LangGraphRemoteRuntime(FakeRemoteAgent(chunks), on_chunk=receive)
+    request = TurnRequest("session-1", "turn-1", "hello", "/workspace")
+
+    events = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.text_delta,
+        RunEventKind.approval_required,
+    ]
+    assert events[1].payload == {"text": "hello"}
+    assert events[-1].payload == {"interrupt_ids": ["approval-1"]}
+    assert received == chunks
+
+
+@pytest.mark.asyncio
+async def test_remote_runtime_splits_large_utf8_text_events():
+    text = "🔥" * 20_000
+    agent = FakeRemoteAgent([((), "messages", (AIMessageChunk(content=text), {}))])
+    runtime = LangGraphRemoteRuntime(agent)
+    request = TurnRequest("session-1", "turn-1", "write", "/workspace")
+
+    events = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+    text_events = [event for event in events if event.kind == RunEventKind.text_delta]
+
+    assert len(text_events) > 1
+    assert "".join(event.payload["text"] for event in text_events) == text
+    for event in events:
+        encode_run_event(event)
+
+
+@pytest.mark.asyncio
+async def test_remote_runtime_resumes_with_approval_and_continued_sequence():
+    decision = {"decisions": [{"type": "approve"}]}
+    agent = FakeRemoteAgent([])
+    runtime = LangGraphRemoteRuntime(agent)
+    request = ResumeRequest(
+        session_id="session-1",
+        turn_id="turn-1",
+        decision=decision,
+        last_sequence=2,
+        prior_status=TurnStatus.waiting_for_approval,
+    )
+
+    events = [event async for event in RunTurnCoordinator(runtime).resume_turn(request)]
+
+    assert [event.kind for event in events] == [
+        RunEventKind.session_resumed,
+        RunEventKind.turn_started,
+        RunEventKind.turn_finished,
+    ]
+    assert [event.sequence for event in events] == [3, 4, 5]
+    graph_input, _, _, config, _ = agent.calls[0]
+    assert isinstance(graph_input, Command)
+    assert graph_input.resume == decision
+    configurable = config.get("configurable")
+    assert isinstance(configurable, dict)
+    assert configurable.get("thread_id") == "session-1"
+
+
+def _ev(
+    seq: int,
+    kind: str,
+    sid: str = "s1",
+    tid: str = "t1",
+) -> tuple[tuple[str, ...], str, dict[str, object]]:
     return (
         (),
         "events",
@@ -42,69 +142,46 @@ def _ev(seq, kind, sid="s1", tid="t1"):
 
 
 @pytest.mark.asyncio
-async def test_remote_runtime_maps_text_tool_approval_and_terminal_events():
-    events = [
-        _ev(1, "turn_started"),
-        _ev(2, "text_delta"),
-        _ev(3, "tool_started"),
-        _ev(4, "tool_finished"),
-        _ev(5, "approval_required"),
-        _ev(6, "turn_finished"),
-    ]
-    enc = LangGraphEventEncoder()
-    rt = LangGraphRemoteRuntime(FakeRemoteAgent(events), enc)
-    from deepagents_code.domain.events import TurnRequest
-
-    req = TurnRequest(session_id="s1", turn_id="t1", prompt="hi", workspace_root="/w")
-    out = [e async for e in rt.stream_turn(req)]
-    assert [e.kind for e in out] == [
-        RunEventKind.turn_started,
-        RunEventKind.text_delta,
-        RunEventKind.tool_started,
-        RunEventKind.tool_finished,
-        RunEventKind.approval_required,
-        RunEventKind.turn_finished,
-    ]
-    assert [e.sequence for e in out] == [1, 2, 3, 4, 5, 6]
-
-
-@pytest.mark.asyncio
-async def test_remote_runtime_ignores_unrelated_custom_events():
+async def test_remote_runtime_forwards_unrecognized_chunks_to_presentation_callback():
     events = [
         ((), "messages", {"foo": "bar"}),
         _ev(1, "turn_started"),
         _ev(2, "turn_finished"),
     ]
-    enc = LangGraphEventEncoder()
-    rt = LangGraphRemoteRuntime(FakeRemoteAgent(events), enc)
-    from deepagents_code.domain.events import TurnRequest
+    received: list[object] = []
+
+    def receive(chunk: object) -> None:
+        received.append(chunk)
+
+    rt = LangGraphRemoteRuntime(FakeRemoteAgent(events), on_chunk=receive)
 
     req = TurnRequest(session_id="s1", turn_id="t1", prompt="hi", workspace_root="/w")
     out = [e async for e in rt.stream_turn(req)]
-    assert len(out) == 2
-
-
-@pytest.mark.asyncio
-async def test_remote_runtime_rejects_malformed_public_event():
-    events = [
-        ((), "events", {"session_id": "s1", "turn_id": "t1", "sequence": 1, "kind": "text_delta", "payload": "not-a-dict"}),
+    assert [event.kind for event in out] == [
+        RunEventKind.turn_started,
+        RunEventKind.turn_finished,
     ]
-    enc = LangGraphEventEncoder()
-    rt = LangGraphRemoteRuntime(FakeRemoteAgent(events), enc)
-    from deepagents_code.domain.events import TurnRequest
+    assert received == events
 
-    req = TurnRequest(session_id="s1", turn_id="t1", prompt="hi", workspace_root="/w")
+
+def test_remote_runtime_rejects_malformed_public_event():
+    event = {
+        "session_id": "s1",
+        "turn_id": "t1",
+        "sequence": 1,
+        "kind": "text_delta",
+        "payload": "not-a-dict",
+    }
+    enc = LangGraphEventEncoder()
     with pytest.raises(RunProtocolError):
-        async for _ in rt.stream_turn(req):
-            pass
+        enc.encode((), "events", event)
 
 
 @pytest.mark.asyncio
 async def test_remote_runtime_forwards_cancel_to_owned_run():
     events = []
     agent = FakeRemoteAgent(events)
-    enc = LangGraphEventEncoder()
-    rt = LangGraphRemoteRuntime(agent, enc)
+    rt = LangGraphRemoteRuntime(agent)
     await rt.cancel_turn("s1", "t1")
     assert len(agent.cancelled) == 1
 

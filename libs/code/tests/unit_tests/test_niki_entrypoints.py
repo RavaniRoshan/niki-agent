@@ -18,6 +18,10 @@ from deepagents_code.domain.events import (
     TurnRequest,
     TurnStatus,
 )
+from deepagents_code.niki.runtime_mode import (
+    is_niki_runtime_enabled,
+    niki_runtime_scope,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Mapping, Sequence
@@ -44,6 +48,15 @@ class FakeAgent:
             self.tool_executions += 1
         for chunk in self.streams[len(self.calls) - 1]:
             yield chunk
+
+
+def test_niki_runtime_scope_is_process_context_only():
+    assert not is_niki_runtime_enabled()
+
+    with niki_runtime_scope():
+        assert is_niki_runtime_enabled()
+
+    assert not is_niki_runtime_enabled()
 
 
 @pytest.mark.asyncio
@@ -150,9 +163,7 @@ async def test_cancel_turn_cancels_owned_graph_stream():
     assert events[-1].kind == RunEventKind.turn_cancelled
 
 
-async def _collect_events(
-    runtime: ACPAgentRuntime, req: TurnRequest
-) -> list[RunEvent]:
+async def _collect_events(runtime: ACPAgentRuntime, req: TurnRequest) -> list[RunEvent]:
     return [event async for event in RunTurnCoordinator(runtime).stream_turn(req)]
 
 

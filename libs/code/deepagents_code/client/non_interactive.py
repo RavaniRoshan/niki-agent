@@ -27,6 +27,7 @@ import threading
 import time
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, NoReturn, cast
+from uuid import uuid4
 
 from langchain.agents.middleware.human_in_the_loop import ActionRequest, HITLRequest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -68,6 +69,7 @@ from deepagents_code._tool_stream import (
 from deepagents_code._tracing import stream_trace_config
 from deepagents_code._version import __version__
 from deepagents_code.agent import DEFAULT_AGENT_NAME
+from deepagents_code.application.run_turn import RunTurnCoordinator
 from deepagents_code.config import (
     SHELL_ALLOW_ALL,
     build_langsmith_thread_url,
@@ -76,6 +78,13 @@ from deepagents_code.config import (
     is_ascii_mode,
     is_shell_command_allowed,
     runtime_state,
+)
+from deepagents_code.domain.events import (
+    ResumeRequest,
+    RunEvent,
+    RunEventKind,
+    TurnRequest,
+    TurnStatus,
 )
 from deepagents_code.file_ops import FileOpTracker, record_display_caveat
 from deepagents_code.hooks import (
@@ -106,13 +115,14 @@ from deepagents_code.unicode_security import (
 
 if TYPE_CHECKING:
     from asyncio.subprocess import Process
-    from collections.abc import Hashable, Mapping
+    from collections.abc import AsyncIterator, Awaitable, Callable, Hashable, Mapping
     from pathlib import Path
     from uuid import UUID
 
     from deepagents import FsToolName
     from langchain_core.runnables import RunnableConfig
 
+    from deepagents_code.adapters.runtime.langgraph_remote import _RemoteAgent
     from deepagents_code.approval_mode import ApprovalMode
     from deepagents_code.hooks.manager import HooksManager
     from deepagents_code.hooks.models.domain import SessionEndCause
@@ -424,6 +434,15 @@ class StreamState:
 
     thread_id: str = ""
     """Thread whose streamed usage this state accepts."""
+
+    runtime_turn_id: str = ""
+    """Niki lifecycle identity shared across approval pauses."""
+
+    runtime_sequence: int = 0
+    """Last validated event sequence for the active Niki turn."""
+
+    runtime_status: TurnStatus = TurnStatus.created
+    """Validated in-process state of the active Niki turn."""
 
     quiet: bool = False
     """When `True`, stream-time diagnostics (the tool-call and file-operation
@@ -1887,6 +1906,8 @@ async def _stream_agent(
     console: Console,
     file_op_tracker: FileOpTracker,
     context: CLIContext,
+    *,
+    runtime_decision: dict[str, Any] | None = None,
 ) -> None:
     """Consume the full agent stream and update *state* with results.
 
@@ -1899,32 +1920,48 @@ async def _stream_agent(
         console: Rich console for formatted output.
         file_op_tracker: Tracker for file-operation diffs.
         context: Runtime context for model-call middleware.
+        runtime_decision: Approval response for a Niki coordinator resume.
     """
     if state.spinner:
         state.spinner.start()
-    try:
-        async for chunk in agent.astream(
-            stream_input,
-            stream_mode=["messages", "updates", "custom"],
-            subgraphs=True,
-            config=stream_trace_config(config, stream_input),
-            context=context,
-            durability="exit",
-        ):
-            summarization = _summarization_stream_status(chunk)
-            compaction_id = _compaction_result_id(chunk)
-            if summarization is False and state.summarization_observed:
-                if compaction_id is not None:
-                    state.completed_compaction_ids.add(compaction_id)
-                await _after_headless_compact(state)
-                state.summarization_observed = False
-            elif (
-                compaction_id is not None
-                and compaction_id not in state.completed_compaction_ids
-            ):
+
+    async def process_chunk(chunk: object) -> None:
+        summarization = _summarization_stream_status(chunk)
+        compaction_id = _compaction_result_id(chunk)
+        if summarization is False and state.summarization_observed:
+            if compaction_id is not None:
                 state.completed_compaction_ids.add(compaction_id)
-                await _after_headless_compact(state)
-            _process_stream_chunk(chunk, state, console, file_op_tracker)
+            await _after_headless_compact(state)
+            state.summarization_observed = False
+        elif (
+            compaction_id is not None
+            and compaction_id not in state.completed_compaction_ids
+        ):
+            state.completed_compaction_ids.add(compaction_id)
+            await _after_headless_compact(state)
+        _process_stream_chunk(chunk, state, console, file_op_tracker)
+
+    try:
+        if _niki_runtime_enabled():
+            await _stream_agent_with_runtime(
+                agent,
+                stream_input,
+                config,
+                state,
+                context,
+                process_chunk,
+                runtime_decision,
+            )
+        else:
+            async for chunk in agent.astream(
+                stream_input,
+                stream_mode=["messages", "updates", "custom"],
+                subgraphs=True,
+                config=stream_trace_config(config, stream_input),
+                context=context,
+                durability="exit",
+            ):
+                await process_chunk(chunk)
         if state.summarization_observed:
             await _after_headless_compact(state)
             state.summarization_observed = False
@@ -1936,6 +1973,121 @@ async def _stream_agent(
         finalize_recorded_requests(state.recorded_usage_requests)
         if state.spinner:
             state.spinner.stop()
+
+
+def _niki_runtime_enabled() -> bool:
+    from deepagents_code.niki.runtime_mode import is_niki_runtime_enabled
+
+    return is_niki_runtime_enabled()
+
+
+async def _stream_agent_with_runtime(
+    agent: _RemoteAgent,
+    stream_input: dict[str, Any] | Command,
+    config: RunnableConfig,
+    state: StreamState,
+    context: CLIContext,
+    on_chunk: Callable[[object], Awaitable[None]],
+    runtime_decision: dict[str, Any] | None,
+) -> None:
+    from pathlib import Path
+
+    from deepagents_code.adapters.runtime.langgraph_remote import LangGraphRemoteRuntime
+
+    session_id = state.thread_id or _thread_id_from_config(config)
+    turn_id = state.runtime_turn_id or str(uuid4())
+    state.runtime_turn_id = turn_id
+    runtime = LangGraphRemoteRuntime(
+        agent,
+        on_chunk=on_chunk,
+        stream_input=stream_input,
+        config=stream_trace_config(config, stream_input),
+        context=context,
+        stream_mode=("messages", "updates", "custom"),
+    )
+    coordinator = RunTurnCoordinator(runtime)
+    events = _coordinated_turn_events(
+        coordinator,
+        session_id=session_id,
+        turn_id=turn_id,
+        prompt=_prompt_from_input(stream_input),
+        workspace_root=str(Path.cwd()),
+        state=state,
+        decision=runtime_decision,
+    )
+    async for event in events:
+        _record_runtime_event(state, event.kind, event.sequence)
+        if event.kind == RunEventKind.turn_failed:
+            msg = str(event.payload.get("error", "Agent runtime failed"))
+            if event.payload.get("recoverable") is True:
+                raise TimeoutError(msg)
+            raise RuntimeError(msg)
+        if event.kind == RunEventKind.turn_cancelled:
+            raise asyncio.CancelledError
+
+
+def _coordinated_turn_events(
+    coordinator: RunTurnCoordinator,
+    *,
+    session_id: str,
+    turn_id: str,
+    prompt: str,
+    workspace_root: str,
+    state: StreamState,
+    decision: dict[str, Any] | None,
+) -> AsyncIterator[RunEvent]:
+    if decision is None:
+        return coordinator.stream_turn(
+            TurnRequest(session_id, turn_id, prompt, workspace_root)
+        )
+    return coordinator.resume_turn(
+        ResumeRequest(
+            session_id=session_id,
+            turn_id=turn_id,
+            decision=decision,
+            last_sequence=state.runtime_sequence,
+            prior_status=state.runtime_status,
+        )
+    )
+
+
+def _record_runtime_event(
+    state: StreamState,
+    kind: RunEventKind,
+    sequence: int,
+) -> None:
+    state.runtime_sequence = sequence
+    if kind in {RunEventKind.turn_started, RunEventKind.session_resumed}:
+        state.runtime_status = TurnStatus.running
+    elif kind == RunEventKind.approval_required:
+        state.runtime_status = TurnStatus.waiting_for_approval
+    elif kind == RunEventKind.turn_finished:
+        state.runtime_status = TurnStatus.completed
+    elif kind == RunEventKind.turn_failed:
+        state.runtime_status = TurnStatus.failed
+    elif kind == RunEventKind.turn_cancelled:
+        state.runtime_status = TurnStatus.cancelled
+
+
+def _thread_id_from_config(config: RunnableConfig) -> str:
+    configurable = config.get("configurable", {})
+    thread_id = (
+        configurable.get("thread_id") if isinstance(configurable, dict) else None
+    )
+    return thread_id if isinstance(thread_id, str) else ""
+
+
+def _prompt_from_input(stream_input: dict[str, Any] | Command) -> str:
+    if not isinstance(stream_input, dict):
+        return ""
+    messages = stream_input.get("messages")
+    if not isinstance(messages, list):
+        return ""
+    for message in reversed(messages):
+        if isinstance(message, dict) and message.get("role") == "user":
+            content = message.get("content")
+            return content if isinstance(content, str) else ""
+    return ""
 
 
 def _summarization_stream_status(chunk: object) -> bool | None:
@@ -2138,6 +2290,7 @@ async def _run_agent_loop(
     thread_id = config.get("configurable", {}).get("thread_id", "")
     state = StreamState(
         thread_id=thread_id if isinstance(thread_id, str) else "",
+        runtime_turn_id=str(prompt_id or uuid4()),
         quiet=quiet,
         stream=stream,
         show_reasoning=show_reasoning,
@@ -2317,9 +2470,27 @@ async def _run_agent_loop(
             await _process_hitl_interrupts(state, console)
             resume_payload = {**state.hook_response, **state.hitl_response}
             stream_input = Command(resume=resume_payload)
-            await _stream_agent(
-                agent, stream_input, config, state, console, file_op_tracker, context
-            )
+            if _niki_runtime_enabled():
+                await _stream_agent(
+                    agent,
+                    stream_input,
+                    config,
+                    state,
+                    console,
+                    file_op_tracker,
+                    context,
+                    runtime_decision=resume_payload,
+                )
+            else:
+                await _stream_agent(
+                    agent,
+                    stream_input,
+                    config,
+                    state,
+                    console,
+                    file_op_tracker,
+                    context,
+                )
         run_completed = True
     except BaseException:
         await _end_headless_session(state, SessionEndCause.OTHER)

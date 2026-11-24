@@ -6,7 +6,7 @@ import logging
 import os
 import signal
 import sys
-from collections.abc import AsyncIterator, Iterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
@@ -54,6 +54,7 @@ from deepagents_code.config import (
     get_glyphs,
     runtime_state,
 )
+from deepagents_code.domain.events import TurnStatus
 from deepagents_code.file_ops import (
     DiffOutcome,
     FileOperationRecord,
@@ -74,6 +75,7 @@ from deepagents_code.hooks.models.domain import (
     UserPromptSubmitDecision,
 )
 from deepagents_code.hooks.transcript import TranscriptRecorder, TranscriptStore
+from deepagents_code.niki.runtime_mode import niki_runtime_scope
 from deepagents_code.tool_display import format_tool_message_content
 
 
@@ -3461,6 +3463,50 @@ async def test_reasoning_only_stream_ends_with_newline(
 
     assert stderr.getvalue() == "Reasoning:\nsolo\n"
     assert state.reasoning_active is False
+
+
+async def test_niki_headless_stream_uses_coordinated_runtime(
+    console: Console, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class NativeStreamAgent:
+        async def astream(
+            self,
+            graph_input: object,
+            *,
+            stream_mode: Sequence[str],
+            subgraphs: bool,
+            config: Mapping[str, object],
+            context: Mapping[str, object] | None = None,
+        ) -> AsyncIterator[object]:
+            assert graph_input == {
+                "messages": [{"role": "assistant", "content": "hello"}]
+            }
+            assert stream_mode == ("messages", "updates", "custom")
+            assert subgraphs is True
+            configurable = config.get("configurable")
+            assert isinstance(configurable, Mapping)
+            assert configurable.get("thread_id") == "s1"
+            assert context == {}
+            yield ((), "messages", (AIMessageChunk(content="hello"), {}))
+
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
+    state = StreamState(thread_id="s1")
+
+    with niki_runtime_scope():
+        await _stream_agent(
+            NativeStreamAgent(),
+            {"messages": [{"role": "assistant", "content": "hello"}]},
+            {"configurable": {"thread_id": "s1"}},
+            state,
+            console,
+            FileOpTracker(assistant_id="assistant"),
+            {},
+        )
+
+    assert state.runtime_status == TurnStatus.completed
+    assert state.runtime_sequence == 3
+    assert "hello" in output.getvalue()
 
 
 def test_reasoning_separator_stays_out_of_streamed_stdout(

@@ -9,6 +9,10 @@ Records edits to upstream-owned files made while evolving Niki.
   LangGraph `Command`, and cancels its owned stream task. It does not import or
   depend on `AgentSessionContext`; that type configures the ACP server's graph
   factory and does not identify a live ACP session.
-- Production ACP server routing through `RunTurnCoordinator`, plus the TUI and
-  headless entrypoint migrations, remain separate work. The current ACP server
-  continues to own ACP protocol rendering and session behavior.
+- Niki headless turns now pass through `RunTurnCoordinator` and
+  `LangGraphRemoteRuntime`. The adapter forwards native chunks to the existing
+  headless renderer, preserving its output and hook behavior. The legacy
+  `dcode` path remains on its existing stream path.
+- The TUI migration and production ACP server routing remain separate work.
+  The current ACP server continues to own ACP protocol rendering and session
+  behavior; the ACP runtime adapter is not yet wired into that server.
