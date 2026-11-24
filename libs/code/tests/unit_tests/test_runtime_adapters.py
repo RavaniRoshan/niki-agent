@@ -78,6 +78,64 @@ async def test_remote_runtime_delivers_native_chunks_and_approval_lifecycle():
 
 
 @pytest.mark.asyncio
+async def test_remote_runtime_projects_goal_and_compaction_custom_events():
+    chunks = [
+        (
+            (),
+            "custom",
+            {
+                "type": "niki_goal_progress",
+                "status": "blocked",
+                "note": "need API credentials",
+            },
+        ),
+        ((), "custom", {"type": "niki_context_compacted", "cutoff_index": 7}),
+    ]
+    runtime = LangGraphRemoteRuntime(FakeRemoteAgent(chunks))
+    request = TurnRequest("session-1", "turn-1", "continue", "/workspace")
+
+    events = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+    assert [event.kind for event in events] == [
+        RunEventKind.turn_started,
+        RunEventKind.goal_progress,
+        RunEventKind.context_compacted,
+        RunEventKind.turn_finished,
+    ]
+    assert [event.sequence for event in events] == [1, 2, 3, 4]
+    assert events[1].payload == {"status": "blocked", "note": "need API credentials"}
+    assert events[2].payload == {"cutoff_index": 7}
+
+
+@pytest.mark.asyncio
+async def test_remote_runtime_rejects_invalid_goal_progress_status():
+    chunks = [
+        ((), "custom", {"type": "niki_goal_progress", "status": "finished", "note": ""})
+    ]
+    runtime = LangGraphRemoteRuntime(FakeRemoteAgent(chunks))
+    request = TurnRequest("session-1", "turn-1", "continue", "/workspace")
+
+    with pytest.raises(RunProtocolError, match="goal progress"):
+        _ = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+
+@pytest.mark.asyncio
+async def test_remote_runtime_rejects_unverified_goal_completion_event():
+    chunks = [
+        (
+            (),
+            "custom",
+            {"type": "niki_goal_progress", "status": "complete", "note": "done"},
+        )
+    ]
+    runtime = LangGraphRemoteRuntime(FakeRemoteAgent(chunks))
+    request = TurnRequest("session-1", "turn-1", "continue", "/workspace")
+
+    with pytest.raises(RunProtocolError, match="requires verification"):
+        _ = [event async for event in RunTurnCoordinator(runtime).stream_turn(request)]
+
+
+@pytest.mark.asyncio
 async def test_remote_runtime_splits_large_utf8_text_events():
     text = "🔥" * 20_000
     agent = FakeRemoteAgent([((), "messages", (AIMessageChunk(content=text), {}))])

@@ -17,6 +17,9 @@ if TYPE_CHECKING:
 from deepagents_code.application.run_turn import RunProtocolError
 from deepagents_code.domain.events import (
     MAX_ENCODED_BYTES,
+    SCHEMA_VERSION,
+    GoalProgressEvent,
+    GoalProgressStatus,
     ResumeRequest,
     RunEvent,
     RunEventKind,
@@ -192,6 +195,15 @@ class LangGraphRemoteRuntime:
                     callback_result = self.on_chunk(chunk)
                     if callback_result is not None:
                         await callback_result
+                projected = _custom_runtime_event(
+                    chunk,
+                    session_id=session_id,
+                    turn_id=turn_id,
+                    sequence=sequence,
+                )
+                if projected is not None:
+                    yield projected
+                    sequence = projected.sequence + 1
                 text = _message_text(chunk)
                 if text:
                     for event in _text_events(session_id, turn_id, sequence, text):
@@ -265,6 +277,74 @@ def _message_text(chunk: object) -> str:
             and isinstance(block.get("text"), str)
         )
     return ""
+
+
+def _custom_runtime_event(
+    chunk: object,
+    *,
+    session_id: str,
+    turn_id: str,
+    sequence: int,
+) -> RunEvent | None:
+    """Normalize allowlisted custom lifecycle observations for one turn.
+
+    Returns:
+        A run event when the chunk is a recognized custom lifecycle event.
+
+    Raises:
+        RunProtocolError: If a recognized event has an invalid payload.
+    """
+    if not isinstance(chunk, tuple) or len(chunk) != _STREAM_CHUNK_LENGTH:
+        return None
+    namespace, mode, data = chunk
+    if namespace or mode != "custom" or not isinstance(data, dict):
+        return None
+    event_type = data.get("type")
+    payload: dict[str, object]
+    if event_type == "niki_goal_progress":
+        status = data.get("status")
+        note = data.get("note", "")
+        if not isinstance(status, str) or not isinstance(note, str):
+            msg = "malformed goal progress event: status and note must be strings"
+            raise RunProtocolError(msg)
+        try:
+            progress = GoalProgressEvent(
+                session_id=session_id,
+                status=cast("GoalProgressStatus", status),
+                note=note,
+            )
+        except (TypeError, ValueError) as exc:
+            msg = f"malformed goal progress event: {exc}"
+            raise RunProtocolError(msg) from exc
+        if progress.status == "complete" and data.get("verified") is not True:
+            msg = "malformed goal progress event: complete status requires verification"
+            raise RunProtocolError(msg)
+        kind = RunEventKind.goal_progress
+        payload = {"status": progress.status, "note": progress.note}
+        if progress.status == "complete":
+            payload["verified"] = True
+    elif event_type == "niki_context_compacted":
+        cutoff_index = data.get("cutoff_index")
+        if (
+            isinstance(cutoff_index, bool)
+            or not isinstance(cutoff_index, int)
+            or cutoff_index < 0
+        ):
+            msg = "malformed context compaction event: invalid cutoff_index"
+            raise RunProtocolError(msg)
+        kind = RunEventKind.context_compacted
+        payload = {"cutoff_index": cutoff_index}
+    else:
+        return None
+    return RunEvent(
+        schema_version=SCHEMA_VERSION,
+        event_id=f"{turn_id}:{sequence}",
+        session_id=session_id,
+        turn_id=turn_id,
+        sequence=sequence,
+        kind=kind,
+        payload=payload,
+    )
 
 
 def _interrupt_ids(chunk: object) -> list[str]:

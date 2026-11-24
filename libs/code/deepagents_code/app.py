@@ -4217,6 +4217,9 @@ class DeepAgentsApp(App):
         """Status bar widget; populated in `on_mount`."""
 
         self._goal_status_panel: GoalStatusPanel | None = None
+        self._last_goal_progress_projection: tuple[str, str, str, str | None] | None = (
+            None
+        )
         """Persistent inline goal display; populated in `on_mount`."""
 
         self._chat_input: ChatInput | None = None
@@ -5445,6 +5448,7 @@ class DeepAgentsApp(App):
             on_tool_complete=self._schedule_git_branch_refresh,
             on_subagent_event=self._on_subagent_event,
             on_team_event=self._on_team_event,
+            on_runtime_event=self._on_runtime_event,
             on_auto_mode_event=self._on_auto_mode_event,
             on_approval_mode_fallback=self._on_approval_mode_fallback,
             show_diff_line_numbers=self._show_diff_line_numbers,
@@ -14805,7 +14809,41 @@ class DeepAgentsApp(App):
                 markup=False,
             )
             return False
+        self._project_goal_progress_event()
         return True
+
+    def _project_goal_progress_event(self) -> None:
+        """Project a goal state only after its checkpoint write or read succeeds."""
+        if self._goal_status_panel is None or not self._lc_thread_id:
+            return
+        if not self._active_goal:
+            self._last_goal_progress_projection = None
+            return
+        status = self._goal_status or "active"
+        if status not in {"active", "paused", "complete", "blocked"}:
+            return
+        projection = (
+            self._lc_thread_id,
+            self._active_goal,
+            status,
+            self._goal_status_note,
+        )
+        if projection == self._last_goal_progress_projection:
+            return
+        from deepagents_code.domain.events import (
+            GoalProgressEvent,
+            GoalProgressStatus,
+        )
+
+        self._goal_status_panel.apply_progress(
+            GoalProgressEvent(
+                session_id=self._lc_thread_id,
+                status=cast("GoalProgressStatus", status),
+                note=self._goal_status_note or "",
+            ),
+            objective=self._active_goal,
+        )
+        self._last_goal_progress_projection = projection
 
     async def _carry_rubric_model_to_fresh_thread(self) -> None:
         """Persist the current grader selection after a thread reset."""
@@ -15367,13 +15405,13 @@ class DeepAgentsApp(App):
         self._goal_status_note = note
         self._pending_goal_completion_note = None
         self._clear_pending_goal_rubric()
-        self._sync_status_rubric()
         state_update = self._goal_state_update()
         persisted = await self._persist_goal_rubric_state(
             notice=build_goal_state_notice(state_update),
             state_update=state_update,
         )
         if persisted:
+            self._sync_status_rubric()
             if previous_status != "complete":
                 await self._mount_message(
                     AppMessage(f"Goal marked complete.\n\n{note}")
@@ -15666,6 +15704,7 @@ class DeepAgentsApp(App):
             payload,
             preserve_queued_application=True,
         )
+        self._project_goal_progress_event()
         completion_committed = await self._resolve_pending_goal_completion(
             rubric_status=payload.rubric_status,
             rubric_grading_run_id=payload.rubric_grading_run_id,
@@ -23324,6 +23363,21 @@ class DeepAgentsApp(App):
         panel = self._get_subagent_panel()
         if panel is not None:
             panel.on_team_event(event)
+
+    def _on_runtime_event(self, event: RunEvent) -> None:
+        """Project validated goal lifecycle events for the active thread."""
+        if event.kind.value != "goal_progress" or not self._active_goal:
+            return
+        if self._goal_status_panel is None or not self._lc_thread_id:
+            return
+        try:
+            self._goal_status_panel.apply_event(
+                event,
+                session_id=self._lc_thread_id,
+                objective=self._active_goal,
+            )
+        except ValueError:
+            logger.warning("Ignoring malformed goal progress event", exc_info=True)
 
     async def _on_auto_mode_event(self, event: dict[str, Any]) -> None:
         """Render one compact sanitized Auto control-state notice.

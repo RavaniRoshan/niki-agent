@@ -847,6 +847,7 @@ class TextualUIAdapter:
         on_approval_mode_fallback: Callable[[str], None] | None = None,
         *,
         on_team_event: Callable[[RunEvent], None] | None = None,
+        on_runtime_event: Callable[[RunEvent], None] | None = None,
         show_diff_line_numbers: bool = True,
     ) -> None:
         """Initialize the adapter."""
@@ -903,6 +904,9 @@ class TextualUIAdapter:
 
         self._on_team_event = on_team_event
         """Callback for application coordinator events rendered by the team panel."""
+
+        self._on_runtime_event = on_runtime_event
+        """Callback for validated goal and context lifecycle events."""
 
         self._on_auto_mode_event = on_auto_mode_event
         """Callback for compact sanitized Auto denial and fallback events."""
@@ -974,6 +978,14 @@ class TextualUIAdapter:
             and self._on_team_event is not None
         ):
             self._on_team_event(event)
+
+    def handle_runtime_event(self, event: RunEvent) -> None:
+        """Forward goal and context events after runtime-envelope validation."""
+        if (
+            event.kind in {RunEventKind.goal_progress, RunEventKind.context_compacted}
+            and self._on_runtime_event is not None
+        ):
+            self._on_runtime_event(event)
 
     def _reset_auto_mode_review_tracking(self) -> None:
         """Start each user turn with no in-flight batch and no replay guard.
@@ -1716,6 +1728,7 @@ class _RuntimeProgress:
     """Lifecycle identity retained across one prompt's approval resumes."""
 
     turn_id: str
+    on_event: Callable[[RunEvent], None] | None = None
     sequence: int = 0
     status: str = TurnStatus.created.value
 
@@ -1726,14 +1739,20 @@ def _niki_runtime_enabled() -> bool:
     return is_niki_runtime_enabled()
 
 
-def _runtime_progress_for_turn(turn_id: str | None) -> _RuntimeProgress | None:
+def _runtime_progress_for_turn(
+    turn_id: str | None,
+    *,
+    on_event: Callable[[RunEvent], None] | None = None,
+) -> _RuntimeProgress | None:
     if not _niki_runtime_enabled():
         return None
-    return _RuntimeProgress(str(turn_id or uuid.uuid4()))
+    return _RuntimeProgress(str(turn_id or uuid.uuid4()), on_event=on_event)
 
 
 def _record_runtime_event(progress: _RuntimeProgress, event: RunEvent) -> None:
     progress.sequence = event.sequence
+    if progress.on_event is not None:
+        progress.on_event(event)
     if event.kind == RunEventKind.turn_started:
         progress.status = TurnStatus.running.value
     elif event.kind == RunEventKind.approval_required:
@@ -1947,7 +1966,9 @@ async def execute_task_textual(
         turn_id, turn_number = advance_turn()
     else:
         turn_id, turn_number = None, None
-    runtime_progress = _runtime_progress_for_turn(turn_id)
+    runtime_progress = _runtime_progress_for_turn(
+        turn_id, on_event=adapter.handle_runtime_event
+    )
     # `build_stream_config` does blocking git filesystem reads and may shell out
     # to `git`; offload it so the Textual event loop stays responsive. Advancing
     # the turn markers above is pure/cheap and stays on the loop.

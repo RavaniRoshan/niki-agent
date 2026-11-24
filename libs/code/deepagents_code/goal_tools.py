@@ -22,6 +22,7 @@ from langchain.agents.middleware.types import (
     TracePolicy,
     omit_payload,
 )
+from langchain.tools import ToolRuntime  # noqa: TC002  # injected runtime annotation
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.prebuilt import InjectedState
@@ -65,6 +66,38 @@ logger = logging.getLogger(__name__)
 
 GOAL_TOOL_NAMES = frozenset({"update_goal"})
 """Tool names used by behavioral absence gates and middleware contract tests."""
+
+
+def _emit_custom_event(runtime: object, payload: dict[str, object]) -> None:
+    """Best-effort publish a small public custom event to the active graph stream."""
+    writer = getattr(runtime, "stream_writer", None)
+    if not callable(writer):
+        return
+    try:
+        writer(payload)
+    except Exception:
+        logger.debug("Goal/context custom event writer failed", exc_info=True)
+
+
+def _emit_compaction_event(request: ModelRequest[Any], response: object) -> None:
+    """Publish only a newly advanced, valid compaction cutoff."""
+    command = getattr(response, "command", None)
+    update = getattr(command, "update", None)
+    if not isinstance(update, dict) or "_summarization_event" not in update:
+        return
+    messages = request.messages
+    cutoff = validated_summarization_cutoff(
+        update.get("_summarization_event"), message_count=len(messages)
+    )
+    previous = validated_summarization_cutoff(
+        request.state.get("_summarization_event"), message_count=len(messages)
+    )
+    if cutoff is None or cutoff <= (previous or 0):
+        return
+    _emit_custom_event(
+        request.runtime,
+        {"type": "niki_context_compacted", "cutoff_index": cutoff},
+    )
 
 
 def _goal_state_notice_for(
@@ -320,6 +353,7 @@ class GoalToolsMiddleware(AgentMiddleware[GoalToolState, ContextT]):
             ],
             tool_call_id: Annotated[str, InjectedToolCallId],
             state: Annotated[dict[str, Any], InjectedState],
+            runtime: ToolRuntime[Any, Any],
         ) -> Command[Any]:
             """Update a goal only when the latest state notice says it is actionable.
 
@@ -336,12 +370,26 @@ class GoalToolsMiddleware(AgentMiddleware[GoalToolState, ContextT]):
             Returns:
                 Command that updates goal status and returns a tool message.
             """
-            return _update_goal_command(
+            command = _update_goal_command(
                 status=status,
                 note=note,
                 tool_call_id=tool_call_id,
                 state=state,
             )
+            update = command.update
+            if isinstance(update, dict) and update.get("_goal_status") == "blocked":
+                _emit_custom_event(
+                    runtime,
+                    {
+                        "type": "niki_goal_progress",
+                        "status": "blocked",
+                        "note": str(update.get("_goal_status_note", "")),
+                    },
+                )
+            # `complete` only stages a request. The app emits a completion
+            # projection after the correlated rubric verdict and checkpoint
+            # write have both succeeded.
+            return command
 
         self.tools = [update_goal]
 
@@ -517,7 +565,10 @@ class GoalToolsMiddleware(AgentMiddleware[GoalToolState, ContextT]):
         Returns:
             Model response from the wrapped handler.
         """
-        return handler(self._request_with_goal_notice(request))
+        projected_request = self._request_with_goal_notice(request)
+        response = handler(projected_request)
+        _emit_compaction_event(projected_request, response)
+        return response
 
     @override
     async def awrap_model_call[ResponseT](
@@ -532,4 +583,7 @@ class GoalToolsMiddleware(AgentMiddleware[GoalToolState, ContextT]):
         Returns:
             Model response from the wrapped handler.
         """
-        return await handler(self._request_with_goal_notice(request))
+        projected_request = self._request_with_goal_notice(request)
+        response = await handler(projected_request)
+        _emit_compaction_event(projected_request, response)
+        return response

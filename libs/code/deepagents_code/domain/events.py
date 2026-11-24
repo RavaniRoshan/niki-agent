@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal, cast
 
 SCHEMA_VERSION = 1
 MAX_ENCODED_BYTES = 65536
@@ -46,6 +46,7 @@ class TurnStatus(StrEnum):
 JsonPrimitive = str | int | float | bool | None
 JsonValue = "JsonPrimitive | list[JsonValue] | dict[str, JsonValue]"
 JsonObject = dict[str, Any]
+GoalProgressStatus = Literal["active", "paused", "complete", "blocked"]
 
 
 def _validate_json_value(value: Any, path: str = "") -> Any:
@@ -77,7 +78,9 @@ class RunEvent:
     payload: JsonObject
 
     def __post_init__(self) -> None:
-        if isinstance(self.schema_version, bool) or not isinstance(self.schema_version, int):
+        if isinstance(self.schema_version, bool) or not isinstance(
+            self.schema_version, int
+        ):
             raise ValueError("schema_version must be int")
         if self.schema_version != SCHEMA_VERSION:
             raise ValueError(f"unsupported schema_version: {self.schema_version}")
@@ -113,7 +116,9 @@ class ResumeRequest:
     prior_status: TurnStatus
 
     def __post_init__(self) -> None:
-        if isinstance(self.last_sequence, bool) or not isinstance(self.last_sequence, int):
+        if isinstance(self.last_sequence, bool) or not isinstance(
+            self.last_sequence, int
+        ):
             raise ValueError("last_sequence must be int")
         if self.last_sequence < 0:
             raise ValueError(f"last_sequence must be >= 0, got {self.last_sequence}")
@@ -121,7 +126,9 @@ class ResumeRequest:
             try:
                 object.__setattr__(self, "prior_status", TurnStatus(self.prior_status))
             except (ValueError, TypeError) as exc:
-                raise ValueError(f"invalid prior_status: {self.prior_status!r}") from exc
+                raise ValueError(
+                    f"invalid prior_status: {self.prior_status!r}"
+                ) from exc
         validated = _validate_json_value(self.decision)
         if not isinstance(validated, dict):
             raise ValueError("decision must be a JSON object")
@@ -130,9 +137,48 @@ class ResumeRequest:
 
 @dataclass(frozen=True, slots=True)
 class GoalProgressEvent:
+    """Validated goal lifecycle data projected by runtime and UI adapters."""
+
     session_id: str
-    status: str  # active | paused | complete | blocked
+    status: GoalProgressStatus
     note: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.session_id, str) or not self.session_id.strip():
+            raise ValueError("session_id must be a non-empty string")
+        if not isinstance(self.status, str) or self.status not in {
+            "active",
+            "paused",
+            "complete",
+            "blocked",
+        }:
+            raise ValueError(f"invalid goal progress status: {self.status!r}")
+        if not isinstance(self.note, str):
+            raise ValueError("goal progress note must be a string")
+
+    @classmethod
+    def from_run_event(cls, event: RunEvent) -> GoalProgressEvent:
+        """Decode the validated payload of a `goal_progress` envelope."""
+        if event.kind != RunEventKind.goal_progress:
+            raise ValueError("event kind must be goal_progress")
+        status = event.payload.get("status")
+        note = event.payload.get("note", "")
+        if not isinstance(status, str) or status not in {
+            "active",
+            "paused",
+            "complete",
+            "blocked",
+        }:
+            raise ValueError(f"invalid goal progress status: {status!r}")
+        if not isinstance(note, str):
+            raise ValueError("goal progress note must be a string")
+        if status == "complete" and event.payload.get("verified") is not True:
+            raise ValueError("complete goal progress requires checkpoint verification")
+        return cls(
+            session_id=event.session_id,
+            status=cast("GoalProgressStatus", status),
+            note=note,
+        )
 
 
 def encode_run_event(event: RunEvent) -> str:
@@ -162,7 +208,15 @@ def decode_run_event(raw: str) -> RunEvent:
         raise ValueError(f"invalid JSON: {exc}") from exc
     if not isinstance(obj, dict):
         raise ValueError("envelope must be an object")
-    required = {"schema_version", "event_id", "session_id", "turn_id", "sequence", "kind", "payload"}
+    required = {
+        "schema_version",
+        "event_id",
+        "session_id",
+        "turn_id",
+        "sequence",
+        "kind",
+        "payload",
+    }
     if not required.issubset(obj.keys()):
         raise ValueError("missing required fields")
     schema_version = obj["schema_version"]
