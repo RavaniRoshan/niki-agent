@@ -69,3 +69,40 @@ Plan: `docs/superpowers/plans/2026-11-24-niki-product-completion-dynamic-workflo
 
 ### Next queued work
 - Task 3: re-audit the live checklist, decide whether provider/LangSmith credentials permit a current regression baseline, and bundle P0 owner decisions. Continue with Task 4 only after that reconciliation.
+
+## Task 3 — checklist reconciliation (complete)
+
+### Credential and runtime check (set/unset only, no values)
+`ANTHROPIC_API_KEY`, `LANGSMITH_API_KEY`, `GROQ_API_KEY`, `FIREWORKS_API_KEY`,
+`OPENAI_API_KEY`: all **UNSET**. No Docker binary; Podman binary present but its
+runtime path was read-only in the earlier check and was not retried. Therefore
+the current Python completion baseline is **NOT RUN** and the regression gate
+stays blocked. No score was invented and no Harbor job was submitted.
+
+### Recount from the live checklist
+57 item rows: 24 WORKS (22 P0, 2 P1), 33 PARTIAL (29 P0, 4 P1), 0 MISSING,
+and no WORKS row with empty evidence. The stale `26/33/11 across 76` tally in
+`CHECKLIST.md` was replaced. `workflow-state.json` now blocks S1, S2, and S7
+pending owner decisions; all other P0 rows stay claimable.
+
+### Owner decision packet — measured criteria that cannot currently be met
+Nothing below was downgraded, and no threshold was edited. Each row remains at
+its recorded status and priority until the owner decides keep/change/defer.
+
+| Row | Written criterion | Evidence / measured limitation | Recommended decision |
+| --- | --- | --- | --- |
+| S1 | first frame ≤400 ms warm | Real pty: first output 470 ms, composer 553 ms; upstream prewarms the 4,546.8 ms import chain off the hot path (`BASELINE.md`). 400 ms is unreachable for this Python process. | Change the target to the honest 1,500 ms regression guard; keep the real-terminal feel check. |
+| S2 | input echo p95 ≤50 ms | 173.9 ms p95 / 130.3 ms median, 20/20 presses landing; every sample includes one `pilot.pause()` round-trip, so it is a floor, not a real-terminal number. | Change to a real-terminal probe; keep the row PARTIAL until measured. |
+| S7 | 100-resize storm in 2 s | 11.4 s headless, dominated by 100 `pause()` calls; crash-free outcome and final 80x24 layout are verified. | Split outcome (already MET) from latency (needs a real-terminal probe). |
+| L5 | crash → traceback to file + friendly message | File handler only attaches with `DEEPAGENTS_CODE_DEBUG` truthy and a known thread, which requires the real CLI; headless run writes no file. | Keep PARTIAL; owner supplies the real-terminal observation. |
+| V8 | diffs with hunk headers/line numbers on screen | Three screen-capture attempts deleted: `stream` layout mounts at height 0. | Defer on-screen proof to owner verification; keep the colour contrast test. |
+| V11 | markdown rendering on screen | Synthetic assistant message mounts but lays out at height 0 (`virtual_size.height == 0`). | Defer on-screen proof to owner verification. |
+| V13 | 16-colour and light-terminal legibility | Sequences and contrast floors are tested; actual terminal palette legibility is not. | Keep PARTIAL pending the owner terminal pass. |
+| K2 | PgUp/PgDn on every scrollable surface | PgUp is bound but the composer consumes it; characterised, not hidden. | Owner decision: change focus handling or formally defer. |
+| K12 | hostile input never wedges composer | Lone Esc, AltGr, non-ASCII pass; `shift+tab` moves focus off the composer. | Owner decision: fix focus restoration or formally defer. |
+| V9 | approvals | Focus now follows approval mode; `Esc` still interrupts instead of denying (`n` is reject). | Owner decision: bind Esc to deny or keep documented. |
+| M1 | transcript scrolls, wheel | Container scroll is verified; this Pilot has no wheel API. | Defer wheel to owner verification. |
+
+### Next queued work
+Continue with Task 4 on independent P0 rows that are neither blocked nor
+owner-gated. Reopen S1/S2/S7 only after the owner records a decision.

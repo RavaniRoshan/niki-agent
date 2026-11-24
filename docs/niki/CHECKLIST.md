@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 26 WORKS · 33 PARTIAL · 11 MISSING** across 76 rows.
+**Current tally: 24 WORKS · 33 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-24).
 
 ### Palette v2 — direction from Codex + Kimi, original values
 

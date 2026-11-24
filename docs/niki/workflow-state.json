@@ -5,7 +5,11 @@
   "item_steps": {},
   "owner": null,
   "branch": null,
-  "blocked": {},
+  "blocked": {
+    "S1 first frame ≤400 ms warm": "owner decision pending: measured 470/553 ms against a 400 ms Python-process floor",
+    "S2 input echo p95 ≤50 ms under load": "owner decision pending: measured 173.9 ms p95 headless floor",
+    "S7 100-resize storm in 2 s": "owner decision pending: 11.4 s headless is pause-overhead, not resize latency"
+  },
   "last_commit": null,
   "last_eval": null,
   "completed": {}
