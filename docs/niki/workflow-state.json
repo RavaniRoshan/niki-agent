@@ -35,14 +35,13 @@
     "L5 crash \u2192 traceback to file + friendly message": "Real session binds the debug file; a mid-stream crash logs a traceback and mounts an Agent error card.",
     "V5 composer: ruled, glyph, placeholder, queue": "Composer restyled and queue indicator added against commit 0cdd748c7c1556814e71bf2372915884973c7efe",
     "L7 Ctrl+Z suspend/resume": "Composer binds ctrl+z to the suspend action; pty test asserts a real WIFSTOPPED/SIGCONT cycle and typing after resume, commit 364e73d4ef935273112b0ec36500fd080d4ee2ee",
-    "M4 selection/copy, OSC 52, mouse release": "f2 releases mouse capture and selection copy now carries the tmux DCS wrapper; verified in a real pty"
+    "M4 selection/copy, OSC 52, mouse release": "f2 releases mouse capture and selection copy now carries the tmux DCS wrapper; verified in a real pty",
+    "F5 session resume picker": "arrow-key navigation verified against a real on-disk thread store"
   },
   "owner": null,
   "branch": null,
-  "blocked": {
-    "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
-  },
-  "last_commit": "26677dde3ba727e0135423ff878124ed7c2bc488",
+  "blocked": {},
+  "last_commit": "eb3ac2bbbb17cf0106f4893ed9f356fb72d06614",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -177,6 +176,10 @@
     "M4 selection/copy, OSC 52, mouse release": {
       "commit": "26677dde3ba727e0135423ff878124ed7c2bc488",
       "evidence": "f2 toggles terminal mouse reporting (ESC[?1000l then ESC[?1000h seen in a real pty); selection copy goes through copy_to_clipboard and adds the tmux DCS wrapper"
+    },
+    "F5 session resume picker": {
+      "commit": "eb3ac2bbbb17cf0106f4893ed9f356fb72d06614",
+      "evidence": "real SQLite checkpoints store, /threads modal lists three rows newest-first, two Downs and Enter resume the third row's id"
     }
   }
 }
