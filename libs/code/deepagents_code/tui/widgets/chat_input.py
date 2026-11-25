@@ -9,7 +9,7 @@ import sys
 import time
 import unicodedata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, assert_never
 
 from rich.cells import cell_len
 from rich.segment import Segment
@@ -17,6 +17,7 @@ from rich.style import Style
 from rich.text import Text
 from textual import work
 from textual.app import NoScreen
+from textual.binding import Binding, BindingType
 from textual.color import Color
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.content import Content
@@ -594,6 +595,19 @@ class ChatTextArea(PasteBurstTextArea):
     fallback are inherited from `PasteBurstTextArea`.
     """
 
+    BINDINGS: ClassVar[list[BindingType]] = [
+        # Textual merges bindings across the MRO at dispatch, but the keymap
+        # registry reads the declared list, so the shared paste bindings are
+        # repeated here to keep them in the footer, `/help`, and KEYMAP.md.
+        *PasteBurstTextArea.BINDINGS,
+        # L7: in the composer, Ctrl+Z is the shell convention -- put the agent
+        # aside and get your shell back -- rather than text undo. Undo moves to
+        # Ctrl+Shift+Z so a cleared draft is still recoverable. Other text
+        # surfaces (modals, inline prompts) keep their own Ctrl+Z undo.
+        Binding("ctrl+z", "suspend_process", "Suspend", show=False),
+        Binding("ctrl+shift+z", "undo", "Undo", show=False),
+    ]
+
     _skip_history_change_events: int
     """Counter incremented before a history-driven text replacement so the
     resulting `TextArea.Changed` event (which fires on the next message-loop
@@ -1048,6 +1062,14 @@ class ChatTextArea(PasteBurstTextArea):
         # when the cursor would land below `max-height`. Re-issue after
         # refresh so it stays in view.
         self.call_after_refresh(self.scroll_cursor_visible)
+
+    def action_suspend_process(self) -> None:
+        """Suspend the process on Ctrl+Z, the way a shell does.
+
+        The action lives here rather than on the app so modals and other text
+        surfaces keep their own Ctrl+Z undo; only the composer suspends.
+        """
+        self.app.action_suspend_process()
 
     def _refresh_scrollbars(self) -> None:
         """Refresh scrollbars without flashing a transient vertical bar.
@@ -4260,7 +4282,9 @@ class ChatInput(Vertical):
         cleared = self.discard_text()
         self.exit_mode()
         if cleared:
-            self.app.notify("Input cleared (ctrl+z to undo)", timeout=3, markup=False)
+            self.app.notify(
+                "Input cleared (ctrl+shift+z to undo)", timeout=3, markup=False
+            )
         if self._text_area is not None:
             self._text_area.focus()
 

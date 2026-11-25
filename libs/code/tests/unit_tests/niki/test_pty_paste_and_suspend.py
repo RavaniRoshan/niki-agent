@@ -423,20 +423,25 @@ def test_k5_a_large_paste_collapses_rather_than_freezing(
 def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
     home: Path, tmp_cwd: Path
 ) -> None:
-    """L7: Ctrl+Z must suspend, not kill, and the process must survive SIGCONT.
+    """L7: Ctrl+Z suspends, SIGCONT resumes, and the terminal redraws and types.
 
-    P1, and recorded as a limitation either way: if the app dies on suspend or
-    cannot be resumed, the test says so explicitly rather than passing on "it
-    exited".
+    A real byte and real signals are the only way to reach this path: the
+    suspend is the terminal driver's, not the app's. Survival alone is too weak
+    -- a resumed process that repaints nothing leaves the user staring at a
+    damaged or blank screen -- so after resuming, the captured byte stream is
+    replayed through `pyte` and the composer is asked to take a keystroke.
     """
-    child, _ = _spawn(home, cwd=tmp_cwd)
+    child, before = _spawn(home, cwd=tmp_cwd)
+    buffer = before
     try:
         child.send(CTRL_Z)
         time.sleep(1.0)
 
         try:
-            status = os.waitpid(child.pid, os.WNOHANG)  # ty: ignore[invalid-argument-type]
-            stopped = status == (0, 0)
+            pid, status = os.waitpid(
+                child.pid, os.WNOHANG | os.WUNTRACED  # ty: ignore[invalid-argument-type]
+            )
+            stopped = pid == child.pid and os.WIFSTOPPED(status)
         except ChildProcessError:
             stopped = False
 
@@ -449,14 +454,28 @@ def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
 
         if resumed_alive:
             with contextlib.suppress(Exception):
-                child.read_nonblocking(size=8192, timeout=2)
+                buffer += child.read_nonblocking(size=65536, timeout=2)
+            child.send("l7-ok")
+            time.sleep(0.8)
+            buffer += _drain(child)
     finally:
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.kill(child.pid, signal.SIGCONT)  # ty: ignore[invalid-argument-type]
         child.terminate(force=True)
 
+    assert stopped, "L7: Ctrl+Z did not suspend the process"
     assert resumed_alive, (
         "L7: after Ctrl+Z the process could not be resumed with SIGCONT"
+    )
+    rows = [line.rstrip() for line in _screen(buffer).display if line.strip()]
+    assert len(rows) > 5, f"L7: the resumed terminal is blank:\n{rows}"
+    rule = next(
+        (i for i, line in enumerate(rows) if "\u2594" in line and "\u2500" in line),
+        None,
+    )
+    assert rule is not None, f"L7: no composer on the resumed screen:\n{rows}"
+    assert "l7-ok" in rows[rule + 1], (
+        "L7: the composer did not take a keystroke after resume:\n" + "\n".join(rows)
     )
 
 

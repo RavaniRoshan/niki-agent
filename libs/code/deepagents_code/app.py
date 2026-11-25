@@ -22751,7 +22751,7 @@ class DeepAgentsApp(App):
             # the text area), keeping the confirmation honest.
             if chat_input.discard_text():
                 self.notify(
-                    "Input cleared (ctrl+z to undo)",
+                    "Input cleared (ctrl+shift+z to undo)",
                     timeout=3,
                     markup=False,
                 )

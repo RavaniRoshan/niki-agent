@@ -32,7 +32,9 @@ this same registry -- so no surface can advertise a dead key.
 | `ctrl+pageup` | `page_left` | Page Left | `VerticalScroll` |
 | `ctrl+r` | `open_prompt_clipboard` | Prompt Clipboard | `NikiApp` |
 | `ctrl+shift+p` | `open_command_palette` | Command Palette | `NikiApp` |
+| `ctrl+shift+z` | `undo` | Undo | `ChatTextArea` |
 | `ctrl+t` | `toggle_subagent_panel` | Toggle Subagents | `NikiApp` |
+| `ctrl+z` | `suspend_process` | Suspend | `ChatTextArea` |
 | `down` | `approval_down` | Down | `NikiApp` |
 | `down` | `scroll_down` | Scroll Down | `VerticalScroll` |
 | `end` | `scroll_end` | Scroll End | `VerticalScroll` |
@@ -48,6 +50,7 @@ this same registry -- so no surface can advertise a dead key.
 | `pagedown` | `page_transcript_down` | Page Down | `NikiApp` |
 | `pageup` | `page_transcript_up` | Page Up | `NikiApp` |
 | `pageup` | `page_up` | Page Up | `VerticalScroll` |
+| `question_mark` | `show_help` | Help | `NikiApp` |
 | `right` | `scroll_right` | Scroll Right | `VerticalScroll` |
 | `shift+enter,alt+enter,ctrl+enter,ctrl+j` | `insert_newline` | New Line | `ChatTextArea` |
 | `shift+tab` | `app.focus_previous` | Focus Previous | `_MainScreen` |
