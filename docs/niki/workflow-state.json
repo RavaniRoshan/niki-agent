@@ -2,15 +2,18 @@
   "phase": "python",
   "active_item": null,
   "active_step": null,
-  "item_steps": {},
+  "item_steps": {
+    "K2": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
+    "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard"
+  },
   "owner": null,
   "branch": null,
   "blocked": {
-    "S1 first frame ≤400 ms warm": "owner decision pending: measured 470/553 ms against a 400 ms Python-process floor",
-    "S2 input echo p95 ≤50 ms under load": "owner decision pending: measured 173.9 ms p95 headless floor",
+    "S1 first frame \u2264400 ms warm": "owner decision pending: measured 470/553 ms against a 400 ms Python-process floor",
+    "S2 input echo p95 \u226450 ms under load": "owner decision pending: measured 173.9 ms p95 headless floor",
     "S7 100-resize storm in 2 s": "owner decision pending: 11.4 s headless is pause-overhead, not resize latency",
-    "S5 5k msgs: scroll p95 ≤50 ms, memory bounded": "owner-only evidence required for this checklist row",
-    "L5 crash → traceback to file + friendly message": "owner-only real-terminal crash observation required",
+    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "owner-only evidence required for this checklist row",
+    "L5 crash \u2192 traceback to file + friendly message": "owner-only real-terminal crash observation required",
     "L8 clean exit prints summary + exit code": "needs a real agent turn to assert session-id/resume summary",
     "V5 composer: ruled, glyph, placeholder, queue": "composer restyle and queue indicator need owner terminal confirmation",
     "V6 footer truthful + collapses by width": "model/queue/context values require a real agent turn",
@@ -22,7 +25,6 @@
     "V12 first-run + missing API key message": "missing-key inline message needs a no-key real launch",
     "V13 colour depth / NO_COLOR / ASCII / contrast": "actual 16-colour/light palette legibility is owner-only",
     "K1 single keymap registry": "in-app ? screen still reads upstream help; owner decision on patch site",
-    "K2 nav keys on every scrollable surface": "owner decision pending on PgUp focus handling",
     "K3 composer editing": "multi-line and grapheme-correct cursor needs real-terminal confirmation",
     "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
     "K5 bracketed paste": "large-paste placeholder and host clipboard are owner-only",
@@ -40,12 +42,17 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": null,
+  "last_commit": "6c1f9b9bd63421051a99e434c8823716e027a5d0",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
     "baseline_avg_at_3": null,
     "final_avg_at_3": null
   },
-  "completed": {}
+  "completed": {
+    "K2 nav keys on every scrollable surface": {
+      "commit": "6c1f9b9bd63421051a99e434c8823716e027a5d0",
+      "evidence": "test_pageup_pages_the_transcript_from_the_composer + test_pageup_is_left_to_a_scrollable_draft + test_pageup_is_left_to_an_open_modal, 10 passed"
+    }
+  }
 }

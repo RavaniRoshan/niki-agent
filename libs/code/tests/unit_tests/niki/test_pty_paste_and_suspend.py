@@ -1,9 +1,11 @@
-"""L7 (Ctrl+Z suspend/resume) and K5 (bracketed paste), driven through a real pty.
+"""L7 (Ctrl+Z suspend/resume), K5 (bracketed paste), and K12 (partial escapes).
 
 Both need **real bytes on a real terminal**, which is exactly what the Pilot
 driver cannot supply: bracketed paste is an escape-sequence protocol negotiated
 with the terminal, and suspend is a signal to the process group. Writing the
 bytes by hand into a pty exercises the same path a terminal emulator would.
+K12's partial-byte case belongs here for the same reason: only a pty can deliver
+half an escape sequence and then pause.
 
 `pytest-timeout` is configured repo-wide at 30 s, so every wait here is bounded
 well under that: a test that hangs until the timeout kills the worker, not the
@@ -252,4 +254,39 @@ def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
 
     assert resumed_alive, (
         "L7: after Ctrl+Z the process could not be resumed with SIGCONT"
+    )
+
+
+def test_k12_a_split_escape_sequence_does_not_wedge_input(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K12: half an escape sequence followed by a pause must not eat input.
+
+    A terminal can deliver `ESC` and the rest of a sequence in separate reads, or
+    abandon one mid-way. The failure this guards against is the parser staying
+    inside the sequence forever, so every later keystroke is swallowed. The
+    probe sends an unterminated CSI, pauses, then types a marker. However the
+    parser resolves the dangling sequence (it currently flushes the tail as
+    text), the marker that follows must still reach the composer.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("\x1b[1;5")
+        time.sleep(0.6)
+        child.send("qk7")
+        buffer = before
+        deadline = time.time() + 5
+        while "qk7" not in buffer and time.time() < deadline:
+            try:
+                buffer += child.read_nonblocking(size=65536, timeout=1)
+            except Exception:  # noqa: BLE001 - pty timeout means "nothing yet"
+                continue
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    rendered = "\n".join(line for line in _screen(buffer).display if line.strip())
+    assert alive, "K12: the process died on a split escape sequence"
+    assert "qk7" in rendered, (
+        f"K12: input after a split escape sequence never arrived:\n{rendered[-600:]}"
     )

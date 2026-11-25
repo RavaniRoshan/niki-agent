@@ -231,9 +231,9 @@ HOSTILE_INPUTS: list[list[str]] = [
 ]
 
 # `shift+tab` is deliberately NOT in the generic fuzz list: it is a real key the
-# user presses, and it moves focus off the composer, which the fuzz assertion
-# would report as "wedged input" without saying why. It gets its own
-# characterisation test below instead.
+# user presses, and on a fresh config its first press opens the auto-mode notice,
+# which the fuzz assertion would report as "wedged input" without saying why. It
+# gets its own characterisation test below instead.
 
 
 @pytest.mark.parametrize("keys", HOSTILE_INPUTS, ids=lambda k: "+".join(k))
@@ -265,32 +265,36 @@ async def test_k12_hostile_input_never_wedges_the_composer(keys: list[str]) -> N
     )
 
 
-async def test_k12_shift_tab_steals_the_composer() -> None:
-    """K12: CHARACTERISED GAP -- `shift+tab` takes typing away from the composer.
+async def test_k12_shift_tab_leaves_the_composer_usable() -> None:
+    """K12: `shift+tab` must not leave typing going nowhere.
 
-    `shift+tab` is bound app-level to `toggle_auto_approve`. After it, ordinary
-    typing no longer reaches `#chat-input`. A fuzz pass that only checked "did
-    the app survive" would call this healthy; a user pressing it and then typing
-    would find their keystrokes going nowhere.
-
-    Asserted as current state so the gap is visible. If `shift+tab` ever returns
-    focus to the composer, this fails and K12 should be updated in the same
-    change.
+    `shift+tab` is bound app-level to `toggle_auto_approve`. On a fresh config
+    the first press opens the auto-mode notice, which takes focus until it is
+    dismissed; afterwards the composer must accept typing again. Once the notice
+    has been recorded, the same key must leave focus on the composer outright.
     """
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
         await pilot.press("shift+tab")
         await pilot.pause()
+        # The first-run auto-mode notice is an education screen, not a wedge:
+        # dismissing it must hand focus back to the composer.
+        dismissed = len(app.screen_stack) > 1
+        if dismissed:
+            await pilot.press("escape")
+            await pilot.pause()
         await pilot.press("z")
         await pilot.pause()
         text = _composer_text(app)
         focused_id = getattr(app.focused, "id", None)
 
-    assert "z" not in text, (
-        f"K12: shift+tab no longer steals the composer (focus={focused_id!r}, "
-        f"buffer={text!r}). If that is the fix, update K12 in "
-        "docs/niki/CHECKLIST.md in this same change."
+    assert focused_id == "chat-input", (
+        f"K12: shift+tab left focus on {focused_id!r} (notice dismissed="
+        f"{dismissed}); typing no longer reaches the composer"
+    )
+    assert "z" in text, (
+        f"K12: after shift+tab the composer ignores typing (buffer={text!r})"
     )
 
 
