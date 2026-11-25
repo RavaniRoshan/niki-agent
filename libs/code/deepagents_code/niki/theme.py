@@ -203,7 +203,10 @@ NIKI_PALETTES: Final[dict[str, dict[str, str]]] = {
 NIKI_ANSI16_DARK: Final[dict[str, str]] = {
     "background": "ansi_black",
     "surface": "ansi_black",
-    "panel": "ansi_bright_black",
+    # `ansi_bright_black` is a mid-grey (#7F7F7F on xterm), so using it behind
+    # status text drops several hues under their floors. A 16-colour terminal
+    # has no subtle panel tint; the border and padding carry the separation.
+    "panel": "ansi_black",
     "foreground": "ansi_bright_white",
     "muted": "ansi_white",
     "primary": "ansi_bright_blue",
@@ -249,6 +252,49 @@ NIKI_ANSI16_PALETTES: Final[dict[str, dict[str, str]]] = {
     "niki-dim": NIKI_ANSI16_DARK,
 }
 
+#: Xterm's documented 16-colour defaults. Reference data, not a Niki palette:
+#: the tests use it to measure the ANSI fallback against the palette a real
+#: terminal is most likely to paint.
+XTERM_16_PALETTE: Final[dict[str, str]] = {
+    "black": "#000000",
+    "red": "#CD0000",
+    "green": "#00CD00",
+    "yellow": "#CDCD00",
+    "blue": "#0000EE",
+    "magenta": "#CD00CD",
+    "cyan": "#00CDCD",
+    "white": "#E5E5E5",
+    "bright_black": "#7F7F7F",
+    "bright_red": "#FF0000",
+    "bright_green": "#00FF00",
+    "bright_yellow": "#FFFF00",
+    "bright_blue": "#5C5CFF",
+    "bright_magenta": "#FF00FF",
+    "bright_cyan": "#00FFFF",
+    "bright_white": "#FFFFFF",
+}
+
+#: Solarized Dark's sixteen slots (Ethan Schoonover's published values). Like
+#: `XTERM_16_PALETTE`, this is reference data used only to measure the fallback.
+SOLARIZED_DARK_16_PALETTE: Final[dict[str, str]] = {
+    "black": "#073642",
+    "red": "#DC322F",
+    "green": "#859900",
+    "yellow": "#B58900",
+    "blue": "#268BD2",
+    "magenta": "#D33682",
+    "cyan": "#2AA198",
+    "white": "#EEE8D5",
+    "bright_black": "#002B36",
+    "bright_red": "#CB4B16",
+    "bright_green": "#586E75",
+    "bright_yellow": "#657B83",
+    "bright_blue": "#839496",
+    "bright_magenta": "#6C71C4",
+    "bright_cyan": "#93A1A1",
+    "bright_white": "#FDF6E3",
+}
+
 #: Every token is checked against the base background it renders on.
 _BACKGROUNDS: Final[tuple[str, ...]] = ("background", "surface", "panel")
 
@@ -290,8 +336,10 @@ __all__ = [
     "NIKI_LIGHT",
     "NIKI_PALETTES",
     "NIKI_THEME_NAME",
+    "SOLARIZED_DARK_16_PALETTE",
     "TEXT_CONTRAST_MIN",
     "TEXT_TOKENS",
+    "XTERM_16_PALETTE",
     "contrast_ratio",
     "contrast_violations",
     "relative_luminance",
