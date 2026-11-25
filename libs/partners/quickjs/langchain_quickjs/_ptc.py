@@ -183,7 +183,7 @@ class PTCToolGate:
         """Resolve one tool call, failing closed on callback errors or bad data."""
         try:
             decision = await self._authorizer(tool, arguments, runtime)
-        except Exception:
+        except Exception:  # noqa: BLE001 — an authorizer that raises must deny the call
             logger.warning(
                 "PTC authorization failed for tool %r; denying call",
                 tool.name,
