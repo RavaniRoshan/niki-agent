@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from deepagents_code.app import DeepAgentsApp
-from deepagents_code.domain.events import GoalProgressEvent, RunEvent, RunEventKind
+from deepagents_code.domain.events import (
+    GoalProgressEvent,
+    GoalProgressStatus,
+    RunEvent,
+    RunEventKind,
+)
 from deepagents_code.tui.textual_adapter import TextualUIAdapter
 from deepagents_code.tui.widgets.goal_status import GoalStatusPanel
 
@@ -28,7 +34,11 @@ def _event(
 
 def test_goal_progress_event_requires_known_status():
     with pytest.raises(ValueError, match="status"):
-        GoalProgressEvent(session_id="session-1", status="finished", note="done")
+        GoalProgressEvent(
+            session_id="session-1",
+            status=cast("GoalProgressStatus", "finished"),
+            note="done",
+        )
 
 
 def test_goal_status_panel_applies_matching_session_event():
@@ -80,9 +90,9 @@ def test_goal_status_panel_rejects_unverified_completion_event():
 def test_textual_adapter_forwards_summary_and_goal_runtime_events():
     received: list[RunEvent] = []
     adapter = TextualUIAdapter(
-        mount_message=lambda *_args, **_kwargs: None,
+        mount_message=AsyncMock(return_value=False),
         update_status=lambda _status: None,
-        request_approval=lambda *_args, **_kwargs: None,
+        request_approval=AsyncMock(return_value=None),
         on_runtime_event=received.append,
     )
 
@@ -133,7 +143,7 @@ async def test_completion_projection_waits_for_checkpoint_persistence():
         projected.append(progress)
         apply_progress(progress, objective=objective)
 
-    panel.apply_progress = capture
+    panel.apply_progress = cast("Any", capture)
     app._goal_status_panel = panel
     app._lc_thread_id = "session-1"
     app._active_goal = "add API credentials"

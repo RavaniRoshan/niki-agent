@@ -106,12 +106,14 @@ async def test_registry_is_populated_from_live_bindings() -> None:
 
 
 def test_command_palette_binding_is_advertised_from_live_bindings() -> None:
+    from textual.binding import Binding
+
     from deepagents_code.niki.app import NikiApp
 
     entries = [
         binding
         for binding in NikiApp.BINDINGS
-        if binding.action == "open_command_palette"
+        if isinstance(binding, Binding) and binding.action == "open_command_palette"
     ]
     assert [(binding.key, binding.description) for binding in entries] == [
         ("ctrl+shift+p", "Command Palette")

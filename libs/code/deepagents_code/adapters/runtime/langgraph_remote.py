@@ -16,6 +16,8 @@ if TYPE_CHECKING:
         Sequence,
     )
 
+    from deepagents_code.domain.events import JsonObject, JsonValue
+
 from deepagents_code.application.run_turn import RunProtocolError
 from deepagents_code.domain.events import (
     MAX_ENCODED_BYTES,
@@ -93,7 +95,7 @@ class LangGraphEventEncoder:
         from deepagents_code.domain.events import _validate_json_value
 
         try:
-            validated_payload = _validate_json_value(payload)
+            validated_payload = _validate_json_value(cast("JsonValue", payload))
         except ValueError as exc:
             msg = f"malformed public event: {exc}"
             raise RunProtocolError(msg) from exc
@@ -342,7 +344,7 @@ def _tool_runtime_events(
                         or not tool_name
                     ):
                         continue
-                    payload: dict[str, object] = {
+                    payload: JsonObject = {
                         "call_id": call_id,
                         "tool_name": tool_name,
                     }
@@ -369,7 +371,7 @@ def _tool_runtime_events(
                 status = getattr(message, "status", None)
                 if not isinstance(call_id, str) or not call_id:
                     continue
-                payload = {"call_id": call_id}
+                payload: JsonObject = {"call_id": call_id}
                 if isinstance(tool_name, str) and tool_name:
                     payload["tool_name"] = tool_name
                 if isinstance(status, str) and status:
@@ -428,7 +430,7 @@ def _custom_runtime_event(
             msg = "malformed goal progress event: complete status requires verification"
             raise RunProtocolError(msg)
         kind = RunEventKind.goal_progress
-        payload = {"status": progress.status, "note": progress.note}
+        payload: JsonObject = {"status": progress.status, "note": progress.note}
         if progress.status == "complete":
             payload["verified"] = True
     elif event_type == "niki_context_compacted":
@@ -441,7 +443,7 @@ def _custom_runtime_event(
             msg = "malformed context compaction event: invalid cutoff_index"
             raise RunProtocolError(msg)
         kind = RunEventKind.context_compacted
-        payload = {"cutoff_index": cutoff_index}
+        payload: JsonObject = {"cutoff_index": cutoff_index}
     else:
         return None
     return RunEvent(
@@ -487,7 +489,7 @@ def _event_for_ids(
     turn_id: str,
     sequence: int,
     kind: RunEventKind,
-    payload: dict[str, object] | None = None,
+    payload: JsonObject | None = None,
 ) -> RunEvent:
     return RunEvent(
         schema_version=1,

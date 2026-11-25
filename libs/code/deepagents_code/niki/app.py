@@ -31,7 +31,7 @@ from pathlib import Path
 from time import monotonic
 from typing import ClassVar
 
-from textual.binding import Binding
+from textual.binding import Binding, BindingType
 from textual.theme import Theme
 
 import deepagents_code
@@ -59,7 +59,7 @@ class NikiApp(DeepAgentsApp):
     #: the instance before mounting to override.
     blink_cursor: bool = False
 
-    BINDINGS: ClassVar[list[Binding]] = [
+    BINDINGS: ClassVar[list[BindingType]] = [
         *DeepAgentsApp.BINDINGS,
         Binding(
             "ctrl+shift+p",

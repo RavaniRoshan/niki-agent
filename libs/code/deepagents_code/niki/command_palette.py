@@ -46,7 +46,6 @@ class CommandPaletteScreen(ModalScreen[SlashCommand | None]):
             yield Input(placeholder="Search commands", id="command-palette-query")
             yield OptionList(id="command-palette-options")
 
-    @override
     def on_mount(self) -> None:
         """Show all commands initially and focus the search field."""
         self._update_options("")
@@ -71,20 +70,17 @@ class CommandPaletteScreen(ModalScreen[SlashCommand | None]):
             ).casefold()
         ]
 
-    @override
     def on_input_changed(self, event: Input.Changed) -> None:
         """Refresh results as the query changes."""
         if event.input.id == "command-palette-query":
             self._update_options(event.value)
 
-    @override
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Treat Enter in the search field as command selection."""
         if event.input.id == "command-palette-query":
             event.stop()
             self.action_choose_selected()
 
-    @override
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Return a result selected with Enter or a mouse click."""
         event.stop()

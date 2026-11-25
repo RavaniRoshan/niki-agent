@@ -24,11 +24,13 @@ class FakeRuntime:
         self._events = events
         self.cancelled: list[tuple[str, str]] = []
 
-    async def stream_turn(self, _request: TurnRequest) -> AsyncIterator[RunEvent]:
+    async def stream_turn(self, request: TurnRequest) -> AsyncIterator[RunEvent]:
+        del request
         for e in self._events:
             yield e
 
-    async def resume_turn(self, _request: ResumeRequest) -> AsyncIterator[RunEvent]:
+    async def resume_turn(self, request: ResumeRequest) -> AsyncIterator[RunEvent]:
+        del request
         for e in self._events:
             yield e
 
@@ -160,6 +162,7 @@ async def test_run_turn_rejects_stream_without_terminal_event():
 
 @pytest.mark.asyncio
 async def test_cancel_turn_delegates():
-    coord = RunTurnCoordinator(FakeRuntime([]))
+    runtime = FakeRuntime([])
+    coord = RunTurnCoordinator(runtime)
     await coord.cancel_turn("s1", "t1")
-    assert coord.runtime.cancelled == [("s1", "t1")]  # type: ignore[attr-defined]
+    assert runtime.cancelled == [("s1", "t1")]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from types import MethodType
+from typing import Any, cast
 
 import pytest
 
@@ -337,7 +338,7 @@ async def test_closing_workflow_stream_cancels_active_step():
     assert (await anext(events)).kind.value == "task_started"
     await started.wait()
 
-    await events.aclose()
+    await cast("Any", events).aclose()
 
     assert cancelled.is_set()
 
@@ -403,13 +404,13 @@ async def test_workflow_list_command_shows_saved_definitions(tmp_path, monkeypat
             self.messages.append(message)
 
     harness = AppHarness()
-    harness._handle_workflow_command = MethodType(
+    cast("Any", harness)._handle_workflow_command = MethodType(
         DeepAgentsApp._handle_workflow_command, harness
     )
-    await DeepAgentsApp._handle_command(harness, "/WORKFLOW LIST")
+    await DeepAgentsApp._handle_command(cast("Any", harness), "/WORKFLOW LIST")
 
     assert len(harness.messages) == 1
-    assert "verify" in str(harness.messages[0]._content)
+    assert "verify" in str(cast("Any", harness.messages[0])._content)
 
 
 def test_repository_load_save():

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -138,12 +138,14 @@ async def test_team_messages_survive_resume_checkpoint():
 
 def test_team_message_rejects_non_json_object_keys():
     with pytest.raises(TeamProtocolError):
-        TeamMessage("team", "message", 0, "a", "b", {"nested": {1: "value"}})
+        TeamMessage(
+            "team", "message", 0, "a", "b", cast("Any", {"nested": {1: "value"}})
+        )
 
 
 def test_team_task_result_rejects_unknown_status():
     with pytest.raises(TeamProtocolError):
-        TeamTaskResult("task", "running", "not terminal")  # type: ignore[arg-type]
+        TeamTaskResult("task", cast("Any", "running"), "not terminal")
 
 
 @pytest.mark.asyncio
@@ -252,6 +254,8 @@ async def test_failed_team_member_is_reported_and_siblings_are_cancelled():
             except asyncio.CancelledError:
                 self.sibling_cancelled = True
                 raise
+            msg = "waiting sibling returned unexpectedly"
+            raise AssertionError(msg)
 
     port = FailingSiblingPort()
     coord = _coordinator(plan, port)
@@ -299,6 +303,8 @@ async def test_closing_event_stream_cancels_and_checkpoints_active_worker():
             except asyncio.CancelledError:
                 self.cancelled = True
                 raise
+            msg = "waiting task returned unexpectedly"
+            raise AssertionError(msg)
 
     plan = TeamPlan("team", (TeamTask("task", "agent", "p"),), 1)
     port = WaitingAgent()
@@ -307,7 +313,7 @@ async def test_closing_event_stream_cancels_and_checkpoints_active_worker():
     assert (await anext(events)).payload["status"] == "running"
     await port.started.wait()
 
-    await events.aclose()
+    await cast("Any", events).aclose()
 
     checkpoint = await store.load("session", "team")
     assert port.cancelled

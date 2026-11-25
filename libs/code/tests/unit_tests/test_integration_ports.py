@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from contextlib import AsyncExitStack
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -23,13 +23,14 @@ class _FailingProviderStream:
 
     async def astream(
         self,
-        _graph_input: object,
+        graph_input: object,
         *,
         stream_mode: Sequence[str],  # noqa: ARG002
         subgraphs: bool,  # noqa: ARG002
         config: Mapping[str, object],  # noqa: ARG002
         context: Mapping[str, object] | None = None,  # noqa: ARG002
     ) -> AsyncIterator[object]:
+        del graph_input
         raise self.error
         yield None  # Make this an async generator; execution never reaches this.
 
@@ -93,7 +94,7 @@ async def test_mcp_disconnect_is_visible_and_cleanup_is_idempotent():
     backend_stack = AsyncExitStack()
     backend_stack.callback(close_backend)
     manager = MCPSessionManager()
-    manager.adopt(client, backend_stack)
+    manager.adopt(cast("Any", client), backend_stack)
 
     await manager.cleanup()
     await manager.cleanup()

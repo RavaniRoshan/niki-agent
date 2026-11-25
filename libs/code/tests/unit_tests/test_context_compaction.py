@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
+from typing import Any, cast
 
 from langchain_core.messages import HumanMessage
 
@@ -64,16 +65,15 @@ def test_compaction_preserves_latest_goal_notice():
         return result
 
     request.override = override
-    projected = GoalToolsMiddleware._request_with_goal_notice(request)
+    projected = GoalToolsMiddleware._request_with_goal_notice(cast("Any", request))
 
     assert len(projected.messages) == len(messages) + 1
     latest = projected.messages[-1]
     info = goal_state_notice_info(latest)
+    stale_info = goal_state_notice_info(stale_notice)
     assert info is not None
-    assert (
-        info["state_fingerprint"]
-        != goal_state_notice_info(stale_notice)["state_fingerprint"]
-    )
+    assert stale_info is not None
+    assert info["state_fingerprint"] != stale_info["state_fingerprint"]
     assert "current objective" in latest.content
     assert "waiting for API access" in latest.content
 
@@ -95,7 +95,11 @@ def test_context_compaction_emits_only_when_cutoff_advances():
             )
         )
 
-    asyncio.run(GoalToolsMiddleware().awrap_model_call(request, handler))
+    asyncio.run(
+        GoalToolsMiddleware().awrap_model_call(
+            cast("Any", request), cast("Any", handler)
+        )
+    )
 
     assert events == [{"type": "niki_context_compacted", "cutoff_index": 2}]
 
@@ -120,5 +124,9 @@ def test_context_compaction_does_not_emit_for_repeated_or_invalid_cutoff():
                 )
             )
 
-        asyncio.run(GoalToolsMiddleware().awrap_model_call(request, handler))
+        asyncio.run(
+            GoalToolsMiddleware().awrap_model_call(
+                cast("Any", request), cast("Any", handler)
+            )
+        )
         assert events == []

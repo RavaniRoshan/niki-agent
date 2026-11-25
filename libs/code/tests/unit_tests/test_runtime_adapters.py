@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
@@ -14,6 +14,7 @@ from deepagents_code.adapters.runtime.langgraph_remote import (
 )
 from deepagents_code.application.run_turn import RunProtocolError, RunTurnCoordinator
 from deepagents_code.domain.events import (
+    JsonObject,
     ResumeRequest,
     RunEvent,
     RunEventKind,
@@ -165,7 +166,9 @@ async def test_remote_runtime_projects_tool_calls_and_results():
         "tool_name": "write_file",
         "file_id": started.payload["file_id"],
     }
-    assert len(started.payload["file_id"]) == 64
+    file_id = started.payload["file_id"]
+    assert isinstance(file_id, str)
+    assert len(file_id) == 64
     assert "src/agent.py" not in str(started.payload)
     assert finished.payload == {
         "call_id": "call-write",
@@ -213,14 +216,15 @@ async def test_remote_runtime_splits_large_utf8_text_events():
     text_events = [event for event in events if event.kind == RunEventKind.text_delta]
 
     assert len(text_events) > 1
-    assert "".join(event.payload["text"] for event in text_events) == text
+    text_parts = [cast("str", event.payload["text"]) for event in text_events]
+    assert "".join(text_parts) == text
     for event in events:
         encode_run_event(event)
 
 
 @pytest.mark.asyncio
 async def test_remote_runtime_resumes_with_approval_and_continued_sequence():
-    decision = {"decisions": [{"type": "approve"}]}
+    decision: JsonObject = {"decisions": [{"type": "approve"}]}
     agent = FakeRemoteAgent([])
     runtime = LangGraphRemoteRuntime(agent)
     request = ResumeRequest(

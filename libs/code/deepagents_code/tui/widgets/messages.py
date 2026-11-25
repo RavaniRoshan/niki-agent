@@ -5787,7 +5787,7 @@ class ErrorMessage(Static):
             )
             if plain == self._content.plain:
                 return self._content
-            return Content(plain).stylize_before(self._content.spans)
+            return Content(plain, spans=list(self._content.spans))
         return sanitize_control_chars(
             self._content, keep_newlines=True, collapse_whitespace=False
         )

@@ -11,7 +11,7 @@ import sys
 import threading
 import time
 from types import ModuleType, SimpleNamespace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -465,7 +465,9 @@ asyncio.run(main())
         provider = MagicMock()
         provider.get_or_create.side_effect = blocking_get_or_create
         registry = MagicMock()
-        registry.get_metadata.return_value = None
+        registry.get_metadata.return_value = SimpleNamespace(
+            working_dir="/tmp/niki-sandbox"
+        )
         registry.get_params.return_value = {}
 
         settings_obj = SimpleNamespace(has_tavily=False, tavily_api_key=None)
@@ -700,7 +702,9 @@ class TestWorkspaceRuntime:
         module = _import_fresh_server_graph()
         binding = _bind(ServerConfig(), tmp_path)
         workspace = DeepAgentsWorkspaceAdapter(
-            object(), workspace_id="process-default", workspace_root=str(tmp_path)
+            cast("Any", object()),
+            workspace_id="process-default",
+            workspace_root=str(tmp_path),
         )
         runtime = module.ServerRuntime(
             object(), object(), object(), workspace=workspace

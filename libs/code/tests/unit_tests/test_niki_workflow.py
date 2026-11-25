@@ -128,7 +128,9 @@ def test_parse_checklist_preserves_phase_status_and_evidence():
 
 def test_next_selects_first_open_p0_before_p1():
     items = _items()
-    assert select_next_item(items, WorkflowState()).item_id == "P0-FIRST"
+    first = select_next_item(items, WorkflowState())
+    assert first is not None
+    assert first.item_id == "P0-FIRST"
     resolved = [
         replace(
             item,
@@ -139,7 +141,9 @@ def test_next_selects_first_open_p0_before_p1():
         else item
         for item in items
     ]
-    assert select_next_item(resolved, WorkflowState()).item_id == "P1-OPEN"
+    next_item = select_next_item(resolved, WorkflowState())
+    assert next_item is not None
+    assert next_item.item_id == "P1-OPEN"
 
 
 def test_next_resumes_active_item_without_claiming_another(workspace):
@@ -149,7 +153,9 @@ def test_next_resumes_active_item_without_claiming_another(workspace):
         active_step="write regression test",
         item_steps={"P0-SECOND": "write regression test"},
     )
-    assert select_next_item(items, state).item_id == "P0-SECOND"
+    resumed = select_next_item(items, state)
+    assert resumed is not None
+    assert resumed.item_id == "P0-SECOND"
     checklist, state_path = workspace("selector-state.json")
     state_path.write_text(json.dumps(state.to_dict()), encoding="utf-8")
     result = run_cli(checklist, state_path, "next")
@@ -272,7 +278,9 @@ def test_unblock_requires_resolution_and_keeps_item_unresolved_until_retest(work
     saved = json.loads(state.read_text(encoding="utf-8"))
     assert "P0-FIRST" not in saved["blocked"]
     assert "P0-FIRST" in saved["item_steps"]
-    assert select_next_item(_items(), WorkflowState()).item_id == "P0-FIRST"
+    requeued = select_next_item(_items(), WorkflowState())
+    assert requeued is not None
+    assert requeued.item_id == "P0-FIRST"
     assert run_cli(checklist, state, "readiness", "--phase", "python").returncode == 1
 
 

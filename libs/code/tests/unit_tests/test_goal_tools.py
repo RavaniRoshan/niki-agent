@@ -167,7 +167,7 @@ def test_update_goal_commits_when_state_fits_the_notice_budget() -> None:
 
 
 def test_blocker_emits_goal_progress_event_but_completion_stays_staged() -> None:
-    tool = GoalToolsMiddleware().tools[0]
+    tool = cast("Any", GoalToolsMiddleware().tools[0])
     events: list[dict[str, object]] = []
     runtime = SimpleNamespace(stream_writer=events.append)
     state = {"_goal_objective": "add refresh tokens", "_goal_status": "active"}
@@ -206,7 +206,7 @@ def test_blocker_emits_goal_progress_event_but_completion_stays_staged() -> None
 
 
 def test_paused_goal_cannot_be_completed_by_model_event() -> None:
-    tool = GoalToolsMiddleware().tools[0]
+    tool = cast("Any", GoalToolsMiddleware().tools[0])
     events: list[dict[str, object]] = []
 
     result = tool.func(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -134,9 +134,15 @@ async def test_niki_app_renders_summary_after_a_runtime_turn():
             self.scheduled: list[Callable[[], object]] = []
             self._captured_workers: list[Coroutine[Any, Any, None]] = []
             self._mount_message = AsyncMock()
-            self.call_later = lambda callback: self.scheduled.append(callback)
-            self.run_worker = lambda coroutine, **_kwargs: (
-                self._captured_workers.append(coroutine)
+            self.call_later = cast(
+                "Any",
+                lambda callback, *_args, **_kwargs: (
+                    self.scheduled.append(callback) or True
+                ),
+            )
+            self.run_worker = cast(
+                "Any",
+                lambda coroutine, **_kwargs: self._captured_workers.append(coroutine),
             )
 
     app = SummaryProbe()
@@ -168,7 +174,10 @@ async def test_niki_app_renders_summary_after_a_runtime_turn():
 
     from deepagents_code.tui.widgets.messages import AppMessage
 
-    message = app._mount_message.await_args.args[0]
+    mount = app._mount_message
+    assert isinstance(mount, AsyncMock)
+    assert mount.await_args is not None
+    message = mount.await_args.args[0]
     assert isinstance(message, AppMessage)
     assert message._content == "Completed in 0.0s | 1 tool | 1 file change reported"
 

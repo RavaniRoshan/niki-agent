@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -13,6 +14,9 @@ from deepagents_code.domain.events import (
     decode_run_event,
     encode_run_event,
 )
+
+if TYPE_CHECKING:
+    from deepagents_code.domain.events import JsonObject
 
 
 def test_run_event_json_round_trip():
@@ -67,7 +71,7 @@ def test_run_event_rejects_invalid_envelope():
             turn_id="t1",
             sequence=1,
             kind=RunEventKind.text_delta,
-            payload={"bad": {1, 2}},
+            payload=cast("JsonObject", {"bad": {1, 2}}),
         )
     with pytest.raises(ValueError, match="invalid kind"):
         decode_run_event(

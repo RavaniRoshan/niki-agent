@@ -14830,15 +14830,12 @@ class DeepAgentsApp(App):
         )
         if projection == self._last_goal_progress_projection:
             return
-        from deepagents_code.domain.events import (
-            GoalProgressEvent,
-            GoalProgressStatus,
-        )
+        from deepagents_code.domain.events import GoalProgressEvent
 
         self._goal_status_panel.apply_progress(
             GoalProgressEvent(
                 session_id=self._lc_thread_id,
-                status=cast("GoalProgressStatus", status),
+                status=status,
                 note=self._goal_status_note or "",
             ),
             objective=self._active_goal,

@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Protocol, cast
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 
+    from deepagents_code.domain.events import JsonObject
+
 from deepagents_code.domain.events import (
     ResumeRequest,
     RunEvent,
@@ -262,7 +264,7 @@ def _event(
         turn_id=turn_id,
         sequence=sequence,
         kind=kind,
-        payload=payload or {},
+        payload=cast("JsonObject", payload or {}),
     )
 
 

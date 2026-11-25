@@ -96,6 +96,8 @@ def test_niki_light_theme_uses_light_terminal_background() -> None:
 
     assert light.dark is False
     assert light.background == NIKI_LIGHT["background"]
+    assert light.background is not None
+    assert dark.background is not None
     assert relative_luminance(light.background) > 0.8
     assert relative_luminance(light.background) > relative_luminance(dark.background)
 

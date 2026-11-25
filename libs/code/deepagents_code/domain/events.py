@@ -6,7 +6,7 @@ import json
 import math
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, cast
+from typing import Literal
 
 SCHEMA_VERSION = 1
 MAX_ENCODED_BYTES = 65536
@@ -228,7 +228,7 @@ class GoalProgressEvent:
             raise ValueError(msg)
         return cls(
             session_id=event.session_id,
-            status=cast("GoalProgressStatus", status),
+            status=status,
             note=note,
         )
 

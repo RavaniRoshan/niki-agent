@@ -21,6 +21,8 @@ terminal would actually show -- not merely that a helper returned a clean string
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from deepagents_code.unicode_security import sanitize_control_chars
@@ -168,10 +170,10 @@ async def test_untrusted_stream_text_is_sanitized_at_render_boundary() -> None:
     markdown = MarkdownProbe()
     timer = TimerProbe()
     message = AssistantMessage()
-    message._stream = stream  # type: ignore[assignment]
-    message._ensure_stream = lambda: stream  # type: ignore[method-assign]
-    message._get_markdown = lambda: markdown  # type: ignore[method-assign]
-    message.set_interval = lambda *_args: timer  # type: ignore[method-assign]
+    message._stream = cast("Any", stream)
+    message._ensure_stream = cast("Any", lambda: stream)
+    message._get_markdown = cast("Any", lambda: markdown)
+    message.set_interval = cast("Any", lambda *_args: timer)
 
     await message.append_content(payload)
     await message.stop_stream()
@@ -206,7 +208,7 @@ async def test_untrusted_reasoning_stream_text_is_sanitized_at_render_boundary()
         await message.append_content(HOSTILE_SEQUENCES["osc_title_change"])
         await message.stop_stream()
         body = message.query_one("#reasoning-body")
-        rendered = body.render().plain
+        rendered = cast("Any", body.render()).plain
     assert "\x1b" not in rendered
 
 

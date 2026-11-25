@@ -8,7 +8,7 @@ Regenerate this file with `make commands-catalog` after changing command names,
 aliases, descriptions, visibility, or hidden-command metadata.
 
 
-## Public (46)
+## Public (47)
 
 | Command | Aliases | Description |
 | --- | --- | --- |
@@ -57,6 +57,7 @@ aliases, descriptions, visibility, or hidden-command metadata.
 | `/uninstall` |  | Remove an installed optional extra |
 | `/update` |  | Check for and install updates |
 | `/version` | `/about` | Show version information |
+| `/workflow` |  | List or inspect saved staged workflows |
 | `/yolo` |  | Switch to YOLO approval mode (no review) |
 
 ## Hidden (2)

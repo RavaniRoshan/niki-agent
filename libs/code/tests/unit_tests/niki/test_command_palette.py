@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import AsyncMock
 
 from deepagents_code.command_registry import BypassTier, SlashCommand
 from deepagents_code.niki.app import NikiApp
 from deepagents_code.niki.command_palette import CommandPaletteScreen
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 
 async def test_command_palette_filters_and_invokes_registered_command():
@@ -20,12 +23,12 @@ async def test_command_palette_filters_and_invokes_registered_command():
     captured: list[tuple[CommandPaletteScreen, object]] = []
     dispatcher = SimpleNamespace(_handle_command=AsyncMock())
     dispatcher._dispatch_palette_selection = lambda command: (
-        NikiApp._dispatch_palette_selection(dispatcher, command)
+        NikiApp._dispatch_palette_selection(cast("NikiApp", dispatcher), command)
     )
     dispatcher.push_screen = lambda screen, callback: captured.append(
         (screen, callback)
     )
-    NikiApp.action_open_command_palette(dispatcher)
+    NikiApp.action_open_command_palette(cast("NikiApp", dispatcher))
     screen, callback = captured[0]
 
     class PaletteHost(App[None]):
@@ -43,7 +46,9 @@ async def test_command_palette_filters_and_invokes_registered_command():
             self.push_screen(screen, self.dispatch)
 
         async def dispatch(self, command: SlashCommand | None) -> None:
-            await callback(command)  # type: ignore[operator]
+            await cast("Callable[[SlashCommand | None], Awaitable[None]]", callback)(
+                command
+            )
 
     app = PaletteHost()
     palette_opened = False

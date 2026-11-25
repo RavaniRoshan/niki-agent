@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shlex
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from deepagents.backends.protocol import ExecuteResponse, ReadResult, WriteResult
@@ -70,7 +70,7 @@ async def test_workspace_port_uses_in_memory_adapter() -> None:
 async def test_backend_adapter_uses_async_backend_results(tmp_path) -> None:
     root = tmp_path / "workspace"
     root.mkdir()
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
@@ -91,7 +91,7 @@ async def test_backend_adapter_uses_async_backend_results(tmp_path) -> None:
 async def test_workspace_path_escape_is_rejected_before_backend_write(tmp_path) -> None:
     root = tmp_path / "workspace"
     root.mkdir()
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
@@ -105,7 +105,7 @@ async def test_workspace_path_escape_is_rejected_before_backend_write(tmp_path) 
 def test_backend_adapter_rejects_an_empty_workspace_root() -> None:
     with pytest.raises(ValueError, match="workspace_root"):
         DeepAgentsWorkspaceAdapter(
-            FakeBackend(), workspace_id="workspace-1", workspace_root=""
+            cast("Any", FakeBackend()), workspace_id="workspace-1", workspace_root=""
         )
 
 
@@ -114,7 +114,7 @@ async def test_command_cwd_escape_is_rejected_before_backend_execution(
 ) -> None:
     root = tmp_path / "workspace"
     root.mkdir()
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
@@ -132,7 +132,7 @@ async def test_command_cwd_escape_is_rejected_before_backend_execution(
 async def test_boolean_timeout_is_rejected_before_backend_execution(tmp_path) -> None:
     root = tmp_path / "workspace"
     root.mkdir()
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
@@ -146,7 +146,7 @@ async def test_boolean_timeout_is_rejected_before_backend_execution(tmp_path) ->
 async def test_backend_failures_are_not_reported_as_success(tmp_path) -> None:
     root = tmp_path / "workspace"
     root.mkdir()
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
@@ -169,7 +169,7 @@ async def test_symlink_escape_is_rejected_before_backend_write(tmp_path) -> None
         _create_symlink(outside, link)
     except OSError:
         pytest.skip("symlink not supported")
-    backend = FakeBackend()
+    backend = cast("Any", FakeBackend())
     adapter = DeepAgentsWorkspaceAdapter(
         backend, workspace_id="workspace-1", workspace_root=str(root)
     )
