@@ -608,6 +608,13 @@ class ChatTextArea(PasteBurstTextArea):
         Binding("ctrl+shift+z", "undo", "Undo", show=False),
     ]
 
+    suspend_on_ctrl_z: bool = False
+    """Whether ctrl+z suspends the process instead of undoing text.
+
+    Niki's composer turns this on post-mount; the default leaves Textual's
+    `TextArea` undo binding in charge, which is what `dcode` expects.
+    """
+
     _skip_history_change_events: int
     """Counter incremented before a history-driven text replacement so the
     resulting `TextArea.Changed` event (which fires on the next message-loop
@@ -1064,12 +1071,17 @@ class ChatTextArea(PasteBurstTextArea):
         self.call_after_refresh(self.scroll_cursor_visible)
 
     def action_suspend_process(self) -> None:
-        """Suspend the process on Ctrl+Z, the way a shell does.
+        """Suspend the process on Ctrl+Z where the app opted in, else undo.
 
         The action lives here rather than on the app so modals and other text
-        surfaces keep their own Ctrl+Z undo; only the composer suspends.
+        surfaces keep their own Ctrl+Z undo. Textual resolves one binding per
+        key, so the key stays consumed either way; `dcode` gets Textual's undo
+        through the same binding, and only Niki's composer suspends.
         """
-        self.app.action_suspend_process()
+        if self.suspend_on_ctrl_z:
+            self.app.action_suspend_process()
+            return
+        self.action_undo()
 
     def _refresh_scrollbars(self) -> None:
         """Refresh scrollbars without flashing a transient vertical bar.
@@ -2409,8 +2421,12 @@ class ChatInput(Vertical):
 
     mode: reactive[str] = reactive("normal")
 
-    COMPOSER_PLACEHOLDER = "Type a message, / for commands, @ for files"
-    """Hint shown in the empty chat input so the first keystroke is obvious."""
+    COMPOSER_PLACEHOLDER = ""
+    """Hint shown in an empty chat input.
+
+    Empty upstream. The Niki fork sets its own hint per instance after mount, so
+    `dcode` keeps its hint-free composer.
+    """
 
     def __init__(
         self,

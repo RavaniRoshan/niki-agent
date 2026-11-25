@@ -70,7 +70,7 @@ async def test_v5_the_empty_composer_shows_a_placeholder_and_drops_it_on_typing(
     None
 ):
     """V5: the hint fills the empty composer and leaves with the first key."""
-    from deepagents_code.tui.widgets.chat_input import ChatInput
+    from deepagents_code.niki.app import COMPOSER_HINT
 
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
@@ -81,9 +81,7 @@ async def test_v5_the_empty_composer_shows_a_placeholder_and_drops_it_on_typing(
         await pilot.pause()
         typed_screen = str(screen_text(app))
 
-    assert hint == ChatInput.COMPOSER_PLACEHOLDER, (
-        f"V5: the empty composer has no placeholder: {hint!r}"
-    )
+    assert hint == COMPOSER_HINT, f"V5: the empty composer has no placeholder: {hint!r}"
     assert hint in empty_screen, (
         f"V5: the placeholder never reached the screen:\n{empty_screen}"
     )

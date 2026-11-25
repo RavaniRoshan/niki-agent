@@ -51,3 +51,22 @@ Records edits to upstream-owned files made while evolving Niki.
 - `NikiApp` overrides `_handle_command` for `/help` only, mounting the
   registry-generated body (`render_help_for`) instead of upstream's
   hand-maintained block. `dcode` keeps upstream's screen.
+
+## Session 5 — composer surface
+
+- `tui/widgets/chat_input.py` gained three additive pieces used by the Niki
+  fork: an empty `ChatInput.COMPOSER_PLACEHOLDER`, a `#composer-queue` label with
+  `set_queued()`, and a `ChatTextArea` binding for `ctrl+z` (suspend) that moves
+  undo to `ctrl+shift+z`. The handler lives on the text area because widget
+  bindings do not bubble to app-level actions. Both composer behaviors are
+  opt-in per instance: `ChatTextArea.suspend_on_ctrl_z` defaults to `False` and
+  `action_suspend_process` then routes the key to Textual's undo, so `dcode`
+  keeps its Ctrl+Z and its hint-free composer. `NikiApp` sets the flag and the
+  hint after mount, next to the existing cursor-blink preference.
+- `niki/niki.tcss` moved the composer border from `#input-area` to
+  `#input-area #input-box` so the mode accent and the incognito border title
+  still apply; the wrapper keeps no border.
+- `niki/app.py` now owns the `f2` mouse-release toggle, a tmux-aware
+  `copy_to_clipboard`, a `suspend()` override that re-applies a released mouse,
+  and a typed `push_screen` callback for the help modal. These are Niki-only
+  overrides; `dcode` is untouched.

@@ -52,6 +52,9 @@ from deepagents_code.tui.widgets.message_store import MessageStore
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+COMPOSER_HINT = "Type a message, / for commands, @ for files"
+"""Placeholder for Niki's empty composer."""
+
 
 class NikiApp(DeepAgentsApp):
     """`DeepAgentsApp` with Niki's presentation defaults applied."""
@@ -213,7 +216,7 @@ class NikiApp(DeepAgentsApp):
         # The composer is built after mount, so `on_mount` alone finds nothing.
         # `call_after_refresh` runs once the first frame is up, by which point
         # the chat input exists.
-        self.call_after_refresh(self._apply_cursor_blink)
+        self.call_after_refresh(self._apply_composer_defaults)
 
     def _prefer_niki_theme(self) -> None:
         """Switch to the Niki theme unless the owner explicitly chose another.
@@ -249,10 +252,16 @@ class NikiApp(DeepAgentsApp):
             return
         self._message_store = NikiMessageStore()
 
-    def _apply_cursor_blink(self) -> None:
-        """Push the blink preference onto every composer text area."""
+    def _apply_composer_defaults(self) -> None:
+        """Give Niki's composer its hint, blink preference, and suspend key.
+
+        Per-instance rather than class-level: the shared `ChatInput` must keep
+        upstream's empty placeholder and Textual's ctrl+z undo for `dcode`.
+        """
         for text_area in self.query(ChatTextArea):
             text_area.cursor_blink = self.blink_cursor
+            text_area.placeholder = COMPOSER_HINT
+            text_area.suspend_on_ctrl_z = True
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Step transcript paging aside whenever the key is not its to take.

@@ -51,3 +51,19 @@ async def test_l7_undo_moves_to_ctrl_shift_z_in_the_composer() -> None:
         undone = composer.text
 
     assert undone == "", f"L7: Ctrl+Shift+Z did not undo the draft: {undone!r}"
+
+
+async def test_l7_the_niki_composer_opts_into_the_suspend_key() -> None:
+    """L7: the shared composer only suspends because Niki turns it on.
+
+    `dcode` keeps Textual's undo through the same binding, so this opt-in is
+    what makes the Niki behavior real rather than incidental.
+    """
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.pause()
+        composer = app.query_one("#chat-input", ChatTextArea)
+
+    assert composer.suspend_on_ctrl_z is True, (
+        "L7: Niki's composer never opted into ctrl+z suspend"
+    )
