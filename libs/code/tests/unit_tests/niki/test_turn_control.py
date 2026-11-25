@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from deepagents_code.tui.widgets.chat_input import ChatTextArea
 from unit_tests.niki.turn_harness import (
     Gate,
     Raise,
@@ -117,7 +118,7 @@ async def test_k4_double_escape_clears_a_composer_draft() -> None:
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
         await pilot.pause()
-        composer = app.query_one("#chat-input")
+        composer = app.query_one("#chat-input", ChatTextArea)
         composer.insert("unsent draft")
         await pilot.pause()
 
@@ -152,9 +153,7 @@ async def test_k10_a_message_queued_during_a_run_is_shown_and_then_runs() -> Non
         await pilot.pause()
         during = screen_text(app)
         queued = len(app._pending_messages)
-        indicator = str(
-            app.query_one("#connection-indicator", Static).render()
-        )
+        indicator = str(app.query_one("#connection-indicator", Static).render())
         queued_widgets = len(app._queued_widgets)
 
         gate.set()
@@ -242,17 +241,13 @@ def test_l8_clean_exit_prints_the_resume_summary(monkeypatch) -> None:
 
     monkeypatch.setattr(sessions, "thread_exists", _exists)
     monkeypatch.setattr(main_module, "_resume_term_program", lambda: None)
-    monkeypatch.setattr(
-        "deepagents_code._invocation.invoked_name", lambda: "dcode"
-    )
+    monkeypatch.setattr("deepagents_code._invocation.invoked_name", lambda: "dcode")
     monkeypatch.setattr(
         "deepagents_code.config.build_langsmith_thread_url", lambda _tid: None
     )
 
     console = Console(record=True, width=100)
-    main_module._render_teardown_thread_hints(
-        console, "thread-abc", return_code=0
-    )
+    main_module._render_teardown_thread_hints(console, "thread-abc", return_code=0)
     output = console.export_text()
 
     assert "Resume this thread with:" in output, output
@@ -272,17 +267,13 @@ def test_l8_failed_exit_adds_the_resume_caveat(monkeypatch) -> None:
 
     monkeypatch.setattr(sessions, "thread_exists", _exists)
     monkeypatch.setattr(main_module, "_resume_term_program", lambda: None)
-    monkeypatch.setattr(
-        "deepagents_code._invocation.invoked_name", lambda: "dcode"
-    )
+    monkeypatch.setattr("deepagents_code._invocation.invoked_name", lambda: "dcode")
     monkeypatch.setattr(
         "deepagents_code.config.build_langsmith_thread_url", lambda _tid: None
     )
 
     console = Console(record=True, width=100)
-    main_module._render_teardown_thread_hints(
-        console, "thread-abc", return_code=1
-    )
+    main_module._render_teardown_thread_hints(console, "thread-abc", return_code=1)
     output = console.export_text()
 
     assert "-r thread-abc" in output, output

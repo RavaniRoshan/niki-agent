@@ -187,6 +187,30 @@ def _screen(text: str) -> pyte.Screen:
     return screen
 
 
+def _await_screen(
+    child: pexpect.spawn,
+    buffer: str,
+    needle: str,
+    *,
+    deadline: float = 10.0,
+) -> tuple[str, str]:
+    """Drain the child until `needle` shows on screen, or the deadline passes.
+
+    Fixed sleeps race the app under a loaded machine; this waits for the state
+    the assertion is about instead, so a slow frame is not reported as a bug.
+
+    Returns:
+        The accumulated output and the non-blank screen lines.
+    """
+    end = time.monotonic() + deadline
+    while True:
+        buffer += _drain(child)
+        text = "\n".join(line for line in _screen(buffer).display if line.strip())
+        if needle in text or time.monotonic() >= end:
+            return buffer, text
+        time.sleep(0.1)
+
+
 def _wheel(direction: str, *, column: int = 40, row: int = 10, times: int = 3) -> str:
     """Return SGR mouse bytes for a wheel gesture.
 
@@ -434,21 +458,21 @@ def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
     replayed through `pyte` and the composer is asked to take a keystroke.
     """
     child, before = _spawn(home, cwd=tmp_cwd)
+    pid = child.pid
+    assert pid is not None, "L7: the child process has no pid"
     buffer = before
     try:
         child.send(CTRL_Z)
         time.sleep(1.0)
 
         try:
-            pid, status = os.waitpid(
-                child.pid, os.WNOHANG | os.WUNTRACED  # ty: ignore[invalid-argument-type]
-            )
-            stopped = pid == child.pid and os.WIFSTOPPED(status)
+            waited, status = os.waitpid(pid, os.WNOHANG | os.WUNTRACED)
+            stopped = waited == pid and os.WIFSTOPPED(status)
         except ChildProcessError:
             stopped = False
 
         if stopped:
-            os.kill(child.pid, signal.SIGCONT)  # ty: ignore[invalid-argument-type]
+            os.kill(pid, signal.SIGCONT)
             time.sleep(1.0)
             resumed_alive = child.isalive()
         else:
@@ -481,9 +505,7 @@ def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
     )
 
 
-def test_m4_f2_hands_the_mouse_back_to_the_terminal(
-    home: Path, tmp_cwd: Path
-) -> None:
+def test_m4_f2_hands_the_mouse_back_to_the_terminal(home: Path, tmp_cwd: Path) -> None:
     """M4: F2 stops and restarts the terminal's mouse reporting.
 
     The toggle's whole point is an escape sequence the *terminal* acts on, so
@@ -677,14 +699,11 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
         child.send("/")
         time.sleep(0.3)
         child.send("hel")
-        time.sleep(0.5)
-        child.send("\t")
-        time.sleep(0.5)
         buffer = before + _drain(child)
-        completed = "\n".join(line for line in _screen(buffer).display if line.strip())
+        child.send("\t")
+        buffer, completed = _await_screen(child, buffer, "/help")
         child.send("\r")
-        time.sleep(1.5)
-        buffer += _drain(child)
+        buffer, after = _await_screen(child, buffer, "Usage:")
         alive = child.isalive()
     finally:
         child.terminate(force=True)
@@ -692,7 +711,7 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
     assert alive, "K6: completing from the menu killed the process"
     assert "help" in completed, f"K6: Tab did not complete `/hel`:\n{completed[-600:]}"
     text = _ANSI.sub("", buffer)
-    assert "Usage:" in text, (
+    assert "Usage:" in after, (
         f"K6: Enter did not run the completed command:\n{text[-600:]}"
     )
 

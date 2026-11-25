@@ -38,8 +38,7 @@ def _write_sessions_db(state_dir: Path) -> None:
     state_dir.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(state_dir / "sessions.db")
     con.execute(
-        "CREATE TABLE checkpoints ("
-        "thread_id TEXT, checkpoint_id TEXT, metadata TEXT)"
+        "CREATE TABLE checkpoints (thread_id TEXT, checkpoint_id TEXT, metadata TEXT)"
     )
     for thread_id, updated_at in THREADS:
         metadata = json.dumps(

@@ -114,7 +114,9 @@ async def test_composer_cursor_steps_by_grapheme(
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
-        composer = app.query_one("#chat-input")
+        from deepagents_code.tui.widgets.chat_input import ChatTextArea
+
+        composer = app.query_one("#chat-input", ChatTextArea)
         composer.insert(text)
         await pilot.pause()
         for _ in range(lefts):
@@ -223,22 +225,22 @@ async def test_k6_arrows_tab_and_enter_drive_the_slash_menu() -> None:
         chat = app.query_one(ChatInput)
         await pilot.press("slash")
         await pilot.pause()
-        count = len(chat._current_suggestions)  # noqa: SLF001 - live popup state
+        count = len(chat._current_suggestions)
         assert count > 1, "K6: '/' produced no menu to drive"
-        assert chat._current_selected_index == 0  # noqa: SLF001
+        assert chat._current_selected_index == 0
 
         await pilot.press("down", "down")
         await pilot.pause()
-        assert chat._current_selected_index == 2  # noqa: SLF001
+        assert chat._current_selected_index == 2
         await pilot.press("up")
         await pilot.pause()
-        assert chat._current_selected_index == 1  # noqa: SLF001
-        chosen = chat._current_suggestions[1][0].lstrip("/")  # noqa: SLF001
+        assert chat._current_selected_index == 1
+        chosen = chat._current_suggestions[1][0].lstrip("/")
 
         await pilot.press("tab")
         await pilot.pause()
         accepted = _text(app).strip()
-        remaining = list(chat._current_suggestions)  # noqa: SLF001 - live state
+        remaining = list(chat._current_suggestions)
 
     assert accepted == chosen, (
         f"K6: Tab accepted {accepted!r}, expected the highlighted {chosen!r}"
@@ -259,7 +261,7 @@ async def test_k6_enter_dispatches_the_highlighted_command() -> None:
         for _ in range(3):
             await pilot.pause()
         helped = any(
-            "Usage:" in str(message.render().plain)
+            "Usage:" in str(message.render())
             for message in app.query("AppMessage")
         )
 
@@ -368,7 +370,9 @@ async def test_first_run_name_prompt_owns_focus() -> None:
         )
         await pilot.press("b", "o", "b")
         await pilot.pause()
-        assert app.screen.query_one("#launch-name-input").value == "bob"
+        from textual.widgets import Input
+
+        assert app.screen.query_one("#launch-name-input", Input).value == "bob"
         await pilot.press("enter")
         await pilot.pause()
         assert type(app.screen).__name__ != "LaunchNameScreen", (

@@ -31,16 +31,28 @@ from unit_tests.niki.turn_harness import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
-    from textual.app import App
     from textual.pilot import Pilot
+
+    from deepagents_code.niki.app import NikiApp
+    from unit_tests.niki.turn_harness import Step
 
 SIZE = (100, 32)
 DIFF_PATH = "demo.py"
 
 
-def _loading_text(app: App) -> str:  # type: ignore[type-arg]
+def _rewrite(target: Path) -> Callable[[], None]:
+    """Return a tool-shaped writer for the file the stream claims to update."""
+
+    def _write() -> None:
+        target.write_text("alpha\ncharlie\n", encoding="utf-8")
+
+    return _write
+
+
+def _loading_text(app: NikiApp) -> str:
     """Return the activity line's visible text, or an empty string."""
     from deepagents_code.tui.widgets.loading import LoadingWidget
 
@@ -52,7 +64,7 @@ def _loading_text(app: App) -> str:  # type: ignore[type-arg]
     )
 
 
-async def _turn(app: App, pilot: Pilot[None], script: list[object]) -> ScriptedAgent:  # type: ignore[type-arg]
+async def _turn(app: NikiApp, pilot: Pilot[None], script: list[Step]) -> ScriptedAgent:
     """Arm the app with a one-turn script and run the prompt to completion."""
     agent = ScriptedAgent(script)
     await arm_turn(app, pilot, agent)
@@ -96,12 +108,16 @@ async def test_v6_the_footer_reports_the_model_and_real_usage(monkeypatch) -> No
         await app._submit_input("go", "normal")
         await wait_idle(app, pilot)
         footer = screen_text(app).splitlines()[-1]
+        from deepagents_code.tui.widgets.status import MetricsLine
+
         metrics = " ".join(
             segment.plain
-            for segment in app.query_one("#tokens-display").segments
+            for segment in app.query_one("#tokens-display", MetricsLine).segments
             if segment.plain
         )
-        shown_tokens = app._status_bar.tokens
+        status_bar = app._status_bar
+        assert status_bar is not None, "V6: the app has no status bar"
+        shown_tokens = status_bar.tokens
         context_tokens = app._context_tokens
 
     assert shown_tokens > 0, "V6: a recorded usage chunk left the token count at 0"
@@ -222,7 +238,7 @@ async def test_v8_a_real_file_write_renders_a_diff_on_screen(tmp_path: Path) -> 
                     "write_file",
                     {"file_path": str(target), "content": "alpha\ncharlie\n"},
                 ),
-                Mutate(lambda: target.write_text("alpha\ncharlie\n", encoding="utf-8")),
+                Mutate(_rewrite(target)),
                 ToolResult("call-1", "write_file", "Updated file"),
             ],
         )

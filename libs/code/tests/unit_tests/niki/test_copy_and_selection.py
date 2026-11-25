@@ -188,7 +188,9 @@ def test_m4_osc52_handles_awkward_payloads(
     )
 
 
-async def test_m4_selection_copy_reaches_the_clipboard() -> None:
+async def test_m4_selection_copy_reaches_the_clipboard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """M4: selected text is what the copy action hands to the clipboard."""
     from unittest.mock import AsyncMock
 
@@ -207,9 +209,10 @@ async def test_m4_selection_copy_reaches_the_clipboard() -> None:
         widget = Static("hello selection")
         await app.query_one("#messages").mount(widget)
         await pilot.pause()
-        app.screen.selections = {widget: Selection(Offset(0, 0), Offset(5, 0))}
+        selection = Selection(Offset(0, 0), Offset(5, 0))
+        monkeypatch.setattr(app.screen, "selections", {widget: selection})
         selected = app.screen.get_selected_text()
-        app.copy_to_clipboard = copied.append  # type: ignore[method-assign]
+        monkeypatch.setattr(app, "copy_to_clipboard", copied.append)
         app.screen.action_copy_text()
 
     assert selected == "hello", f"M4: wrong text under the selection: {selected!r}"

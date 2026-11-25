@@ -30,6 +30,7 @@ from deepagents_code.niki.keymap import (
     render_help,
     render_markdown,
 )
+from deepagents_code.tui.widgets.chat_input import ChatTextArea
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -266,7 +267,7 @@ async def test_k8_question_mark_opens_contextual_help() -> None:
             f"K8: `?` opened {type(screen).__name__}, not help"
         )
         body = str(screen.query_one("#niki-help-body").render())
-        empty_composer = app.query_one("#chat-input").text == ""
+        empty_composer = app.query_one("#chat-input", ChatTextArea).text == ""
         await pilot.press("escape")
         await pilot.pause()
         focused_id = getattr(app.focused, "id", None)
@@ -290,7 +291,7 @@ async def test_k8_question_mark_still_types_when_a_draft_exists() -> None:
         await pilot.press("w", "h", "y")
         await pilot.press("question_mark")
         await pilot.pause()
-        text = str(app.query_one("#chat-input").text)
+        text = str(app.query_one("#chat-input", ChatTextArea).text)
         screens = len(app.screen_stack)
 
     assert text.endswith("?"), f"K8: the question mark was not typed (text={text!r})"

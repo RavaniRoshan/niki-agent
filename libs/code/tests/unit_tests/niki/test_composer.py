@@ -50,6 +50,7 @@ async def test_v5_the_prompt_glyph_is_the_shared_cursor_glyph() -> None:
         await pilot.pause()
         normal = str(app.query_one("#prompt").render())
         composer = app._chat_input
+        assert composer is not None
         composer.mode = "shell"
         await pilot.pause()
         shell = str(app.query_one("#prompt").render())
@@ -74,11 +75,11 @@ async def test_v5_the_empty_composer_shows_a_placeholder_and_drops_it_on_typing(
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
         await pilot.pause()
-        empty_screen = screen_text(app)
-        hint = _composer(app).placeholder
+        empty_screen = str(screen_text(app))
+        hint = str(_composer(app).placeholder)
         await pilot.press("h")
         await pilot.pause()
-        typed_screen = screen_text(app)
+        typed_screen = str(screen_text(app))
 
     assert hint == ChatInput.COMPOSER_PLACEHOLDER, (
         f"V5: the empty composer has no placeholder: {hint!r}"

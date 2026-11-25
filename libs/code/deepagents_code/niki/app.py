@@ -318,10 +318,10 @@ class NikiApp(DeepAgentsApp):
         """Open the keymap modal for the current surface."""
         from deepagents_code.niki.help_screen import NikiHelpScreen, help_body
 
-        self.push_screen(
-            NikiHelpScreen(help_body(self)),
-            lambda _result: self.call_after_refresh(self._refocus_composer),
-        )
+        def _refocus_after_modal(_result: object) -> None:
+            self.call_after_refresh(self._refocus_composer)
+
+        self.push_screen(NikiHelpScreen(help_body(self)), _refocus_after_modal)
 
     def _refocus_composer(self) -> None:
         """Return focus to the chat input after a modal closes."""

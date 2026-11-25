@@ -26,6 +26,7 @@ import pytest
 if TYPE_CHECKING:
     from textual.app import App
 
+    from deepagents_code.niki.app import NikiApp
     from deepagents_code.tui.widgets.approval import ApprovalMenu
 
 REQUEST: dict[str, object] = {"name": "bash", "args": {"cmd": "rm -rf /tmp/thing"}}
@@ -33,7 +34,7 @@ NARROW = (50, 20)
 STANDARD = (80, 24)
 
 
-def _app() -> App:  # type: ignore[type-arg]
+def _app() -> NikiApp:
     from unittest.mock import AsyncMock, MagicMock
 
     from deepagents_code.niki.app import NikiApp

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from deepagents_code.tui.widgets.chat_input import ChatTextArea
 from unit_tests.niki.turn_harness import make_app
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ async def test_l7_undo_moves_to_ctrl_shift_z_in_the_composer() -> None:
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
         await pilot.pause()
-        composer = app.query_one("#chat-input")
+        composer = app.query_one("#chat-input", ChatTextArea)
         composer.insert("draft")
         await pilot.pause()
         await pilot.press("ctrl+shift+z")

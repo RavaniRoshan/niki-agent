@@ -31,8 +31,7 @@ from deepagents_code.niki.theme import (
 
 def _resolve(mapping: dict[str, str], palette: dict[str, str]) -> dict[str, str]:
     return {
-        token: palette[name.removeprefix("ansi_")]
-        for token, name in mapping.items()
+        token: palette[name.removeprefix("ansi_")] for token, name in mapping.items()
     }
 
 
@@ -84,8 +83,7 @@ def test_solarized_dark_keeps_text_readable() -> None:
     failing_tokens = {token for token, _bg, _ratio in glyph_failures}
     # The documented cost: only the saturated accents fall short.
     assert failing_tokens <= {"success", "warning", "error", "skill"}, (
-        "V13: an unexpected token lost glyph contrast on Solarized: "
-        f"{failing_tokens}"
+        f"V13: an unexpected token lost glyph contrast on Solarized: {failing_tokens}"
     )
 
 
