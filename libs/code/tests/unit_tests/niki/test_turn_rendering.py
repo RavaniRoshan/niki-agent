@@ -169,6 +169,42 @@ async def test_v7_a_long_error_expands_without_a_click() -> None:
     )
 
 
+async def test_v7_ctrl_o_expands_the_most_recent_tool_row() -> None:
+    """V7: `ctrl+o` toggles the latest collapsible transcript unit."""
+    output = "\n".join(f"row {index:02d}" for index in range(20))
+    tail = "row 19"
+    app = make_app()
+    async with app.run_test(size=SIZE) as pilot:
+        await pilot.pause()
+        await _turn(
+            app,
+            pilot,
+            [
+                ToolUse("call-1", "bash", {"command": "seq 20"}),
+                ToolResult("call-1", "bash", output),
+            ],
+        )
+        folded = screen_text(app)
+        assert tail not in folded, (
+            f"V7: the tail is already visible, so ctrl+o would prove nothing:\n{folded}"
+        )
+
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        await pilot.pause()
+        # The row is folded into its group, so the first press unfolds that
+        # group and the second reaches the row's own output.
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        await pilot.pause()
+        await scroll_end(app, pilot)
+        unfolded = screen_text(app)
+
+    assert tail in unfolded, (
+        f"V7: ctrl+o did not reveal the folded tool output:\n{unfolded}"
+    )
+
+
 async def test_v8_a_real_file_write_renders_a_diff_on_screen(tmp_path: Path) -> None:
     """V8: a real `write_file` call paints the diff a reader expects."""
     target = tmp_path / DIFF_PATH
