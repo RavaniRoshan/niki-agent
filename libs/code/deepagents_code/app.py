@@ -234,7 +234,7 @@ async def _wait_for_session_end(
 
 _DEFERRED_START_NOTICE = (
     "No model is configured yet. Run `/model` to choose one. "
-    "Deep Agents will ask for credentials for the selected provider."
+    "{product} will ask for credentials for the selected provider."
 )
 
 _AUTO_CLASSIFIER_RECOMMENDED_MODELS = {
@@ -3331,6 +3331,14 @@ class DeepAgentsApp(App):
 
     TITLE = "Deep Agents"
     """Textual application title."""
+
+    PRODUCT_NAME: ClassVar[str] = "Deep Agents"
+    """Product name used inside user-visible sentences.
+
+    Kept separate from `TITLE` so a fork can rename the chrome without
+    rewriting prose, and so the deferred-start notice never spells the
+    upstream product in a rebranded app.
+    """
 
     CSS_PATH = "app.tcss"
     """Path to the Textual CSS stylesheet for the app layout."""
@@ -19244,7 +19252,7 @@ class DeepAgentsApp(App):
                 if not worker_started:
                     await self._release_unstarted_turn()
         elif self._server_startup_deferred:
-            await self._mount_message(AppMessage(_DEFERRED_START_NOTICE))
+            await self._mount_message(AppMessage(self._deferred_start_notice()))
         elif not self._server_startup_error:
             # When a server-startup failure is in flight, the chat
             # `ErrorMessage` mounted by `on_deep_agents_app_server_start_failed`
@@ -19297,12 +19305,20 @@ class DeepAgentsApp(App):
                     )
                 )
 
+    def _deferred_start_notice(self) -> str:
+        """Return the first-launch credential notice for this product.
+
+        Returns:
+            The notice with this app's product name filled in.
+        """
+        return _DEFERRED_START_NOTICE.format(product=self.PRODUCT_NAME)
+
     async def _mount_deferred_start_notice(self) -> None:
         """Tell first-launch users how to configure model credentials."""
         if self._server_startup_deferred_notice_shown:
             return
         self._server_startup_deferred_notice_shown = True
-        await self._mount_message(AppMessage(_DEFERRED_START_NOTICE))
+        await self._mount_message(AppMessage(self._deferred_start_notice()))
 
     def _effective_model_spec(self) -> str | None:
         """Return the `provider:model` spec in effect for the next invocation.

@@ -284,3 +284,37 @@ async def test_m5_every_mouse_gesture_has_a_keyboard_equivalent() -> None:
     assert not missing, (
         f"M5: these gestures have no key binding in the registry: {missing}"
     )
+
+
+async def test_m2_clicking_a_tool_card_toggles_its_output() -> None:
+    """M2: a click on an actionable tool card expands and collapses it.
+
+    The card is given more output than the preview shows, otherwise there is
+    nothing to toggle and the test would pass without proving the click path.
+    """
+    from deepagents_code.tui.widgets.messages import ToolCallMessage
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        card = ToolCallMessage(tool_name="bash", args={"cmd": "ls -la"})
+        await app.query_one("#messages").mount(card)
+        await pilot.pause()
+        card._output = "\n".join(f"row {index}" for index in range(20))
+        card._update_output_display()
+        await pilot.pause()
+        assert card.has_expandable_output, (
+            "M2: the card output is not expandable, so the click proves nothing"
+        )
+        collapsed = bool(card._expanded)
+
+        await pilot.click(card)
+        await pilot.pause()
+        expanded = bool(card._expanded)
+
+        await pilot.click(card)
+        await pilot.pause()
+        recollapsed = bool(card._expanded)
+
+    assert expanded != collapsed, "M2: clicking the tool card did not expand it"
+    assert recollapsed == collapsed, "M2: a second click did not collapse it again"

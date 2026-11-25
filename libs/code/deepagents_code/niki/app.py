@@ -56,6 +56,9 @@ class NikiApp(DeepAgentsApp):
     (`app.py:3331`); it is a plain class attribute, so rebranding needs no
     string surgery anywhere else."""
 
+    PRODUCT_NAME = "Niki Agent"
+    """Product name inside user-visible sentences (the deferred-start notice)."""
+
     #: Blink is opt-in; see the module docstring for the measurement. Assign to
     #: the instance before mounting to override.
     blink_cursor: bool = False

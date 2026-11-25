@@ -61,7 +61,20 @@ def _env(home: Path) -> dict[str, str]:
     env["DEEPAGENTS_HOME"] = str(home)
     env["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] = "1"
     env["TERM"] = "xterm-256color"
-    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
+    # Every provider key this build knows: a launch with one set would
+    # start a server and change what the first frame is allowed to say.
+    for key in (
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GROQ_API_KEY",
+        "MISTRAL_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "XAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "TOGETHER_API_KEY",
+        "FIREWORKS_API_KEY",
+    ):
         env.pop(key, None)
     return env
 
@@ -170,6 +183,150 @@ def _screen(text: str) -> pyte.Screen:
     screen = pyte.Screen(80, 24)
     pyte.Stream(screen).feed(text)
     return screen
+
+
+def _wheel(direction: str, *, column: int = 40, row: int = 10, times: int = 3) -> str:
+    """Return SGR mouse bytes for a wheel gesture.
+
+    Button 64 is wheel-up and 65 wheel-down in the SGR encoding Textual parses;
+    the `M` terminator marks the press.
+
+    Args:
+        direction: `"up"` or `"down"`.
+        column: 1-based screen column under the pointer.
+        row: 1-based screen row under the pointer.
+        times: How many notches to send.
+
+    Returns:
+        The escape sequence to write to the pty.
+    """
+    button = 64 if direction == "up" else 65
+    return f"\x1b[<{button};{column};{row}M" * times
+
+
+def _click(column: int, row: int) -> str:
+    """Return SGR mouse bytes for a left-click press and release.
+
+    Args:
+        column: 1-based screen column.
+        row: 1-based screen row.
+
+    Returns:
+        The escape sequence to write to the pty.
+    """
+    return f"\x1b[<0;{column};{row}M\x1b[<0;{column};{row}m"
+
+
+def test_m1_wheel_scrolls_the_transcript_and_does_not_snap_back(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """M1: a real wheel event moves the transcript and the position sticks.
+
+    Pilot has no wheel API, so the check is the SGR bytes a terminal sends.
+    `/help` is used to make the transcript taller than the viewport: without
+    overflow a scroll test passes for the wrong reason.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("/help")
+        time.sleep(0.4)
+        child.send("\r")
+        time.sleep(1.5)
+        buffer = before + _drain(child)
+        # Wheel down first: `/help` mounts at the top of the new content, and a
+        # scroll-up at the top of the transcript is a no-op by definition.
+        child.send(_wheel("down", times=20))
+        time.sleep(0.5)
+        buffer += _drain(child)
+        at_bottom = "\n".join(_screen(buffer).display)
+
+        child.send(_wheel("up"))
+        time.sleep(0.4)
+        buffer += _drain(child)
+        scrolled = "\n".join(_screen(buffer).display)
+
+        # Nothing else is written: a snap-back would repaint the bottom view.
+        time.sleep(1.0)
+        settled = "\n".join(_screen(buffer).display)
+
+        child.send(_wheel("down", times=5))
+        time.sleep(0.5)
+        buffer += _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "M1: wheel input killed the process"
+    # At the bottom of a help body taller than the screen, the top is off
+    # screen; if it were visible the wheel test would pass for the wrong reason.
+    assert "Usage:" not in at_bottom, (
+        "M1: the help body fits the viewport, so scrolling proves nothing:\n"
+        f"{at_bottom}"
+    )
+    assert scrolled != at_bottom, "M1: a real wheel-up event did not move the view"
+    assert settled == scrolled, (
+        "M1: the view snapped back after the wheel stopped:\n"
+        f"--- after wheel ---\n{scrolled}\n--- one second later ---\n{settled}"
+    )
+
+
+def test_m2_clicking_the_transcript_keeps_the_composer_and_a_row_completes(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """M2: real clicks refocus the composer and drive a slash row.
+
+    Clicking the transcript must hand the keyboard back to the composer (an
+    inert row is intentionally transparent), and clicking a suggestion row must
+    complete it. Both are the bytes a terminal emulator sends.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        # A click on the transcript, then typing: the character must land.
+        child.send(_click(10, 5))
+        time.sleep(0.4)
+        child.send("kq9")
+        time.sleep(0.6)
+        buffer = before + _drain(child)
+        typed = "\n".join(_screen(buffer).display)
+
+        # Clear the draft, then complete a command by clicking its row. The row
+        # is located from the rendered screen, because a fixed row number moves
+        # with the layout.
+        for _ in range(10):
+            child.send("\x7f")
+        time.sleep(0.3)
+        child.send("/")
+        time.sleep(0.8)
+        buffer += _drain(child)
+        screen = _screen(buffer)
+        target = next(
+            (
+                (index, line.index("Switch"))
+                for index, line in enumerate(screen.display)
+                if "manual" in line and "Switch" in line
+            ),
+            None,
+        )
+        assert target is not None, (
+            f"M2: the slash menu never rendered a clickable row:\n"
+            f"{chr(10).join(screen.display)}"
+        )
+        row, column = target
+        child.send(_click(column + 2, row + 1))
+        time.sleep(0.8)
+        buffer += _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "M2: clicking the menu killed the process"
+    assert "kq9" in typed, (
+        f"M2: typing after a transcript click stayed out of the composer:\n{typed}"
+    )
+    completed = "\n".join(_screen(buffer).display)
+    assert "manual" in completed, (
+        f"M2: clicking the row did not complete the command:\n{completed}"
+    )
 
 
 def test_k5_bracketed_paste_lands_as_text_and_fires_no_hotkey(
@@ -374,6 +531,39 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     )
 
 
+def test_v12_no_key_launch_explains_how_to_configure_a_model(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """V12: with no credentials the first frame says what to do, in Niki's name.
+
+    The inline notice is the only place a keyless user learns about `/model`,
+    and it is also user-visible chrome, so it must not spell the upstream
+    product.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        time.sleep(1.0)
+        buffer = before + _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "V12: a keyless launch killed the process"
+    # The notice wraps at 80 columns, so collapse padding and line breaks.
+    lines = [line for line in _screen(buffer).display if line.strip()]
+    screen = " ".join(" ".join(lines).replace("\u00a0", " ").split())
+    assert "No model is configured yet" in screen, (
+        f"V12: no missing-model guidance on the first frame:\n{screen}"
+    )
+    assert "/model" in screen, f"V12: the notice does not name the fix:\n{screen}"
+    assert "Niki Agent will ask for credentials" in screen, (
+        f"V12: the notice does not name the product:\n{screen}"
+    )
+    assert "Deep Agents" not in screen, (
+        f"V12: the notice leaks the upstream product name:\n{screen}"
+    )
+
+
 def test_k7_escape_unwinds_a_modal_then_a_popup_in_a_real_terminal(
     home: Path, tmp_cwd: Path
 ) -> None:
@@ -391,7 +581,9 @@ def test_k7_escape_unwinds_a_modal_then_a_popup_in_a_real_terminal(
         child.send("tmp1")
         time.sleep(0.5)
         buffer = before + _drain(child)
-        after_modal = "\n".join(line for line in _screen(buffer).display if line.strip())
+        after_modal = "\n".join(
+            line for line in _screen(buffer).display if line.strip()
+        )
         # The draft is cleared before the popup step so `?`-style filtering
         # cannot be mistaken for typing.
         for _ in range(4):
@@ -410,11 +602,13 @@ def test_k7_escape_unwinds_a_modal_then_a_popup_in_a_real_terminal(
 
     assert alive, "K7: escaping layers killed the process"
     assert "tmp1" in after_modal, (
-        f"K7: typing after closing the modal did not reach the composer:\n{after_modal[-600:]}"
+        "K7: typing after closing the modal did not reach the composer:\n"
+        f"{after_modal[-600:]}"
     )
     final = "\n".join(line for line in _screen(buffer).display if line.strip())
     assert "tmp2" in final, (
-        f"K7: typing after closing the popup did not reach the composer:\n{final[-600:]}"
+        "K7: typing after closing the popup did not reach the composer:\n"
+        f"{final[-600:]}"
     )
 
 
@@ -447,7 +641,9 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
     assert alive, "K6: completing from the menu killed the process"
     assert "help" in completed, f"K6: Tab did not complete `/hel`:\n{completed[-600:]}"
     text = _ANSI.sub("", buffer)
-    assert "Usage:" in text, f"K6: Enter did not run the completed command:\n{text[-600:]}"
+    assert "Usage:" in text, (
+        f"K6: Enter did not run the completed command:\n{text[-600:]}"
+    )
 
 
 def test_k3_multiline_gesture_keeps_the_prompt_in_the_composer(

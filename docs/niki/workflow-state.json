@@ -15,7 +15,9 @@
     "K8 `?` contextual help": "question_mark is a priority binding; pty proves the modal opens and Escape restores focus",
     "M5 every mouse action has a key equivalent": "test extended to ten live-binding gestures including ctrl+o and ctrl+u",
     "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples",
-    "K3 composer editing": "multi-line proven through Pilot and pty; cursor now grapheme-aware"
+    "K3 composer editing": "multi-line proven through Pilot and pty; cursor now grapheme-aware",
+    "K6 filtered slash menu": "proven through Pilot and pty",
+    "K7 Esc close order + focus restore": "proven through Pilot and pty"
   },
   "owner": null,
   "branch": null,
@@ -32,8 +34,6 @@
     "V12 first-run + missing API key message": "missing-key inline message needs a no-key real launch",
     "V13 colour depth / NO_COLOR / ASCII / contrast": "actual 16-colour/light palette legibility is owner-only",
     "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
-    "K6 filtered slash menu": "arrow/Tab/Enter selection needs owner terminal confirmation",
-    "K7 Esc close order + focus restore": "full close order and focus restoration are owner-only",
     "M1 transcript scrolls, no snap-back": "wheel input has no Pilot API; owner verification required",
     "M2 click: focus, cards, approvals, rows": "click on cards/approvals/rows needs owner terminal confirmation",
     "F2 activity states only from real events": "real event -> activity state needs a model turn",
@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "23d9fe9de4624ab7c57a82491141ba6dd8fa9a99",
+  "last_commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -96,6 +96,14 @@
     },
     "K3 composer editing": {
       "commit": "23d9fe9de4624ab7c57a82491141ba6dd8fa9a99",
+      "evidence": "see CHECKLIST row"
+    },
+    "K6 filtered slash menu": {
+      "commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
+      "evidence": "see CHECKLIST row"
+    },
+    "K7 Esc close order + focus restore": {
+      "commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
       "evidence": "see CHECKLIST row"
     }
   }
