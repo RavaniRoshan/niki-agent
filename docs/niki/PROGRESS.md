@@ -268,3 +268,47 @@ not by re-labelling it.
 - **Owner checks:** whatever depends on the user's own terminal (OSC 52
   delivery, 16-colour appearance, drag-select rendering) is listed in
   `OWNER_VERIFY.md`; the app-side half of each is tested.
+
+## Session 6 — the first CI run (2026-11-25)
+
+The branch had never seen CI: the previous sessions verified everything on one
+developer machine. The first pull-request run found three classes of failure
+that local runs could not show, and each came from the environment the evidence
+was recorded in, not from the product.
+
+### Repairs
+
+- **Snapshot baselines encoded this shell.** `NO_COLOR=1` is exported here, and
+  Textual honours it by filtering the screen to monochrome, so all twelve
+  committed frames were grey; a clean runner rendered the real palette and
+  matched none of them. `snapshot_app.py` now drops `NO_COLOR` before the app
+  is built, and the baselines were regenerated in colour.
+- **The baselines greeted `pytest`.** The splash prints
+  `invoked_name()`, which falls back to `dcode` when `sys.argv[0]` is the test
+  runner — the committed frames showed `dcode` in the header. The harness now
+  pins `DEEPAGENTS_CODE_INVOKED_AS=niki` and clears the memo, so the frames and
+  `docs/niki/review/test_first_run_snapshot_120x38.svg` show what a `niki`
+  launch shows.
+- **A missing `rg` changed the first frame.** Without ripgrep, startup raises a
+  notification that overlaps the first frame and clips the notice V12 reads
+  (`/model` arrived as `/mod`). The PTY tests now put a stub `rg` on PATH —
+  outside `DEEPAGENTS_HOME`, whose `bin/` is the *managed* ripgrep location and
+  would read a stub there as a stale install.
+- **`libs/partners/quickjs`:** its lockfile was behind its test extras
+  (`langchain-openai` bound at `>=1.6.5`), and its prompt template emitted a
+  blank line that split the system-prompt bullet list when the authorization
+  row was absent. Both fixed; the prompt is byte-identical to upstream unless
+  an approval gate is attached.
+
+### Verification
+
+- Same three failure classes reproduced locally with `env -i HOME=… taskset -c
+  0-3 … -n 4`, then passed after the repairs: 12 snapshots at three different
+  environments (normal shell, `env -i`, forced `NO_COLOR=1`), and **424 passed**
+  for `tests/unit_tests/niki` plus the composer contracts in a clean 4-core
+  environment.
+- `libs/partners/quickjs`: **266 passed**; `ruff check`, `ruff format --diff`,
+  and `ty check` clean.
+- `make check` on this tree: **9467 passed, 1 skipped** in 530 s, exit 0;
+  `ruff`, `ruff format --diff`, `ty`, the commands catalog, the lockfile,
+  the extras sync, and the version equality checks all pass.
