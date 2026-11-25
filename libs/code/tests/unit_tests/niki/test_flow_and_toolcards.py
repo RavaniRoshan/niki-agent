@@ -95,13 +95,17 @@ async def test_f3_streaming_paints_far_fewer_frames_than_chunks() -> None:
     )
 
 
-async def test_f2_no_activity_state_without_a_real_event() -> None:
+async def test_f2_no_activity_state_without_a_real_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """F2: the app must not claim to be busy when nothing is happening.
 
     Catches the classic lie -- an activity indicator that reads "running"
     because a timer started it, rather than because a real agent or tool event
-    did.
+    did. Splash tips are hidden: one of them says the agent "keeps working",
+    and a random tip would otherwise decide this test.
     """
+    monkeypatch.setenv("DEEPAGENTS_CODE_HIDE_SPLASH_TIPS", "1")
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()

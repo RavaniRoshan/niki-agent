@@ -104,6 +104,13 @@ def _spawn(home: Path, *, cwd: Path, timeout: int = 25) -> tuple[pexpect.spawn, 
     marker = home / ".state" / "onboarding_complete"
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.touch()
+    # Optional-dependency notices (a missing Tavily key, for one) mount over the
+    # right of the screen and shrink the transcript these tests measure. The
+    # product's own `[warnings].suppress` setting is the supported way to keep
+    # the first frame to the frame itself.
+    (home / "config.toml").write_text(
+        '[warnings]\nsuppress = ["ripgrep", "tavily"]\n', encoding="utf-8"
+    )
 
     child = pexpect.spawn(
         sys.executable,
