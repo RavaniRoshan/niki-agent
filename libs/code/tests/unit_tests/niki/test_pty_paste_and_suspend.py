@@ -63,6 +63,17 @@ def _env(home: Path) -> dict[str, str]:
     env["DEEPAGENTS_HOME"] = str(home)
     env["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] = "1"
     env["TERM"] = "xterm-256color"
+    # A missing `rg` raises a startup notification that overlaps the first
+    # frame and clips the very notice these tests read, so the suite supplies a
+    # stub on PATH instead of inheriting whatever the runner happens to have.
+    # It must live outside `DEEPAGENTS_HOME`: `~/bin` there is the *managed*
+    # ripgrep location, and a stub found there reads as a stale managed install.
+    rg_dir = home.parent / "rg-bin"
+    rg_dir.mkdir(exist_ok=True)
+    rg = rg_dir / "rg"
+    rg.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    rg.chmod(0o755)
+    env["PATH"] = f"{rg_dir}{os.pathsep}{env.get('PATH', '')}"
     # Every provider key this build knows: a launch with one set would
     # start a server and change what the first frame is allowed to say.
     for key in (
