@@ -948,8 +948,13 @@ def test_s7_a_resize_storm_does_not_break_the_app(home: Path, tmp_cwd: Path) -> 
             time.sleep(0.015)
         storm_elapsed = time.perf_counter() - started
         child.setwinsize(30, 100)
-        time.sleep(0.4)
-        painted_after = drain()
+        # A loaded runner can take a while to repaint after the storm; the
+        # property under test is "still painting", not "painted within 400 ms".
+        painted_after = 0
+        paint_deadline = time.perf_counter() + 15
+        while painted_after == 0 and time.perf_counter() < paint_deadline:
+            time.sleep(0.05)
+            painted_after += drain()
 
         drain()
         os.write(fd, b"z")
