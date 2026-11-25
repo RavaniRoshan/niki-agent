@@ -86,13 +86,13 @@ async def test_v8_a_long_diff_is_truncated_rather_than_rendered_whole() -> None:
         )
         await pilot.pause()
         await _scroll_to_end(app, pilot)
-        widgets = list(app.screen.query("Static"))
+        widgets = list(app.query_one("#messages").query("Static"))
         # Read inside the block: the tree is gone once run_test unwinds.
         mounted = len(widgets)
 
     assert mounted <= 60, (
-        f"V8: {mounted} widgets mounted for a diff capped at 40 lines; the cap "
-        "is not being applied"
+        f"V8: {mounted} transcript widgets mounted for a diff capped at 40 "
+        "lines; the cap is not being applied"
     )
 
 

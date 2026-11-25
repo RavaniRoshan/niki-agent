@@ -86,22 +86,39 @@ CommandPaletteScreen {
     background: $background;
 }
 
-/* The composer is the one bordered element on screen. One rule, one accent,
- * so it reads as the single place the user can act. */
+/* The composer is the one ruled element on screen. One rule, one accent, so
+ * it reads as the single place the user can act. The rule lives on the box
+ * (not the wrapper) so the mode accent, the incognito border title, and the
+ * floating action buttons all share the same line. */
 /* One rule, not a box. See the module note: a four-sided panel competes with
-   the transcript, and the brief permits a single border level. The accent
-   carries focus; nothing else on screen carries a border. */
+   the transcript, and the brief permits a single border level. */
 #input-area {
     border: none;
-    border-top: tall $primary;
     background: $surface;
     padding: 0 1;
 }
 
 #input-area:focus-within {
     border: none;
+    background: $surface;
+}
+
+#input-area #input-box {
+    border: none;
     border-top: tall $primary;
     background: $surface;
+}
+
+#input-area.mode-shell #input-box {
+    border-top: tall $mode-bash;
+}
+
+#input-area.mode-command #input-box {
+    border-top: tall $mode-command;
+}
+
+#input-area.mode-shell-incognito #input-box {
+    border-top: tall $mode-incognito;
 }
 
 /* --------------------------------------------------------------- status bar */

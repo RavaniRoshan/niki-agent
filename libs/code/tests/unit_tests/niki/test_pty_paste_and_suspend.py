@@ -677,8 +677,14 @@ def test_k3_multiline_gesture_keeps_the_prompt_in_the_composer(
     assert "beta" in "".join(rows[alpha + 1 :]), (
         f"K3: the second line did not join the composer:\n{rows[-8:]}"
     )
-    assert not any("beta" in line and "\u203a" in line for line in rows), (
-        f"K3: the gesture submitted instead of breaking the line:\n{rows[-8:]}"
+    rule = next(
+        (i for i, line in enumerate(rows) if "\u2594" in line and "\u2500" in line),
+        None,
+    )
+    assert rule is not None, f"K3: the composer rule is missing:\n{rows[-8:]}"
+    assert "beta" in rows[rule + 1], (
+        "K3: the gesture submitted instead of leaving the second line in the "
+        f"composer:\n{rows[-8:]}"
     )
 
 

@@ -632,8 +632,6 @@ class ChatTextArea(PasteBurstTextArea):
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the chat text area."""
-        # Remove placeholder if passed, TextArea doesn't support it the same way
-        kwargs.pop("placeholder", None)
         super().__init__(**kwargs)
         self._chat_input_owner: ChatInput | None = None
         self._skip_history_change_events = 0
@@ -2232,6 +2230,17 @@ class ChatInput(Vertical):
         border: solid $primary;
     }
 
+    ChatInput #composer-queue {
+        display: none;
+        height: 1;
+        padding: 0 1;
+        color: $text-muted;
+    }
+
+    ChatInput.queue-active #composer-queue {
+        display: block;
+    }
+
     ChatInput.mode-shell #input-box {
         border: solid $mode-bash;
     }
@@ -2378,6 +2387,9 @@ class ChatInput(Vertical):
 
     mode: reactive[str] = reactive("normal")
 
+    COMPOSER_PLACEHOLDER = "Type a message, / for commands, @ for files"
+    """Hint shown in the empty chat input so the first keystroke is obvious."""
+
     def __init__(
         self,
         cwd: str | Path | None = None,
@@ -2486,7 +2498,7 @@ class ChatInput(Vertical):
             history_file = _default_history_path()
         self._history = HistoryManager(history_file)
 
-    def compose(self) -> ComposeResult:  # noqa: PLR6301  # Textual widget method convention
+    def compose(self) -> ComposeResult:
         """Compose the chat input layout.
 
         Yields:
@@ -2498,12 +2510,15 @@ class ChatInput(Vertical):
         input_box = ChatInputBox(id="input-box")
         with input_box:
             with Horizontal(classes="input-row"):
-                yield Static(">", classes="input-prompt", id="prompt")
-                yield ChatTextArea(id="chat-input")
+                yield Static(get_glyphs().cursor, classes="input-prompt", id="prompt")
+                yield ChatTextArea(
+                    id="chat-input", placeholder=self.COMPOSER_PLACEHOLDER
+                )
             yield CompletionPopup(id="completion-popup")
             yield PromptSearchPanel(id="prompt-search-panel")
 
         yield ChatInputResizeHandle(id="input-resize-handle")
+        yield Static("", id="composer-queue", markup=False)
 
         # Action buttons float on their own z-layer over the top border line so
         # they cost no content row and never overlap the draft text.
@@ -3799,7 +3814,7 @@ class ChatInput(Vertical):
         glyph = MODE_DISPLAY_GLYPHS.get(mode)
         if not glyph and mode != "normal":
             logger.warning(
-                "No display glyph for mode %r; falling back to '>'",
+                "No display glyph for mode %r; falling back to the cursor glyph",
                 mode,
             )
 
@@ -3835,7 +3850,7 @@ class ChatInput(Vertical):
                 # would outlive the mode it advertises.
                 self._sync_resize_handle_color()
                 return
-            prompt.update(glyph or ">")
+            prompt.update(glyph or get_glyphs().cursor)
             if self._resize_handle is not None:
                 self._resize_handle.incognito = mode == "shell_incognito"
             if self._input_box is not None:
@@ -4310,6 +4325,28 @@ class ChatInput(Vertical):
         """
         if self._text_area is not None:
             self._text_area.cursor_blink = blink
+
+    def set_queued(self, count: int) -> None:
+        """Show how many messages are waiting for the current turn to finish.
+
+        The indicator sits under the composer, where the queued prompt will
+        appear, so the reader does not have to scan the status bar to learn
+        that typing again queues rather than interrupts.
+
+        Args:
+            count: Queued messages; zero hides the indicator.
+        """
+        depth = max(count, 0)
+        self.set_class(depth > 0, "queue-active")
+        try:
+            label = self.query_one("#composer-queue", Static)
+        except NoMatches:
+            return
+        if depth == 0:
+            label.update("")
+            return
+        noun = "message" if depth == 1 else "messages"
+        label.update(f"{depth} {noun} queued")
 
     def _notify_app_blur(self) -> None:
         """Tell the text area the terminal window lost OS focus."""

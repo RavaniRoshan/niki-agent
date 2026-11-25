@@ -9028,13 +9028,16 @@ class DeepAgentsApp(App):
         self._sync_status_connection()
 
     def _sync_status_queued(self) -> None:
-        """Mirror the pending-message queue depth onto the status bar."""
+        """Mirror the pending-message queue depth onto the status bar and composer."""
         if self._status_bar is None:
             return
         depth = len(self._pending_messages)
         if self._initial_prompt_queued_widget is not None:
             depth += 1
         self._status_bar.set_queued(depth)
+        chat_input = getattr(self, "_chat_input", None)
+        if chat_input is not None:
+            chat_input.set_queued(depth)
 
     def _update_tokens(self, count: int, *, approximate: bool = False) -> None:
         """Update the token count in the status bar.

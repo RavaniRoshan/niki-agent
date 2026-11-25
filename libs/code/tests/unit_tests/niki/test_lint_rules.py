@@ -169,9 +169,9 @@ async def test_niki_stylesheet_actually_applies() -> None:
     still passed**, because the app rendered exactly as it had before. Nothing
     in the suite noticed that the look had not changed at all.
 
-    This asserts the concrete outcome instead: the composer carries Niki's
-    accent border and Niki's surface, and the transcript sits on Niki's
-    background.
+    This asserts the concrete outcome instead: the composer box carries the one
+    tall accent rule, no other edge draws a border, and the transcript sits on
+    Niki's background.
     """
     from unittest.mock import AsyncMock, MagicMock
 
@@ -183,24 +183,27 @@ async def test_niki_stylesheet_actually_applies() -> None:
 
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
-        composer = app.query_one("#input-area")
+        wrapper = app.query_one("#input-area")
+        composer = app.query_one("#input-box")
         messages = app.query_one("#messages")
 
-    border = composer.styles.border
-    assert border.top is not None, f"composer has no rule: {border!r}"
-    assert border.top[0] == "tall", (
-        f"composer rule is {border.top[0]!r}, expected the single tall rule that "
+    rule = composer.styles.border_top
+    assert rule[0] == "tall", (
+        f"composer rule is {rule[0]!r}, expected the single tall rule that "
         "replaced the old four-sided box"
     )
-    assert border.top[1].hex.lower().endswith(NIKI_DARK["primary"][1:].lower()), (
-        f"composer rule is {border.top[1].hex}, not Niki's primary"
+    assert rule[1].hex.lower().endswith(NIKI_DARK["primary"][1:].lower()), (
+        f"composer rule is {rule[1].hex}, not Niki's primary"
     )
-    # "At most one border level" means the other three edges must stay clear. A
-    # box again would pass the checks above and fail here, which is the point.
+    # "At most one border level" means no other edge may draw: not around the
+    # box, and not a second rule on the wrapper above it.
+    border = composer.styles.border
     for edge, label in (
-        (border.left, "left"),
-        (border.right, "right"),
-        (border.bottom, "bottom"),
+        (border.left, "box left"),
+        (border.right, "box right"),
+        (border.bottom, "box bottom"),
+        (wrapper.styles.border_top, "wrapper top"),
+        (wrapper.styles.border_bottom, "wrapper bottom"),
     ):
         assert not edge[0], (
             f"composer has a {label} border ({edge[0]!r}); Niki permits a "
