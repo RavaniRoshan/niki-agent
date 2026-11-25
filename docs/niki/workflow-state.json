@@ -17,32 +17,32 @@
     "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples",
     "K3 composer editing": "multi-line proven through Pilot and pty; cursor now grapheme-aware",
     "K6 filtered slash menu": "proven through Pilot and pty",
-    "K7 Esc close order + focus restore": "proven through Pilot and pty"
+    "K7 Esc close order + focus restore": "proven through Pilot and pty",
+    "V12 first-run + missing API key message": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "M1 transcript scrolls, no snap-back": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "M2 click: focus, cards, approvals, rows": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "V6 footer truthful + collapses by width": "Real streamed turn now populates model identity and usage; tests pass.",
+    "V7 tool cards": "Click, ctrl+o, and auto-expand on failure are now all proven.",
+    "V8 diffs": "Real write_file through the production turn pipeline renders the diff on screen.",
+    "V10 activity line": "Real gated turn shows Thinking, esc to interrupt, and an advancing elapsed counter; clears on completion.",
+    "V11 markdown rendering": "Real streamed turn renders heading, bullets, bold; source syntax does not leak.",
+    "F2 activity states only from real events": "Both directions driven: none when idle, on during a real gated turn, cleared after.",
+    "K4 interrupt/exit semantics": "The full Esc ladder is driven against an in-flight turn.",
+    "K10 queue messages during a run": "Mid-turn prompt is surfaced, queued, and drained as its own turn.",
+    "L8 clean exit prints summary + exit code": "Clean exit prints the resumable session command; exit 0 already proven in a real pty.",
+    "V13 colour depth / NO_COLOR / ASCII / contrast": "ANSI fallback measured against xterm and Solarized; dark mapping fully legible, terminal-owned limits recorded.",
+    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "Scroll paint measured in-process at p95 1.28 ms over a 5,000-message store; RSS growth 30.3 MB.",
+    "L5 crash \u2192 traceback to file + friendly message": "Real session binds the debug file; a mid-stream crash logs a traceback and mounts an Agent error card.",
+    "V5 composer: ruled, glyph, placeholder, queue": "Composer restyled and queue indicator added against commit 0cdd748c7c1556814e71bf2372915884973c7efe"
   },
   "owner": null,
   "branch": null,
   "blocked": {
-    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "owner-only evidence required for this checklist row",
-    "L5 crash \u2192 traceback to file + friendly message": "owner-only real-terminal crash observation required",
-    "L8 clean exit prints summary + exit code": "needs a real agent turn to assert session-id/resume summary",
-    "V5 composer: ruled, glyph, placeholder, queue": "composer restyle and queue indicator need owner terminal confirmation",
-    "V6 footer truthful + collapses by width": "model/queue/context values require a real agent turn",
-    "V7 tool cards": "expand/collapse and auto-expand need owner terminal confirmation",
-    "V8 diffs": "on-screen diff proof blocked: stream layout height 0; owner verify",
-    "V10 activity line": "verb/elapsed/token wording needs a real agent turn",
-    "V11 markdown rendering": "on-screen markdown blocked: synthetic mount height 0; owner verify",
-    "V12 first-run + missing API key message": "missing-key inline message needs a no-key real launch",
-    "V13 colour depth / NO_COLOR / ASCII / contrast": "actual 16-colour/light palette legibility is owner-only",
-    "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
-    "M1 transcript scrolls, no snap-back": "wheel input has no Pilot API; owner verification required",
-    "M2 click: focus, cards, approvals, rows": "click on cards/approvals/rows needs owner terminal confirmation",
-    "F2 activity states only from real events": "real event -> activity state needs a model turn",
     "L7 Ctrl+Z suspend/resume": "resumed-screen redraw needs a human watching a real terminal",
-    "K10 queue messages during a run": "queued message reaching the composer needs a real agent turn",
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
+  "last_commit": "0cdd748c7c1556814e71bf2372915884973c7efe",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -105,6 +105,70 @@
     "K7 Esc close order + focus restore": {
       "commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
       "evidence": "see CHECKLIST row"
+    },
+    "V12 first-run + missing API key message": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "M1 transcript scrolls, no snap-back": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "M2 click: focus, cards, approvals, rows": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "V6 footer truthful + collapses by width": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v6_the_footer_reports_the_model_and_real_usage plus the existing truthfulness/width tests; 16-colour appearance tracked by V13."
+    },
+    "V7 tool cards": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v7_a_failed_tool_card_stays_visible_and_names_the_error, test_v7_a_long_error_expands_without_a_click, test_v7_ctrl_o_expands_the_most_recent_tool_row, test_m2_clicking_a_tool_card_toggles_its_output."
+    },
+    "V8 diffs": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v8_a_real_file_write_renders_a_diff_on_screen shows demo.py, - bravo, + charlie, -1, +1 after unfolding the group."
+    },
+    "V10 activity line": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v10_the_activity_line_names_the_work_and_counts_elapsed."
+    },
+    "V11 markdown rendering": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v11_markdown_renders_structure_not_source."
+    },
+    "F2 activity states only from real events": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_f2_activity_appears_from_a_real_event_and_ends_with_it plus test_f2_no_activity_state_without_a_real_event."
+    },
+    "K4 interrupt/exit semantics": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_k4_escape_cancels_a_running_turn_and_restores_the_prompt, test_k4_escape_pops_a_queued_message_before_interrupting, test_k4_double_escape_clears_a_composer_draft."
+    },
+    "K10 queue messages during a run": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_k10_a_message_queued_during_a_run_is_shown_and_then_runs."
+    },
+    "L8 clean exit prints summary + exit code": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_l8_clean_exit_prints_the_resume_summary, test_l8_failed_exit_adds_the_resume_caveat."
+    },
+    "V13 colour depth / NO_COLOR / ASCII / contrast": {
+      "commit": "5528382d6d233a865da7dc3e88c42be247d260c0",
+      "evidence": "test_ansi_palette_contrast.py: dark ANSI clears every floor on xterm, text clears on Solarized; RGB palettes 0 violations."
+    },
+    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": {
+      "commit": "7b037968238c8504425885885db483dfb45c269e",
+      "evidence": "test_s5_scrolling_a_five_thousand_message_transcript: 5,000 stored, 30 mounted, paint p95 1.28 ms, RSS +30.3 MB."
+    },
+    "L5 crash \u2192 traceback to file + friendly message": {
+      "commit": "695fd701fd480b23574ca24d53c5c3cca38546a0",
+      "evidence": "test_l5_a_turn_crash_logs_a_traceback_and_shows_a_friendly_error: traceback in <thread>.log, Agent error card on screen, app idle afterwards."
+    },
+    "V5 composer: ruled, glyph, placeholder, queue": {
+      "commit": "0cdd748c7c1556814e71bf2372915884973c7efe",
+      "evidence": "4 new tests in tests/unit_tests/niki/test_composer.py: one tall rule and no other border, glyph == get_glyphs().cursor per mode, placeholder shown then dropped on typing, and a real gated turn rendering '1 message queued' under the input then clearing; 4 snapshots regenerated; full niki suite 318 passed"
     }
   }
 }
