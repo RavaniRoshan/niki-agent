@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import signal
 import sys
 import time
@@ -29,6 +30,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 PASTE_START = "\x1b[200~"
+#: SGR / cursor-control sequences, stripped before asserting on the byte stream.
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 PASTE_END = "\x1b[201~"
 CTRL_Z = "\x1a"
 
@@ -68,6 +71,13 @@ def _spawn(home: Path, *, cwd: Path, timeout: int = 25) -> tuple[pexpect.spawn, 
     Returns:
         The live child and everything it has written so far.
     """
+    # A returning user: the onboarding markers are what a real profile has after
+    # the first launch. Without them every test races scripted modals that open
+    # after the first frame and swallow the keys the test is about to send.
+    marker = home / ".state" / "onboarding_complete"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.touch()
+
     child = pexpect.spawn(
         sys.executable,
         [
@@ -88,22 +98,57 @@ def _spawn(home: Path, *, cwd: Path, timeout: int = 25) -> tuple[pexpect.spawn, 
     )
     buffer = ""
     deadline = time.time() + STARTUP_WAIT
+    #: First run opens scripted modals before the composer is the real
+    #: destination: the agent picker (no agents exist yet) and the name prompt,
+    #: in either order. Anything sent before they close lands in the wrong
+    #: widget, so readiness is decided from the *rendered screen* rather than
+    #: from text seen anywhere in the byte stream.
+    attempts = {"agents": 0, "name": 0, "mcp": 0}
     while time.time() < deadline:
-        try:
-            chunk = child.read_nonblocking(size=8192, timeout=2)
-        except Exception:  # noqa: BLE001 - pty timeout and EOF both mean "nothing yet"
-            continue
-        if not chunk:
-            continue
-        buffer += chunk
-        if "MCP" in buffer and "Approve" in buffer:
+        # A pty timeout means "nothing new"; the frame that decides readiness
+        # may already be in the buffer, and the app goes quiet once painted.
+        with contextlib.suppress(Exception):
+            buffer += child.read_nonblocking(size=8192, timeout=2)
+        screen = "\n".join(line for line in _screen(buffer).display if line.strip())
+        if "MCP" in screen and "Approve" in screen and attempts["mcp"] == 0:
             # Still project discovery somewhere up the tree: decline once and
             # keep going rather than hanging on a modal.
             child.send("n")
+            attempts["mcp"] = 1
             time.sleep(0.3)
             buffer += _drain(child)
             continue
-        if any(glyph in buffer for glyph in ("›", "❯")):
+        if "Select Agent" in screen:
+            if attempts["agents"] < 2:
+                attempts["agents"] += 1
+                child.send("\x1b")
+                time.sleep(0.4)
+                buffer += _drain(child)
+                continue
+            child.terminate(force=True)
+            pytest.fail(f"the agent picker would not close:\n{screen[-800:]}")
+        if "call you?" in screen:
+            # Escape is the documented "skip the rest of onboarding" key; Enter
+            # would continue into model selection and an API-key prompt, which
+            # these tests do not need.
+            if attempts["name"] < 2:
+                attempts["name"] += 1
+                child.send("\x1b")
+                time.sleep(0.4)
+                buffer += _drain(child)
+                continue
+            child.terminate(force=True)
+            pytest.fail(f"the name prompt would not close:\n{screen[-800:]}")
+        if "manual" in screen:
+            # Onboarding and the agent picker can trail the first painted frame,
+            # so settle briefly and rescan before declaring the composer ready.
+            time.sleep(0.5)
+            buffer += _drain(child)
+            settled = "\n".join(
+                line for line in _screen(buffer).display if line.strip()
+            )
+            if "Select Agent" in settled or "call you?" in settled:
+                continue
             return child, buffer
     child.terminate(force=True)
     pytest.fail("the app never reached an interactive composer")
@@ -289,4 +334,40 @@ def test_k12_a_split_escape_sequence_does_not_wedge_input(
     assert alive, "K12: the process died on a split escape sequence"
     assert "qk7" in rendered, (
         f"K12: input after a split escape sequence never arrived:\n{rendered[-600:]}"
+    )
+
+
+def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K1: `/help` reaches the registry override through real submitted input.
+
+    The in-process test proves the handler; this proves the key sequence a user
+    actually types lands on it.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        # Type, then submit: writing the command and Enter in one chunk makes
+        # Enter race the slash-command menu, which is not how a user types it.
+        child.send("/help")
+        time.sleep(0.5)
+        child.send("\r")
+        time.sleep(1.5)
+        buffer = before + _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    # Assert on the byte stream, not the last screen: the help body is taller
+    # than a 24-row terminal, so where it happens to be scrolled is incidental.
+    text = _ANSI.sub("", buffer)
+    assert alive, "K1: /help killed the process"
+    # The registry body starts with the product header and `Usage:`; anything
+    # further down is below the viewport and never painted, so these are the
+    # lines that prove `_compose` ran at all.
+    assert "Usage:" in text, (
+        f"K1: the registry help never rendered in a real terminal:\n{text[-600:]}"
+    )
+    assert "Interactive Features:" not in text, (
+        "K1: upstream's hand-maintained help block rendered instead"
     )

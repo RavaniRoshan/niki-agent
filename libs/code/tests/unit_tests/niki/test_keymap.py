@@ -210,3 +210,35 @@ def test_footer_hint_never_exceeds_its_limit(limit: int) -> None:
 
     hint = render_footer_hint(build_keymap(App()), limit=limit)
     assert len([part for part in hint.split(" · ") if part]) <= max(limit, 1)
+
+
+async def test_help_command_renders_the_keymap_registry() -> None:
+    """K1: `/help` must come from the registry, not upstream's text block.
+
+    Upstream's block names keys it does not own and cannot notice when a
+    binding changes. The assertion is exact: the mounted message *is* what
+    `render_help_for` produces for this live app.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.help import render_help_for
+    from deepagents_code.tui.widgets.messages import AppMessage
+
+    niki_app_cls, _ = _app_classes()
+    app = niki_app_cls(agent=MagicMock(), thread_id="niki-help")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        expected = render_help_for(app)
+        await app._handle_command("/help")
+        await pilot.pause()
+        rendered = "\n".join(
+            message.render().plain for message in app.query(AppMessage)
+        )
+
+    assert expected in rendered, "/help did not render the registry-generated body"
+    assert "Usage:" in rendered
+    assert "Keys:" in rendered
+    assert "Interactive Features:" not in rendered, (
+        "upstream's hand-maintained help block is still being mounted"
+    )

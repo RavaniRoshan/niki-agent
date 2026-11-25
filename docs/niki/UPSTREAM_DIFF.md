@@ -38,3 +38,16 @@ Records edits to upstream-owned files made while evolving Niki.
   name prefixes or introduce a separate approval-mode store.
 - The `ServerRuntime` tuple gained an optional trailing workspace port field;
   existing three-argument construction remains compatible.
+
+## K1 / first-run focus
+
+- `DeepAgentsApp.on_mount` no longer focuses the chat input when another screen
+  is already on the stack. A first launch pushes `LaunchNameScreen` before the
+  composer exists, so the synchronous focus call landed *behind* the modal: the
+  name field showed a cursor, but keystrokes went to the hidden composer and
+  "Enter to continue" did nothing. The guard leaves auto-focus to the screen on
+  top, so returning users are unaffected. Verified by
+  `test_first_run_name_prompt_owns_focus` and the pty onboarding flow.
+- `NikiApp` overrides `_handle_command` for `/help` only, mounting the
+  registry-generated body (`render_help_for`) instead of upstream's
+  hand-maintained block. `dcode` keeps upstream's screen.

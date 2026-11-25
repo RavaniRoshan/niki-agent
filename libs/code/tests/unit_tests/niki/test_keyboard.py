@@ -167,3 +167,34 @@ async def test_history_recall_with_up_arrow() -> None:
     assert recalled.strip() == "a test", (
         f"K3: up-arrow recalled {recalled!r}, expected the previous message"
     )
+
+
+async def test_first_run_name_prompt_owns_focus() -> None:
+    """V2/K3: a fresh launch must type into the name prompt, not the composer.
+
+    Regression: mount set focus on the chat input while `LaunchNameScreen` was
+    already on the stack, so a first-time user's keystrokes went to a hidden
+    composer and "Enter to continue" did nothing.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-first-run", launch_init=True)
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause(0.5)
+        assert type(app.screen).__name__ == "LaunchNameScreen", (
+            "the fresh-profile onboarding did not open"
+        )
+        assert getattr(app.focused, "id", None) == "launch-name-input", (
+            "focus is not on the name field; typing is going somewhere hidden"
+        )
+        await pilot.press("b", "o", "b")
+        await pilot.pause()
+        assert app.screen.query_one("#launch-name-input").value == "bob"
+        await pilot.press("enter")
+        await pilot.pause()
+        assert type(app.screen).__name__ != "LaunchNameScreen", (
+            "Enter did not continue past the name prompt"
+        )

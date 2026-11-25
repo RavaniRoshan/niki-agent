@@ -5089,8 +5089,12 @@ class DeepAgentsApp(App):
         # `Widget.focus()` defers the actual focus change by posting a callback.
         # Terminal keys may already be ahead of that callback in the app queue,
         # so set focus synchronously while startup is still handling Mount.
+        # A first-run modal (`LaunchNameScreen`) can already be on the stack by
+        # the time this runs; focusing the composer underneath it swallows the
+        # user's typing and makes the modal's "Enter to continue" do nothing.
+        # Leave auto-focus to the screen that is actually on top.
         input_widget = self._chat_input.input_widget
-        if input_widget is not None:
+        if input_widget is not None and len(self.screen_stack) == 1:
             self.screen.set_focus(input_widget)
 
         if self._launch_init_requested:

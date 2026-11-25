@@ -294,6 +294,28 @@ class NikiApp(DeepAgentsApp):
         if command is not None:
             await self._handle_command(command.name)
 
+    async def _handle_command(self, command: str) -> None:
+        """Render `/help` from the keymap registry, not upstream's text block.
+
+        K1 asks for one registry behind every help surface. Upstream's `/help`
+        is hand-maintained in `app.py`, so it can advertise a key nothing binds;
+        `render_help_for` walks the mounted tree instead. Every other command
+        falls through untouched.
+        """
+        if command.lower().strip() != "/help":
+            await super()._handle_command(command)
+            return
+
+        from textual.content import Content
+
+        from deepagents_code.niki.help import render_help_for
+        from deepagents_code.tui.widgets.messages import AppMessage, UserMessage
+
+        await self._mount_message(UserMessage(command))
+        await self._mount_message(
+            AppMessage(Content.styled(render_help_for(self), "dim italic"))
+        )
+
     def _on_runtime_event(self, event: RunEvent) -> None:
         """Keep a turn's minimal tool evidence and render its terminal summary."""
         super()._on_runtime_event(event)

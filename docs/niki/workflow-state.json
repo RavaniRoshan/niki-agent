@@ -4,7 +4,8 @@
   "active_step": null,
   "item_steps": {
     "K2": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
-    "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard"
+    "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
+    "K12 escape-sequence fuzz / AltGr": "split escape sequences and the first-run auto-mode notice leave the composer usable; pty probe added"
   },
   "owner": null,
   "branch": null,
@@ -31,7 +32,6 @@
     "K6 filtered slash menu": "arrow/Tab/Enter selection needs owner terminal confirmation",
     "K7 Esc close order + focus restore": "full close order and focus restoration are owner-only",
     "K8 `?` contextual help": "in-app ? screen verification is owner-only",
-    "K12 escape-sequence fuzz / AltGr": "owner decision pending on shift+tab focus restoration",
     "M1 transcript scrolls, no snap-back": "wheel input has no Pilot API; owner verification required",
     "M2 click: focus, cards, approvals, rows": "click on cards/approvals/rows needs owner terminal confirmation",
     "M5 every mouse action has a key equivalent": "six key-equivalent gestures need owner terminal confirmation",
@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "6c1f9b9bd63421051a99e434c8823716e027a5d0",
+  "last_commit": "dc41fa0005e1a295046ff9de49f149e325120962",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -53,6 +53,10 @@
     "K2 nav keys on every scrollable surface": {
       "commit": "6c1f9b9bd63421051a99e434c8823716e027a5d0",
       "evidence": "test_pageup_pages_the_transcript_from_the_composer + test_pageup_is_left_to_a_scrollable_draft + test_pageup_is_left_to_an_open_modal, 10 passed"
+    },
+    "K12 escape-sequence fuzz / AltGr": {
+      "commit": "dc41fa0005e1a295046ff9de49f149e325120962",
+      "evidence": "test_color_depth_and_input.py (13 passed) + test_pty_paste_and_suspend.py k12 split-escape pty test (5 passed x3 runs)"
     }
   }
 }
