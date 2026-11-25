@@ -708,9 +708,7 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
         child.send("/")
         time.sleep(0.3)
         child.send("hel")
-        buffer, _menu = _await_screen(
-            child, before, "Show help and available commands"
-        )
+        buffer, _menu = _await_screen(child, before, "Show help and available commands")
         child.send("\t")
         buffer, completed = _await_screen(
             child, buffer, "Show help and available commands", present=False

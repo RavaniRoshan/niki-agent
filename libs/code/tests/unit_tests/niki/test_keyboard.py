@@ -261,8 +261,7 @@ async def test_k6_enter_dispatches_the_highlighted_command() -> None:
         for _ in range(3):
             await pilot.pause()
         helped = any(
-            "Usage:" in str(message.render())
-            for message in app.query("AppMessage")
+            "Usage:" in str(message.render()) for message in app.query("AppMessage")
         )
 
     assert helped, "K6: Enter did not run the highlighted `/help`"
