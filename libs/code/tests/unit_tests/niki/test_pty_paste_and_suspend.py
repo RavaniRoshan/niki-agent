@@ -192,12 +192,20 @@ def _await_screen(
     buffer: str,
     needle: str,
     *,
+    present: bool = True,
     deadline: float = 10.0,
 ) -> tuple[str, str]:
-    """Drain the child until `needle` shows on screen, or the deadline passes.
+    """Drain the child until `needle` appears (or leaves) the screen.
 
     Fixed sleeps race the app under a loaded machine; this waits for the state
     the assertion is about instead, so a slow frame is not reported as a bug.
+
+    Args:
+        child: The live pty child.
+        buffer: Output collected so far.
+        needle: Text that decides when to stop waiting.
+        present: Wait for the text to appear (default) or to disappear.
+        deadline: Seconds to wait before giving up.
 
     Returns:
         The accumulated output and the non-blank screen lines.
@@ -206,7 +214,8 @@ def _await_screen(
     while True:
         buffer += _drain(child)
         text = "\n".join(line for line in _screen(buffer).display if line.strip())
-        if needle in text or time.monotonic() >= end:
+        settled = (needle in text) == present
+        if settled or time.monotonic() >= end:
             return buffer, text
         time.sleep(0.1)
 
@@ -699,9 +708,13 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
         child.send("/")
         time.sleep(0.3)
         child.send("hel")
-        buffer = before + _drain(child)
+        buffer, _menu = _await_screen(
+            child, before, "Show help and available commands"
+        )
         child.send("\t")
-        buffer, completed = _await_screen(child, buffer, "/help")
+        buffer, completed = _await_screen(
+            child, buffer, "Show help and available commands", present=False
+        )
         child.send("\r")
         buffer, after = _await_screen(child, buffer, "Usage:")
         alive = child.isalive()
@@ -710,6 +723,9 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
 
     assert alive, "K6: completing from the menu killed the process"
     assert "help" in completed, f"K6: Tab did not complete `/hel`:\n{completed[-600:]}"
+    assert "Show help and available commands" not in completed, (
+        "K6: Tab left the completion popup open over the composer"
+    )
     text = _ANSI.sub("", buffer)
     assert "Usage:" in after, (
         f"K6: Enter did not run the completed command:\n{text[-600:]}"
