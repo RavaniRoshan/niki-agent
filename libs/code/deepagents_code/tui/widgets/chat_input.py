@@ -646,6 +646,29 @@ class ChatTextArea(PasteBurstTextArea):
         self._line_cache.clear()
         self.refresh()
 
+    def check_consume_key(self, key: str, character: str | None = None) -> bool:
+        """Report whether this key is typed into the composer.
+
+        Printable characters are consumed here, which hides app-level bindings
+        for them (Textual drops a key from every ancestor's binding map when
+        the focused widget consumes it). An app that wants one back exposes a
+        `reserved_composer_keys(key)` predicate; when it reports `True` this
+        method stops filtering that key so the app binding can dispatch, and
+        the app's `check_action` decides whether it fires or the character is
+        typed after all.
+
+        Args:
+            key: Textual key name about to be dispatched.
+            character: The printable character for `key`, if any.
+
+        Returns:
+            `True` when the key is typed into the composer.
+        """
+        reserved = getattr(self.app, "reserved_composer_keys", None)
+        if reserved is not None and reserved(key):
+            return False
+        return super().check_consume_key(key, character)
+
     def on_focus(self) -> None:
         """Keep an open prompt search focused when the composer is clicked."""
         owner = self._chat_input_owner

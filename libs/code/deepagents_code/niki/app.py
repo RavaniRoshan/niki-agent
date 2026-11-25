@@ -88,6 +88,10 @@ class NikiApp(DeepAgentsApp):
             show=False,
             priority=True,
         ),
+        # Priority so `?` reaches the app when the composer holds focus;
+        # `check_action` hands it back to the composer as soon as a draft
+        # exists, so a question mark can still be typed in a prompt.
+        Binding("question_mark", "show_help", "Help", show=False, priority=True),
     ]
 
     _turn_summary_events: dict[tuple[str, str], list[RunEvent]]
@@ -242,6 +246,8 @@ class NikiApp(DeepAgentsApp):
         """
         if action in {"page_transcript_up", "page_transcript_down"}:
             return self._transcript_paging_applies()
+        if action == "show_help":
+            return self._contextual_help_applies()
         return super().check_action(action, parameters)
 
     def _transcript_paging_applies(self) -> bool:
@@ -258,6 +264,48 @@ class NikiApp(DeepAgentsApp):
             return False
         focused = self.focused
         return isinstance(focused, ChatTextArea) and focused.max_scroll_y == 0
+
+    def reserved_composer_keys(self, key: str) -> bool:
+        """Report whether `key` belongs to the app instead of the composer.
+
+        `ChatTextArea.check_consume_key` consults this so a printable key can
+        keep an app-level binding while the composer holds focus.
+
+        Args:
+            key: Textual key name about to be dispatched.
+
+        Returns:
+            `True` when the app binding should stay dispatchable.
+        """
+        return key == "question_mark" and self._contextual_help_applies()
+
+    def _contextual_help_applies(self) -> bool:
+        """Return whether `?` should open help rather than type a character.
+
+        A modal owns the keyboard while it is open, and a draft that holds text
+        is a question mark the user meant to type.
+
+        Returns:
+            `True` when `?` should open the help modal.
+        """
+        if len(self.screen_stack) > 1:
+            return False
+        focused = self.focused
+        return not isinstance(focused, ChatTextArea) or not focused.text
+
+    def action_show_help(self) -> None:
+        """Open the keymap modal for the current surface."""
+        from deepagents_code.niki.help_screen import NikiHelpScreen, help_body
+
+        self.push_screen(
+            NikiHelpScreen(help_body(self)),
+            lambda _result: self.call_after_refresh(self._refocus_composer),
+        )
+
+    def _refocus_composer(self) -> None:
+        """Return focus to the chat input after a modal closes."""
+        if self._chat_input is not None:
+            self._chat_input.focus_input()
 
     def action_page_transcript_up(self) -> None:
         """Page the transcript up from the composer."""

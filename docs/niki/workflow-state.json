@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "a7e4c43520457d96396a33f2fd7831220d15d9d7",
+  "last_commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -69,6 +69,18 @@
     "K5 bracketed paste": {
       "commit": "a7e4c43520457d96396a33f2fd7831220d15d9d7",
       "evidence": "pty test_k5_a_large_paste_collapses_to_a_placeholder passes"
+    },
+    "S1 first frame \u22641,500 ms warm": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
+    },
+    "S2 input echo p95 \u226450 ms under load": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
+    },
+    "S7 100-resize storm settles without a crash": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
     }
   }
 }

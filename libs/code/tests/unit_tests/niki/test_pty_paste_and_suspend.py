@@ -374,6 +374,41 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     )
 
 
+def test_k8_question_mark_opens_help_and_escape_returns_focus(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K8: `?` opens the keymap modal, and Escape hands the composer back.
+
+    Pilot can press `question_mark`, but only a terminal proves the composer
+    does not swallow the character before the app-level binding sees it: the
+    composer consumes every printable key by default, which is what hid the
+    binding from Textual's dispatch entirely.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("?")
+        time.sleep(1.0)
+        buffer = before + _drain(child)
+        opened = _ANSI.sub("", buffer)
+        child.send("\x1b")
+        time.sleep(0.6)
+        child.send("qk7")
+        time.sleep(0.8)
+        buffer += _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "K8: `?` killed the process"
+    assert "Usage:" in opened, (
+        f"K8: `?` never opened the keymap modal:\n{opened[-600:]}"
+    )
+    # Escape dismisses the modal and focus returns to the composer, so the next
+    # keystrokes are typed rather than swallowed by a lingering screen.
+    after = "\n".join(line for line in _screen(buffer).display if line.strip())
+    assert "qk7" in after, f"K8: Escape did not return focus to the composer:\n{after}"
+
+
 def test_k5_a_large_paste_collapses_to_a_placeholder(home: Path, tmp_cwd: Path) -> None:
     """K5: a big paste becomes one visible token, and a repeat expands it.
 

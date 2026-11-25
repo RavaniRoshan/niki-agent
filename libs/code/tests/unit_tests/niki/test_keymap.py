@@ -242,3 +242,56 @@ async def test_help_command_renders_the_keymap_registry() -> None:
     assert "Interactive Features:" not in rendered, (
         "upstream's hand-maintained help block is still being mounted"
     )
+
+
+async def test_k8_question_mark_opens_contextual_help() -> None:
+    """K8: `?` on an empty composer opens the keymap for this surface.
+
+    Before this, `question_mark` was unbound: the "help open" snapshot was a
+    picture of a typed question mark.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+    from deepagents_code.niki.help_screen import NikiHelpScreen
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-help-key")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(100, 32)) as pilot:
+        await pilot.pause()
+        await pilot.press("question_mark")
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, NikiHelpScreen), (
+            f"K8: `?` opened {type(screen).__name__}, not help"
+        )
+        body = str(screen.query_one("#niki-help-body").render())
+        empty_composer = app.query_one("#chat-input").text == ""
+        await pilot.press("escape")
+        await pilot.pause()
+        focused_id = getattr(app.focused, "id", None)
+
+    assert "Keys:" in body, "K8: the help body is missing the key table"
+    assert "ctrl+t" in body, "K8: the help body is missing a live binding"
+    assert empty_composer, "K8: `?` was typed into the composer instead"
+    assert focused_id == "chat-input", "K8: Esc did not restore composer focus"
+
+
+async def test_k8_question_mark_still_types_when_a_draft_exists() -> None:
+    """K8: `?` is a character first; help only when the composer is empty."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-help-typing")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("w", "h", "y")
+        await pilot.press("question_mark")
+        await pilot.pause()
+        text = str(app.query_one("#chat-input").text)
+        screens = len(app.screen_stack)
+
+    assert text.endswith("?"), f"K8: the question mark was not typed (text={text!r})"
+    assert screens == 1, "K8: a draft should not open the help modal"

@@ -158,7 +158,13 @@ def test_the_upstream_install_script_is_identified_as_a_live_concern() -> None:
 
 
 def test_snapshot_frames_do_not_show_the_upstream_product_name() -> None:
-    """V2: the rendered first-run frame must not show 'Deep Agents'."""
+    """V2: the rendered first-run frame must not show 'Deep Agents'.
+
+    The keymap body legitimately credits upstream ("built on Deep Agents"), the
+    one attribution `branding.py` requires rather than forbids. The credit
+    wraps at narrow widths, so the phrase is stripped rather than the whole
+    sentence; a real leak still fails.
+    """
     frames = sorted(SNAPSHOT_DIR.rglob("*.raw"))
     assert frames, (
         "no committed snapshots; run the snapshot suite with --snapshot-update"
@@ -172,7 +178,12 @@ def test_snapshot_frames_do_not_show_the_upstream_product_name() -> None:
             plain = (
                 node.replace("&#160;", " ").replace("&gt;", ">").replace("&amp;", "&")
             )
-            if "Deep Agents" in plain:
+            # The licence credit wraps at narrow widths, so the phrase is
+            # stripped rather than the whole sentence.
+            remainder = plain.replace("\u00a0", " ").replace(
+                branding.VERSION_LINE_SUFFIX.removeprefix(", "), ""
+            )
+            if "Deep Agents" in remainder:
                 offenders.append(f"{frame.name}: {plain!r}")
     assert not offenders, f"upstream product name visible in {offenders}"
 

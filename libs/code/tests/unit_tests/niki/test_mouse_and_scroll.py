@@ -255,6 +255,10 @@ async def test_m5_every_mouse_gesture_has_a_keyboard_equivalent() -> None:
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
         keys = {e.key for e in build_keymap(app)}
+        # The draft-clear button is a composer affordance, so its equivalent
+        # lives on the composer's own binding map rather than the app's.
+        composer = app.query_one("#chat-input")
+        keys |= set(composer._bindings.key_to_bindings)
 
     equivalents = {
         "focus_composer": {"tab"},
@@ -263,6 +267,14 @@ async def test_m5_every_mouse_gesture_has_a_keyboard_equivalent() -> None:
         "jump_to_bottom": {"end", "g"},
         "cancel": {"escape"},
         "submit": {"enter"},
+        # Click targets the checklist names, so "every" is not limited to the
+        # six transport gestures: a tool card toggles with `ctrl+o`, the draft
+        # clears with `ctrl+u`, approval rows answer from keys, and slash rows
+        # select with `enter`.
+        "tool_expand": {"ctrl+o"},
+        "draft_clear": {"ctrl+u"},
+        "approval_answer": {"enter", "y", "n", "a", "tab"},
+        "slash_select": {"enter"},
     }
     missing = {
         gesture: sorted(candidates)
