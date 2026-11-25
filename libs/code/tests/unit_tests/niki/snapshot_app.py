@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import random
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 # Set before the app is imported. `startup_tip.py:117` picks a tip with
@@ -25,7 +26,28 @@ random.seed(0)
 
 from deepagents_code.niki.app import NikiApp  # noqa: E402
 
-_niki_snapshot_app = NikiApp(agent=MagicMock(), thread_id="niki-snapshot")
+# The footer prints the working directory and git branch, which would otherwise
+# bind every snapshot to the machine and checkout that generated it. Pin both
+# so the visual baseline describes the layout, not the developer's environment.
+_SNAPSHOT_CWD = Path.home() / "projects" / "nik-agent" / "libs" / "code"
+_SNAPSHOT_BRANCH = "niki-agent"
+
+
+class _SnapshotApp(NikiApp):
+    """Niki app with an environment-independent status bar."""
+
+    def _schedule_git_branch_refresh(self) -> None:
+        if self._status_bar:
+            self._status_bar.branch = _SNAPSHOT_BRANCH
+
+    async def _refresh_git_branch(self) -> None:
+        if self._status_bar:
+            self._status_bar.branch = _SNAPSHOT_BRANCH
+
+
+_niki_snapshot_app = _SnapshotApp(
+    agent=MagicMock(), cwd=_SNAPSHOT_CWD, thread_id="niki-snapshot"
+)
 _niki_snapshot_app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
 
 app = _niki_snapshot_app
