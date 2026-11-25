@@ -1089,7 +1089,9 @@ class TestThemeSelectorScreen:
 
         def _slow_save(*_args: object, **_kwargs: object) -> _ConfigWriteResult:
             started.set()
-            release.wait(timeout=1)
+            # Generous so a loaded machine can't time the save out before
+            # the test presses Escape; the test always releases it explicitly.
+            release.wait(timeout=30)
             return _ConfigWriteResult(True)
 
         monkeypatch.setattr(
@@ -1151,7 +1153,9 @@ class TestThemeSelectorScreen:
 
         def _slow_failing_save(*_args: object, **_kwargs: object) -> _ConfigWriteResult:
             started.set()
-            release.wait(timeout=1)
+            # Generous so a loaded machine can't time the save out before
+            # the test presses Escape; the test always releases it explicitly.
+            release.wait(timeout=30)
             if failure_mode == "exception":
                 msg = "simulated"
                 raise OSError(msg)
