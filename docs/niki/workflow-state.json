@@ -34,15 +34,15 @@
     "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "Scroll paint measured in-process at p95 1.28 ms over a 5,000-message store; RSS growth 30.3 MB.",
     "L5 crash \u2192 traceback to file + friendly message": "Real session binds the debug file; a mid-stream crash logs a traceback and mounts an Agent error card.",
     "V5 composer: ruled, glyph, placeholder, queue": "Composer restyled and queue indicator added against commit 0cdd748c7c1556814e71bf2372915884973c7efe",
-    "L7 Ctrl+Z suspend/resume": "Composer binds ctrl+z to the suspend action; pty test asserts a real WIFSTOPPED/SIGCONT cycle and typing after resume, commit 364e73d4ef935273112b0ec36500fd080d4ee2ee"
+    "L7 Ctrl+Z suspend/resume": "Composer binds ctrl+z to the suspend action; pty test asserts a real WIFSTOPPED/SIGCONT cycle and typing after resume, commit 364e73d4ef935273112b0ec36500fd080d4ee2ee",
+    "M4 selection/copy, OSC 52, mouse release": "f2 releases mouse capture and selection copy now carries the tmux DCS wrapper; verified in a real pty"
   },
   "owner": null,
   "branch": null,
   "blocked": {
-    "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "364e73d4ef935273112b0ec36500fd080d4ee2ee",
+  "last_commit": "26677dde3ba727e0135423ff878124ed7c2bc488",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -173,6 +173,10 @@
     "L7 Ctrl+Z suspend/resume": {
       "commit": "364e73d4ef935273112b0ec36500fd080d4ee2ee",
       "evidence": "pty test_l7_ctrl_z_suspends_and_the_process_can_be_resumed: waitpid(WNOHANG and WUNTRACED) reports WIFSTOPPED after a real 0x1a byte, SIGCONT resumes, pyte replay shows the composer, and 'l7-ok' typed after resume lands; unit tests prove the composer dispatches suspend_process and ctrl+shift+z still undoes"
+    },
+    "M4 selection/copy, OSC 52, mouse release": {
+      "commit": "26677dde3ba727e0135423ff878124ed7c2bc488",
+      "evidence": "f2 toggles terminal mouse reporting (ESC[?1000l then ESC[?1000h seen in a real pty); selection copy goes through copy_to_clipboard and adds the tmux DCS wrapper"
     }
   }
 }
