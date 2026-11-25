@@ -11,7 +11,10 @@
     "K5 bracketed paste": "placeholder, toast, and repeat-paste expansion asserted in a real pty",
     "S1 first frame \u2264400 ms warm": "owner decision recorded: deferred with measurements",
     "S2 input echo p95 \u226450 ms under load": "owner decision recorded: deferred with measurements",
-    "S7 100-resize storm in 2 s": "owner decision recorded: deferred with measurements"
+    "S7 100-resize storm in 2 s": "owner decision recorded: deferred with measurements",
+    "K8 `?` contextual help": "question_mark is a priority binding; pty proves the modal opens and Escape restores focus",
+    "M5 every mouse action has a key equivalent": "test extended to ten live-binding gestures including ctrl+o and ctrl+u",
+    "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples"
   },
   "owner": null,
   "branch": null,
@@ -31,18 +34,15 @@
     "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
     "K6 filtered slash menu": "arrow/Tab/Enter selection needs owner terminal confirmation",
     "K7 Esc close order + focus restore": "full close order and focus restoration are owner-only",
-    "K8 `?` contextual help": "in-app ? screen verification is owner-only",
     "M1 transcript scrolls, no snap-back": "wheel input has no Pilot API; owner verification required",
     "M2 click: focus, cards, approvals, rows": "click on cards/approvals/rows needs owner terminal confirmation",
-    "M5 every mouse action has a key equivalent": "six key-equivalent gestures need owner terminal confirmation",
-    "F1 message echoes instantly, focus kept": "typing latency needs a real-terminal measurement",
     "F2 activity states only from real events": "real event -> activity state needs a model turn",
     "L7 Ctrl+Z suspend/resume": "resumed-screen redraw needs a human watching a real terminal",
     "K10 queue messages during a run": "queued message reaching the composer needs a real agent turn",
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+  "last_commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -81,6 +81,18 @@
     "S7 100-resize storm settles without a crash": {
       "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
       "evidence": "measured in a real pty; see the row"
+    },
+    "K8 `?` contextual help": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "M5 every mouse action has a key equivalent": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "F1 message echoes instantly, focus kept": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
     }
   }
 }

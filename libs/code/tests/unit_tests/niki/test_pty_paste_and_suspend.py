@@ -374,6 +374,42 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     )
 
 
+def test_k3_multiline_gesture_keeps_the_prompt_in_the_composer(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K3: a newline gesture starts a second composer line, it does not submit.
+
+    Shift+Enter needs a terminal protocol most terminals do not send, so the
+    backslash+Enter fallback is the gesture that has to work everywhere; it is
+    driven here as the two keystrokes a user actually types.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("alpha")
+        time.sleep(0.4)
+        child.send("\\")
+        time.sleep(0.2)
+        child.send("\r")
+        time.sleep(0.5)
+        child.send("beta")
+        time.sleep(0.8)
+        buffer = before + _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "K3: the newline gesture killed the process"
+    rows = [line.rstrip() for line in _screen(buffer).display if line.strip()]
+    alpha = next((i for i, line in enumerate(rows) if "alpha" in line), None)
+    assert alpha is not None, f"K3: the first line is missing:\n{rows[-8:]}"
+    assert "beta" in "".join(rows[alpha + 1 :]), (
+        f"K3: the second line did not join the composer:\n{rows[-8:]}"
+    )
+    assert not any("beta" in line and "\u203a" in line for line in rows), (
+        f"K3: the gesture submitted instead of breaking the line:\n{rows[-8:]}"
+    )
+
+
 def test_k8_question_mark_opens_help_and_escape_returns_focus(
     home: Path, tmp_cwd: Path
 ) -> None:

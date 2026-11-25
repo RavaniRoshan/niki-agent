@@ -69,6 +69,65 @@ async def test_composer_editing(
     )
 
 
+@pytest.mark.parametrize(
+    ("row", "keys"),
+    [
+        ("K3 shift+enter", ["a", "shift+enter", "b"]),
+        ("K3 alt+enter", ["a", "alt+enter", "b"]),
+        ("K3 backslash+enter", ["a", "backslash", "enter", "b"]),
+    ],
+)
+async def test_composer_multiline_inserts_a_newline(
+    row: str,  # noqa: ARG001 - names the checklist row for failure output
+    keys: list[str],
+) -> None:
+    """K3: the multi-line gestures insert a line break instead of submitting."""
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        for key in keys:
+            await pilot.press(*_split(key))
+            await pilot.pause()
+        actual = _text(app)
+        submitted = list(app.query("UserMessage"))
+
+    assert actual == "a\nb", f"K3: after {keys} the composer holds {actual!r}"
+    assert not submitted, "K3: the newline gesture submitted the prompt"
+
+
+@pytest.mark.parametrize(
+    ("row", "text", "lefts", "expected"),
+    [
+        # A combining mark must travel with its base, not be split from it.
+        ("K3 grapheme cursor", "e\u0301", 1, "Xe\u0301"),
+        # A wide character is a single stop, so two Lefts clear it.
+        ("K3 wide-character cursor", "a\u754cb", 2, "aX\u754cb"),
+    ],
+)
+async def test_composer_cursor_steps_by_grapheme(
+    row: str,  # noqa: ARG001 - names the checklist row for failure output
+    text: str,
+    lefts: int,
+    expected: str,
+) -> None:
+    """K3: one Left press is one visible character, whatever its byte width."""
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        composer = app.query_one("#chat-input")
+        composer.insert(text)
+        await pilot.pause()
+        for _ in range(lefts):
+            await pilot.press("left")
+        await pilot.press("X")
+        await pilot.pause()
+        actual = composer.text
+
+    assert actual == expected, (
+        f"K3: Left then X on {text!r} produced {actual!r}, expected {expected!r}"
+    )
+
+
 def _count_suggestions(app: App) -> int:  # type: ignore[type-arg]
     """How many slash-command suggestions the autocomplete popup is showing.
 

@@ -7,6 +7,7 @@ import contextlib
 import logging
 import sys
 import time
+import unicodedata
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_never
 
@@ -207,9 +208,26 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
     from textual.events import Click
     from textual.screen import Screen
+    from textual.widgets.text_area import Location
 
     from deepagents_code.config_manifest import CursorStyle
     from deepagents_code.input import MediaTracker, ParsedPastedPathPayload
+
+
+def _extends_grapheme(character: str) -> bool:
+    """Return whether `character` attaches to the one before it.
+
+    Combining marks (including spacing marks and variation selectors) are the
+    cases that make a code-point cursor land inside a cluster. Emoji joiners
+    and regional-indicator pairs are not covered.
+
+    Args:
+        character: A single character from the document.
+
+    Returns:
+        `True` when the character must not begin a cursor stop.
+    """
+    return unicodedata.category(character) in {"Mn", "Mc", "Me"}
 
 
 def _should_collapse_chat_paste(text: str) -> bool:
@@ -668,6 +686,40 @@ class ChatTextArea(PasteBurstTextArea):
         if reserved is not None and reserved(key):
             return False
         return super().check_consume_key(key, character)
+
+    def get_cursor_left_location(self) -> Location:
+        """Return the start of the grapheme before the cursor.
+
+        Textual's navigator counts code points, so a combining mark is its own
+        stop; landing inside a cluster lets the next edit replace the base and
+        leave the mark behind.
+
+        Returns:
+            The location one grapheme to the left.
+        """
+        location = super().get_cursor_left_location()
+        if location[0] != self.cursor_location[0]:
+            return location
+        line = self.document.get_line(location[0])
+        start = location[1]
+        while 0 < start < len(line) and _extends_grapheme(line[start]):
+            start -= 1
+        return (location[0], start)
+
+    def get_cursor_right_location(self) -> Location:
+        """Return the start of the grapheme after the cursor.
+
+        Returns:
+            The location one grapheme to the right.
+        """
+        location = super().get_cursor_right_location()
+        if location[0] != self.cursor_location[0]:
+            return location
+        line = self.document.get_line(location[0])
+        end = location[1]
+        while end < len(line) and _extends_grapheme(line[end]):
+            end += 1
+        return (location[0], end)
 
     def on_focus(self) -> None:
         """Keep an open prompt search focused when the composer is clicked."""
