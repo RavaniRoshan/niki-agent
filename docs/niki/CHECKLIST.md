@@ -6,7 +6,7 @@ Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea8320
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 56 WORKS · 1 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-25).
+**Current tally: 57 WORKS · 0 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-25).
 
 ### Palette v2 — direction from Codex + Kimi, original values
 
@@ -129,7 +129,7 @@ cd libs/code && uv run pytest tests/unit_tests/niki/ -q -s
 | F2 activity states only from real events | P0 | **WORKS** | `test_f2_no_activity_state_without_a_real_event`; `test_f2_activity_appears_from_a_real_event_and_ends_with_it` | NOT STARTED |  | Both directions are driven: a fresh app claims no busy state, a real gated turn flips it on, and the state clears when the event settles. |
 | F3 streaming renders into one block | P0 | **WORKS** | `test_f3_streaming_renders_into_one_block`, `test_f3_streaming_paints_far_fewer_frames_than_chunks` | NOT STARTED |  | 40 chunks into one assistant widget add **zero** extra widgets, and repaints stay below the chunk count. Coalescing is real, not assumed. |
 | F4 scroll preserved mid-stream | P0 | **WORKS** | `test_f4_scroll_position_survives_a_streaming_update` — scrolled to y=10, streamed 20 appends, offset held at 10 | NOT STARTED |  | The transcript does not drag a reading user back to the bottom. |
-| F5 session resume picker | P1 | **PARTIAL** | `test_f5_a_thread_selector_screen_exists` — `ThreadSelectorScreen` imports and carries `BINDINGS` | NOT STARTED |  | Keyboard navigation *through* the picker needs a real session list; OWNER-VERIFY. |
+| F5 session resume picker | P1 | **WORKS** | `test_f5_arrow_keys_resume_the_thread_under_the_cursor` in `tests/unit_tests/niki/test_session_picker.py` — a real SQLite `checkpoints` store with three threads on disk, the app's own `/threads` handler, two Downs and Enter: the modal listed the rows newest-first and the third row's id was handed to `_resume_same_agent_thread`; `test_f5_a_thread_selector_screen_exists` still covers the import and bindings contract | NOT STARTED |  | The resume call is recorded rather than executed because a real resume needs a running agent server. Everything up to that call — store query, sort, keyboard cursor, dismissal payload — runs for real. |
 | F6 concise post-run summary | P0 | **WORKS** | `test_turn_summary_reports_verified_counts_and_duration`, `test_turn_summary_uses_terminal_event_status`, `test_niki_app_renders_summary_after_a_runtime_turn`, `test_remote_runtime_projects_tool_calls_and_results` | NOT STARTED |  | The Niki runtime projects tool call IDs and completion status; each terminal outcome renders one duration/tool/file-change line. File counts include only successful built-in write/edit/delete calls with a matching file ID; reads, failed writes, and unverified command effects do not count. |
 
 ## Docs and pack
