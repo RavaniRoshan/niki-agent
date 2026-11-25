@@ -6,7 +6,8 @@
     "K2": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
     "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
     "K12 escape-sequence fuzz / AltGr": "split escape sequences and the first-run auto-mode notice leave the composer usable; pty probe added",
-    "K1 single keymap registry": "in-app /help now renders the keymap registry; first-run focus bug found while proving it is fixed"
+    "K1 single keymap registry": "in-app /help now renders the keymap registry; first-run focus bug found while proving it is fixed",
+    "V9 approvals": "Esc resolves a pending approval as a reject; proven end to end"
   },
   "owner": null,
   "branch": null,
@@ -21,7 +22,6 @@
     "V6 footer truthful + collapses by width": "model/queue/context values require a real agent turn",
     "V7 tool cards": "expand/collapse and auto-expand need owner terminal confirmation",
     "V8 diffs": "on-screen diff proof blocked: stream layout height 0; owner verify",
-    "V9 approvals": "owner decision pending on Esc-deny semantics",
     "V10 activity line": "verb/elapsed/token wording needs a real agent turn",
     "V11 markdown rendering": "on-screen markdown blocked: synthetic mount height 0; owner verify",
     "V12 first-run + missing API key message": "missing-key inline message needs a no-key real launch",
@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "256d5e3925aa11cc4087ff21a48532e6e1e47971",
+  "last_commit": "a613b65cf51e5dc15293c7041f26b5332c5af678",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -61,6 +61,10 @@
     "K1 single keymap registry": {
       "commit": "256d5e3925aa11cc4087ff21a48532e6e1e47971",
       "evidence": "test_keymap.py 11 passed (exact registry body) + pty k1 help test + test_keyboard first-run focus; 1417 tests across niki/test_app/test_onboarding passed"
+    },
+    "V9 approvals": {
+      "commit": "a613b65cf51e5dc15293c7041f26b5332c5af678",
+      "evidence": "test_approvals.py 9 passed incl. test_v9_escape_denies_the_pending_approval"
     }
   }
 }

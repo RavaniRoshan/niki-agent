@@ -371,3 +371,39 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     assert "Interactive Features:" not in text, (
         "K1: upstream's hand-maintained help block rendered instead"
     )
+
+
+def test_k5_a_large_paste_collapses_to_a_placeholder(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K5: a big paste becomes one visible token, and a repeat expands it.
+
+    The earlier test proved the process survived; this proves the affordance
+    exists, so the composer does not silently swallow what was pasted.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        big = "y" * 20_000
+        child.send(PASTE_START + big + PASTE_END)
+        time.sleep(1.2)
+        collapsed = before + _drain(child)
+        child.send(PASTE_START + big + PASTE_END)
+        time.sleep(1.2)
+        expanded = _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    collapsed_text = _ANSI.sub("", collapsed)
+    expanded_text = _ANSI.sub("", expanded)
+    assert alive, "K5: the process died pasting 20k characters"
+    assert "[Pasted text #1]" in collapsed_text, (
+        "K5: the large paste did not collapse to a placeholder:\n"
+        f"{collapsed_text[-600:]}"
+    )
+    assert "Large paste collapsed" in collapsed_text, (
+        "K5: the user was not told the paste was collapsed"
+    )
+    assert "yyyy" in expanded_text, (
+        "K5: pasting the same text again did not expand the placeholder"
+    )
