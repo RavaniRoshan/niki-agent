@@ -1,6 +1,6 @@
 # Niki Agent — Checklist
 
-Status as of commit `32b913bc`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
+Status as of commit `fae404d3`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
 
 **This file is not a victory lap.** Several P0 rows are not met, and they are
 marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,

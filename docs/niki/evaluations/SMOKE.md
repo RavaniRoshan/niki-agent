@@ -42,3 +42,11 @@ SDK-level evidence above is not substituted.
 ## Matched two-task Harbor smoke
 
 Status: NOT RUN — no working Docker/container runtime or LangSmith credentials available in this environment.
+
+Rechecked 2026-11-25 before publishing the completion branch: `ANTHROPIC_API_KEY`,
+`LANGSMITH_API_KEY`, and `GROQ_API_KEY` are still unset, no Docker binary is
+installed, and Podman fails to start (`default OCI runtime "crun" not found`;
+`/run/user/1000` is missing, so the rootless runtime directory is not writable).
+Nothing was submitted, so there is no paired result and no competitiveness claim.
+A mock or SDK-level run would not count as a matched comparison and is not
+recorded as one.

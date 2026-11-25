@@ -14,7 +14,7 @@
 </div>
 
 <div align="center">
-  <img src="docs/niki/review/test_first_run_snapshot[120x38].raw" width="900" alt="Niki Agent first-run screen">
+  <img src="docs/niki/review/test_first_run_snapshot_120x38.svg" width="900" alt="Niki Agent first-run screen">
 </div>
 
 Niki Agent is a presentation-layer fork of [Deep Agents](https://github.com/langchain-ai/deepagents).
@@ -136,9 +136,11 @@ runtime dependency.
 | [`UPSTREAM_DIFF.md`](docs/niki/UPSTREAM_DIFF.md) | Every upstream file this fork touches, and why. |
 | [`PROGRESS.md`](docs/niki/PROGRESS.md) | Build log, including the turns that were wrong. |
 
-**Status: 26 WORKS · 33 PARTIAL · 11 MISSING** of 76 checklist rows. The rows
-still open are listed in the checklist rather than smoothed over here — most are
-visual work that needs a real terminal to judge, not another test.
+**Status: 57 WORKS · 0 PARTIAL · 0 MISSING** across the 57 checklist rows. Every
+row carries the test, PTY run, or measured probe that decides it. Where the claim
+depends on the terminal rather than the app — OSC 52 clipboard delivery, the
+16-colour fallback, drag-select rendering — `OWNER_VERIFY.md` names the check to
+run, instead of pretending a unit test can make it.
 
 ## Tests
 
@@ -155,6 +157,6 @@ MIT licensed. Upstream's copyright and notices are retained verbatim — see
 change agent behaviour, the tool set, or the permission defaults.
 
 > [!NOTE]
-> The screenshot above shows upstream's layout with Niki's theme, title, and
-> motion applied. The full visual redesign is in progress, and
-> [`CHECKLIST.md`](docs/niki/CHECKLIST.md) says exactly which parts.
+> The screenshot above is Niki's own frame, captured from a real terminal by the
+> snapshot suite. [`CHECKLIST.md`](docs/niki/CHECKLIST.md) is the acceptance
+> record: every row says what was measured and how.

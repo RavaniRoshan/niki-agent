@@ -210,3 +210,61 @@ blocked.
 observations or decisions, the matched Harbor benchmark is not run, and the
 plan's own gate forbids Rust work before that. Nothing in this session changed
 that gate.
+
+## Session 5 — closing the checklist (2026-11-25)
+
+The plan's task loop was driven to its end on branch
+`shiva/evals/niki-smoke-run`. Each row was closed with a test or a PTY probe,
+not by re-labelling it.
+
+### Rows closed in this session
+
+| Row | What decided it |
+| --- | --- |
+| S5, L5, L8, V13 | Already shipped evidence from the previous session, carried into the checklist. |
+| V5 composer rule, placeholder, queue | The composer's rule lives on `#input-box`'s top border so the mode accent and incognito title still work; the placeholder is native to `TextArea`; `N message(s) queued` mirrors the status bar. `test_composer.py` (4 tests) plus regenerated snapshots. |
+| L7 Ctrl+Z suspend | `ChatTextArea` binds `ctrl+z` to the app's suspend and moves undo to `ctrl+shift+z`; a real pty stops the process (`WIFSTOPPED`), resumes it, and types into the composer afterwards. |
+| M4 selection, OSC 52, mouse release | `f2` releases terminal mouse capture (`ESC[?1000l` then `ESC[?1000h` in a real pty); selection copy now goes through `copy_to_clipboard`, which adds the tmux DCS wrapper. |
+| F5 session resume picker | A real SQLite `checkpoints` store with three threads on disk: `/threads` lists them newest-first, two Downs and Enter hand the third row's id to the resume path. |
+
+`readiness --phase python` now exits **0**.
+
+### Gate repairs found on the way
+
+- Ruff 0.16 (`select = ["ALL"]`) reported `SLF001` suppressions that the
+  `tests/**` per-file ignore already covers; removed. `ruff format` had drifted
+  in four test files; applied.
+- `ty` reported 26 diagnostics in the completion tests (untyped widget queries,
+  a `PushScreen` callback returning `AwaitMount`, a `Mutate` lambda returning
+  `int`) plus one in `action_show_help`. All fixed by typing the queries and
+  matching the declared shapes, not by suppressions.
+- `test_k6_tab_then_enter...` failed intermittently under `-n 4`: it slept a
+  fixed 0.5 s and then asserted on the screen, so a slow frame was reported as
+  a Tab failure. It now waits for the completion popup to appear before sending
+  Tab and for it to close before asserting. The key bytes are unchanged.
+
+### Verification
+
+- `ruff check .` → clean; `ruff format --diff .` → no changes; `ty check` →
+  clean; commands catalog up to date; `check_process_cwd` clean;
+  `check_extras_sync` and `check_version_equality` pass (`deepagents` 0.7.21,
+  `code` 0.1.80); `uv lock --check` resolves 319 packages.
+- `pytest tests/unit_tests -n 4 --disable-socket` → **9464 passed, 1 skipped,
+  2 warnings in 384 s**, exit 0.
+- `scripts/check_readme.py` → README consistent (57 WORKS · 0 PARTIAL · 0
+  MISSING, version 0.1.80).
+- `git diff f57c6f3 -- libs/deepagents` empty.
+
+### Still not done, and why
+
+- **Matched Claude Code benchmark:** still blocked. `ANTHROPIC_API_KEY`,
+  `LANGSMITH_API_KEY`, and `GROQ_API_KEY` are unset; there is no Docker binary,
+  and Podman fails to start (`crun` missing, `/run/user/1000` absent). Recorded
+  in `SMOKE.md` and `workflow-state.json`; never claimed as passed.
+- **CLI acceptance smoke:** `RUN, NOT PASSED`; the local models available here
+  cannot pass the parser task at the context the CLI needs.
+- **Rust parity:** the gate requires a passed matched benchmark first, so no
+  Rust work was started.
+- **Owner checks:** whatever depends on the user's own terminal (OSC 52
+  delivery, 16-colour appearance, drag-select rendering) is listed in
+  `OWNER_VERIFY.md`; the app-side half of each is tested.
