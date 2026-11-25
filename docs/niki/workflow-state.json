@@ -7,7 +7,8 @@
     "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
     "K12 escape-sequence fuzz / AltGr": "split escape sequences and the first-run auto-mode notice leave the composer usable; pty probe added",
     "K1 single keymap registry": "in-app /help now renders the keymap registry; first-run focus bug found while proving it is fixed",
-    "V9 approvals": "Esc resolves a pending approval as a reject; proven end to end"
+    "V9 approvals": "Esc resolves a pending approval as a reject; proven end to end",
+    "K5 bracketed paste": "placeholder, toast, and repeat-paste expansion asserted in a real pty"
   },
   "owner": null,
   "branch": null,
@@ -28,7 +29,6 @@
     "V13 colour depth / NO_COLOR / ASCII / contrast": "actual 16-colour/light palette legibility is owner-only",
     "K3 composer editing": "multi-line and grapheme-correct cursor needs real-terminal confirmation",
     "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
-    "K5 bracketed paste": "large-paste placeholder and host clipboard are owner-only",
     "K6 filtered slash menu": "arrow/Tab/Enter selection needs owner terminal confirmation",
     "K7 Esc close order + focus restore": "full close order and focus restoration are owner-only",
     "K8 `?` contextual help": "in-app ? screen verification is owner-only",
@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "a613b65cf51e5dc15293c7041f26b5332c5af678",
+  "last_commit": "a7e4c43520457d96396a33f2fd7831220d15d9d7",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -65,6 +65,10 @@
     "V9 approvals": {
       "commit": "a613b65cf51e5dc15293c7041f26b5332c5af678",
       "evidence": "test_approvals.py 9 passed incl. test_v9_escape_denies_the_pending_approval"
+    },
+    "K5 bracketed paste": {
+      "commit": "a7e4c43520457d96396a33f2fd7831220d15d9d7",
+      "evidence": "pty test_k5_a_large_paste_collapses_to_a_placeholder passes"
     }
   }
 }
