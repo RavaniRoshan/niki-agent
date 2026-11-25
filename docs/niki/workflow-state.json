@@ -14,7 +14,8 @@
     "S7 100-resize storm in 2 s": "owner decision recorded: deferred with measurements",
     "K8 `?` contextual help": "question_mark is a priority binding; pty proves the modal opens and Escape restores focus",
     "M5 every mouse action has a key equivalent": "test extended to ten live-binding gestures including ctrl+o and ctrl+u",
-    "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples"
+    "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples",
+    "K3 composer editing": "multi-line proven through Pilot and pty; cursor now grapheme-aware"
   },
   "owner": null,
   "branch": null,
@@ -30,7 +31,6 @@
     "V11 markdown rendering": "on-screen markdown blocked: synthetic mount height 0; owner verify",
     "V12 first-run + missing API key message": "missing-key inline message needs a no-key real launch",
     "V13 colour depth / NO_COLOR / ASCII / contrast": "actual 16-colour/light palette legibility is owner-only",
-    "K3 composer editing": "multi-line and grapheme-correct cursor needs real-terminal confirmation",
     "K4 interrupt/exit semantics": "clear-interrupt-arm ladder needs a real agent turn",
     "K6 filtered slash menu": "arrow/Tab/Enter selection needs owner terminal confirmation",
     "K7 Esc close order + focus restore": "full close order and focus restoration are owner-only",
@@ -42,7 +42,7 @@
     "M4 selection/copy, OSC 52, mouse release": "clipboard across a real ssh hop needs owner verification",
     "F5 session resume picker": "keyboard navigation through the picker needs a real session list"
   },
-  "last_commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+  "last_commit": "23d9fe9de4624ab7c57a82491141ba6dd8fa9a99",
   "last_eval": {
     "python_evaluation": "blocked",
     "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
@@ -92,6 +92,10 @@
     },
     "F1 message echoes instantly, focus kept": {
       "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "K3 composer editing": {
+      "commit": "23d9fe9de4624ab7c57a82491141ba6dd8fa9a99",
       "evidence": "see CHECKLIST row"
     }
   }

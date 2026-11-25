@@ -207,6 +207,123 @@ async def test_slash_menu_filters_and_narrows_to_one_row() -> None:
     )
 
 
+async def test_k6_arrows_tab_and_enter_drive_the_slash_menu() -> None:
+    """K6: the menu is keyboard-drivable, not decoration.
+
+    Arrows move the highlight, Tab accepts the highlighted command into the
+    composer, and Enter dispatches it. All three are asserted against the
+    popup's live selection and the transcript, so a change in how the menu is
+    rendered cannot make this pass vacuously.
+    """
+    from deepagents_code.tui.widgets.chat_input import ChatInput
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        chat = app.query_one(ChatInput)
+        await pilot.press("slash")
+        await pilot.pause()
+        count = len(chat._current_suggestions)  # noqa: SLF001 - live popup state
+        assert count > 1, "K6: '/' produced no menu to drive"
+        assert chat._current_selected_index == 0  # noqa: SLF001
+
+        await pilot.press("down", "down")
+        await pilot.pause()
+        assert chat._current_selected_index == 2  # noqa: SLF001
+        await pilot.press("up")
+        await pilot.pause()
+        assert chat._current_selected_index == 1  # noqa: SLF001
+        chosen = chat._current_suggestions[1][0].lstrip("/")  # noqa: SLF001
+
+        await pilot.press("tab")
+        await pilot.pause()
+        accepted = _text(app).strip()
+        remaining = list(chat._current_suggestions)  # noqa: SLF001 - live state
+
+    assert accepted == chosen, (
+        f"K6: Tab accepted {accepted!r}, expected the highlighted {chosen!r}"
+    )
+    assert not remaining, "K6: Tab left the menu open after accepting"
+
+
+async def test_k6_enter_dispatches_the_highlighted_command() -> None:
+    """K6: Enter runs the highlighted command rather than submitting the text."""
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("slash")
+        for key in ("h", "e", "l", "p"):
+            await pilot.press(key)
+        await pilot.pause()
+        await pilot.press("enter")
+        for _ in range(3):
+            await pilot.pause()
+        helped = any(
+            "Usage:" in str(message.render().plain)
+            for message in app.query("AppMessage")
+        )
+
+    assert helped, "K6: Enter did not run the highlighted `/help`"
+
+
+async def test_k7_escape_closes_in_order_and_restores_focus() -> None:
+    """K7: Esc unwinds one layer at a time and always lands back on the composer.
+
+    The order is modal, then popup, then search, then a nested screen, then the
+    turn itself. Each layer is opened and dismissed in sequence, and the draft a
+    user typed is still there at the end: Esc interrupts, it never eats text.
+    """
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+
+        # 1. A modal owns the keyboard until it is dismissed.
+        await pilot.press("question_mark")
+        await pilot.pause()
+        assert len(app.screen_stack) == 2, "K7: `?` did not open a modal"
+        await pilot.press("escape")
+        await pilot.pause()
+        assert len(app.screen_stack) == 1, "K7: Esc left the modal open"
+        assert getattr(app.focused, "id", None) == "chat-input", (
+            "K7: closing the modal did not restore composer focus"
+        )
+
+        # 2. The slash popup closes before anything else.
+        await pilot.press("slash")
+        await pilot.pause()
+        await pilot.press("escape")
+        await pilot.pause()
+        assert len(app.screen_stack) == 1, "K7: Esc left the popup screen open"
+        assert getattr(app.focused, "id", None) == "chat-input"
+
+        # 3. Prompt search abandons and hands the draft back.
+        await pilot.press("b", "o", "d", "y")
+        await pilot.pause()
+        await pilot.press("ctrl+r")
+        await pilot.pause()
+        assert len(app.screen_stack) == 2, "K7: Ctrl+R did not open search"
+        await pilot.press("escape")
+        await pilot.pause()
+        assert len(app.screen_stack) == 1, "K7: Esc left search open"
+        assert getattr(app.focused, "id", None) == "chat-input"
+
+        # 4. A nested screen (the debug console) closes on Esc too.
+        await pilot.press("ctrl+backslash")
+        await pilot.pause()
+        assert len(app.screen_stack) == 2, "K7: the debug console did not open"
+        await pilot.press("escape")
+        await pilot.pause()
+        assert len(app.screen_stack) == 1, "K7: Esc left the debug console open"
+        assert getattr(app.focused, "id", None) == "chat-input"
+
+        # 5. The interrupt step cancels work, not the prompt.
+        await pilot.press("escape")
+        await pilot.pause()
+        draft = _text(app)
+
+    assert draft == "body", f"K7: the interrupt step altered the draft ({draft!r})"
+
+
 async def test_history_recall_with_up_arrow() -> None:
     """K3: Up/Down walk history at the buffer boundaries."""
     app = _app()

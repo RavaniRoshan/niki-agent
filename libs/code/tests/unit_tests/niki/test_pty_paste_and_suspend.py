@@ -374,6 +374,82 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     )
 
 
+def test_k7_escape_unwinds_a_modal_then_a_popup_in_a_real_terminal(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K7: Esc closes the layer on top, in order, and typing resumes after each.
+
+    The composer only proves itself in a terminal: a modal that leaves a stale
+    focus target looks identical to Pilot but swallows real keystrokes.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("?")
+        time.sleep(0.8)
+        child.send("\x1b")
+        time.sleep(0.6)
+        child.send("tmp1")
+        time.sleep(0.5)
+        buffer = before + _drain(child)
+        after_modal = "\n".join(line for line in _screen(buffer).display if line.strip())
+        # The draft is cleared before the popup step so `?`-style filtering
+        # cannot be mistaken for typing.
+        for _ in range(4):
+            child.send("\x7f")
+        time.sleep(0.3)
+        child.send("/")
+        time.sleep(0.5)
+        child.send("\x1b")
+        time.sleep(0.5)
+        child.send("tmp2")
+        time.sleep(0.6)
+        buffer += _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "K7: escaping layers killed the process"
+    assert "tmp1" in after_modal, (
+        f"K7: typing after closing the modal did not reach the composer:\n{after_modal[-600:]}"
+    )
+    final = "\n".join(line for line in _screen(buffer).display if line.strip())
+    assert "tmp2" in final, (
+        f"K7: typing after closing the popup did not reach the composer:\n{final[-600:]}"
+    )
+
+
+def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """K6: filter, Tab-complete, and Enter dispatch survive real key bytes.
+
+    Tab and Enter are the keys the completion manager intercepts before the
+    composer sees them; sending them as bytes is the only way to prove the
+    interception order holds outside the test driver.
+    """
+    child, before = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send("/")
+        time.sleep(0.3)
+        child.send("hel")
+        time.sleep(0.5)
+        child.send("\t")
+        time.sleep(0.5)
+        buffer = before + _drain(child)
+        completed = "\n".join(line for line in _screen(buffer).display if line.strip())
+        child.send("\r")
+        time.sleep(1.5)
+        buffer += _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "K6: completing from the menu killed the process"
+    assert "help" in completed, f"K6: Tab did not complete `/hel`:\n{completed[-600:]}"
+    text = _ANSI.sub("", buffer)
+    assert "Usage:" in text, f"K6: Enter did not run the completed command:\n{text[-600:]}"
+
+
 def test_k3_multiline_gesture_keeps_the_prompt_in_the_composer(
     home: Path, tmp_cwd: Path
 ) -> None:
