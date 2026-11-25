@@ -294,6 +294,14 @@ was recorded in, not from the product.
   (`/model` arrived as `/mod`). The PTY tests now put a stub `rg` on PATH —
   outside `DEEPAGENTS_HOME`, whose `bin/` is the *managed* ripgrep location and
   would read a stub there as a stale install.
+- **The second run found overlays and one random tip.** The `rg` stub removed
+  one notice, but a missing Tavily key mounts a second one over the transcript
+  M1 measures, and its dialog intercepts K6's Tab as `/ hel`. The PTY profile
+  now turns both off through the product's own `[warnings].suppress`, which is
+  the supported setting rather than test-only surgery. One weighted splash tip
+  says the agent "keeps working", which F2 read as a false activity claim; F2
+  now hides tips. S7 slept 400 ms and then asserted the app had repainted —
+  a loaded runner needs longer, so it now waits for the first byte instead.
 - **`libs/partners/quickjs`:** its lockfile was behind its test extras
   (`langchain-openai` bound at `>=1.6.5`), and its prompt template emitted a
   blank line that split the system-prompt bullet list when the authorization
