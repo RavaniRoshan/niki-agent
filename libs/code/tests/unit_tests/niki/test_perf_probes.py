@@ -31,6 +31,7 @@ from unit_tests.niki.perf_probe import (
     measure_input_echo,
     measure_large_tool_output,
     measure_resize_storm,
+    measure_scroll_with_history,
     measure_stream,
     rss_megabytes,
 )
@@ -47,6 +48,8 @@ IDLE_CPU_CEILING_PERCENT = 100.0
 DEEP_RATIO_CEILING = 10.0
 RENDER_RATE_CEILING = 60.0
 ECHO_P95_CEILING_MS = 250.0  # headless floor, see the test docstring
+SCROLL_PAINT_CEILING_MS = 50.0
+SCROLL_RSS_GROWTH_CEILING_MB = 150.0
 
 _SIZES = {"compact": (50, 16), "standard": (80, 24), "roomy": (120, 38)}
 
@@ -272,6 +275,42 @@ def test_five_thousand_message_history_stays_bounded_and_hydratable() -> None:
     assert first_visible_batch[0].id == "m-0"
     assert store.get_message("m-0") is messages[0]
     assert store.visible_count == 30
+
+
+async def test_s5_scrolling_a_five_thousand_message_transcript() -> None:
+    """S5: a large stored history scrolls on a bounded mounted window.
+
+    The measured number is the compositor's own paint time per scroll. The
+    headless driver's `pilot.pause()` adds a fixed tick that would otherwise
+    dominate the sample, so it is excluded deliberately; the store window and
+    the RSS growth bound the memory half.
+    """
+    app = _niki_app()
+    sample = await measure_scroll_with_history(app, (80, 24))
+    _record(
+        {
+            "scroll_paint_p95_ms": round(sample.paint_p95_ms, 2),
+            "scroll_stored": sample.stored,
+            "scroll_visible": sample.visible,
+            "scroll_mounted": sample.mounted,
+            "scroll_max_offset": sample.max_scroll_y,
+            "scroll_rss_delta_mb": round(sample.rss_delta_mb, 1),
+        }
+    )
+
+    assert sample.stored == 5_000, sample.stored
+    assert sample.visible == 30, (
+        f"S5: the store mounted {sample.visible} visible rows, not the 30-row window"
+    )
+    assert sample.mounted <= 180, sample.mounted
+    assert sample.max_scroll_y > 0, "S5: the transcript never became scrollable"
+    assert sample.paint_p95_ms <= SCROLL_PAINT_CEILING_MS, (
+        f"S5: scroll paint p95 {sample.paint_p95_ms:.1f} ms exceeds "
+        f"{SCROLL_PAINT_CEILING_MS} ms"
+    )
+    assert sample.rss_delta_mb < SCROLL_RSS_GROWTH_CEILING_MB, (
+        f"S5: loading 5,000 messages grew RSS by {sample.rss_delta_mb:.1f} MB"
+    )
 
 
 def test_artifact_is_readable_json() -> None:
