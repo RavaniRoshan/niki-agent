@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from unit_tests.niki.turn_harness import (
     Gate,
+    Raise,
     ScriptedAgent,
     Text,
     arm_turn,
@@ -178,6 +179,54 @@ async def test_k10_a_message_queued_during_a_run_is_shown_and_then_runs() -> Non
     )
     assert any("second" in call for call in calls), (
         f"K10: the queued prompt never ran as a turn: {calls}"
+    )
+
+
+async def test_l5_a_turn_crash_logs_a_traceback_and_shows_a_friendly_error(
+    monkeypatch, tmp_path
+) -> None:
+    """L5: a failing turn writes a traceback to the debug log and stays usable."""
+    import logging
+
+    from deepagents_code import _debug
+
+    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG", "1")
+    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_DIRECTORY", str(tmp_path))
+    # Mirror the `.env` reload path: the env var is set after import, so the
+    # package logger must be re-configured before the session binds its file.
+    package_logger = logging.getLogger("deepagents_code")
+    original_level = package_logger.level
+    _debug.configure_debug_logging(package_logger)
+    try:
+        app = make_app()
+        async with app.run_test(size=SIZE) as pilot:
+            await pilot.pause()
+            agent = ScriptedAgent(
+                [Text("partial answer"), Raise(RuntimeError("provider exploded"))]
+            )
+            await arm_turn(app, pilot, agent)
+            log_path = _debug.installed_debug_log_path()
+            assert log_path is not None, (
+                "L5: the debug handler never attached a file for this thread"
+            )
+
+            await app._submit_input("go", "normal")
+            await _wait_until(pilot, lambda: not app._agent_running)
+            rendered = screen_text(app)
+            still_running = bool(app._agent_running)
+
+        log_text = log_path.read_text(encoding="utf-8")
+    finally:
+        _debug._remove_debug_handlers(package_logger, except_path=None)
+        package_logger.setLevel(original_level)
+
+    assert not still_running, "L5: the app kept the failed turn marked as running"
+    assert "Agent error" in rendered, (
+        f"L5: the failure produced no friendly error card:\n{rendered}"
+    )
+    assert "Traceback" in log_text, "L5: the debug log has no traceback"
+    assert "provider exploded" in log_text, (
+        "L5: the debug log does not name the original error"
     )
 
 

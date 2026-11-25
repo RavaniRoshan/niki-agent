@@ -102,7 +102,14 @@ class Mutate:
     action: Callable[[], None]
 
 
-Step = Text | ToolUse | ToolResult | Usage | Gate | Sleep | Mutate
+@dataclass(frozen=True)
+class Raise:
+    """Raise an exception from inside the stream, as a failed provider would."""
+
+    exception: Exception
+
+
+Step = Text | ToolUse | ToolResult | Usage | Gate | Sleep | Mutate | Raise
 
 
 class ScriptedAgent:
@@ -152,6 +159,8 @@ class ScriptedAgent:
                 await asyncio.sleep(step.seconds)
             elif isinstance(step, Mutate):
                 step.action()
+            elif isinstance(step, Raise):
+                raise step.exception
             elif isinstance(step, ToolUse):
                 yield (
                     (),
