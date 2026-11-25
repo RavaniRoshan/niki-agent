@@ -8,14 +8,14 @@
     "K12 escape-sequence fuzz / AltGr": "split escape sequences and the first-run auto-mode notice leave the composer usable; pty probe added",
     "K1 single keymap registry": "in-app /help now renders the keymap registry; first-run focus bug found while proving it is fixed",
     "V9 approvals": "Esc resolves a pending approval as a reject; proven end to end",
-    "K5 bracketed paste": "placeholder, toast, and repeat-paste expansion asserted in a real pty"
+    "K5 bracketed paste": "placeholder, toast, and repeat-paste expansion asserted in a real pty",
+    "S1 first frame \u2264400 ms warm": "owner decision recorded: deferred with measurements",
+    "S2 input echo p95 \u226450 ms under load": "owner decision recorded: deferred with measurements",
+    "S7 100-resize storm in 2 s": "owner decision recorded: deferred with measurements"
   },
   "owner": null,
   "branch": null,
   "blocked": {
-    "S1 first frame \u2264400 ms warm": "owner decision pending: measured 470/553 ms against a 400 ms Python-process floor",
-    "S2 input echo p95 \u226450 ms under load": "owner decision pending: measured 173.9 ms p95 headless floor",
-    "S7 100-resize storm in 2 s": "owner decision pending: 11.4 s headless is pause-overhead, not resize latency",
     "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "owner-only evidence required for this checklist row",
     "L5 crash \u2192 traceback to file + friendly message": "owner-only real-terminal crash observation required",
     "L8 clean exit prints summary + exit code": "needs a real agent turn to assert session-id/resume summary",

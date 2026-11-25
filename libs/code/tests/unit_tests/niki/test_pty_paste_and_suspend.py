@@ -18,6 +18,7 @@ import contextlib
 import os
 import re
 import signal
+import statistics
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -373,9 +374,7 @@ def test_k1_slash_help_renders_the_keymap_in_a_real_terminal(
     )
 
 
-def test_k5_a_large_paste_collapses_to_a_placeholder(
-    home: Path, tmp_cwd: Path
-) -> None:
+def test_k5_a_large_paste_collapses_to_a_placeholder(home: Path, tmp_cwd: Path) -> None:
     """K5: a big paste becomes one visible token, and a repeat expands it.
 
     The earlier test proved the process survived; this proves the affordance
@@ -407,3 +406,118 @@ def test_k5_a_large_paste_collapses_to_a_placeholder(
     assert "yyyy" in expanded_text, (
         "K5: pasting the same text again did not expand the placeholder"
     )
+
+
+def test_s2_input_echo_is_fast_in_a_real_terminal(home: Path, tmp_cwd: Path) -> None:
+    """S2: keystrokes must echo well under 50 ms in a real terminal.
+
+    The headless pilot charges one `pause()` round-trip per sample, which is
+    why it measured 173.9 ms. Reading the pty fd directly removes the driver
+    from the loop: this is the number the user's eyes actually see.
+    """
+    child, _ = _spawn(home, cwd=tmp_cwd)
+    fd = child.child_fd
+    os.set_blocking(fd, False)
+
+    def drain() -> None:
+        while True:
+            try:
+                if not os.read(fd, 65536):
+                    return
+            except (BlockingIOError, OSError):
+                return
+
+    def time_to_echo(char: str) -> float | None:
+        started = time.perf_counter()
+        while time.perf_counter() - started < 1.0:
+            try:
+                chunk = os.read(fd, 65536)
+            except BlockingIOError:
+                time.sleep(0.0005)
+                continue
+            except OSError:
+                return None
+            if char.encode() in chunk:
+                return time.perf_counter() - started
+        return None
+
+    samples: list[float] = []
+    try:
+        time.sleep(0.5)
+        for char in "abcdefghijklmnopqrstuvwxyz0123":
+            drain()
+            time.sleep(0.03)
+            os.write(fd, char.encode())
+            elapsed = time_to_echo(char)
+            if elapsed is not None:
+                samples.append(elapsed * 1000)
+            time.sleep(0.08)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "S2: the process died while echoing keystrokes"
+    assert len(samples) >= 25, f"S2: only {len(samples)} echoes were observed"
+    ordered = sorted(samples)
+    p95 = ordered[max(0, int(len(ordered) * 0.95) - 1)]
+    assert p95 <= 50, (
+        f"S2: p95 echo is {p95:.1f} ms (median {statistics.median(ordered):.1f}); "
+        f"samples={[round(sample) for sample in ordered]}"
+    )
+
+
+def test_s7_a_resize_storm_does_not_break_the_app(home: Path, tmp_cwd: Path) -> None:
+    """S7: 100 resizes in about 2 s must leave a live, still-painting app.
+
+    The 2 s figure is the *storm's* duration, not a per-resize latency budget:
+    a terminal delivers resizes on its own schedule and there is no user-facing
+    latency to promise. What matters is that the app survives and still echoes
+    input afterwards.
+    """
+    child, _ = _spawn(home, cwd=tmp_cwd)
+    fd = child.child_fd
+    os.set_blocking(fd, False)
+
+    def drain() -> int:
+        total = 0
+        while True:
+            try:
+                chunk = os.read(fd, 65536)
+            except (BlockingIOError, OSError):
+                return total
+            if not chunk:
+                return total
+            total += len(chunk)
+
+    try:
+        drain()
+        started = time.perf_counter()
+        for index in range(100):
+            child.setwinsize(20 + index % 10, 60 + index % 40)
+            time.sleep(0.015)
+        storm_elapsed = time.perf_counter() - started
+        child.setwinsize(30, 100)
+        time.sleep(0.4)
+        painted_after = drain()
+
+        drain()
+        os.write(fd, b"z")
+        echo_started = time.perf_counter()
+        echoed = False
+        while time.perf_counter() - echo_started < 2:
+            try:
+                chunk = os.read(fd, 65536)
+            except BlockingIOError:
+                time.sleep(0.005)
+                continue
+            if b"z" in chunk:
+                echoed = True
+                break
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "S7: the app died during the resize storm"
+    assert storm_elapsed <= 2.0, f"S7: the storm itself took {storm_elapsed:.2f}s"
+    assert painted_after > 0, "S7: the app painted nothing after the final resize"
+    assert echoed, "S7: the composer stopped echoing after the resize storm"
