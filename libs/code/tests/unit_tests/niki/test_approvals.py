@@ -210,3 +210,33 @@ async def test_v9_clicking_outside_does_not_decide() -> None:
     assert after == before, (
         f"V9: an outside click moved the selection from {before} to {after}"
     )
+
+
+async def test_v9_escape_denies_the_pending_approval() -> None:
+    """V9: while an approval is pending, Esc must resolve it as a reject.
+
+    The app routes the priority `escape` binding through `action_interrupt`,
+    which checks the pending approval before it considers cancelling the turn.
+    Mounting a menu alone is not enough to exercise that: the branch keys off
+    the app's own pending-widget bookkeeping, so the test sets it the way the
+    approval path does.
+    """
+    import asyncio
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        menu = _menu()
+        await app.query_one("#messages").mount(menu)
+        await pilot.pause()
+        loop = asyncio.get_running_loop()
+        decision = loop.create_future()
+        menu._future = decision
+        app._pending_approval_widget = menu
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert decision.done(), "V9: Esc left the approval unresolved"
+        assert decision.result()["type"] == "reject", (
+            f"V9: Esc resolved the approval as {decision.result()!r}, not a reject"
+        )
