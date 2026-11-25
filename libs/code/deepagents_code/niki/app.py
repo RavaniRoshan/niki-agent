@@ -26,10 +26,12 @@ defaults are inherited untouched from `DeepAgentsApp`.
 
 from __future__ import annotations
 
+import contextlib
 import os
+from contextlib import contextmanager
 from pathlib import Path
 from time import monotonic
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from textual.binding import Binding, BindingType
 from textual.css.query import NoMatches
@@ -46,6 +48,9 @@ from deepagents_code.niki.turn_summary import TurnSummary, TurnSummaryData
 from deepagents_code.theme import DEFAULT_THEME as _UPSTREAM_DEFAULT_THEME
 from deepagents_code.tui.widgets.chat_input import ChatTextArea
 from deepagents_code.tui.widgets.message_store import MessageStore
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class NikiApp(DeepAgentsApp):
@@ -95,7 +100,20 @@ class NikiApp(DeepAgentsApp):
         # `check_action` hands it back to the composer as soon as a draft
         # exists, so a question mark can still be typed in a prompt.
         Binding("question_mark", "show_help", "Help", show=False, priority=True),
+        # M4: terminal-native selection only works when the app stops asking
+        # for mouse reports. F2 is used rather than a ctrl+<letter>, because
+        # terminals cannot distinguish ctrl+shift+<letter> from ctrl+<letter>.
+        Binding(
+            "f2",
+            "toggle_mouse_release",
+            "Release Mouse",
+            show=False,
+            priority=True,
+        ),
     ]
+
+    _mouse_released: bool = False
+    """Whether the app has handed mouse selection back to the terminal."""
 
     _turn_summary_events: dict[tuple[str, str], list[RunEvent]]
     _turn_summary_started_at: dict[tuple[str, str], float]
@@ -339,6 +357,62 @@ class NikiApp(DeepAgentsApp):
         self.push_screen(
             CommandPaletteScreen(commands), self._dispatch_palette_selection
         )
+
+    def copy_to_clipboard(self, text: str) -> None:
+        """Add tmux passthrough to Textual's selection copy.
+
+        Textual writes a bare OSC 52, which tmux swallows; the DCS-wrapped form
+        is what reaches the clipboard there. Other terminals already got the
+        same bytes from `super()`, so nothing is sent twice that they can see.
+        """
+        super().copy_to_clipboard(text)
+        if os.environ.get("TMUX"):
+            from deepagents_code.clipboard import _copy_osc52
+
+            with contextlib.suppress(OSError):
+                _copy_osc52(text)
+
+    def action_toggle_mouse_release(self) -> None:
+        """Hand mouse selection to the terminal, or take it back.
+
+        A terminal cannot select text it never sees, and a full-screen app asks
+        for every mouse report. Releasing capture makes drag-select work as it
+        does in any other shell program; pressing the key again restores the
+        app's own mouse handling.
+        """
+        self._mouse_released = not self._mouse_released
+        self._apply_mouse_release()
+        message = (
+            "Mouse released: drag to select, f2 to restore"
+            if self._mouse_released
+            else "Mouse capture restored"
+        )
+        self.notify(message, timeout=4, markup=False)
+
+    def _apply_mouse_release(self) -> None:
+        """Write the terminal's mouse-reporting mode to match the flag."""
+        driver = getattr(self, "_driver", None)
+        method = (
+            "_disable_mouse_support"
+            if self._mouse_released
+            else "_enable_mouse_support"
+        )
+        toggle = getattr(driver, method, None)
+        if callable(toggle):
+            toggle()
+
+    @contextmanager
+    def suspend(self) -> Iterator[None]:
+        """Keep a released mouse across suspend/resume.
+
+        Textual re-enables mouse reporting when it resumes; without this the
+        user's release would silently undo itself after Ctrl+Z.
+        """
+        released = self._mouse_released
+        with super().suspend():
+            yield
+        if released:
+            self._apply_mouse_release()
 
     async def _dispatch_palette_selection(self, command: SlashCommand | None) -> None:
         """Return palette selections to the existing slash-command handler."""

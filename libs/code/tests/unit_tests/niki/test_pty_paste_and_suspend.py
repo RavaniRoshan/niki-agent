@@ -35,6 +35,8 @@ PASTE_START = "\x1b[200~"
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 PASTE_END = "\x1b[201~"
 CTRL_Z = "\x1a"
+#: Xterm's SS3 sequence for F2, the mouse-release toggle.
+F2 = "\x1bOQ"
 
 #: Long enough for the app to paint, short enough to stay well under the
 #: repo-wide 30 s test timeout.
@@ -476,6 +478,36 @@ def test_l7_ctrl_z_suspends_and_the_process_can_be_resumed(
     assert rule is not None, f"L7: no composer on the resumed screen:\n{rows}"
     assert "l7-ok" in rows[rule + 1], (
         "L7: the composer did not take a keystroke after resume:\n" + "\n".join(rows)
+    )
+
+
+def test_m4_f2_hands_the_mouse_back_to_the_terminal(
+    home: Path, tmp_cwd: Path
+) -> None:
+    """M4: F2 stops and restarts the terminal's mouse reporting.
+
+    The toggle's whole point is an escape sequence the *terminal* acts on, so
+    only a real pty can show it: the app writes `?1000l` on release and
+    `?1000h` again on restore.
+    """
+    child, _ = _spawn(home, cwd=tmp_cwd)
+    try:
+        child.send(F2)
+        time.sleep(0.5)
+        released = _drain(child)
+        child.send(F2)
+        time.sleep(0.5)
+        restored = _drain(child)
+        alive = child.isalive()
+    finally:
+        child.terminate(force=True)
+
+    assert alive, "M4: toggling mouse capture killed the process"
+    assert "\x1b[?1000l" in released, (
+        f"M4: F2 did not disable mouse reporting:\n{released[-400:]!r}"
+    )
+    assert "\x1b[?1000h" in restored, (
+        f"M4: a second F2 did not restore mouse reporting:\n{restored[-400:]!r}"
     )
 
 

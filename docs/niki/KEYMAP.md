@@ -41,6 +41,7 @@ this same registry -- so no surface can advertise a dead key.
 | `enter` | `approval_select` | Select | `NikiApp` |
 | `escape` | `abandon_search` | Cancel | `PromptSearchInput` |
 | `escape` | `interrupt` | Interrupt | `NikiApp` |
+| `f2` | `toggle_mouse_release` | Release Mouse | `NikiApp` |
 | `home` | `scroll_home` | Scroll Home | `VerticalScroll` |
 | `j` | `approval_down` | Down | `NikiApp` |
 | `k` | `approval_up` | Up | `NikiApp` |
