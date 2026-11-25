@@ -5,8 +5,9 @@ the Pilot driver can drive. The transcript is filled before each test: with a
 short transcript nothing scrolls, and a scroll test that cannot scroll passes
 for the wrong reason.
 
-One row here is a **known defect, characterised rather than hidden**:
-`test_pageup_is_bound_but_does_not_reach_the_transcript`.
+Two rows here were once **characterised defects** and are now closed:
+`pageup`/`pagedown` reach the transcript from the composer, and a scrollable
+draft or an open modal keeps the key. See `test_pageup_*`.
 """
 
 from __future__ import annotations
@@ -125,17 +126,11 @@ async def test_f4_scroll_position_survives_a_streaming_update() -> None:
     )
 
 
-async def test_pageup_is_bound_but_does_not_reach_the_transcript() -> None:
-    """K2/M1: characterises a real gap instead of hiding it.
+async def test_pageup_pages_the_transcript_from_the_composer() -> None:
+    """K2: PgUp/PgDn reach the transcript while the composer holds focus.
 
-    `pageup` **is** bound -- to `VerticalScroll.page_up`, per the registry. But
-    the composer holds focus (F1 requires it) and consumes the key, so pressing
-    PgUp does not move the transcript. Checklist K2 asks that PgUp/PgDn work on
-    every scrollable surface, so this is an open defect.
-
-    Asserted as characterisation on purpose. When the key is rerouted this test
-    fails and K2 is updated in the same change -- which is the point of writing
-    it down rather than omitting it.
+    `TextArea` binds `pageup`/`pagedown` itself, so before Niki routed them at
+    the app level the composer swallowed both and the transcript never moved.
     """
     from deepagents_code.niki.keymap import build_keymap
 
@@ -143,19 +138,91 @@ async def test_pageup_is_bound_but_does_not_reach_the_transcript() -> None:
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
         await _fill(app, pilot)
-        bound = [e for e in build_keymap(app) if e.key == "pageup"]
+        bound = [e for e in build_keymap(app) if e.key in {"pageup", "pagedown"}]
         chat = app.query_one("#chat")
+        # The transcript is bottom-anchored while idle at the top offset 0, so
+        # start from a known mid-history position the way a reader would.
+        chat.scroll_to(y=10, animate=False)
+        await pilot.pause()
         before = chat.scroll_offset.y
+        assert before > 0, "the transcript never scrolled, so the test is vacuous"
+
         await pilot.press("pageup")
         await pilot.pause()
+        up = chat.scroll_offset.y
+
+        await pilot.press("pagedown")
+        await pilot.pause()
+        down = chat.scroll_offset.y
+
+        focused = app.focused
+
+    assert len(bound) >= 2, "pageup/pagedown are missing from the keymap registry"
+    assert up < before, f"K2: pageup left the transcript at {up} (was {before})"
+    assert down > up, f"K2: pagedown left the transcript at {down} (was {up})"
+    assert focused is not None, "K2: paging left no widget focused"
+    assert focused.id == "chat-input", "K2: paging moved focus off the composer"
+
+
+async def test_pageup_is_left_to_a_scrollable_draft() -> None:
+    """K2: a draft that scrolls keeps PgUp for itself."""
+    from deepagents_code.tui.widgets.chat_input import ChatTextArea
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await _fill(app, pilot)
+        composer = app.query_one("#chat-input", ChatTextArea)
+        composer.text = "\n".join(f"draft line {i}" for i in range(40))
+        composer.move_cursor((39, 0))
+        await pilot.pause()
+        chat = app.query_one("#chat")
+        chat.scroll_to(y=10, animate=False)
+        await pilot.pause()
+        before = chat.scroll_offset.y
+        cursor_before = composer.cursor_location[0]
+        assert composer.max_scroll_y > 0, "the draft does not scroll"
+
+        await pilot.press("pageup")
+        await pilot.pause()
+
+        after = chat.scroll_offset.y
+        cursor_after = composer.cursor_location[0]
+
+    assert before > 0
+    assert after == before, (
+        "K2: pageup paged the transcript even though the draft still scrolls"
+    )
+    assert cursor_after < cursor_before, (
+        "K2: pageup reached the transcript instead of the draft's own text area"
+    )
+
+
+async def test_pageup_is_left_to_an_open_modal() -> None:
+    """K2: an open modal keeps the keyboard."""
+    from textual.screen import ModalScreen
+
+    class _Modal(ModalScreen[None]):
+        """A modal with no pageup binding of its own."""
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await _fill(app, pilot)
+        chat = app.query_one("#chat")
+        chat.scroll_to(y=10, animate=False)
+        await pilot.pause()
+        before = chat.scroll_offset.y
+        app.push_screen(_Modal())
+        await pilot.pause()
+
+        await pilot.press("pageup")
+        await pilot.pause()
+
         after = chat.scroll_offset.y
 
-    assert bound, "pageup is not bound at all; the registry has no such entry"
-    assert after == before, (
-        "KNOWN GAP (K2): pageup is bound to VerticalScroll.page_up but the "
-        f"composer consumes it, so the transcript stayed at {after}. If it "
-        "scrolls now, update K2 in docs/niki/CHECKLIST.md in the same change."
-    )
+    assert before > 0
+    assert after == before, "K2: pageup paged the transcript behind an open modal"
 
 
 @pytest.mark.parametrize(

@@ -45,6 +45,8 @@ this same registry -- so no surface can advertise a dead key.
 | `left` | `scroll_left` | Scroll Left | `VerticalScroll` |
 | `n` | `approval_no` | No | `NikiApp` |
 | `pagedown` | `page_down` | Page Down | `VerticalScroll` |
+| `pagedown` | `page_transcript_down` | Page Down | `NikiApp` |
+| `pageup` | `page_transcript_up` | Page Up | `NikiApp` |
 | `pageup` | `page_up` | Page Up | `VerticalScroll` |
 | `right` | `scroll_right` | Scroll Right | `VerticalScroll` |
 | `shift+enter,alt+enter,ctrl+enter,ctrl+j` | `insert_newline` | New Line | `ChatTextArea` |

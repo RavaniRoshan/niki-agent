@@ -32,10 +32,11 @@ from time import monotonic
 from typing import ClassVar
 
 from textual.binding import Binding, BindingType
+from textual.css.query import NoMatches
 from textual.theme import Theme
 
 import deepagents_code
-from deepagents_code.app import DeepAgentsApp
+from deepagents_code.app import DeepAgentsApp, _ChatScroll
 from deepagents_code.command_registry import COMMANDS, SlashCommand, get_slash_commands
 from deepagents_code.domain.events import RunEvent, RunEventKind
 from deepagents_code.niki import theme as niki_theme
@@ -65,6 +66,25 @@ class NikiApp(DeepAgentsApp):
             "ctrl+shift+p",
             "open_command_palette",
             "Command Palette",
+            show=False,
+            priority=True,
+        ),
+        # The composer is a `TextArea`, and `TextArea` binds `pageup`/`pagedown`
+        # itself, so the key never reaches the transcript container while the
+        # composer holds focus (which F1 requires it to). These app-level
+        # priority bindings page the transcript instead, and `check_action`
+        # steps them aside whenever the composer cannot take them.
+        Binding(
+            "pageup",
+            "page_transcript_up",
+            "Page Up",
+            show=False,
+            priority=True,
+        ),
+        Binding(
+            "pagedown",
+            "page_transcript_down",
+            "Page Down",
             show=False,
             priority=True,
         ),
@@ -208,6 +228,58 @@ class NikiApp(DeepAgentsApp):
         """Push the blink preference onto every composer text area."""
         for text_area in self.query(ChatTextArea):
             text_area.cursor_blink = self.blink_cursor
+
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Step transcript paging aside whenever the key is not its to take.
+
+        Args:
+            action: The action name Textual is resolving.
+            parameters: The action's positional parameters.
+
+        Returns:
+            `False` to drop the paging binding for this keypress, or Textual's
+            own decision for every other action.
+        """
+        if action in {"page_transcript_up", "page_transcript_down"}:
+            return self._transcript_paging_applies()
+        return super().check_action(action, parameters)
+
+    def _transcript_paging_applies(self) -> bool:
+        """Return whether PgUp/PgDn should page the transcript right now.
+
+        A modal owns the keyboard while it is open, and a draft that scrolls
+        keeps the key for its own text area. Only the checklist's case -- the
+        composer holds focus and its draft fits -- reaches the transcript.
+
+        Returns:
+            `True` when the transcript should take the key.
+        """
+        if len(self.screen_stack) > 1:
+            return False
+        focused = self.focused
+        return isinstance(focused, ChatTextArea) and focused.max_scroll_y == 0
+
+    def action_page_transcript_up(self) -> None:
+        """Page the transcript up from the composer."""
+        self._page_transcript(-1)
+
+    def action_page_transcript_down(self) -> None:
+        """Page the transcript down from the composer."""
+        self._page_transcript(1)
+
+    def _page_transcript(self, direction: int) -> None:
+        """Move the transcript by one viewport and stop following the bottom.
+
+        Args:
+            direction: `-1` for a page up, `1` for a page down.
+        """
+        try:
+            chat = self.query_one("#chat", _ChatScroll)
+        except NoMatches:
+            return
+        page = max(1, chat.scrollable_content_region.height - 1)
+        chat.release_anchor()
+        chat.scroll_to(y=max(0.0, chat.scroll_y + direction * page), animate=False)
 
     def action_open_command_palette(self) -> None:
         """Open a searchable picker over commands enabled by the registry."""
