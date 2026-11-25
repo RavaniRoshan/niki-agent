@@ -118,14 +118,16 @@ unclassified P1 rows with specific reasons; `next` reports "No eligible item;
 only the phase gate remains." `readiness --phase python` exits 1, as it must
 while any P0 is blocked. No implementation change was made in this task.
 
-## Tasks 5–7 — not started, gates recorded as blocked
+## Tasks 5–7 — owner and credential gates
 
-- **Task 5 (owner verification + `niki -n` smoke):** blocked. `OWNER_VERIFY.md`
-  needs a human at a real terminal (16-colour dark/light, `/theme`, palette
-  Escape focus, completed/failed/cancelled summaries, approval pause/resume).
-  The CLI smoke needs a provider with context above the ~19,271-token system
-  prompt; all provider keys are unset, so no parser run was attempted and
-  `SMOKE.md` stays `NOT RUN`. The SDK-level evidence is not substituted.
+- **Task 5 (owner verification + `niki -n` smoke):** owner verification still
+  blocked: `OWNER_VERIFY.md` needs a human at a real terminal (16-colour
+  dark/light, `/theme`, palette Escape focus, completed/failed/cancelled
+  summaries, approval pause/resume). The CLI smoke has now been *attempted*
+  (see Session 4): the `niki -n` path runs end to end against local Ollama,
+  but no installed model produced a passing parser, and no Groq/Anthropic key
+  exists to reach one. `SMOKE.md` records the runs as `RUN, NOT PASSED`; the
+  SDK-level evidence is not substituted.
 - **Task 6 (matched Python evaluation):** blocked. No `ANTHROPIC_API_KEY`,
   `LANGSMITH_API_KEY`, working container runtime, or published branch. No
   two-task smoke, no full benchmark, no comparison JSON, and no competitiveness
@@ -142,3 +144,69 @@ owner/credential gate. To resume, supply the owner observations and provider
 credentials, record the owner decisions in the packet above, then call
 `unblock` per item and rerun `readiness --phase python` before any benchmark or
 Rust work.
+
+## Session 4 — local gate repair (2026-11-25)
+
+The plan was resumed on branch `shiva/evals/niki-smoke-run` after the machine
+rebooted and `/tmp` (worktree, scratch repos, all uncommitted work) was lost.
+The branch itself was intact. Only code-verifiable work was done; no checklist
+row was upgraded.
+
+### Repairs
+- **78 `ty` diagnostics cleared** across the runtime adapters
+  (`JsonObject`/`JsonValue` payloads instead of bare `dict[str, object]`),
+  `GoalProgressEvent` (status derived from the validated field, not cast),
+  `NikiApp.BINDINGS` (`BindingType`), the command palette (`@override` removed
+  from event handlers that do not override), and `ErrorMessage` (spans passed
+  through the `Content` constructor). Three additional `Path.cwd` call sites
+  are allowlisted in `check_process_cwd.py` with reasons.
+- **`COMMANDS.md` was stale**: `/workflow` existed in the registry but not in
+  the generated catalog. Regenerated.
+- **Prompt snapshots were stale** on this branch and failed the smoke-snapshot
+  tests. Regenerated both local snapshots; the only delta is the workspace
+  content and tool approval section.
+- **Niki visual snapshots were machine-bound**: the footer renders the working
+  directory and git branch, so every snapshot depended on the developer's
+  checkout. `_SnapshotApp` now pins both.
+- **Auth prompt test** asserted the pre-rebrand `dcode stores the above key`
+  string; it now asserts Niki's wording.
+- **Test isolation leak**: `ModelResult.apply_to_runtime_state()` writes the
+  resolved model to a module singleton, so `test_btw` (which builds server
+  graphs with `test:bootstrap`) left a model spec in force and 17
+  `test_cache_expiry` cases then skipped the cold-cache handoff. An autouse
+  `_restore_runtime_state` fixture snapshots and restores the singleton.
+- **Theme picker dismissal race**: the terminal-default write outlives the
+  modal, so a save landing after dismissal raised `NoMatches` from
+  `_rerender_options`. Treated as a dismissal. The two in-flight save tests
+  also used a 1 s deadline that a loaded machine could trip (reproduced 1 in
+  12 runs); widened to 30 s.
+
+### Verification
+- `make lint` (Ruff check and format, `ty check`, commands catalog, cwd check)
+  → exit 0.
+- `TERM=xterm-256color PYTEST_EXTRA="-n 4" make test` → **9403 passed, 1
+  skipped, 1 warning in 454 s**.
+- `TERM=xterm-256color PYTEST_EXTRA="-n 4" make check` → **all local CI checks
+  passed**: 9403 passed, 1 skipped in 439 s, extras/deps in sync, versions
+  match (`deepagents` 0.7.21, `code` 0.1.80), `uv.lock` current, SDK pin in
+  sync. `-n 4` was used because 16 xdist workers had previously crashed pytest
+  under load with `INTERNALERROR` while formatting a timeout failure.
+- `test_doctor.py::test_commit_hash_renders_as_link` fails only when `TERM` is
+  `dumb` (rich suppresses OSC 8 links in that case); it passes with a normal
+  `TERM`. Environment-only, no product change.
+- `git diff f57c6f3 -- libs/deepagents` empty; `git diff --check` clean.
+- Commits: `816c17e2` (type/lint gates), `2a8364ee` (snapshot stabilization),
+  `af57f9f3` (runtime-state fixture), `23f6afc4` (theme picker).
+
+### CLI smoke
+Five `niki -n` rounds ran against local Ollama at 24K context; the CLI path
+works end to end but no installed model solved the parser task, and no
+Groq/Anthropic credential exists to reach a stronger one. Recorded in
+`docs/niki/evaluations/SMOKE.md` as `RUN, NOT PASSED`. CLI acceptance remains
+blocked.
+
+### State at handoff
+`readiness --phase python` still exits 1: 29 P0 rows are blocked on owner
+observations or decisions, the matched Harbor benchmark is not run, and the
+plan's own gate forbids Rust work before that. Nothing in this session changed
+that gate.
