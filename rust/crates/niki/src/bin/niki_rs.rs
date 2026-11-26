@@ -7,12 +7,14 @@
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_config::{Config, Protocol, config_home};
+use niki_mcp::ToolBridge;
 use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
-use niki_tools::ToolContext;
+use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
 
@@ -100,16 +102,22 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
     let settings = agent_config(&options, &spec)?;
 
-    let cancel = CancelHandle::new();
-    let mut agent = Agent::new(provider, ctx, settings)
-        .with_policy(mode, allow)
-        .with_cancel(cancel.clone());
-
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
         .build()
         .context("start the async runtime")?;
+
+    let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
+    for error in &mcp_errors {
+        eprintln!("niki-rs: warning: {error}");
+    }
+
+    let cancel = CancelHandle::new();
+    let mut agent = Agent::new(provider, ctx, settings)
+        .with_registry(tool_registry(&mcp_tools))
+        .with_policy(mode, allow)
+        .with_cancel(cancel.clone());
 
     let quiet = options.quiet;
     runtime.block_on(async move {
@@ -176,8 +184,14 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         env_value("NIKI_REDUCED_MOTION").as_deref(),
     ));
 
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("start the async runtime")?;
+    let mcp_tools = Arc::new(load_mcp(&runtime, &config, &mut app));
+
     let build_config = config;
-    let mut worker = WorkerHandle::spawn_with(&spec, mode, move |parts| {
+    let mut worker = WorkerHandle::spawn_with_runtime(&spec, mode, runtime, move |parts| {
         let (provider_name, model) =
             split_spec(&parts.model).map_err(|error| format!("{error:#}"))?;
         let provider =
@@ -189,12 +203,36 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
             ..AgentConfig::default()
         };
         Ok(Agent::new(provider, ctx.clone(), settings)
+            .with_registry(tool_registry(&mcp_tools))
             .with_policy(parts.mode, allow.clone())
             .with_cancel(parts.cancel)
             .with_approver(parts.approver))
     });
 
     run_screen(&mut app, &mut worker).context("run the full-screen app")
+}
+
+/// Connect every configured MCP server before the screen takes the terminal.
+///
+/// A server that fails is a warning line in the transcript, not a failed
+/// startup: the session keeps the tools of every server that did answer. The
+/// runtime is handed to the worker afterwards, because the connections belong
+/// to it.
+fn load_mcp(runtime: &tokio::runtime::Runtime, config: &Config, app: &mut App) -> Vec<ToolBridge> {
+    let (tools, errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
+    for error in &errors {
+        app.transcript.push_notice(format!("warning: {error}"));
+    }
+    tools
+}
+
+/// The built-in tools plus every tool discovered from an MCP server.
+fn tool_registry(tools: &[ToolBridge]) -> Registry {
+    let mut registry = Registry::new();
+    for tool in tools {
+        registry.register(tool.clone());
+    }
+    registry
 }
 
 #[derive(Default)]
@@ -401,5 +439,49 @@ mod tests {
         assert_eq!(provider, "groq");
         assert_eq!(model, "llama-3.3-70b");
         assert!(split_spec("llama").is_err());
+    }
+
+    #[test]
+    fn a_broken_mcp_server_is_a_warning_and_the_session_still_starts() {
+        use niki_tui_live::{RowKind, TurnState};
+
+        let config = Config::from_str(
+            r#"
+[mcp_servers.also_broken]
+command = "/nonexistent/niki-mcp-startup-2"
+
+[mcp_servers.broken]
+command = "/nonexistent/niki-mcp-startup"
+"#,
+        )
+        .expect("config");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        let mut app = App::new(SessionInfo {
+            model: "mock:mock-model".to_owned(),
+            mode: Mode::Manual,
+            cwd: PathBuf::from("/work"),
+        });
+
+        let tools = load_mcp(&runtime, &config, &mut app);
+
+        assert!(tools.is_empty(), "neither server can start");
+        assert_eq!(app.status.turn, TurnState::Idle);
+        let notices: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .filter(|row| row.kind == RowKind::Notice)
+            .map(|row| row.text.as_str())
+            .collect();
+        assert_eq!(notices.len(), 2, "{notices:?}");
+        assert!(notices[0].contains("also_broken"), "{}", notices[0]);
+        assert!(notices[1].contains("broken"), "{}", notices[1]);
+        assert!(
+            notices.iter().all(|notice| notice.starts_with("warning: ")),
+            "{notices:?}"
+        );
     }
 }

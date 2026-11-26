@@ -220,7 +220,10 @@ fn render_resource(resource: &Value) -> String {
 ///
 /// The bridge keeps the owning server alive, so a registry built from
 /// [`Server::bridges`](crate::Server::bridges) holds the connection open for as
-/// long as any of its tools is registered.
+/// long as any of its tools is registered. Cloning a bridge shares that one
+/// connection: a host that rebuilds its agent, as the screen does on a model
+/// switch, can register the same tools again without a second handshake.
+#[derive(Clone)]
 pub struct ToolBridge {
     server: Arc<Server>,
     tool: McpTool,

@@ -844,6 +844,7 @@ dependencies = [
  "niki-agent",
  "niki-config",
  "niki-engine-client",
+ "niki-mcp",
  "niki-policy",
  "niki-proto",
  "niki-provider",
@@ -897,8 +898,13 @@ dependencies = [
 name = "niki-mcp"
 version = "0.1.0"
 dependencies = [
+ "futures-util",
+ "niki-agent",
  "niki-config",
+ "niki-policy",
+ "niki-provider",
  "niki-tools",
+ "niki-tui-live",
  "reqwest",
  "serde",
  "serde_json",

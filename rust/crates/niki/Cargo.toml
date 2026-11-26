@@ -21,6 +21,7 @@ crossterm.workspace = true
 niki-agent = { path = "../niki-agent" }
 niki-config = { path = "../niki-config" }
 niki-engine-client = { path = "../niki-engine-client" }
+niki-mcp = { path = "../niki-mcp" }
 niki-policy = { path = "../niki-policy" }
 niki-proto = { path = "../niki-proto" }
 niki-provider = { path = "../niki-provider" }
