@@ -23,7 +23,8 @@ cases are the equivalence proof.
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
 has started: `niki-mcp` is done for stdio and HTTP and both entry points connect
-the configured servers at startup; skills, hooks and slash commands remain.
+the configured servers at startup; slash commands are done and the screen now
+persists every turn; skills and hooks remain.
 
 ## Waves
 
@@ -65,18 +66,18 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | done — 69 tests |
-| `niki-tui-modals` | approvals, model picker, theme picker, help | done — 11 tests |
+| `niki-tui-live` | ratatui full screen: composer with bracketed paste, transcript viewport, status bar, session persistence and `/resume` | done — 86 tests |
+| `niki-tui-modals` | approvals, model picker, theme picker, help (including the command list) | done — 12 tests |
 | `niki-tui-themes` | four palettes, contrast test, ASCII glyphs, reduced motion | done — 7 tests |
 
 ### W4 — extensions
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points | done — 25 tests |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points, per-server startup timeout | done — 28 tests |
 | `niki-skills` | skill discovery, front matter, injection | open |
 | `niki-hooks` | pre/post tool hooks | open |
-| `niki-commands` | slash commands | open |
+| `niki-commands` | slash command grammar: `/clear`, `/compact`, `/resume`, `/tools`, `/version` beside the existing four | done — 7 tests |
 
 ### W5 — surfaces
 

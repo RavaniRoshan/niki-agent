@@ -517,3 +517,56 @@ fn refusing_a_gated_command_reports_it_to_the_model() {
     assert!(failed.text.contains("not approved"), "{}", failed.text);
     assert_eq!(app.status.turn, TurnState::Idle);
 }
+
+#[test]
+fn a_worker_turn_is_written_to_the_session_store() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let store_home = tempfile::tempdir().expect("store");
+    let path = store_home.path().join("sessions.db");
+    let mut app = app(workspace.path());
+    app.attach_sessions(niki_session::SessionStore::open(&path).expect("session store"));
+    let session = app.session_id().expect("a session row").to_owned();
+
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![text_turn("saved answer")])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+
+    send(&mut app, &mut worker, "remember this");
+    pump(&mut app, &worker);
+
+    let store = niki_session::SessionStore::open(&path).expect("reopen the store");
+    let summaries = store.list().expect("list");
+    assert_eq!(summaries.len(), 1, "one session for one launch");
+    let summary = summaries
+        .iter()
+        .find(|summary| summary.id.as_str() == session)
+        .expect("the screen's session");
+    assert_eq!(summary.messages, 2, "the prompt and the answer");
+    let records: Vec<(String, String)> = store
+        .load(&summary.id)
+        .expect("load")
+        .into_iter()
+        .map(|message| (message.role, message.content))
+        .collect();
+    assert_eq!(
+        records,
+        [
+            ("user".to_owned(), "remember this".to_owned()),
+            ("assistant".to_owned(), "saved answer".to_owned()),
+        ]
+    );
+}
