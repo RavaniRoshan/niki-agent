@@ -180,8 +180,8 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     let mut worker = WorkerHandle::spawn_with(&spec, mode, move |parts| {
         let (provider_name, model) =
             split_spec(&parts.model).map_err(|error| format!("{error:#}"))?;
-        let provider = build_provider(&build_config, provider_name)
-            .map_err(|error| format!("{error:#}"))?;
+        let provider =
+            build_provider(&build_config, provider_name).map_err(|error| format!("{error:#}"))?;
         let settings = AgentConfig {
             model: model.to_owned(),
             system: system.clone(),

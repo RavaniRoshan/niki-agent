@@ -25,6 +25,8 @@ const UNICODE_SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '
 const ASCII_SPINNER: [char; 4] = ['|', '/', '-', '\\'];
 /// Lines the composer grows to before it scrolls its own text.
 const MAX_COMPOSER_LINES: u16 = 5;
+/// Lines one wheel notch moves the transcript.
+pub const WHEEL_LINES: usize = 3;
 
 /// What a session starts with.
 #[derive(Debug, Clone)]
@@ -280,6 +282,16 @@ impl App {
                 self.transcript
                     .push_notice(format!("theme: {}", next.title));
             }
+        }
+    }
+
+    /// Move the transcript one wheel notch, away from the newest line or back
+    /// towards it.
+    pub fn wheel(&mut self, up: bool) {
+        if up {
+            self.scroll.up(WHEEL_LINES);
+        } else {
+            self.scroll.down(WHEEL_LINES);
         }
     }
 
@@ -587,6 +599,20 @@ mod tests {
         assert_eq!(app.scroll.offset(), 10);
         stroke(&mut app, KeyCode::PageDown);
         assert_eq!(app.scroll.offset(), 0);
+    }
+
+    #[test]
+    fn the_wheel_moves_the_transcript_a_few_lines_at_a_time() {
+        let mut app = app();
+        app.wheel(true);
+        assert_eq!(app.scroll.offset(), WHEEL_LINES);
+        app.wheel(true);
+        assert_eq!(app.scroll.offset(), WHEEL_LINES * 2);
+        app.wheel(false);
+        assert_eq!(app.scroll.offset(), WHEEL_LINES);
+        app.wheel(false);
+        app.wheel(false);
+        assert_eq!(app.scroll.offset(), 0, "it stops at the newest line");
     }
 
     #[test]

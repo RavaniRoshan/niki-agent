@@ -64,7 +64,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | done — 68 tests |
+| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | done — 69 tests |
 | `niki-tui-modals` | approvals, model picker, theme picker, help | done — 11 tests |
 | `niki-tui-themes` | four palettes, contrast test, ASCII glyphs, reduced motion | done — 7 tests |
 

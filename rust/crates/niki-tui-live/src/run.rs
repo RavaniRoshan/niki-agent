@@ -28,8 +28,6 @@ use crate::worker::{WorkerEvent, WorkerHandle};
 const BUSY_TICK: Duration = Duration::from_millis(80);
 /// Redraw interval while nothing is happening.
 const IDLE_TICK: Duration = Duration::from_millis(250);
-/// Lines one wheel notch moves.
-const WHEEL_LINES: usize = 3;
 
 /// Run the application until the person leaves it.
 ///
@@ -147,8 +145,8 @@ fn event_loop(
                 None => {}
             },
             Event::Mouse(mouse) => match mouse.kind {
-                MouseEventKind::ScrollUp => app.scroll.up(WHEEL_LINES),
-                MouseEventKind::ScrollDown => app.scroll.down(WHEEL_LINES),
+                MouseEventKind::ScrollUp => app.wheel(true),
+                MouseEventKind::ScrollDown => app.wheel(false),
                 _ => {}
             },
             _ => {}

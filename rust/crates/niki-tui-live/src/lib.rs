@@ -19,7 +19,7 @@ mod transcript;
 mod ui;
 mod worker;
 
-pub use app::{App, Command, SessionInfo};
+pub use app::{App, Command, SessionInfo, WHEEL_LINES};
 pub use composer::Composer;
 pub use niki_tui_modals::{Modal, ModelPicker, Outcome};
 pub use run::run;

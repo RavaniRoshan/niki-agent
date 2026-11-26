@@ -31,7 +31,7 @@ fixture and streams from the Python engine; it is unchanged.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 190 tests, 0 failures
+cargo test -j 2 --workspace        # 191 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
