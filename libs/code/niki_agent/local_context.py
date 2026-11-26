@@ -803,8 +803,8 @@ class LocalContextMiddleware(AgentMiddleware):
                 DETECT_CONTEXT_SCRIPT, timeout=_DETECT_SCRIPT_TIMEOUT
             )
         except NotImplementedError:
-            # Expected for async-only backends (e.g. HarborSandbox) that
-            # define a stub execute() raising NotImplementedError.
+            # Expected for async-only backends that define a stub execute()
+            # raising NotImplementedError.
             logger.debug(
                 "Backend %s does not support sync execute; "
                 "context detection deferred to async path",
