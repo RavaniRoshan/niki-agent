@@ -28,4 +28,12 @@ impl CancelHandle {
     pub fn is_cancelled(&self) -> bool {
         self.flag.load(Ordering::SeqCst)
     }
+
+    /// Clear the flag, so one handle serves every turn of a session.
+    ///
+    /// A full-screen app keeps one handle for the whole session and cancels the
+    /// turn that is running; the worker clears it before the next turn starts.
+    pub fn reset(&self) {
+        self.flag.store(false, Ordering::SeqCst);
+    }
 }

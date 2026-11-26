@@ -284,7 +284,10 @@ pub fn display_width(text: &str) -> usize {
     text.chars().map(unicode_width).sum()
 }
 
-fn wrap(text: &str, width: usize) -> Vec<String> {
+/// Split `text` into lines no wider than `width` terminal cells, breaking on
+/// whitespace and splitting a word that is longer than a line.
+#[must_use]
+pub fn wrap(text: &str, width: usize) -> Vec<String> {
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
         let mut current = String::new();

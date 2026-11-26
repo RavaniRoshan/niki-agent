@@ -1,0 +1,11 @@
+[package]
+name = "niki-tui-themes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Palettes, glyph modes and motion preferences for the Niki terminal UI"
+
+[dependencies]
+ratatui.workspace = true

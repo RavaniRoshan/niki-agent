@@ -27,6 +27,8 @@ niki-provider = { path = "../niki-provider" }
 niki-render = { path = "../niki-render" }
 niki-tools = { path = "../niki-tools" }
 niki-tui = { path = "../niki-tui" }
+niki-tui-live = { path = "../niki-tui-live" }
+niki-tui-themes = { path = "../niki-tui-themes" }
 tokio.workspace = true
 
 [dev-dependencies]
