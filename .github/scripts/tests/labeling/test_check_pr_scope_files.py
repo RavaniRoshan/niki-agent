@@ -152,13 +152,13 @@ def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
     scope coverage — deleting the early-return in `find_offenders` makes this
     test fail.
     """
-    assert is_release_title("release(deepagents-code): 0.1.22")
+    assert is_release_title("release(niki-agent): 1.1.2")
     assert (
         find_offenders(
-            "release(deepagents-code): 0.1.22",
+            "release(niki-agent): 1.1.2",
             [
                 "libs/code/niki_agent/_version.py",
-                "libs/deepagents/deepagents/_version.py",
+                "libs/partners/quickjs/pyproject.toml",
             ],
             CONFIG,
         )
@@ -182,7 +182,7 @@ def test_release_pr_change_requires_release_files_only() -> None:
     assert is_release_file("libs/code/pyproject.toml")
     assert is_release_file("libs/code/uv.lock")
     assert is_release_file("libs/code/niki_agent/_version.py")
-    assert is_release_file("libs/partners/daytona/langchain_daytona/_version.py")
+    assert is_release_file("libs/partners/quickjs/pyproject.toml")
     assert not is_release_file("libs/code/niki_agent/app.py")
     assert not is_release_file("libs/code/docs/CHANGELOG.md")
     assert not is_release_file("libs/code/niki_agent/nested/_version.py")
@@ -197,9 +197,8 @@ def test_release_pr_change_requires_release_files_only() -> None:
 
 def test_release_file_covers_partner_generated_files() -> None:
     """Partner packages nest one level deeper; their generated files match too."""
-    assert is_release_file("libs/partners/daytona/pyproject.toml")
-    assert is_release_file("libs/partners/daytona/CHANGELOG.md")
-    assert is_release_file("libs/partners/daytona/uv.lock")
+    assert is_release_file("libs/partners/quickjs/CHANGELOG.md")
+    assert is_release_file("libs/partners/quickjs/uv.lock")
     # A non-partner package's CHANGELOG/pyproject live at the package root
     # (depth 3), so the same names at depth 4 are not generated-file locations.
     assert not is_release_file("libs/code/niki_agent/pyproject.toml")
@@ -316,16 +315,12 @@ def test_release_pr_change_covers_repo_wide_lockfiles() -> None:
     the release PR is not blocked by cross-dir lockfile churn its title scope
     cannot cover.
     """
-    assert is_release_file("examples/async-subagent-server/uv.lock")
-    assert is_release_file("examples/llm-wiki/uv.lock")
+    assert is_release_file("libs/code/uv.lock")
     assert is_release_pr_change(
-        "release(langchain-quickjs): 0.3.1",
+        "release(quickjs): 0.3.9",
         [
             ".release-please-manifest.json",
-            "examples/async-subagent-server/uv.lock",
-            "examples/llm-wiki/uv.lock",
             "libs/code/uv.lock",
-            "libs/evals/uv.lock",
             "libs/partners/quickjs/CHANGELOG.md",
             "libs/partners/quickjs/pyproject.toml",
             "libs/partners/quickjs/uv.lock",
@@ -386,20 +381,20 @@ def test_is_release_title_boundaries() -> None:
 
 
 def test_partner_package_dir_detected_with_real_config() -> None:
-    """Partner packages under `libs/partners/` are package dirs too."""
+    """Packages under `libs/partners/` are package dirs too."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
     assert find_offenders(
         "fix(sdk): repair startup",
-        ["libs/partners/daytona/langchain_daytona/sandbox.py"],
+        ["libs/partners/quickjs/langchain_quickjs/globals.py"],
         config,
-    ) == [{"package": "integration:daytona", "dirs": ["libs/partners/daytona/"]}]
+    ) == [{"package": "package:quickjs", "dirs": ["libs/partners/quickjs/"]}]
 
 
 def test_partner_scope_aliases_resolve_with_real_config() -> None:
-    """`langchain-*` scope aliases map to the same partner package labels."""
+    """The `sdk` alias resolves to the product package and `quickjs` to itself."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
-    assert declared_packages("fix(langchain-quickjs): x", config) == {"integration:quickjs"}
-    assert declared_packages("fix(quickjs): x", config) == {"integration:quickjs"}
+    assert declared_packages("fix(sdk): x", config) == {"package:code"}
+    assert declared_packages("fix(quickjs): x", config) == {"package:quickjs"}
 
 
 def test_non_dict_file_rule_raises() -> None:
@@ -568,11 +563,11 @@ def test_main_missing_scope_map_returns_2(capsys, tmp_path) -> None:
 def test_real_config_has_package_scope_and_dir_mappings() -> None:
     """The committed PR labeler config exposes the maps this check reads."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
-    assert declared_packages("fix(sdk): x", config) == {"package:deepagents"}
-    assert declared_packages("fix(code): x", config) == {"package:dcode"}
-    assert changed_packages(["libs/deepagents/deepagents/graph.py"], config) == {
-        "package:deepagents": ["libs/deepagents/"]
+    assert declared_packages("fix(sdk): x", config) == {"package:code"}
+    assert declared_packages("fix(code): x", config) == {"package:code"}
+    assert changed_packages(["rust/crates/niki-proto/src/lib.rs"], config) == {
+        "package:rust": ["rust/"]
     }
     assert changed_packages(["libs/code/niki_agent/app.py"], config) == {
-        "package:dcode": ["libs/code/"]
+        "package:code": ["libs/code/"]
     }

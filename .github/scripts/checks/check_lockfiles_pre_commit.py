@@ -9,15 +9,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LIBS_ROOT = REPO_ROOT / "libs"
-EXAMPLES_ROOT = REPO_ROOT / "examples"
 
 
 def package_dirs() -> list[Path]:
     """Return every package directory that owns a `uv.lock`, in repo-path order."""
     libs = [path.parent for path in LIBS_ROOT.glob("*/Makefile")]
     partners = [path.parent for path in (LIBS_ROOT / "partners").glob("*/Makefile")]
-    examples = [path.parent for path in EXAMPLES_ROOT.glob("*/pyproject.toml")]
-    return sorted([*libs, *partners, *examples], key=_repo_path)
+    return sorted([*libs, *partners], key=_repo_path)
 
 
 def _repo_path(path: Path) -> str:

@@ -29,10 +29,10 @@ def _by_name(job: str) -> dict[str, dict[str, Any]]:
     return {step.get("name", ""): step for step in _steps(job)}
 
 
-def test_ci_runs_one_product_job_and_an_aggregate() -> None:
-    """A package-less job list means `CI Success` can never be satisfied."""
+def test_ci_runs_the_product_and_rust_jobs_plus_an_aggregate() -> None:
+    """A missing job means `CI Success` can never be satisfied."""
     jobs = _load()["jobs"]
-    assert set(jobs) == {"check", "ci_success"}
+    assert set(jobs) == {"check", "rust", "ci_success"}
 
 
 def test_check_job_runs_make_check_in_the_product_package() -> None:
@@ -53,10 +53,11 @@ def test_check_job_unsets_no_color() -> None:
 def test_success_gate_fails_on_any_result_but_success() -> None:
     """The aggregate must not pass on `cancelled`, `skipped`, or `failure`."""
     job = _load()["jobs"]["ci_success"]
-    assert job["needs"] == "check"
+    assert job["needs"] == ["check", "rust"]
     assert job["if"] == "always()"
     run = job["steps"][0]["run"]
     assert '"$CHECK_RESULT" != "success"' in run
+    assert '"$RUST_RESULT" != "success"' in run
 
 
 def test_no_job_targets_a_removed_package() -> None:

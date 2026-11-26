@@ -1,8 +1,8 @@
 # Niki Agent repository guide
 
 Niki Agent is a terminal coding agent. The product is a single Python package in
-`libs/code`; it vendors the Deep Agents SDK and ACP runtime inside that package,
-so nothing imports an upstream distribution at runtime. `rust/` holds a second
+`libs/code`; it vendors its agent SDK and ACP runtime inside that package, so
+nothing imports an external distribution at runtime. `rust/` holds a second
 front end for the same engine, built crate by crate; it does not replace the
 Python client until its parity gates are green.
 

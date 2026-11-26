@@ -207,9 +207,9 @@ def _package_rules(config: dict[str, Any]) -> list[dict[str, str]]:
         if not isinstance(label, str) or not isinstance(prefix, str):
             msg = f"pr-labeler fileRules entry has non-string label/prefix: {rule!r}"
             raise ValueError(msg)
-        # A non-`libs/` prefix (e.g. `.github/workflows/`) is a legitimate
-        # non-package rule.
-        if not prefix.startswith("libs/"):
+        # Package code lives under `libs/`, `rust/` and `install/`; any other
+        # prefix (`.github/`, `docs/`) is a legitimate non-package rule.
+        if prefix.split("/", 1)[0] not in {"libs", "rust", "install"}:
             continue
         package_rules.append({"label": label, "prefix": prefix.rstrip("/") + "/"})
 

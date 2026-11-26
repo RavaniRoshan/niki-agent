@@ -81,51 +81,28 @@
     "org:internal": "Issue or pull request created by the repository owner or a member of their organization.",
     "org:open-swe": "Pull request created from an `open-swe/` branch.",
     "priority:triage": "New issue awaiting maintainer review and priority assignment.",
-    "package:deepagents": "Changes related to the `deepagents` SDK and agent harness.",
-    "package:dcode": "Changes related to the `deepagents-code` terminal coding agent.",
-    "package:acp": "Changes related to the Agent Client Protocol package.",
-    "package:talon": "Changes related to the Talon package.",
-    "package:examples": "Changes to example code or tutorials.",
-    "integration:daytona": "Integration with the Daytona sandbox service.",
-    "integration:modal": "Integration with the Modal sandbox service.",
-    "integration:quickjs": "Integration with the QuickJS sandbox package.",
-    "integration:runloop": "Integration with the Runloop sandbox service.",
-    "integration:vercel": "Integration with Vercel sandbox services.",
-    "integration:langsmith": "Integration with LangSmith sandbox and related LangSmith services.",
     "size: XS": "Pull request with an extra-small diff.",
     "size: S": "Pull request with a small diff.",
     "size: M": "Pull request with a medium diff.",
     "size: L": "Pull request with a large diff.",
-    "size: XL": "Pull request with an extra-large diff."
+    "size: XL": "Pull request with an extra-large diff.",
+    "package:code": "Changes to the terminal agent in `libs/code`.",
+    "package:quickjs": "Changes to the QuickJS middleware in `libs/partners/quickjs`.",
+    "package:rust": "Changes to the Rust client in `rust/`.",
+    "package:infra": "Changes to installers and repository automation.",
+    "package:docs": "Changes to user documentation.",
+    "package:ci": "Changes to GitHub Actions workflows and gates."
   },
   "scopeToLabel": {
-    "acp": "package:acp",
-    "code": "package:dcode",
-    "daytona": "integration:daytona",
-    "deepagents": "package:deepagents",
-    "deepagents-acp": "package:acp",
-    "deepagents-code": "package:dcode",
-    "deepagents-talon": "package:talon",
-    "examples": "package:examples",
-    "langchain-daytona": "integration:daytona",
-    "langchain-modal": "integration:modal",
-    "langchain-quickjs": "integration:quickjs",
-    "langchain-runloop": "integration:runloop",
-    "langchain-vercel-sandbox": "integration:vercel",
-    "langsmith-sandbox": "integration:langsmith",
-    "modal": "integration:modal",
-    "quickjs": "integration:quickjs",
-    "runloop": "integration:runloop",
-    "sdk": "package:deepagents",
-    "talon": "package:talon",
-    "vercel": "integration:vercel"
+    "ci": "package:ci",
+    "code": "package:code",
+    "docs": "package:docs",
+    "infra": "package:infra",
+    "quickjs": "package:quickjs",
+    "rust": "package:rust",
+    "sdk": "package:code"
   },
-  "scopeAliases": {
-    "deepagents": "sdk",
-    "deepagents-acp": "acp",
-    "deepagents-code": "code",
-    "deepagents-talon": "talon"
-  },
+  "scopeAliases": {},
   "branchRules": [
     {
       "label": "org:open-swe",
@@ -134,60 +111,40 @@
   ],
   "fileRules": [
     {
-      "label": "package:deepagents",
-      "prefix": "libs/deepagents/",
+      "label": "package:ci",
+      "prefix": ".github/",
       "skipExcludedFiles": true
     },
     {
-      "label": "package:acp",
-      "prefix": "libs/acp/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "package:dcode",
+      "label": "package:code",
       "prefix": "libs/code/",
       "skipExcludedFiles": true
     },
     {
-      "label": "package:talon",
-      "prefix": "libs/talon/",
+      "label": "package:docs",
+      "prefix": "docs/",
       "skipExcludedFiles": true
     },
     {
-      "label": "package:examples",
-      "prefix": "examples/",
+      "label": "package:infra",
+      "prefix": "install/",
       "skipExcludedFiles": true
     },
     {
-      "label": "integration:daytona",
-      "prefix": "libs/partners/daytona/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "integration:modal",
-      "prefix": "libs/partners/modal/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "integration:quickjs",
+      "label": "package:quickjs",
       "prefix": "libs/partners/quickjs/",
       "skipExcludedFiles": true
     },
     {
-      "label": "integration:runloop",
-      "prefix": "libs/partners/runloop/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "integration:vercel",
-      "prefix": "libs/partners/vercel/",
+      "label": "package:rust",
+      "prefix": "rust/",
       "skipExcludedFiles": true
     }
   ],
   "topicFileRules": [
     {
       "label": "topic:middleware",
-      "prefix": "libs/deepagents/deepagents/middleware/"
+      "prefix": "libs/code/niki_agent/sdk/middleware/"
     },
     {
       "label": "topic:subagents",
@@ -207,7 +164,7 @@
     },
     {
       "label": "topic:backends",
-      "prefix": "libs/deepagents/deepagents/backends/"
+      "prefix": "libs/code/niki_agent/sdk/backends/"
     },
     {
       "label": "topic:sandboxes",
