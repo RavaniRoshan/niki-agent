@@ -28,7 +28,8 @@ handles bracketed paste. `niki-skills` and `niki-hooks` are next.
 | `niki-tui-modals` | approval prompt, model picker, help overlay with the command list |
 | `niki-tui-live` | the full-screen app: composer with bracketed paste, transcript, status bar, worker, session persistence |
 | `niki-commands` | slash command grammar (`/clear`, `/compact`, `/resume`, `/tools`, `/version` beside the existing four) |
-| `niki` | `niki` (engine client) and `niki-rs` (headless and full-screen) |
+| `niki-acp` | a server for the Agent Client Protocol on stdin/stdout: initialize, session/new, session/load, session/prompt, session/cancel, session/set_mode, session/set_config_option, and `session/update` notifications |
+| `niki` | `niki` (engine client) and `niki-rs` (headless, full-screen and `--acp`) |
 
 `niki-rs -n "prompt"` is the headless entry point. `niki-rs` with no `-n` opens
 the full-screen app when stdout is a terminal. `niki` still replays a protocol
@@ -58,14 +59,72 @@ never be written to the store under another turn's rows. MCP startup is now
 concurrent and abandons a silent server after `NIKI_MCP_STARTUP_TIMEOUT_SECS`
 (default 10s), reporting the same per-server warning.
 
+`niki-rs --acp` serves an editor on stdin/stdout; `--acp` with `-n` is a
+usage error and exits 2. The protocol is newline-delimited JSON-RPC 2.0 — one
+compact object per line, no `Content-Length` header — as the reference
+implementation frames it. The server answers `initialize`, `session/new`,
+`session/load`, `session/prompt`, `session/set_mode` and
+`session/set_config_option`, takes `session/cancel` as a notification, and
+streams `session/update` with `agent_message_chunk`, `tool_call`,
+`tool_call_update` and `plan` updates. A prompt runs the same `Agent::run` as
+the other entry points, rooted at the `cwd` of `session/new`. Sessions persist
+in `~/.niki/sessions.db` with the screen's roles, so `session/load` replays a
+transcript and either surface can read the other's sessions.
+
+## W5 decisions
+
+- **Framing and methods are copied, not guessed.** The installed `acp`
+  package (schema-v1.16.0) was read for the transport (newline-delimited
+  frames), the method names, every request/response alias (`sessionId`,
+  `stopReason`, `toolCallId`, `rawInput`, `sessionUpdate`) and the error
+  codes. `-32700` is never sent because the reference server drops a malformed
+  line and keeps reading; this server does the same.
+- **Approval is the existing policy, surfaced as the protocol's permission
+  request.** `Decision::Ask` becomes `session/request_permission` with
+  `allow_once`, `reject_once` and `allow_always` options; the answer maps to
+  `Approval::Once`, `Always` or `Deny`, and a cancelled outcome or an
+  unreachable client is `Deny`. The loop reports a call's name and arguments on
+  start and only the name and output on end, so the server keeps the started
+  calls and matches an end to the oldest of that name; the executing call is
+  what the permission prompt describes. `Always` on a shell command adds the
+  exact command to the existing allow-list, which is exact/prefix matching —
+  the Python side records command *types* instead.
+- **Only the mode is a config option.** `Agent` exposes no message-seeding or
+  model setter, so rebuilding an agent for a new model would drop the model's
+  conversation. Advertising a model selector would promise context the loop
+  cannot keep; `session/set_config_option` with `model` answers `-32602`
+  ("Unknown config option"), as an option the server never offered.
+- **Plan updates are driven by a tool call, as in the reference server.** A
+  registered `write_todos`/`todo_write` call's arguments become `plan` entries
+  (unknown statuses fold to `pending`, priority `medium`) right after its
+  `tool_call` update, live and on replay. The default registry has no todo tool,
+  so a default session emits none; the mapping is covered with a registered
+  tool.
+- **Replay is atomic.** `session/load` reads the whole transcript first, then
+  emits it, then answers: a write cannot tear the replay. Rows map to
+  `user_message_chunk`, `agent_message_chunk`, `tool_call` and
+  `tool_call_update`, with the store's row id as `messageId`.
+- **Session ids are the store's ids when a store is open.** Without one the
+  server mints a timestamp id and does not advertise `loadSession`, which is the
+  reference server's condition too.
+
 ## Gates
 
 ```
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 260 tests, 0 failures
+cargo test -j 2 --workspace        # 289 tests, 0 failures
 ```
+
+`crates/niki-acp` contributes 27 of them: 14 unit tests for framing, the
+protocol shapes, the plan mapping and the stop-reason mapping, and 13
+integration tests that drive `serve` over in-memory pipes with a scripted
+provider — initialize, a live prompt, a tool call, a permission round-trip
+(always-allow and reject), cancel, load and its error cases, mode and config
+changes, plan updates, a provider failure naming the provider, a half-closed
+client still receiving its answers, and a malformed line. No test opens a
+socket.
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
 server on loopback, runs the binary as a child process, and asserts the file the
@@ -181,4 +240,23 @@ commands from the same table. What remains in W4 is `niki-skills` and
 - `niki-engine-client` and `niki-proto` still describe themselves in terms of the
   runtime the Python engine speaks; their crate descriptions need a product-level
   rewrite when the engine is retired (W6).
+- **ACP:** `agent_thought_chunk` is never emitted. The turn loop's event
+  stream has text, tool-call starts/ends, usage, a step limit and a cancel — no
+  reasoning channel — so a thought would have to be invented. The Python server
+  emits them from the model runtime's reasoning blocks; the Rust provider
+  normalises none.
+- **ACP:** images and audio are refused with `-32602` and
+  `promptCapabilities.image=false`; the message model carries text only.
+  `resource_link` and embedded text/blob blocks become text metadata, as the
+  Python adapter does.
+- **ACP:** `mcpServers` in `session/new` and `session/load` is accepted and
+  ignored. Tools come from `config.toml` at startup; per-session MCP lifecycle
+  and the protocol's `acp` MCP transport are not implemented.
+- **ACP:** `session/load` replays the transcript but the model's context
+  restarts — the turn loop exposes no way to seed `Agent::messages`, so the
+  resumed session answers without earlier turns in its request.
+- **ACP:** `additionalDirectories` is ignored; `cwd` is the only root. Mode is
+  not persisted (the store has no metadata column), so a loaded session starts
+  in the process default. A second prompt while one runs is refused (`-32603`)
+  rather than queued, and `set_mode` waits for the running turn.
 - Token counting is provider-reported only (ADR-005 open question 1).

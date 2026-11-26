@@ -83,7 +83,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-acp` | editor protocol over stdio | open |
+| `niki-acp` | editor protocol over stdio: initialize, sessions, prompt, cancel, modes, config, streaming updates | done — 27 tests |
 | `niki-headless` | `-n`, JSON output, exit codes | open |
 
 ### W6 — cutover

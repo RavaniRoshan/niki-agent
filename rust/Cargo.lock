@@ -841,6 +841,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossterm 0.29.0",
+ "niki-acp",
  "niki-agent",
  "niki-config",
  "niki-engine-client",
@@ -856,6 +857,23 @@ dependencies = [
  "niki-tui-themes",
  "serde_json",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "niki-acp"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "niki-agent",
+ "niki-policy",
+ "niki-provider",
+ "niki-session",
+ "niki-tools",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
  "tokio",
 ]
 
