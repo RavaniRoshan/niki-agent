@@ -130,6 +130,27 @@ def _git_branch(cwd: str) -> str:
         return ""
 
 
+def _footer_branch(branch: str, width: int) -> str:
+    """The branch segment the footer can display inside `width` columns.
+
+    `BranchLabel` promises to report the branch it is on, truncated from the
+    right when the label is narrower than the text: it renders the branch glyph,
+    a space, then the name, and cuts the name to fit, ending in the active
+    ellipsis glyph (`get_glyphs()` picks `"…"` or `"..."`). A long branch on a
+    narrow footer is therefore truncated by design, and this reproduces that
+    rule from the label's measured width rather than assuming the full name.
+    """
+    from niki_agent.config import get_glyphs
+
+    glyphs = get_glyphs()
+    full = f"{glyphs.git_branch} {branch}"
+    if len(full) <= width:
+        return full
+    if width <= len(glyphs.ellipsis):
+        return full[:width]
+    return full[: width - len(glyphs.ellipsis)] + glyphs.ellipsis
+
+
 @pytest.mark.parametrize("size", SIZES, ids=[f"{w}x{h}" for w, h in SIZES])
 async def test_v6_the_footer_reports_real_facts(size: tuple[int, int]) -> None:
     """V6: whatever the footer claims must be independently checkable.
@@ -137,12 +158,21 @@ async def test_v6_the_footer_reports_real_facts(size: tuple[int, int]) -> None:
     Asserted against facts established outside the app: the working directory,
     the git branch, and the permission mode. A footer that shows a stale cwd or
     the wrong branch is worse than no footer.
+
+    The branch is checked as the footer promises to report it: the label is
+    allowed to truncate a name that does not fit its width, so the expectation
+    is the name itself when there is room and the label's documented
+    right-truncation otherwise (`_footer_branch`). A contributor's branch name
+    must not decide whether this test passes.
     """
+    from niki_agent.tui.widgets.status import BranchLabel
+
     app = _app()
     async with app.run_test(size=size) as pilot:
         await pilot.pause()
         await pilot.pause()
         text = _status_text(app)
+        branch_width = app.query_one("#branch-display", BranchLabel).content_size.width
         mode = str(getattr(app, "approval_mode", "") or "")
         cwd = str(Path.cwd())
 
@@ -154,8 +184,15 @@ async def test_v6_the_footer_reports_real_facts(size: tuple[int, int]) -> None:
 
     branch = _git_branch(cwd)
     if branch:
-        assert branch in text, (
-            f"V6: the git branch {branch!r} is not shown in the footer: {text!r}"
+        assert branch_width > 0, (
+            f"V6: the branch label has no width at {size[0]}x{size[1]}, so the "
+            f"footer cannot be showing {branch!r} at all: {text!r}"
+        )
+        expected = _footer_branch(branch, branch_width)
+        assert expected in text, (
+            f"V6: the footer must report the branch it is on, {branch!r}, "
+            f"truncated to its {branch_width}-column label as {expected!r}; "
+            f"footer reads {text!r}"
         )
 
     # V6 requires the footer to *collapse by width*, not wrap. So the cwd is
