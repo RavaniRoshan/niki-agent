@@ -4,10 +4,13 @@
 
 *A terminal coding agent that stays quiet, starts fast, and runs on your machine.*
 
+<sub>Current release: <a href="https://github.com/RavaniRoshan/niki-agent/releases/tag/v1.1.2">v1.1.2</a> · <a href="https://niki-docs.vercel.app">Documentation</a> · <a href="https://niki-site.vercel.app">Website</a></sub>
+
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square)](https://www.python.org)
 [![Textual](https://img.shields.io/badge/terminal-Textual%208-5c873a?style=flat-square)](https://textual.textualize.io)
 [![Rust](https://img.shields.io/badge/client-rust%202024-b7410e?style=flat-square)](rust/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](NOTICE)
+[![Release](https://img.shields.io/badge/release-v1.1.2-blue?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
 [Install](#install) · [First five minutes](#first-five-minutes) · [Approval modes](#approval-modes) ·
 [Themes](#themes) · [Providers](#providers) · [Rust client](#rust-client)
@@ -62,7 +65,7 @@ time, and the decision of what the agent may do on its own.
 | --- | --- |
 | **A quiet interface** | An idle session paints nothing (a test asserts zero idle repaints). The composer is a single rule, not a box, and a long transcript is mounted in a bounded window, so hour two renders like minute one. |
 | **A fast start** | `niki --version` is answered before the UI loads, and model setup is deferred until after the first frame, so the composer appears without waiting on a provider. |
-| **Your files, your machine** | Sessions, history, skills, and stored credentials live in `~/.niki`. No account, no cloud sync, no telemetry. |
+| **Your files, your machine** | Sessions, history, skills, and stored credentials live in `~/.niki`. No account, no cloud sync, no telemetry — outside a turn, Niki only checks for updates and refreshes model prices, both documented in [`SECURITY.md`](SECURITY.md). |
 | **Your model** | Anthropic, OpenAI, and Google Gemini work out of the box; eighteen more providers are one extra away, and any OpenAI-compatible endpoint is a config block. |
 | **A real approval gate** | Manual, Auto, and YOLO modes, a shell allow-list, and sandbox backends for when you need a hard boundary. |
 | **Accessible, not as an afterthought** | Four themes with contrast measured by the test suite, reduced motion, an ASCII glyph set, a screen-reader mode, and snapshots checked at 40, 50, 80, 120, and 160 columns. |
@@ -87,7 +90,9 @@ irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install
 The installer creates an isolated environment under `~/.local/niki`
 (`%LOCALAPPDATA%\niki` on Windows), verifies the release checksum, and puts
 `niki` on your `PATH`. It never edits your shell profile unless you ask with
-`NIKI_SHELL=1`.
+`NIKI_SHELL=1`. WSL uses the Linux installer. To uninstall, remove
+`~/.local/niki` (the application) and `~/.niki` (your configuration and
+sessions).
 
 ### From source
 
@@ -148,6 +153,9 @@ extras — Ollama, OpenRouter, NVIDIA, Groq, Together, DeepSeek, Mistral,
 Cohere, xAI, Perplexity, Fireworks, Hugging Face, IBM watsonx, Meta, Baseten,
 LiteLLM, Amazon Bedrock, and Google Vertex AI.
 
+Add one from a running session with `/install ollama`, or from source with
+`uv sync --extra ollama`.
+
 Anything else with an OpenAI-compatible API is configuration, not code — drop a
 block into `~/.niki/config.toml`:
 
@@ -195,11 +203,11 @@ The composer, modals, approvals, and command palette are in the Python client.
 
 | | |
 | --- | --- |
+| [Documentation site](https://niki-docs.vercel.app) | The same guides as a site: install, first turn, providers, keymap, security. |
 | [`ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md) | How the agent, the UI, and the tools fit together. |
 | [`INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) | Package, state, and environment guarantees. |
 | [`KEYMAP.md`](docs/niki/KEYMAP.md) | Every key binding, generated from the registry. |
 | [`PROVIDERS.md`](docs/niki/PROVIDERS.md) | Provider setup and gateway notes. |
-| [`site/README.md`](site/README.md) | How the marketing site is built, checked, and deployed. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and what is in scope. |
 
 ## Security
@@ -215,8 +223,8 @@ cd libs/code
 make check     # lint, types, imports, tests, and repository gates
 ```
 
-Contributor conventions, repository layout, and release steps are documented in
-the repository's `AGENTS.md` files.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the checks CI runs, and
+commit conventions. Release steps are in [`.github/RELEASING.md`](.github/RELEASING.md).
 
 ## License
 

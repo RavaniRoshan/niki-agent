@@ -2,14 +2,11 @@ blank_issues_enabled: false
 version: 2.1
 contact_links:
   - name: 📚 Documentation
-    url: https://github.com/RavaniRoshan/niki-agent/tree/niki-agent/docs/niki
-    about: Architecture, keymap, providers, and the independence guarantees
+    url: https://niki-docs.vercel.app
+    about: Install, first turn, providers, keymap, security
   - name: 📖 README
     url: https://github.com/RavaniRoshan/niki-agent#readme
     about: Install, run, providers, and the Rust client
   - name: 🔐 Report a security issue
     url: https://github.com/RavaniRoshan/niki-agent/security/advisories/new
     about: Report a vulnerability privately
-  - name: 📚 Documentation issue
-    url: https://github.com/RavaniRoshan/niki-agent/issues/new?template=bug-report.yml
-    about: Report an issue with the documentation

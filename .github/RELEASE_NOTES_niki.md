@@ -34,6 +34,8 @@ niki
 
 No key is needed to look around — `niki` boots to a working composer.
 
+The full guides are at **<https://niki-docs.vercel.app>**.
+
 ## What is fixed in 1.1.2
 
 **The first turn works.** The shipped wheel used to install, answer
@@ -58,7 +60,7 @@ that has no binding.
 ## What makes it different
 
 **It is quiet.** Zero idle redraws. The composer is a single rule, not a box. A
-long transcript is mounted in a bounded window, so hour three of a session
+long transcript is mounted in a bounded window, so hour two of a session
 renders like minute one.
 
 **It does not waste your first minute.** `niki --version` answers without

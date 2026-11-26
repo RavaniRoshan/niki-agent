@@ -51,13 +51,17 @@ find_wheel() {
   if [ -n "$WHEEL" ]; then
     printf '%s' "$WHEEL"; return 0
   fi
-  local dir candidate sums
-  dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  candidate="$(ls -1 "$dir"/niki_agent-*.whl 2>/dev/null | head -1 || true)"
-  if [ -n "$candidate" ]; then
-    sums="$dir/SHA256SUMS"
-    [ -f "$sums" ] && verify_sha256 "$candidate" "$sums" "$(basename "$candidate")"
-    printf '%s' "$candidate"; return 0
+  local dir candidate sums source="${BASH_SOURCE[0]:-}"
+  # `curl ... | bash` leaves `BASH_SOURCE[0]` empty or set to the interpreter
+  # name, so there is no script directory to look in.
+  if [ -n "$source" ] && [ "$source" != "bash" ] && [ "$source" != "main" ]; then
+    dir="$(cd "$(dirname "$source")" && pwd)"
+    candidate="$(ls -1 "$dir"/niki_agent-*.whl 2>/dev/null | head -1 || true)"
+    if [ -n "$candidate" ]; then
+      sums="$dir/SHA256SUMS"
+      [ -f "$sums" ] && verify_sha256 "$candidate" "$sums" "$(basename "$candidate")"
+      printf '%s' "$candidate"; return 0
+    fi
   fi
 
   log "no wheel alongside the installer; downloading the latest release"
