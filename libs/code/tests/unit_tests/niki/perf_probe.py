@@ -220,27 +220,53 @@ __all__ = [
 ]
 
 
+def _nearest_rank_p95(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    # Nearest-rank p95; at these sample counts an interpolation would imply
+    # precision the probe does not have.
+    index = min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))
+    return ordered[index]
+
+
 @dataclass
 class EchoSample:
-    """Composer key-echo latency, measured while a stream is running."""
+    """Composer key-echo latency, measured while a stream is running.
+
+    `samples_ms` is what the driver charges a keypress including one
+    `pilot.pause()` round-trip, so it is a floor rather than the composer's own
+    cost. `pause_ms` is the matching round-trip with no keypress, taken in the
+    same streaming condition; `p95_excess_ms` subtracts it and is the number the
+    gate uses, because the round-trip grows with runner load and the composer
+    does not.
+    """
 
     presses: int
     samples_ms: list[float]
+    pause_ms: list[float]
 
     @property
     def p95_ms(self) -> float:
-        if not self.samples_ms:
-            return 0.0
-        ordered = sorted(self.samples_ms)
-        # Nearest-rank p95; at these sample counts an interpolation would imply
-        # precision the probe does not have.
-        index = min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))
-        return ordered[index]
+        return _nearest_rank_p95(self.samples_ms)
 
     @property
     def median_ms(self) -> float:
         ordered = sorted(self.samples_ms)
         return ordered[len(ordered) // 2] if ordered else 0.0
+
+    @property
+    def excess_ms(self) -> list[float]:
+        paired = zip(self.samples_ms, self.pause_ms, strict=False)
+        return [max(0.0, sample - pause) for sample, pause in paired]
+
+    @property
+    def p95_excess_ms(self) -> float:
+        return _nearest_rank_p95(self.excess_ms)
+
+    @property
+    def p95_pause_ms(self) -> float:
+        return _nearest_rank_p95(self.pause_ms)
 
 
 async def measure_input_echo(
@@ -259,6 +285,7 @@ async def measure_input_echo(
     from deepagents_code.tui.widgets.messages import AssistantMessage
 
     samples: list[float] = []
+    pauses: list[float] = []
     async with app.run_test(size=size) as pilot:
         await pilot.pause()
         chat_input = app.query_one("#chat-input")
@@ -281,12 +308,17 @@ async def measure_input_echo(
                 elapsed = (time.perf_counter() - started) * 1000
                 if str(getattr(chat_input, "text", "")) != before:
                     samples.append(elapsed)
+                    # Pair every counted sample with the harness round-trip it
+                    # paid, so the caller can subtract the driver's share.
+                    pause_started = time.perf_counter()
+                    await pilot.pause()
+                    pauses.append((time.perf_counter() - pause_started) * 1000)
         finally:
             if streamer is not None:
                 streamer.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await streamer
-    return EchoSample(presses=presses, samples_ms=samples)
+    return EchoSample(presses=presses, samples_ms=samples, pause_ms=pauses)
 
 
 async def measure_resize_storm(
