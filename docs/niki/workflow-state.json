@@ -39,12 +39,12 @@
     "F5 session resume picker": "arrow-key navigation verified against a real on-disk thread store"
   },
   "owner": null,
-  "branch": null,
+  "branch": "shiva/evals/niki-smoke-run",
   "blocked": {},
-  "last_commit": "eb3ac2bbbb17cf0106f4893ed9f356fb72d06614",
+  "last_commit": "c15886da",
   "last_eval": {
     "python_evaluation": "blocked",
-    "reason": "ANTHROPIC_API_KEY/LANGSMITH_API_KEY unset, no container runtime, no published branch; matched benchmark not run",
+    "reason": "ANTHROPIC_API_KEY and LANGSMITH_API_KEY are unset and no container runtime is usable (no docker; podman: default OCI runtime crun not found), so the matched benchmark was not run; the branch is published and the Python product is ready.",
     "baseline_avg_at_3": null,
     "final_avg_at_3": null
   },
