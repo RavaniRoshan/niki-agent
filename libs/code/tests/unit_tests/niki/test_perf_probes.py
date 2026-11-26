@@ -47,7 +47,7 @@ IDLE_RENDER_CEILING = 12
 IDLE_CPU_CEILING_PERCENT = 100.0
 DEEP_RATIO_CEILING = 10.0
 RENDER_RATE_CEILING = 60.0
-ECHO_P95_CEILING_MS = 250.0  # headless floor, see the test docstring
+ECHO_P95_CEILING_MS = 250.0  # excess over a harness round-trip; see the test
 SCROLL_PAINT_CEILING_MS = 50.0
 SCROLL_RSS_GROWTH_CEILING_MB = 150.0
 
@@ -324,16 +324,20 @@ def test_artifact_is_readable_json() -> None:
 async def test_input_echo_latency_while_streaming() -> None:
     """S2: keypress-to-composer latency with a stream running.
 
-    The number recorded here is a **floor**, not a terminal measurement: each
-    sample includes one `pilot.pause()` round-trip, which the headless driver
-    charges to the event loop. The absolute value is therefore pessimistic. What
-    it does establish is the shape -- echo stays well under a frame budget's
-    worth of blocking while the stream coalesces -- and where the real cost is.
+    The raw number is a **floor**, not a terminal measurement: each sample
+    includes one `pilot.pause()` round-trip, which the headless driver charges
+    to the event loop. The probe therefore measures that round-trip separately
+    in the same streaming condition and gates on the excess, which is the part
+    the composer owns. The raw figure is still recorded so it stays comparable
+    with `docs/niki/BASELINE.md`; on a contended runner the round-trip alone can
+    reach 200 ms, and gating on it makes the probe a machine-speed measurement.
     """
     sample = await measure_input_echo(_niki_app(), (80, 24), presses=20)
     _record(
         {
             "input_echo_p95_ms": round(sample.p95_ms, 1),
+            "input_echo_p95_excess_ms": round(sample.p95_excess_ms, 1),
+            "input_echo_p95_pause_ms": round(sample.p95_pause_ms, 1),
             "input_echo_median_ms": round(sample.median_ms, 1),
             "input_echo_samples": len(sample.samples_ms),
         }
@@ -343,9 +347,14 @@ async def test_input_echo_latency_while_streaming() -> None:
         f"only {len(sample.samples_ms)}/{sample.presses} presses reached the "
         "composer; the echo probe is not measuring what it claims"
     )
-    assert sample.p95_ms <= ECHO_P95_CEILING_MS, (
-        f"input echo p95 {sample.p95_ms:.0f} ms exceeds the {ECHO_P95_CEILING_MS} ms "
-        "ceiling (headless floor, includes one pause round-trip per sample)"
+    assert len(sample.pause_ms) == len(sample.samples_ms), (
+        "the harness round-trip and the keypress samples are not paired; the "
+        "excess figure would compare unrelated costs"
+    )
+    assert sample.p95_excess_ms <= ECHO_P95_CEILING_MS, (
+        f"input echo p95 {sample.p95_excess_ms:.0f} ms after subtracting the "
+        f"harness round-trip exceeds the {ECHO_P95_CEILING_MS} ms ceiling "
+        f"(raw p95 {sample.p95_ms:.0f} ms, round-trip p95 {sample.p95_pause_ms:.0f} ms)"
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -30,12 +31,15 @@ async def _wait_for_prompt(screen: MCPLoginScreen) -> None:
 
     The login screen only shows its input widget once an interaction
     method like `request_callback_url` has run far enough to flip
-    `display = True`. Tests need to wait for that to inject values; a
-    short polling loop with a 2s deadline is sufficient because the
+    `display = True`. Tests need to wait for that to inject values; the
     production code that flips the flag runs synchronously inside
-    `_await_input`.
+    `_await_input`, so a passing run returns on the first poll. The
+    deadline only bounds the failure path, and it is generous: a runner
+    driving several Textual apps can starve this loop past 2 s, which
+    then left `login` waiting on a prompt nobody submitted and surfaced
+    as the repo-wide 30 s timeout instead of a useful error.
     """
-    async with asyncio.timeout(2.0):
+    async with asyncio.timeout(10.0):
         while True:
             try:
                 visible = screen.query_one("#ml-input", Input).display
@@ -308,16 +312,24 @@ class TestMCPLoginScreenWithLoginCoroutine:
                         await pending
 
             driver = asyncio.create_task(drive_prompts())
-            await login(
-                server_name="slack",
-                server_config={
-                    "type": "http",
-                    "url": "https://slack.com/mcp",
-                    "auth": "oauth",
-                },
-                ui=screen,
-            )
-            await driver
+            try:
+                # Bounded so a driver that never submitted fails here with a
+                # timeout instead of leaving `login` awaiting a prompt until
+                # the repo-wide per-test timeout kills the worker.
+                async with asyncio.timeout(20.0):
+                    await login(
+                        server_name="slack",
+                        server_config={
+                            "type": "http",
+                            "url": "https://slack.com/mcp",
+                            "auth": "oauth",
+                        },
+                        ui=screen,
+                    )
+            finally:
+                driver.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await driver
 
         assert captured_urls == ["abc"]
 
