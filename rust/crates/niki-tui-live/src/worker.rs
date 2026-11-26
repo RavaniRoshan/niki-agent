@@ -94,7 +94,36 @@ impl WorkerHandle {
     }
 
     /// Start the worker with an initial approval mode.
-    pub fn spawn_with<F>(model: &str, mode: Mode, mut build: F) -> Self
+    pub fn spawn_with<F>(model: &str, mode: Mode, build: F) -> Self
+    where
+        F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
+    {
+        Self::spawn_inner(model, mode, None, build)
+    }
+
+    /// Start the worker on a runtime the host already built and used.
+    ///
+    /// A host that opens I/O before the first turn — connecting MCP servers, say
+    /// — passes the same runtime here, because a tokio resource belongs to the
+    /// runtime that opened it. Every turn then runs where the connection lives.
+    pub fn spawn_with_runtime<F>(
+        model: &str,
+        mode: Mode,
+        runtime: tokio::runtime::Runtime,
+        build: F,
+    ) -> Self
+    where
+        F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
+    {
+        Self::spawn_inner(model, mode, Some(runtime), build)
+    }
+
+    fn spawn_inner<F>(
+        model: &str,
+        mode: Mode,
+        runtime: Option<tokio::runtime::Runtime>,
+        mut build: F,
+    ) -> Self
     where
         F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
     {
@@ -106,10 +135,12 @@ impl WorkerHandle {
         let mut model = model.to_owned();
 
         thread::spawn(move || {
-            let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            else {
+            let Some(runtime) = runtime.or_else(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .ok()
+            }) else {
                 let _ = event_tx.send(WorkerEvent::Finished(Err(
                     "cannot start the async runtime".to_owned()
                 )));
