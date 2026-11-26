@@ -423,3 +423,22 @@
   Set `workflow-state.json` phase to `complete` only when every Python `WORKS` behavior has Rust evidence, all required Rust acceptance rows are `WORKS` or owner-approved `DEFERRED`, the Rust matched benchmark artifacts exist, the comparison passes both competitiveness thresholds, all required checks pass, and `libs/deepagents` remains untouched. If either threshold fails, keep phase `rust_evaluation`, publish the measurement without a competitiveness claim, and generate task cards from reproducible failures; do not mark the workflow complete unless the owner explicitly stops the effort. Commit the final readiness record only after the gate passes.
 
 ---
+
+## Workflow status (2026-11-26)
+
+The checkboxes above are left as written; this section records where the
+workflow actually stands, so the plan and the product do not disagree.
+
+| Task | Status | Evidence |
+| --- | --- | --- |
+| 1 — local evaluation-harness gaps | **Done** | `libs/evals` comparator tests and lint; recorded in `docs/niki/PROGRESS.md` Sessions 2–4. |
+| 2 — dynamic completion workflow | **Done** | `libs/code/scripts/niki_workflow.py`, `docs/niki/workflow-state.json`, the task-card skill and its tests. |
+| 3 — reconcile checklist, record a baseline | **Done** | `docs/niki/CHECKLIST.md` + `docs/niki/BASELINE.md`. |
+| 4 — drive the Python P0 backlog | **Done** | `readiness --phase python` exits 0; 51 P0 rows resolved, 57 rows WORKS. |
+| 5 — owner checks and the CLI smoke | **Run; smoke not passed** | Owner-only checks are in `docs/niki/OWNER_VERIFY.md`; the five local-model runs are `RUN, NOT PASSED` in `docs/niki/evaluations/SMOKE.md` and tracked in #7. |
+| 6 — matched Python evaluation, open the Rust gate | **Blocked, not claimed** | `ANTHROPIC_API_KEY`/`LANGSMITH_API_KEY` unset and no usable container runtime (no Docker; Podman fails with `default OCI runtime "crun" not found`). Recorded in `docs/niki/evaluations/SMOKE.md`; tracked in #6. No SDK-level run is substituted. |
+| 7 — Rust parity | **Not started** | `docs/niki/RUST_MIGRATION_GATE.md`: the gate requires a passed matched Python benchmark first. |
+
+The Python product is shipped on `niki-agent` (`592e1876`, `7f1547aa`,
+`71d49b65`). What remains is exactly what the gate says remains: the matched
+comparison, then Rust — both waiting on the environment above, not on code.
