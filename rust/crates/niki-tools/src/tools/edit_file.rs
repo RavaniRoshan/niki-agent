@@ -43,9 +43,9 @@ impl Tool for EditFile {
     }
 
     async fn run(&self, args: Value, ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
-        let path = args::required_str(&args, "path")?;
-        let old = args::required_str(&args, "old")?;
-        let new = args::required_str(&args, "new")?;
+        let path = args::required_str_any(&args, &["file_path", "path"])?;
+        let old = args::required_str_any(&args, &["old_string", "old"])?;
+        let new = args::required_str_any(&args, &["new_string", "new"])?;
         let replace_all = args::optional_bool(&args, "replace_all")?.unwrap_or(false);
 
         if old.is_empty() {

@@ -16,6 +16,7 @@ use niki_hooks::{HookRunner, Hooks, Loaded};
 use niki_mcp::ToolBridge;
 use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
 use niki_session::SessionStore;
+use niki_skills::SkillCatalog;
 use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
@@ -112,10 +113,17 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     let root = workspace_root(&options)?;
     let ctx = ToolContext::new(root.clone())
         .with_context(|| format!("open the workspace at {}", root.display()))?;
+    // Canonical, like the root the tools resolved: the path a skill is read
+    // from must pass the same boundary check that `read_file` applies.
+    let skills = skill_catalog(&ctx.root);
+    for warning in skills.warnings() {
+        // stderr, not stdout: the answer a pipe captures stays the answer.
+        eprintln!("niki-rs: warning: {warning}");
+    }
 
     let mode = mode(options.mode.as_deref());
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
-    let settings = agent_config(&options, &spec)?;
+    let settings = agent_config(&options, &spec, &skills)?;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -184,16 +192,17 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     let mode = mode(options.mode.as_deref());
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
     let max_steps = options.max_steps.unwrap_or(40);
-    let system = options
-        .system
-        .clone()
-        .unwrap_or_else(|| AgentConfig::default().system);
+    let skills = skill_catalog(&ctx.root);
+    // The model cannot use a skill it was never told about, so `--system`
+    // replaces the base text and the skills section is appended to it.
+    let system = system_prompt(&options, &skills);
 
     let mut app = App::new(SessionInfo {
         model: spec.clone(),
         mode,
         cwd: root,
     });
+    app.set_skills(skills);
     app.set_palette(palette_or_default(config.theme.as_deref()));
     app.set_models(ModelPicker::from_config(&config));
     app.set_glyphs(GlyphMode::from_value(env_value("NIKI_ASCII").as_deref()));
@@ -252,7 +261,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
     let default_mode = mode(options.mode.as_deref());
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
     let max_steps = options.max_steps.unwrap_or(40);
-    let system = options
+    let base_system = options
         .system
         .clone()
         .unwrap_or_else(|| AgentConfig::default().system);
@@ -277,9 +286,13 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             let provider = build_provider(&build_config, provider_name)
                 .map_err(|error| format!("{error:#}"))?;
             let ctx = ToolContext::new(seed.cwd.as_path()).map_err(|error| error.to_string())?;
+            let skills = skill_catalog(&ctx.root);
+            for warning in skills.warnings() {
+                eprintln!("niki-rs: warning: {warning}");
+            }
             let settings = AgentConfig {
                 model: model.to_owned(),
-                system: system.clone(),
+                system: skills.inject_into(&base_system),
                 max_steps,
                 ..AgentConfig::default()
             };
@@ -468,17 +481,31 @@ fn workspace_root(options: &Options) -> Result<PathBuf> {
         .context("resolve the workspace")
 }
 
-fn agent_config(options: &Options, spec: &str) -> Result<AgentConfig> {
+/// Discover the project skills, the user's skills and the built-ins.
+///
+/// The user directory follows `NIKI_HOME`, so a profile selected for this run is
+/// the profile whose skills are used.
+fn skill_catalog(root: &Path) -> SkillCatalog {
+    SkillCatalog::discover(root, &config_home().join("skills"))
+}
+
+fn agent_config(options: &Options, spec: &str, skills: &SkillCatalog) -> Result<AgentConfig> {
     let (_, model) = split_spec(spec)?;
     Ok(AgentConfig {
         model: model.trim().to_owned(),
-        system: options
-            .system
-            .clone()
-            .unwrap_or_else(|| AgentConfig::default().system),
+        system: system_prompt(options, skills),
         max_steps: options.max_steps.unwrap_or(40),
         ..AgentConfig::default()
     })
+}
+
+/// The system prompt one turn is sent with: the base text plus the skills.
+fn system_prompt(options: &Options, skills: &SkillCatalog) -> String {
+    let base = options
+        .system
+        .clone()
+        .unwrap_or_else(|| AgentConfig::default().system);
+    skills.inject_into(&base)
 }
 
 fn mode(raw: Option<&str>) -> Mode {
@@ -590,6 +617,39 @@ mod tests {
         assert_eq!(provider, "groq");
         assert_eq!(model, "llama-3.3-70b");
         assert!(split_spec("llama").is_err());
+    }
+
+    #[test]
+    fn discovered_skills_reach_the_system_prompt() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let directory = project.path().join(".niki/skills/deploy");
+        std::fs::create_dir_all(&directory).expect("skill directory");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            "---\nname: deploy\ndescription: Ship a release safely.\n---\nbody\n",
+        )
+        .expect("skill");
+
+        let skills = SkillCatalog::discover(project.path(), user.path());
+        let settings =
+            agent_config(&Options::default(), "mock:mock-model", &skills).expect("config");
+        assert!(settings.system.contains("## Skills"), "{}", settings.system);
+        assert!(settings.system.contains("deploy"));
+        assert!(settings.system.contains("Ship a release safely."));
+        assert!(settings.system.contains("deploy/SKILL.md"));
+
+        let custom = Options {
+            system: Some("custom base".to_owned()),
+            ..Options::default()
+        };
+        let settings = agent_config(&custom, "mock:mock-model", &skills).expect("config");
+        assert!(
+            settings.system.starts_with("custom base"),
+            "{}",
+            settings.system
+        );
+        assert!(settings.system.contains("deploy/SKILL.md"));
     }
 
     #[test]

@@ -23,9 +23,9 @@ cases are the equivalence proof.
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
 has started: `niki-mcp` is done for stdio and HTTP and the `niki-rs` entry points
-connect the configured servers at startup. Hooks (`PreToolUse`, `PostToolUse`,
-`UserPromptSubmit`) and slash commands are done, and the screen now persists
-every turn; skills remain.
+connect the configured servers at startup. Skills, hooks (`PreToolUse`,
+`PostToolUse`, `UserPromptSubmit`) and slash commands are done, and the screen
+persists every turn.
 
 ## Waves
 
@@ -75,10 +75,10 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points, per-server startup timeout | done — 28 tests |
-| `niki-skills` | skill discovery, front matter, injection | open |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in every entry point, per-server startup timeout | done — 28 tests |
+| `niki-skills` | skill discovery, front matter, injection | done — 31 tests |
 | `niki-hooks` | `hooks.json`, pre/post tool and prompt hooks | done — 24 tests |
-| `niki-commands` | slash command grammar: `/clear`, `/compact`, `/resume`, `/tools`, `/version` beside the existing four | done — 7 tests |
+| `niki-commands` | slash command grammar: `/clear`, `/compact`, `/resume`, `/tools`, `/version`, `/skills` beside the existing four | done — 7 tests |
 
 ### W5 — surfaces
 

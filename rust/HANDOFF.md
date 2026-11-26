@@ -7,10 +7,11 @@ cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 `[mcp_servers]`, registers discovered tools in the existing registry, and the
 `niki-rs` entry points now connect the configured servers at startup.
-`niki-hooks` runs `PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers
-from `hooks.json`, and `niki-commands` owns the slash command grammar. The
-screen persists every completed turn and handles bracketed paste. `niki-skills`
-is next.
+`niki-skills` discovers project, user and built-in skills and every entry point
+gives them to the model through the system prompt. `niki-hooks` runs
+`PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers from `hooks.json`,
+and `niki-commands` owns the slash command grammar. The screen persists every
+completed turn and handles bracketed paste.
 
 ## What is implemented
 
@@ -21,7 +22,8 @@ is next.
 | `niki-tools` | read/write/edit/list, shell, grep, glob over a rooted workspace; runtime tool registration |
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
-| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points under a per-server startup budget |
+| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by every entry point under a per-server startup budget |
+| `niki-skills` | project/user/built-in skill discovery, front-matter parsing, system-prompt injection, `/skills` |
 | `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, blocking verdicts; installed by every `niki-rs` entry point |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
@@ -47,6 +49,19 @@ refusal. A server that fails to start does not stop the session: the screen
 shows `warning: mcp server …` as a transcript notice before the first frame and
 the run continues with the remaining servers (headless prints the same warning
 on stderr).
+
+Skills are discovered from `<root>/.niki/skills`, `<NIKI_HOME or ~/.niki>/skills`
+and the two built-in skills compiled into `niki-skills` (`commit`, `review`),
+with the first match for a name winning in that order. The screen and a headless
+run discover once at startup; the ACP server discovers for each session root.
+Every entry point injects a compact `## Skills` section into the system prompt —
+name, description, and for a skill on disk the `SKILL.md` path to read when it
+applies — so a long body costs nothing on a turn that does not use it; a
+built-in has no file, so its short instructions are the one body the section
+carries. A `SKILL.md` with no description, or front matter that does not parse,
+is skipped with a warning and the session continues (headless and the ACP server
+print the warnings on stderr); the screen shows the whole catalog, with paths
+and skipped files, through `/skills`.
 
 Hooks run beside those extensions. `niki-hooks` reads
 `{workspace}/.niki/hooks.json` and `{config_home}/hooks.json` (the project file
@@ -144,7 +159,7 @@ transcript and either surface can read the other's sessions.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 317 tests, 0 failures
+cargo test -j 1 --workspace        # 356 tests, 0 failures
 ```
 
 `crates/niki-acp` contributes 27 of them: 14 unit tests for framing, the
@@ -237,14 +252,15 @@ startup wiring is covered without a network or a terminal.
   one async mutex and marked closed after a timeout, exit or malformed line.
   HTTP requests are independent and are not marked closed.
 
-## Next: W4 — extensions
+## Next: W5 — ACP and headless parity
 
-`niki-mcp` is done for stdio, HTTP, config, registration, startup wiring and a
-per-server startup budget: both entry points call
-`niki_mcp::load(&config.mcp_servers)`, register the bridges, and hand the
-screen's worker the runtime those connections live on. `niki-hooks` is done as
-well, and `niki-commands` owns `App::slash` with the help overlay reading the
-same table. What remains in W4 is `niki-skills`.
+W4 is complete: `niki-mcp` (stdio, HTTP, config, registration, startup
+wiring and a per-server startup budget), `niki-skills` (discovery, front
+matter, system-prompt injection, `/skills`) and `niki-hooks` are done, and
+`niki-commands` owns `App::slash` with the help overlay reading the same
+table. Every entry point calls `niki_mcp::load` and installs the hooks runner,
+and all three inject the same skills section into their system prompt. W5 (ACP
+and headless parity) has started: `niki-acp` is done; headless parity remains.
 
 ## Known gaps
 
@@ -269,6 +285,16 @@ same table. What remains in W4 is `niki-skills`.
 - `niki-engine-client` and `niki-proto` still describe themselves in terms of the
   runtime the Python engine speaks; their crate descriptions need a product-level
   rewrite when the engine is retired (W6).
+- A user skill's `SKILL.md` lives outside the workspace root, and `read_file`
+  refuses a path outside the root (RULES 7). The model is told about every
+  skill, and reads project skills (`.niki/skills`, inside the root) normally;
+  opening a user skill needs a read path that does not exist yet — a mount in
+  `niki-tools` or a dedicated skill tool. Built-in skills are unaffected
+  because their instructions are injected.
+- User skills are read from `<NIKI_HOME or ~/.niki>/skills` in this slice. The
+  Python client keeps profile skills at `~/.niki/<profile>/skills` (default
+  `~/.niki/agent/skills`), so the two clients do not see the same user skills
+  yet; the profile layout is a W4/W6 decision.
 - **ACP:** `agent_thought_chunk` is never emitted. The turn loop's event
   stream has text, tool-call starts/ends, usage, a step limit and a cancel — no
   reasoning channel — so a thought would have to be invented. The Python server

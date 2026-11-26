@@ -29,6 +29,7 @@ niki-proto = { path = "../niki-proto" }
 niki-provider = { path = "../niki-provider" }
 niki-render = { path = "../niki-render" }
 niki-session = { path = "../niki-session" }
+niki-skills = { path = "../niki-skills" }
 niki-tools = { path = "../niki-tools" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-live = { path = "../niki-tui-live" }

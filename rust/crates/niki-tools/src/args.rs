@@ -20,6 +20,36 @@ pub(crate) fn required_str<'a>(args: &'a Value, key: &str) -> Result<&'a str, To
     }
 }
 
+/// The first of `keys` present as a string.
+///
+/// The product's wire vocabulary and the Python client both call the file
+/// argument `file_path` (and the edit strings `old_string`/`new_string`), while
+/// the Rust tools were written with `path`/`old`/`new`. Accept either spelling
+/// so an instruction, skill, or hook written for the product keeps working.
+pub(crate) fn required_str_any<'a>(args: &'a Value, keys: &[&str]) -> Result<&'a str, ToolError> {
+    let map = object(args)?;
+    for key in keys {
+        match map.get(*key) {
+            Some(Value::String(value)) => return Ok(value),
+            Some(_) => {
+                return Err(ToolError::InvalidArguments(format!(
+                    "`{key}` must be a string"
+                )));
+            }
+            None => {}
+        }
+    }
+    let accepted = if keys.len() > 1 {
+        format!(" (also accepted: {})", keys[1..].join(", "))
+    } else {
+        String::new()
+    };
+    Err(ToolError::InvalidArguments(format!(
+        "missing required argument `{}`{accepted}",
+        keys[0]
+    )))
+}
+
 pub(crate) fn optional_str<'a>(args: &'a Value, key: &str) -> Result<Option<&'a str>, ToolError> {
     match object(args)?.get(key) {
         None => Ok(None),
