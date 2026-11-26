@@ -74,9 +74,24 @@ Install just one provider's extra instead of all of them with
 ```bash
 uv run niki                      # interactive
 uv run niki --help               # usage and options
-uv run niki --version            # Niki Agent 1.1.0
+uv run niki --version            # Niki Agent 1.1.1
 uv run niki -n "summarize this repo"   # headless
 ```
+
+## Approval modes
+
+Shift+Tab cycles **Manual → Auto → YOLO**; the status bar names the active mode.
+
+| Mode | What runs without asking first |
+| --- | --- |
+| Manual | Nothing gated. Shell commands, file writes, and network tools ask. |
+| Auto | Routine gated actions run; anything uncertain is reviewed by a classifier model and still asks when review fails. |
+| YOLO | Everything the policy allows runs unsupervised. The first switch shows a one-time notice per machine. |
+
+Auto and YOLO are not sandboxes: the agent runs on this machine with your user's
+permissions. Use `--yolo`, `--auto-approve`, the shell allow-list, and the
+sandbox backends when you need a hard boundary. `[startup].yolo_switcher` can
+keep YOLO out of the cycle.
 
 ## Independence
 

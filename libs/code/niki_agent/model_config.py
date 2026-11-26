@@ -6700,7 +6700,7 @@ def touch_recent_model(model_spec: str, state_dir: Path | None = None) -> bool:
 def save_recent_agent(agent_name: str, config_path: Path | None = None) -> bool:
     """Update the recently used agent in config file.
 
-    Writes to `[agents].recent` so a later bare `deepagents` launch (no
+    Writes to `[agents].recent` so a later bare `niki` launch (no
     `-a`) can bring the user back to their last agent instead of the
     default.
 
