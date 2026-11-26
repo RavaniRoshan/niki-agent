@@ -544,3 +544,13 @@ before the fix, and the merged tree is verified again below.
   `niki --version` → `Niki Agent 1.0.1` (exit 0), `niki doctor` → exit 0 with
   the tips reading `niki config`. This is the end-to-end proof for the 1.0.1
   artifact, not just the tree it was built from.
+
+### Re-verification at 1.0.1
+- Fresh shallow clone of `niki-agent`, then the README path
+  (`uv sync --all-extras` → `uv run niki --version`) prints `Niki Agent 1.0.1`
+  and `niki doctor` exits 0, so the dev instructions work from a clean checkout.
+- `scripts/niki_workflow.py readiness --phase python` exits 0: 51 P0, 51
+  resolved, checklist gate PASS.
+- `bash rust/tools/m2_session.sh` re-run against the released tree: the live PTY
+  transcript equals the replay frame, exit 0.
+- CI on the two follow-up PRs (`make check`, `rust client`, `CI Success`) green.
