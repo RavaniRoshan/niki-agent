@@ -87,7 +87,6 @@
     "size: L": "Pull request with a large diff.",
     "size: XL": "Pull request with an extra-large diff.",
     "package:code": "Changes to the terminal agent in `libs/code`.",
-    "package:quickjs": "Changes to the QuickJS middleware in `libs/partners/quickjs`.",
     "package:rust": "Changes to the Rust client in `rust/`.",
     "package:infra": "Changes to installers and repository automation.",
     "package:docs": "Changes to user documentation.",
@@ -98,7 +97,7 @@
     "code": "package:code",
     "docs": "package:docs",
     "infra": "package:infra",
-    "quickjs": "package:quickjs",
+    "quickjs": "package:code",
     "rust": "package:rust",
     "sdk": "package:code"
   },
@@ -128,11 +127,6 @@
     {
       "label": "package:infra",
       "prefix": "install/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "package:quickjs",
-      "prefix": "libs/partners/quickjs/",
       "skipExcludedFiles": true
     },
     {

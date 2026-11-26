@@ -50,10 +50,10 @@ _JS_EVAL_TRAILING_BLOCK_PATTERN = re.compile(
 )
 r"""Match the trailing `<result>`/`<error>` block, anchored to end of output.
 
-The wire format emitted by the `js_eval` REPL tool (see langchain_quickjs
-`format_outcome`) is `"\n".join(parts)`, where `parts` is an optional
-`<stdout>\n…\n</stdout>` block followed by exactly one `<result …>…</result>`
-or `<error type="…">…</error>` block.
+The wire format emitted by the `js_eval` REPL tool (see
+`niki_agent._vendor.quickjs._format.format_outcome`) is `"\n".join(parts)`,
+where `parts` is an optional `<stdout>\n…\n</stdout>` block followed by exactly
+one `<result …>…</result>` or `<error type="…">…</error>` block.
 
 Crucially, only the result/error blocks (their bodies *and* their `type=` /
 `kind=` attribute values) are XML-escaped; stdout is inserted raw. So a

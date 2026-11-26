@@ -19,6 +19,8 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
+mod builtin;
+
 /// The wire protocol a provider speaks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Protocol {
@@ -47,6 +49,11 @@ pub struct Provider {
     pub models: Vec<String>,
     /// Explicit protocol selector, overriding [`Provider::protocol`] inference.
     pub protocol: Option<String>,
+    /// Whether the endpoint needs no credential, for a local daemon.
+    ///
+    /// Unset follows the built-in default: `true` for a local endpoint, `false`
+    /// for every hosted one. A user block may set it either way.
+    pub keyless: Option<bool>,
 }
 
 impl Provider {
@@ -76,6 +83,12 @@ impl Provider {
         }
     }
 
+    /// Whether the endpoint needs no credential.
+    #[must_use]
+    pub fn keyless(&self) -> bool {
+        self.keyless == Some(true)
+    }
+
     fn api_key_env_set(&self) -> bool {
         self.api_key_env
             .as_deref()
@@ -94,6 +107,7 @@ impl fmt::Debug for Provider {
             .field("api_key_env_set", &self.api_key_env_set())
             .field("models", &self.models)
             .field("protocol", &self.protocol())
+            .field("keyless", &self.keyless())
             .finish()
     }
 }
@@ -148,6 +162,48 @@ impl Config {
                 source,
             }),
         }
+    }
+
+    /// The provider `name` resolves to: the user's block over the built-in one,
+    /// field by field, or `None` when neither exists.
+    ///
+    /// The Python product ships endpoints and key variables for its well-known
+    /// providers, so a config that only sets `[models].default` still runs. A
+    /// user block overrides whichever fields it sets and inherits the rest.
+    #[must_use]
+    pub fn provider(&self, name: &str) -> Option<Provider> {
+        let user = self.providers.get(name);
+        match (user, builtin::builtin(name)) {
+            (Some(user), Some(base)) => Some(Provider {
+                display_name: user.display_name.clone().or(base.display_name),
+                class_path: user.class_path.clone().or(base.class_path),
+                base_url: user.base_url.clone().or(base.base_url),
+                api_key_env: user.api_key_env.clone().or(base.api_key_env),
+                models: if user.models.is_empty() {
+                    base.models
+                } else {
+                    user.models.clone()
+                },
+                protocol: user.protocol.clone().or(base.protocol),
+                keyless: user.keyless.or(base.keyless),
+            }),
+            (Some(user), None) => Some(user.clone()),
+            (None, Some(base)) => Some(base),
+            (None, None) => None,
+        }
+    }
+
+    /// Every provider name this config can resolve: user blocks first, then the
+    /// built-ins the user did not override, in picker order.
+    #[must_use]
+    pub fn provider_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.providers.keys().cloned().collect();
+        for name in builtin::BUILTIN_NAMES {
+            if !self.providers.contains_key(*name) {
+                names.push((*name).to_owned());
+            }
+        }
+        names
     }
 }
 
@@ -282,6 +338,7 @@ models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
                 "kimi-k2.6".to_owned(),
             ],
             protocol: None,
+            keyless: None,
         };
         assert_eq!(config.providers.get("kimi"), Some(&expected));
         assert_eq!(config.providers.len(), 1);
@@ -396,6 +453,61 @@ display_name = "Read from the providers table"
             provider(Some("langchain_openai:ChatOpenAI"), Some("nonsense")).protocol(),
             Protocol::OpenAi
         );
+    }
+
+    #[test]
+    fn a_builtin_provider_resolves_without_a_block() -> Result<(), ConfigError> {
+        let config = Config::from_str("[models]\ndefault = \"anthropic:claude\"\n")?;
+        let provider = config.provider("anthropic").expect("built-in");
+        assert_eq!(
+            provider.base_url.as_deref(),
+            Some("https://api.anthropic.com")
+        );
+        assert_eq!(provider.api_key_env.as_deref(), Some("ANTHROPIC_API_KEY"));
+        assert_eq!(provider.protocol(), Protocol::Anthropic);
+        assert!(!provider.keyless());
+        Ok(())
+    }
+
+    #[test]
+    fn a_local_builtin_needs_no_credential() -> Result<(), ConfigError> {
+        let config = Config::from_str("")?;
+        let provider = config.provider("ollama").expect("built-in");
+        assert!(provider.keyless());
+        assert_eq!(
+            provider.base_url.as_deref(),
+            Some("http://localhost:11434/v1")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_user_block_overrides_fields_and_inherits_the_rest() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[providers.anthropic]
+base_url = "https://gateway.example.com/anthropic"
+models = ["claude-custom"]
+"#,
+        )?;
+        let provider = config.provider("anthropic").expect("merged");
+        assert_eq!(
+            provider.base_url.as_deref(),
+            Some("https://gateway.example.com/anthropic")
+        );
+        assert_eq!(provider.api_key_env.as_deref(), Some("ANTHROPIC_API_KEY"));
+        assert_eq!(provider.models, vec!["claude-custom".to_owned()]);
+        assert_eq!(provider.protocol(), Protocol::Anthropic);
+        Ok(())
+    }
+
+    #[test]
+    fn an_unknown_provider_resolves_to_nothing() -> Result<(), ConfigError> {
+        let config = Config::from_str("")?;
+        assert_eq!(config.provider("nope"), None);
+        assert!(config.provider_names().contains(&"anthropic".to_owned()));
+        assert!(config.provider_names().contains(&"ollama".to_owned()));
+        Ok(())
     }
 
     #[test]

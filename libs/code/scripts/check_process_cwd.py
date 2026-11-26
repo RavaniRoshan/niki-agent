@@ -408,7 +408,7 @@ def find_violations(package_dir: Path) -> list[str]:
     # Vendored upstream trees are not product source. Their backends already
     # take an explicit `root_dir`; the fallback is only used by single-process
     # CLI construction, which this check does not police.
-    vendored = {"sdk", "acp_sdk"}
+    vendored = {"sdk", "acp_sdk", "_vendor"}
     for path in sorted(package_dir.rglob("*.py")):
         if path.relative_to(package_dir).parts[0] in vendored:
             continue

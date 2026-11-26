@@ -9,11 +9,9 @@ Python client until it can do everything the Python client does.
 ## Layout
 
 - `libs/code` — the whole product: Textual TUI, headless mode, MCP, skills,
-  slash commands, the vendored SDK (`niki_agent/sdk`), and ACP
-  (`niki_agent/acp_sdk`).
-- `libs/code/niki_agent/_vendor/quickjs` — the JS interpreter middleware the
-  agent depends on, vendored so the wheel has no unreleased external
-  dependency. It is excluded from ruff and ty.
+  slash commands, the vendored SDK (`niki_agent/sdk`), ACP
+  (`niki_agent/acp_sdk`), and the vendored JS interpreter
+  (`niki_agent/_vendor/quickjs`).
 - `rust/` — the Rust client workspace (`niki`, `niki-proto`,
   `niki-engine-client`, `niki-render`, `niki-tui`) that speaks the same
   HTTP/SSE protocol as the Python engine. The port plan is `rust/MAP.md`.

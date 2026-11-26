@@ -200,6 +200,17 @@ pub fn base_url(provider: &niki_config::Provider, default: &str) -> String {
 /// Returns [`ProviderError::MissingKey`] when the variable is unset or empty,
 /// naming both the variable and the provider so the user can fix the shell.
 pub fn api_key(provider: &niki_config::Provider, name: &str) -> Result<String, ProviderError> {
+    // A local daemon ignores the credential it is sent. If the user named a
+    // variable and set it anyway (a proxy in front of the daemon), use it.
+    if provider.keyless() {
+        return Ok(provider
+            .api_key_env
+            .as_deref()
+            .map(str::trim)
+            .filter(|var| !var.is_empty())
+            .and_then(|var| std::env::var(var).ok())
+            .unwrap_or_default());
+    }
     let var = provider
         .api_key_env
         .as_deref()

@@ -3,7 +3,7 @@ version: 2.1
 contact_links:
   - name: 📚 Documentation
     url: https://github.com/RavaniRoshan/niki-agent/tree/niki-agent/docs/niki
-    about: Architecture, keymap, UI parity, and the independence record
+    about: Architecture, keymap, providers, and the independence guarantees
   - name: 📖 README
     url: https://github.com/RavaniRoshan/niki-agent#readme
     about: Install, run, providers, and the Rust client

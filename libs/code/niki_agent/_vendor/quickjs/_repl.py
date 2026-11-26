@@ -41,13 +41,13 @@ from quickjs_rs import (
     TimeoutError as QJSTimeoutError,
 )
 
-from langchain_quickjs._format import (
+from niki_agent._vendor.quickjs._format import (
     coerce_tool_output_for_ptc,
     format_handle,
     stringify,
 )
-from langchain_quickjs._ptc import PTCToolGate, is_valid_js_identifier, to_camel_case
-from langchain_quickjs._subagent import (
+from niki_agent._vendor.quickjs._ptc import PTCToolGate, is_valid_js_identifier, to_camel_case
+from niki_agent._vendor.quickjs._subagent import (
     call_subagent_task_tool,
     find_subagent_task_tool,
 )

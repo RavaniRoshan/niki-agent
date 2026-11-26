@@ -10,12 +10,15 @@ The MIT license at the repository root applies to Niki Agent.
 Vendored components
 -------------------
 
-Two directories are copies of MIT-licensed software developed by LangChain, Inc.,
-taken from the Deep Agents project (https://github.com/langchain-ai/deepagents):
+Three directories are copies of MIT-licensed software developed by LangChain,
+Inc., taken from the Deep Agents project
+(https://github.com/langchain-ai/deepagents):
 
   * `libs/code/niki_agent/sdk/` — the `deepagents` package, version 0.7.21.
   * `libs/code/niki_agent/acp_sdk/` — the `deepagents-acp` package, version
     0.0.12.
+  * `libs/code/niki_agent/_vendor/quickjs/` — the `langchain-quickjs` package,
+    version 0.3.8.
 
 Each directory carries a `PROVENANCE.md` naming the upstream version, the commit
 it was copied from, and the mechanical changes made to the copy, alongside a
@@ -25,7 +28,8 @@ it was copied from, and the mechanical changes made to the copy, alongside a
     Copyright (c) LangChain, Inc.
 
 The full upstream license text is also preserved at
-`libs/code/niki_agent/sdk/LICENSE` and `libs/code/niki_agent/acp_sdk/LICENSE`.
+`libs/code/niki_agent/sdk/LICENSE`, `libs/code/niki_agent/acp_sdk/LICENSE`, and
+`libs/code/niki_agent/_vendor/quickjs/LICENSE`.
 
 Third-party components
 ----------------------
