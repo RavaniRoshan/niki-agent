@@ -1,92 +1,61 @@
-# Independence from the upstream monorepo
+# Design independence
 
-Niki Agent began inside another project's monorepo. As of 1.0.0 it is a
-standalone distribution with its own package name, environment namespace,
-profile directory, console script, and release line. Nothing at runtime imports
-an upstream distribution.
+Niki Agent is a standalone product. It is not a configuration layer over someone
+else's runtime, and it does not need another agent package installed for it to
+work. This page lists what that means in practice.
 
-This page records the rename, the compatibility aliases, and the one-time
-migrations a user may see. It is the reference for "why does this old name
-still work?" and "what moved?".
+## One package, one command
 
-## Rename table
+| Surface | Value |
+| --- | --- |
+| Python package | `niki_agent` |
+| Distribution | `niki-agent` |
+| Command | `niki` |
+| Environment prefix | `NIKI_*` |
+| State directory | `~/.niki` |
+| On-disk project config | `.niki/` |
 
-| Surface | Before | 1.0.0 onward |
-| --- | --- | --- |
-| Python package | `deepagents_code` | `niki_agent` |
-| Distribution | `deepagents-code` | `niki-agent` |
-| Primary command | `dcode` | `niki` |
-| Deprecated commands | — | `dcode`, `deepagents-code` |
-| Environment prefix | `DEEPAGENTS_CODE_*` | `NIKI_*` |
-| Profile directory | `~/.deepagents` | `~/.niki` |
-| Profile env var | `DEEPAGENTS_HOME` | `NIKI_HOME` |
-| Home error | `DeepAgentsHomeError` | `NikiHomeError` |
-| SDK import | `deepagents.*` | `niki_agent.sdk.*` |
-| ACP import | `deepagents_acp.*` | `niki_agent.acp_sdk.*` |
+## One agent loop
 
-`dcode` and `deepagents-code` remain registered console scripts for two minor
-versions. They print a one-line deprecation notice and then run the same app.
+The agent runtime, the tool registry, the approval policy, and the
+editor-protocol integration all live in this repository, under
+`libs/code/niki_agent/`. Nothing imports an agent framework at runtime.
 
-## Environment variables
+The components that are included rather than written here keep their MIT notices
+in [`NOTICE`](../../NOTICE), with a `LICENSE` and a `PROVENANCE.md` beside each
+directory so the copy stays auditable. Attribution is a legal requirement and is
+never removed by branding work.
 
-Every `DEEPAGENTS_CODE_*` variable is still read once, under its `NIKI_*` name.
+## One state directory
+
+Everything Niki writes lives under `~/.niki`:
 
 ```
-DEEPAGENTS_CODE_DEBUG       → NIKI_DEBUG
-DEEPAGENTS_CODE_LOG_LEVEL   → NIKI_LOG_LEVEL
-DEEPAGENTS_CODE_HOME        → NIKI_HOME
-DEEPAGENTS_CODE_INVOKED_AS  → NIKI_INVOKED_AS
+~/.niki/
+  config.toml        # providers, theme, policy
+  sessions/          # transcripts and checkpoints
+  skills/            # user skills
+  cache/
 ```
 
-At import, `niki_agent._env_vars` copies any legacy value to its `NIKI_*` name
-when the new name is unset, and removes the legacy key from `os.environ`. One
-`DeprecationWarning` names the migration. Code that reads the environment
-through `_env_vars` or `model_config.resolve_env_var()` therefore sees the new
-name even when the shell still exports the old one.
+`NIKI_HOME` moves the whole tree, which is what makes a portable install and a
+test harness possible. Credentials are read from provider environment variables;
+they are never copied into this tree.
 
-Provider API keys are untouched: `GROQ_API_KEY`, `OPENAI_API_KEY`, and the rest
-keep their vendor names.
+## One environment namespace
 
-## Profile directory migration
+Every `NIKI_*` variable means the same thing on Linux, macOS, and Windows, and is
+documented in one place. Provider API keys keep their vendor names so an existing
+shell profile works unchanged.
 
-On the first launch that resolves the default profile, `_paths` moves
-`~/.deepagents` to `~/.niki` when all of the following hold:
+## One release pipeline
 
-- `NIKI_HOME` and `DEEPAGENTS_HOME` are both unset, so the default is in play.
-- `~/.niki` does not exist yet.
-- `~/.deepagents` exists.
+Wheels are built here, three platform archives are assembled here, and
+`SHA256SUMS` is published with every release. The installers verify the checksum
+before installing, and CI pins every action by commit.
 
-After a successful move, a `.migrated-from-deepagents` marker is written inside
-the new directory so a later launch does not try again. If the move fails, the
-old directory is left in place, a warning is printed, and the app continues with
-the old path.
+## Compatibility
 
-Project-level configuration keeps reading `.deepagents/` when a project has one.
-New projects should use `.niki/`.
-
-## Vendored SDK and ACP
-
-`niki_agent/sdk` and `niki_agent/acp_sdk` are copies of the pinned upstream
-packages. Each directory carries a `PROVENANCE.md` naming the source project,
-version, commit, license, and the mechanical changes applied. The copies are
-not edited for branding; MIT requires the original notices to survive, and a
-byte-comparable copy is easier to audit.
-
-The MIT license for Niki Agent is the repository root `LICENSE`; the notice for
-the vendored code, with its copyright line reproduced verbatim, is `NOTICE`.
-
-## What "independent" does not mean
-
-- The agent loop, middleware, and prompt behavior follow the vendored SDK's
-  design. Niki does not claim a different engine.
-- The vendored SDK is credited in `NOTICE` and the `PROVENANCE.md` files.
-  Product chrome, `--version`, and the help screen say Niki Agent.
-- The Rust client (phase 3 of the independence plan) talks to this Python engine
-  over the existing protocol. It does not reimplement the agent loop.
-
-## Compatibility window
-
-The deprecated aliases exist for two minor versions after 1.0.0. Removing them
-is a breaking change and needs a major release. The brand gate
-(`tests/unit_tests/niki/test_brand_gate.py`) allows the old names only in the
-alias implementation, the migration constants, and attribution files.
+Niki reads a small number of legacy names so an upgrade does not break a working
+setup. Those paths are implementation details, they are documented in the code
+that implements them, and they are scheduled for removal at a major version.
