@@ -65,7 +65,9 @@ function Find-Wheel {
 function Install-Niki {
     $python = Get-Python
 
-    & $python -c 'import sys; v=sys.version_info; print("%d.%d"%v[:2])' | ForEach-Object { $pyver = $_ }
+    # Single quotes inside a double-quoted PS string: PowerShell 5.1 drops
+    # embedded double quotes when it hands an argument to a native process.
+    $pyver = (& $python -c "import sys; print('{}.{}'.format(*sys.version_info[:2]))").Trim()
     if ([version]$pyver -lt [version]'3.12') {
         Fail "Python 3.12+ required, found $pyver"
     }
