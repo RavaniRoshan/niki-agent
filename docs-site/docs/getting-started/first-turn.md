@@ -62,6 +62,9 @@ The complete option list:
 | `--max-steps <N>` | Model turns allowed. Default 40. |
 | `--system <TEXT>` | Replace the system prompt. |
 | `--quiet` | Do not report tool calls or the summary on stderr. |
+| `--output-format <text\|json>` | `text` streams the answer. `json` prints one object for a program to read. |
+| `--resume <ID\|last>` | Continue a saved session by id, or the newest one. |
+| `--continue` | Continue the newest session for this workspace. |
 | `--version`, `-V` | Print the version line and exit. |
 | `--help`, `-h` | Print the option list and exit. |
 
@@ -76,6 +79,7 @@ An unknown `--mode` is a warning, and the run continues in `manual`.
 | `0` | The turn finished. A refused tool is a result, not a failure. |
 | `1` | A configuration, provider, or workspace failure. |
 | `2` | A usage error: `--acp` combined with `-n`. |
+| `124` | The step budget ran out before the model stopped calling tools. |
 | `130` | Cancelled with <kbd>Ctrl</kbd>+<kbd>C</kbd>. |
 
 ## Slash commands
@@ -137,6 +141,30 @@ niki -n "fix the failing test" --root ../other-repo --max-steps 60
 A headless run has nobody to ask, so a shell command that the policy would ask
 about is reported to the model as a refusal. Put the command on `--allow`, or
 run the same prompt in the app, when you want it to proceed.
+
+`--output-format json` prints one object instead of the streamed text, so a
+script does not have to parse prose:
+
+```bash
+niki -n "list the TODO markers" --output-format json | jq -r '.answer'
+```
+
+The object carries `answer`, `steps`, `tool_calls`, `usage`, `stop`, and
+`session`. `session` is the id that `--resume` takes.
+
+A headless run saves its turn to `sessions.db` like the app does, so a later
+invocation can pick the conversation up:
+
+```bash
+niki -n "now group those by file" --continue
+niki -n "and only the first ten" --resume last
+```
+
+`--continue` is the newest session for the current workspace; `--resume` takes
+a session id or `last`. Both apply to `-n` only — the full-screen app opens its
+own `/resume` picker instead. A `--resume` naming an unknown session fails with
+exit 1 rather than starting a new one. In the app, `/resume` switches
+conversation without restarting.
 
 ## Editor protocol
 
