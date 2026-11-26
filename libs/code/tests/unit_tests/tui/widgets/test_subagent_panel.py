@@ -292,7 +292,10 @@ class TestReplayTiming:
             clock.monotonic = lambda: record.started_monotonic + 30
             panel.on_subagent_event(event)
             assert "20.0s" in _render(panel.query_one("#subagent-agents", Static))
-            assert panel._phases["E1"].elapsed_seconds() == 20
+            # The replay `_start` re-stamps the record from the real clock, so
+            # the phase's start is earlier than the patched finish by however
+            # long this test took. Compare at the 0.1 s the table displays.
+            assert panel._phases["E1"].elapsed_seconds() == pytest.approx(20, abs=0.05)
             assert not panel._any_running()
 
     @pytest.mark.parametrize("outcome", ["complete", "error"])
