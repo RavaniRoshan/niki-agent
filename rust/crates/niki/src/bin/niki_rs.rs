@@ -89,24 +89,19 @@ fn run(args: Vec<String>) -> Result<i32> {
     let (provider_name, model) = spec.split_once(':').with_context(|| {
         format!("model spec {spec:?} is not provider:model (for example groq:llama-3.3-70b)")
     })?;
-    let block = config.providers.get(provider_name).with_context(|| {
-        let known: Vec<&str> = config.providers.keys().map(String::as_str).collect();
+    let block = config.provider(provider_name).with_context(|| {
         format!(
-            "no [providers.{provider_name}] block; configured providers: {}",
-            if known.is_empty() {
-                "none".to_owned()
-            } else {
-                known.join(", ")
-            }
+            "unknown provider {provider_name:?}; this build resolves: {}",
+            config.provider_names().join(", ")
         )
     })?;
     let provider: Box<dyn niki_provider::Provider> = match block.protocol() {
         Protocol::OpenAi => Box::new(
-            OpenAiProvider::from_config(provider_name, block, RetryPolicy::default())
+            OpenAiProvider::from_config(provider_name, &block, RetryPolicy::default())
                 .context("build the provider")?,
         ),
         Protocol::Anthropic => Box::new(
-            AnthropicProvider::from_config(provider_name, block, RetryPolicy::default())
+            AnthropicProvider::from_config(provider_name, &block, RetryPolicy::default())
                 .context("build the provider")?,
         ),
     };
