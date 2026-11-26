@@ -91,6 +91,16 @@ impl Agent {
         }
     }
 
+    /// Seed the conversation the next run continues.
+    ///
+    /// A resumed session supplies the user and assistant turns it already
+    /// stored; the prompt passed to [`Agent::run`] is appended to them.
+    #[must_use]
+    pub fn with_history(mut self, messages: Vec<Message>) -> Self {
+        self.messages = messages;
+        self
+    }
+
     /// Replace the approval mode and shell allow-list.
     #[must_use]
     pub fn with_policy(mut self, mode: Mode, allow: AllowList) -> Self {
@@ -257,8 +267,9 @@ impl Agent {
                         on_event(&AgentEvent::Usage(usage));
                     }
                     StreamEvent::Done(reason) => {
+                        // The usage chunk follows the finish reason, so the
+                        // stream is read to its end before the turn closes.
                         stop_reason = reason;
-                        break;
                     }
                 }
                 if self.cancel.is_cancelled() {
