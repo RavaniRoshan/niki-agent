@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "niki-agent"
-version = "1.0.0"
+version = "1.0.1"
 description = "Niki Agent - an independent terminal coding agent with persistent memory, customizable skills, subagents, and approval controls."
 readme = "README.md"
 license = { text = "MIT" }

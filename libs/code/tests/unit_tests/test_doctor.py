@@ -443,7 +443,10 @@ class TestRunDoctorCommand:
             file=buf, force_terminal=force_terminal, highlight=False, width=200
         )
         args = argparse.Namespace(output_format="text")
-        with patch("niki_agent.config.console", test_console):
+        with (
+            patch("niki_agent.config.console", test_console),
+            patch("niki_agent.doctor.invoked_name", return_value="niki"),
+        ):
             code = run_doctor_command(args)
         return code, buf.getvalue()
 
@@ -464,10 +467,12 @@ class TestRunDoctorCommand:
         assert "Tracing" in output
         assert "Configuration" in output
         assert "niki-agent" in output
-        assert "dcode config" in output
-        assert "dcode config get <key>" in output
-        assert "dcode --version" in output
-        assert "dcode -v" in output
+        # The tips name the command the process was launched with, not a fixed
+        # one: `dcode` remains a deprecated alias and shims are common.
+        assert "niki config get <key>" in output
+        assert "niki --version" in output
+        assert "niki -v" in output
+        assert "dcode" not in output
 
     def test_commit_hash_renders_as_link(self) -> None:
         """Text output links the hash to GitHub."""
