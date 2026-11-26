@@ -1,49 +1,93 @@
-# Niki Agent — Adding a provider
+# Providers
 
-Nine of the twelve requested endpoints already ship as optional extras and need
-nothing:
+Niki Agent talks to model providers through a small client integration per
+vendor. Anthropic, OpenAI, and Google Gemini are installed with the app; every
+other integration is an optional extra you enable when you need it.
 
-| Provider | Extra | Key env var |
+## Install an integration
+
+In an installed release, run `/install <extra>` inside a session:
+
+```text
+/install ollama
+/install openrouter
+```
+
+From a source checkout, extras are installed with uv instead:
+
+```bash
+cd libs/code
+uv sync --extra <name>          # one integration
+uv sync --all-extras            # providers and sandboxes
+```
+
+| Provider | Extra | Key environment variable |
 | --- | --- | --- |
 | Anthropic | `anthropic` | `ANTHROPIC_API_KEY` |
 | OpenAI | `openai` | `OPENAI_API_KEY` |
-| Google | `google-genai` | `GOOGLE_API_KEY` |
-| Ollama | `ollama` | `OLLAMA_API_KEY` / `OLLAMA_HOST` |
+| Azure OpenAI | `openai` | `AZURE_OPENAI_API_KEY` |
+| Google Gemini | `google-genai` | `GOOGLE_API_KEY` |
+| Google Vertex AI | `vertex` | `GOOGLE_CLOUD_PROJECT` (Application Default Credentials) |
+| Amazon Bedrock | `bedrock` | AWS credentials |
+| Ollama | `ollama` | none; `OLLAMA_HOST` is optional |
 | OpenRouter | `openrouter` | `OPENROUTER_API_KEY` |
 | NVIDIA | `nvidia` | `NVIDIA_API_KEY` |
 | Groq | `groq` | `GROQ_API_KEY` |
-| Together | `together` | `TOGETHER_API_KEY` |
+| Together AI | `together` | `TOGETHER_API_KEY` |
 | DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` |
+| Mistral AI | `mistralai` | `MISTRAL_API_KEY` |
+| Cohere | `cohere` | `COHERE_API_KEY` |
+| xAI | `xai` | `XAI_API_KEY` |
+| Perplexity | `perplexity` | `PPLX_API_KEY` |
+| Fireworks | `fireworks` | `FIREWORKS_API_KEY` |
+| Hugging Face | `huggingface` | `HUGGINGFACEHUB_API_TOKEN` |
+| IBM watsonx | `ibm` | `WATSONX_APIKEY` |
+| Meta | `meta` | `MODEL_API_KEY` |
+| Baseten | `baseten` | `BASETEN_API_KEY` |
+| LiteLLM | `litellm` | `LITELLM_API_KEY` |
 
-Install with `uv sync --all-extras`, or `uv sync --extra <name>` for one.
+`/auth` in a session is the interactive path: it shows which providers are
+configured, stores a key when you paste one, and links to the provider's key
+page. A key you paste there is written to `~/.niki/.state/auth.json` (mode
+`0600`); an environment variable is never rewritten.
 
----
+Ollama needs no key. Niki looks for a local server at `http://localhost:11434`
+unless `OLLAMA_HOST` or `base_url` points somewhere else, and it discovers the
+models you have pulled.
 
-## The three that are not
+## Any OpenAI-compatible endpoint
 
-Researched from each project's own source. **None of the three needs a new
-runtime dependency** — all three are reachable through packages already in
-`[project.optional-dependencies]`. They are not built-in `init_chat_model`
-providers, so each is configured with `class_path` + `base_url`.
-
-Drop the block you want into `~/.niki/config.toml`:
+A gateway that speaks the OpenAI chat-completions API is a configuration block,
+not a code change. Add it to `~/.niki/config.toml` and it appears in `/model`:
 
 ```toml
-[providers.kimi]
+[models.providers.kimi]
 display_name = "Kimi"
 class_path = "langchain_openai:ChatOpenAI"
-base_url = "https://api.moonshot.ai/v1"     # or api.moonshot.cn/v1 in CN
+base_url = "https://api.moonshot.ai/v1"
 api_key_env = "MOONSHOT_API_KEY"
 models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
+```
 
-[providers.kilo]
+`class_path` is a Python class in `module.path:ClassName` form. Niki imports it
+and instantiates it, so it must be a chat-model class (a `BaseChatModel`
+subclass). The value is the literal string the field accepts — it names the
+installed client package that speaks the gateway's protocol, not a preference.
+`api_key_env` names the environment variable to read, never the key itself;
+`/auth` and the startup check use the same name.
+
+A gateway that serves more than one wire protocol needs one provider block per
+protocol, because `class_path` picks the protocol. Two more examples:
+
+```toml
+[models.providers.kilo]
 display_name = "Kilo AI Gateway"
 class_path = "langchain_openrouter:ChatOpenRouter"
 base_url = "https://api.kilo.ai/api/gateway"
 api_key_env = "KILO_API_KEY"
 models = ["anthropic/claude-opus-4.7", "openai/gpt-5.4", "moonshotai/kimi-k2.5"]
 
-[providers.opencode_zen]
+[models.providers.opencode_zen]
 display_name = "OpenCode Zen"
 class_path = "langchain_openai:ChatOpenAI"
 base_url = "https://opencode.ai/zen/v1"
@@ -51,48 +95,57 @@ api_key_env = "OPENCODE_API_KEY"
 models = ["kimi-k3", "deepseek-v4-pro", "glm-5.3"]
 ```
 
-### What each costs
+The `opencode_zen` block reaches the OpenAI-shaped part of that catalog. Models
+served over the Anthropic messages wire would need a second entry using
+`langchain_anthropic:ChatAnthropic`.
 
-**Kimi** — cleanest. One base URL per region, `MOONSHOT_API_KEY`, and Moonshot
-documents both OpenAI *and* Anthropic wire compatibility, so either class works.
-Two separate platforms exist and Moonshot's own docs warn against mixing them:
-the *Kimi Code Plan* (`api.kimi.com/coding/v1`, `KIMI_API_KEY`) and the *Open
-Platform* (`api.moonshot.ai/v1`, `MOONSHOT_API_KEY`). Documented quirk: a 429
-from an exhausted balance is **not** retried — it fails immediately.
+## The provider table
 
-**Kilo** — cleanest wiring, one endpoint, one protocol, `langchain-openrouter`
-already carries a `max_retries` entry. Documented quirks: free models are
-limited to **200 req/hour per IP**; a zero balance returns **402**; request
-bodies over 20 MB return **413**; and an upstream 402 is deliberately masked as
-**503**. Worth knowing before you point a long-running task at it.
+Every key in `[models.providers.<name>]` is optional except the ones your
+gateway needs.
 
-**OpenCode Zen** — the most awkward of the three. It serves **four different
-wire protocols** depending on the model (`/chat/completions`, `/messages`,
-`/responses`, and a Gemini-shaped route). One `base_url` therefore cannot cover
-the catalog: the block above reaches the OpenAI-shaped subset only, and a second
-entry with `langchain_anthropic:ChatAnthropic` would be needed for the Claude
-models. Its model list also churns quickly, so a hardcoded `models = [...]`
-becomes stale.
+| Key | Meaning |
+| --- | --- |
+| `display_name` | The label shown in `/model` and `/auth`. |
+| `short_name` | A shorter label for tight spaces; falls back to `display_name`. |
+| `enabled` | Set `false` to hide an installed provider and its models. |
+| `models` | The model IDs this provider offers. |
+| `class_path` | The chat-model class to instantiate, instead of the built-in provider path. |
+| `base_url` | The API endpoint. |
+| `base_url_env` | An environment variable that supplies the endpoint. |
+| `api_key_env` | The environment variable that holds the key. |
+| `api_key_url` | Where a user creates a key, linked from `/auth`. |
+| `params` | Extra constructor arguments, applied to every model. A model-keyed sub-table overrides one model. |
 
----
+`class_path` imports code from your own configuration, so treat a config file
+from somewhere else the way you would treat a `pyproject.toml` build script.
 
-## Wiring them into `/auth`
+## Local models
 
-The config.toml blocks above make the providers usable immediately via the model
-selector. Putting them into `/auth`, the API-key display names, and the
-retry-parameter map means editing five dicts in
-`niki_agent/model_config.py` (`PROVIDER_API_KEY_ENV`,
-`PROVIDER_BASE_URL_ENV`, `PROVIDER_API_KEY_URLS`, `PROVIDER_DISPLAY_NAMES`,
-`RETRY_PARAM_BY_PROVIDER`). That is an upstream patch, and it has not been made —
-`config.toml` is the supported extension point and needs none. Say the word and
-it is a small, logged change.
+Ollama is the shortest route:
 
-## What could not be verified
+```bash
+ollama pull qwen3-coder
+uv sync --extra ollama
+```
 
-- Numeric RPM/TPM tiers for Kimi — Moonshot's docs SPA redirects every
-  rate-limit page to its quickstart.
-- Whether Kilo's `/api/gateway` serves `/chat/completions` unmodified for
-  Anthropic-native models. No `/messages` route is documented, so the translation
-  is presumably server-side, but that needs a key to confirm.
-- Any of the three end-to-end against a live key. **No provider in this document
-  has been exercised with a real credential.**
+Then pick the model in `/model`, or set the default in `~/.niki/config.toml`:
+
+```toml
+[models]
+default = "ollama:qwen3-coder"
+```
+
+For any other local server that exposes an OpenAI-compatible API, use the
+`class_path` block above with its host as `base_url`.
+
+## Troubleshooting
+
+- **A provider does not appear in `/model`** — its integration is not installed
+  (`/install <extra>`, or `uv sync --extra <name>` in a checkout), or it is
+  disabled with `enabled = false`.
+- **`401` or `403` from a gateway** — the environment variable named by
+  `api_key_env` is not set and `/auth` has no stored key for that provider, or
+  the endpoint expects a different wire protocol.
+- **A model ID is rejected** — add the exact ID your gateway serves to `models`.
+  The selector only offers IDs listed there.

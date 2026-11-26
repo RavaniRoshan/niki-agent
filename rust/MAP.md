@@ -90,10 +90,9 @@ renamed, Python retired to reference. Out of scope until W1–W5 are green.
 
 ## Blocked and kept
 
-- **Blocked:** the JavaScript interpreter the Python product vendors (a C++
-  engine with a PTC authorizer hook and no Rust crate that keeps the API);
-  `niki_agent/sdk/backends/` (filesystem and composite backends depend on the
-  vendored graph runtime).
+- **Blocked:** the vendored JS interpreter (`niki_agent/_vendor/quickjs`, C++
+  runtime, no Rust crate that keeps the PTC API); `niki_agent/sdk/backends/`
+  (filesystem and composite backends depend on the vendored graph runtime).
 - **Kept in Python (for now):** the syntax-highlighting grammar set and the
   `tiktoken` token-counting path. Rust replacements are chosen in W1 and recorded
   in `DECISIONS.md`.

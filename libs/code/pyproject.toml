@@ -65,7 +65,12 @@ dependencies = [
 
     # Tools
     "tavily-python>=0.7.26,<1.0.0",
-    "langchain-quickjs>=0.3.4,<0.4.0",
+
+    # Native dependencies of the vendored JS interpreter
+    # (`niki_agent/_vendor/quickjs`), declared here because the product imports
+    # them directly rather than through a separate distribution.
+    "quickjs-rs>=0.2.5,<0.3.0",
+    "bsdiff4>=1.2.6,<2.0.0",
 
     # Cost estimation (bundled offline pricing data).
     # The local pricing overrides resolve through two *private* upstream names,
@@ -214,15 +219,10 @@ include = [
 "niki_agent/default_agent_prompt.md" = "niki-agent/default_agent_prompt.md"
 "niki_agent/*.tcss" = "niki-agent/"
 
-[tool.uv.sources]
-# The JS interpreter ships in this repository: its unreleased 0.3.8 line carries
-# the PTC API the agent imports, and PyPI's 0.3.8 does not.
-langchain-quickjs = { path = "../partners/quickjs", editable = true }
-
 [tool.ty.src]
 # Vendored trees are not product source and carry optional imports for extras
 # that are not installed in this environment.
-exclude = ["niki_agent/sdk", "niki_agent/acp_sdk"]
+exclude = ["niki_agent/sdk", "niki_agent/acp_sdk", "niki_agent/_vendor"]
 
 [tool.ty.environment]
 python-version = "3.12"
@@ -240,7 +240,7 @@ unused-ignore-comment = "ignore"
 [tool.ruff]
 # Vendored trees keep upstream formatting so a diff against `PROVENANCE.md` is
 # auditable. They are not product source and are not linted.
-extend-exclude = ["niki_agent/sdk", "niki_agent/acp_sdk"]
+extend-exclude = ["niki_agent/sdk", "niki_agent/acp_sdk", "niki_agent/_vendor"]
 
 [tool.ruff.format]
 docstring-code-format = true

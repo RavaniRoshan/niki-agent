@@ -5032,7 +5032,7 @@ def _verify_interpreter_or_exit() -> None:
     """Run the interpreter pre-flight check; print and exit on failure.
 
     Called before spawning the langgraph dev server subprocess so a missing
-    `langchain-quickjs` dependency surfaces a one-line, actionable hint instead
+    vendored interpreter module surfaces a one-line, actionable hint instead
     of an opaque "Server process exited with code N" downstream. Gated on the
     resolved interpreter state (`_resolve_interpreter_enabled`), not the
     `--interpreter` flag alone, since the interpreter is now on by default.

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool
 
-from langchain_quickjs import _prompt
+from niki_agent._vendor.quickjs import _prompt
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
