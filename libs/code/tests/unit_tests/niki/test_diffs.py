@@ -9,7 +9,7 @@ empty region and the assertions were reading nothing. The same happened with an
 
 Those three screen-capture tests were **deleted rather than left failing or
 quietly passing**. Rendering the diff through the real approval flow, with a real
-file change, is recorded as OWNER-VERIFY in `docs/niki/OWNER_VERIFY.md`.
+file change, is recorded as OWNER-VERIFY in `the internal owner-verification notes`.
 
 What remains here are assertions that are actually decidable: that Niki gives
 added and removed *different* colours, that both clear the 3:1 glyph contrast

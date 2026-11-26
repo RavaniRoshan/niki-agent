@@ -123,7 +123,8 @@ def test_v10_reduced_motion_has_no_static_equivalent() -> None:
     ]
     assert not names, (
         f"V10: reduced-motion settings now exist ({names}). Implement the static "
-        "equivalent, then mark V10 complete in docs/niki/CHECKLIST.md in this "
+        "equivalent, then mark V10 complete in the internal readiness checklist "
+        "in this "
         "same change."
     )
     assert niki_agent.__name__ == "niki_agent"

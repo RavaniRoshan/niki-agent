@@ -144,7 +144,7 @@ def test_l5_the_file_handler_needs_a_known_thread(tmp_path: Path, home: Path) ->
 
     So L5's on-disk traceback cannot be proven headlessly. The in-app Debug
     Console (`Ctrl+\`) and the friendly-message half are **OWNER-VERIFY**; the
-    steps are in `docs/niki/OWNER_VERIFY.md`.
+    steps are in `the internal owner-verification notes`.
     """
     import subprocess
 
@@ -186,7 +186,7 @@ def test_l5_the_file_handler_needs_a_known_thread(tmp_path: Path, home: Path) ->
     assert not files, (
         "L5: a debug log now appears without a known thread. If that is "
         "intended, the traceback assertions can be restored and the OWNER-VERIFY "
-        f"note in docs/niki/CHECKLIST.md retired. Handlers were: {handlers}"
+        f"note in the internal readiness checklist retired. Handlers were: {handlers}"
     )
     assert "InMemoryLogBuffer" in handlers, (
         f"L5: expected the in-memory ring buffer to be attached, got {handlers!r}"

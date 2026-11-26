@@ -18,7 +18,7 @@ messages back in as the user scrolls (`HYDRATE_BUFFER`, `_request_hydration`), s
 a smaller window is a supported configuration rather than a broken one -- but
 "how far back can I scroll without a pause" is a taste call. `WINDOW_SIZE` is a
 class attribute precisely so it can be tuned; the values below are the measured
-starting point, and `docs/niki/OWNER_VERIFY.md` asks the owner to judge the
+starting point, and `the internal owner-verification notes` asks the owner to judge the
 scrolling feel.
 """
 

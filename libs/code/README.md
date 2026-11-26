@@ -52,7 +52,7 @@ the old directory migrated in place.
 By default Niki trusts the directory you run it in. Tool calls are gated by the
 approval mode, but project files are read before any approval prompt. Do not run
 Niki in a directory you do not trust without a sandbox backend; see
-[`THREAT_MODEL.md`](THREAT_MODEL.md).
+[`SECURITY.md`](../../SECURITY.md).
 
 ## Docs
 

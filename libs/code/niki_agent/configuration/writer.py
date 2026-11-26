@@ -83,7 +83,7 @@ def update_user_config(
     from niki_agent.configuration.paths import managed_config_path
 
     if config_path == managed_config_path():
-        # The managed tier is read-only, and `THREAT_MODEL.md` states that as a
+        # The managed tier is read-only, and the internal threat model states that as a
         # security property. It held only because no caller passed this path;
         # make it structural, so the claim does not depend on every future
         # caller knowing it.

@@ -209,7 +209,7 @@ def generate_langgraph_json(
     which opt into LangGraph's route-auth layer (`enable_custom_route_auth`) so a
     deployment that configures auth gates them. Production runs `noop` auth and
     relies on the loopback bind, so that gate is inert there -- see
-    `auth_path` below and THREAT_MODEL.md TB10. `/offload` is served by that
+    `auth_path` below and the internal threat model TB10. `/offload` is served by that
     backend boundary rather than exposed as another client-addressable graph.
 
     Args:

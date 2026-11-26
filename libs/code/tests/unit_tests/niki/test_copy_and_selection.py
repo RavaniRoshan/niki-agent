@@ -10,7 +10,7 @@ terminal left in a DCS state.
 What cannot be decided here is the part a human must check: whether OSC 52
 actually reaches the user's clipboard across a real ssh hop, whether Textual's
 selection works when the mouse is captured, and whether a mouse-release toggle
-exists. Those are in `docs/niki/OWNER_VERIFY.md`.
+exists. Those are in `the internal owner-verification notes`.
 """
 
 from __future__ import annotations

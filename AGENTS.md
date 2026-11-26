@@ -16,14 +16,10 @@ Python client until its parity gates are green.
   API the agent imports.
 - `rust/` — the Rust client workspace (`niki`, `niki-proto`,
   `niki-engine-client`, `niki-render`, `niki-tui`) that speaks the same
-  LangGraph HTTP/SSE protocol as the Python engine. Parity evidence is in
-  `docs/niki/RUST_PARITY.md`.
+  HTTP/SSE protocol as the Python engine. The port plan is `rust/MAP.md`.
 - `install/` — the release installer for Linux/macOS and Windows.
-- `archive/` — the former upstream packages. Not built, not tested, not
-  installed. History is in Git.
-- `docs/niki` — architecture, keymap, progress, the independence record, and
-  the fork-era history under `docs/niki/history/`.
-- `docs/superpowers/plans` — implementation plans.
+- `docs/niki` — architecture, independence, keymap, and provider guides.
+- `SECURITY.md` — reporting, supported versions, and trust boundaries.
 
 ## Commands
 

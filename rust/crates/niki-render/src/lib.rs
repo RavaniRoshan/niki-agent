@@ -407,7 +407,7 @@ mod tests {
         }
     }
 
-    /// The M1 parity frames. Every line is pinned by `docs/niki/RUST_PARITY.md`;
+    /// The M1 parity frames. Every line is pinned by the M1 replay fixtures;
     /// a change here is a rendering change and must update that table.
     #[test]
     fn parity_frames_are_pinned() {

@@ -154,7 +154,7 @@ FIRST_PAINT_CEILING_MS = 1500.0
 
 A Python interpreter plus this import graph cannot reach 400 ms. Gating on 400
 would be a gate that can never pass honestly, so this records the real budget
-and leaves the aspiration to `docs/niki/OWNER_VERIFY.md`.
+and leaves the aspiration to `the internal owner-verification notes`.
 """
 
 
