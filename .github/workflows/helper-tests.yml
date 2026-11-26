@@ -1,0 +1,56 @@
+# Tests for the helper scripts under .github/scripts.
+#
+# Those scripts decide PR labeling, the scope and Markdown gates, stale-PR
+# cleanup, and the workflow guards around them. `make check` in `libs/code`
+# does not reach this tree, so without a dedicated job a broken helper ships
+# until a maintainer notices by hand.
+#
+# Two layers run on one runner: pytest for the Python helpers and `node --test`
+# for the Node ones. One job is enough because the pytest suite already shells
+# out to `node --test` for the lifecycle shims — both layers need Node, and both
+# finish in seconds.
+#
+# Node comes from the runner image: the suite has no package.json and needs no
+# `npm install`. Python needs only pytest and PyYAML, which is everything the
+# helpers and tests import outside the standard library.
+
+name: "🧪 Helper tests"
+
+on:
+  push:
+    branches: [niki-agent]
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  helpers:
+    name: "🧪 helper scripts"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "📋 Checkout Code"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "🐍 Set up Python"
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "📦 Install test dependencies"
+        run: python -m pip install --disable-pip-version-check pytest pyyaml
+
+      - name: "🧪 Python helper tests"
+        run: python -m pytest .github/scripts/tests -q
+
+      - name: "🟢 Node helper tests"
+        # `node --test` exits non-zero on any failure, so the step fails the job.
+        run: |
+          node --version
+          node --test .github/scripts/tests/checks/*.test.js .github/scripts/tests/labeling/*.test.js
