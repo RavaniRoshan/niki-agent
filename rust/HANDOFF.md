@@ -7,10 +7,11 @@ cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 `[mcp_servers]`, registers discovered tools in the existing registry, and both
 `niki-rs` entry points now connect the configured servers at startup.
-`niki-hooks` runs `PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers
-from `hooks.json`, and `niki-commands` owns the slash command grammar. The
-screen persists every completed turn and handles bracketed paste. `niki-skills`
-is next.
+`niki-skills` discovers project, user and built-in skills and both entry points
+give them to the model through the system prompt. `niki-hooks` runs
+`PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers from `hooks.json`,
+and `niki-commands` owns the slash command grammar. The screen persists every
+completed turn and handles bracketed paste.
 
 ## What is implemented
 
@@ -22,6 +23,7 @@ is next.
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
 | `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points under a per-server startup budget |
+| `niki-skills` | project/user/built-in skill discovery, front-matter parsing, system-prompt injection, `/skills` |
 | `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, blocking verdicts; installed by both `niki-rs` entry points |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
@@ -46,6 +48,18 @@ refusal. A server that fails to start does not stop the session: the screen
 shows `warning: mcp server …` as a transcript notice before the first frame and
 the run continues with the remaining servers (headless prints the same warning
 on stderr).
+
+Skills are discovered once at startup from `<root>/.niki/skills`,
+`<NIKI_HOME or ~/.niki>/skills` and the two built-in skills compiled into
+`niki-skills` (`commit`, `review`), with the first match for a name winning in
+that order. Both entry points inject a compact `## Skills` section into the
+system prompt — name, description, and for a skill on disk the `SKILL.md` path
+to read when it applies — so a long body costs nothing on a turn that does not
+use it; a built-in has no file, so its short instructions are the one body the
+section carries. A `SKILL.md` with no description, or front matter that does not
+parse, is skipped with a warning and the session continues (headless prints the
+warnings on stderr); the screen shows the whole catalog, with paths and skipped
+files, through `/skills`.
 
 Hooks run beside those extensions. `niki-hooks` reads
 `{workspace}/.niki/hooks.json` and `{config_home}/hooks.json` (the project file
@@ -92,7 +106,7 @@ concurrent and abandons a silent server after `NIKI_MCP_STARTUP_TIMEOUT_SECS`
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 288 tests, 0 failures
+cargo test -j 1 --workspace        # 324 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
@@ -176,14 +190,14 @@ startup wiring is covered without a network or a terminal.
   one async mutex and marked closed after a timeout, exit or malformed line.
   HTTP requests are independent and are not marked closed.
 
-## Next: W4 — extensions
+## Next: W5 — ACP and headless parity
 
-`niki-mcp` is done for stdio, HTTP, config, registration, startup wiring and a
-per-server startup budget: both entry points call
-`niki_mcp::load(&config.mcp_servers)`, register the bridges, and hand the
-screen's worker the runtime those connections live on. `niki-hooks` is done as
-well, and `niki-commands` owns `App::slash` with the help overlay reading the
-same table. What remains in W4 is `niki-skills`.
+W4 is complete: `niki-mcp` (stdio, HTTP, config, registration, startup
+wiring and a per-server startup budget), `niki-skills` (discovery, front
+matter, system-prompt injection, `/skills`) and `niki-hooks` are done, and
+`niki-commands` owns `App::slash` with the help overlay reading the same
+table. Both entry points call `niki_mcp::load` and install the hooks runner.
+W5 (ACP and headless parity) is next.
 
 ## Known gaps
 
@@ -208,4 +222,14 @@ same table. What remains in W4 is `niki-skills`.
 - `niki-engine-client` and `niki-proto` still describe themselves in terms of the
   runtime the Python engine speaks; their crate descriptions need a product-level
   rewrite when the engine is retired (W6).
+- A user skill's `SKILL.md` lives outside the workspace root, and `read_file`
+  refuses a path outside the root (RULES 7). The model is told about every
+  skill, and reads project skills (`.niki/skills`, inside the root) normally;
+  opening a user skill needs a read path that does not exist yet — a mount in
+  `niki-tools` or a dedicated skill tool. Built-in skills are unaffected
+  because their instructions are injected.
+- User skills are read from `<NIKI_HOME or ~/.niki>/skills` in this slice. The
+  Python client keeps profile skills at `~/.niki/<profile>/skills` (default
+  `~/.niki/agent/skills`), so the two clients do not see the same user skills
+  yet; the profile layout is a W4/W6 decision.
 - Token counting is provider-reported only (ADR-005 open question 1).

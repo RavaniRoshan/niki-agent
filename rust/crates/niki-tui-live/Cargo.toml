@@ -15,6 +15,7 @@ niki-commands = { path = "../niki-commands" }
 niki-policy = { path = "../niki-policy" }
 niki-render = { path = "../niki-render" }
 niki-session = { path = "../niki-session" }
+niki-skills = { path = "../niki-skills" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-modals = { path = "../niki-tui-modals" }
 niki-tui-themes = { path = "../niki-tui-themes" }

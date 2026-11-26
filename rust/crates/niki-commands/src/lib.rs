@@ -28,6 +28,8 @@ pub enum SlashCommand {
     Resume(Option<String>),
     /// List the registered tools.
     Tools,
+    /// List the skills discovery found.
+    Skills,
     /// Show the version line.
     Version,
 }
@@ -66,6 +68,10 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/resume",
         summary: "List saved sessions, or resume one by id or index",
+    },
+    CommandInfo {
+        name: "/skills",
+        summary: "List project and user skills",
     },
     CommandInfo {
         name: "/theme",
@@ -130,6 +136,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/compact" => SlashCommand::Compact,
         "/resume" => SlashCommand::Resume(argument),
         "/tools" => SlashCommand::Tools,
+        "/skills" => SlashCommand::Skills,
         "/version" => SlashCommand::Version,
         other => {
             return Err(UnknownCommand {
@@ -155,6 +162,7 @@ mod tests {
             (SlashCommand::Resume(None), "/resume"),
             (SlashCommand::Theme(None), "/theme"),
             (SlashCommand::Tools, "/tools"),
+            (SlashCommand::Skills, "/skills"),
             (SlashCommand::Version, "/version"),
         ];
         for (expected, name) in commands {
@@ -165,7 +173,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 9);
+        assert_eq!(listed.len(), 10);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
