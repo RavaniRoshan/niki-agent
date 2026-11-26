@@ -6,6 +6,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square)](https://www.python.org)
 [![Textual](https://img.shields.io/badge/terminal-Textual%208-5c873a?style=flat-square)](https://textual.textualize.io)
+[![Rust](https://img.shields.io/badge/client-rust%202024-b7410e?style=flat-square)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](NOTICE)
 
 [Install](#install) · [Run it](#run-it) · [Independence](#independence) ·
@@ -167,6 +168,39 @@ row carries the test, PTY run, or measured probe that decides it.
 cd libs/code
 uv run pytest tests/unit_tests/niki/ -q    # no network, no API key, no terminal
 ```
+
+## Rust client
+
+`rust/` is a second front end for the same engine, written in Rust. It speaks the
+LangGraph HTTP/SSE protocol directly, so the Python client stays the product and
+the Rust binary is the fast path being built toward.
+
+```bash
+cd rust
+cargo run -q -p niki -- --version
+cargo run -q -p niki -- replay crates/niki-proto/fixtures/hello.json \
+  --width 80 --height 24
+cargo run -q -p niki -- session --engine http://127.0.0.1:2024 --prompt "Say hello"
+```
+
+| Crate | What it owns |
+| --- | --- |
+| `niki-proto` | wire event names, incremental SSE parsing, committed fixtures |
+| `niki-engine-client` | thread creation, streaming runs, cancel, state |
+| `niki-render` | transcript model and the deterministic plain-text frame |
+| `niki-tui` | keymap, reader mode, and view state |
+| `niki` | the binary: `replay`, `session`, `keys` |
+
+Replay is offline and deterministic, which is what lets the parity frames be
+pinned in tests. `rust/tools/m2_session.sh` drives a live session inside a PTY
+and asserts its final transcript equals the replay frame. Evidence and every
+justified difference from the Python TUI are in
+[`docs/niki/RUST_PARITY.md`](docs/niki/RUST_PARITY.md).
+
+The current Rust frame renders the transcript region only: the composer, modals,
+approvals, and the palette are Python-only until the full-screen ratatui shell
+lands. `niki --version` starts in about 1 ms and the first replay frame in about
+4 ms, against ~190 ms for the Python client's first paint.
 
 ## License
 

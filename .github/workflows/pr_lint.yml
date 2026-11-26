@@ -27,7 +27,7 @@
 #   * hotfix     — urgent fix that won't trigger a release
 #
 # Allowed Scope(s) (required):
-#   ci, code, deps, docs, examples, infra, quickjs, repo, sdk
+#   ci, code, deps, docs, examples, infra, quickjs, repo, rust, sdk
 #
 # Multiple scopes can be used by separating them with a comma.
 #
@@ -112,6 +112,7 @@ jobs:
             infra
             quickjs
             repo
+            rust
             sdk
           requireScope: true
           disallowScopes: |
