@@ -1,6 +1,6 @@
 # Independence from the upstream monorepo
 
-Niki Agent was forked from the Deep Agents monorepo. As of 1.0.0 it is a
+Niki Agent began inside another project's monorepo. As of 1.0.0 it is a
 standalone distribution with its own package name, environment namespace,
 profile directory, console script, and release line. Nothing at runtime imports
 an upstream distribution.
@@ -72,16 +72,15 @@ version, commit, license, and the mechanical changes applied. The copies are
 not edited for branding; MIT requires the original notices to survive, and a
 byte-comparable copy is easier to audit.
 
-Upstream's MIT license and copyright notice remain in the repository root
-`LICENSE` and `NOTICE`.
+The MIT license for Niki Agent is the repository root `LICENSE`; the notice for
+the vendored code, with its copyright line reproduced verbatim, is `NOTICE`.
 
 ## What "independent" does not mean
 
-- The agent loop, middleware, and prompt behavior are the upstream design. The
-  fork does not claim a different engine.
-- The Deep Agents SDK is credited in `NOTICE`, the vendored `PROVENANCE.md`
-  files, and the in-app About view. Product chrome, `--version`, and the help
-  screen say Niki Agent.
+- The agent loop, middleware, and prompt behavior follow the vendored SDK's
+  design. Niki does not claim a different engine.
+- The vendored SDK is credited in `NOTICE` and the `PROVENANCE.md` files.
+  Product chrome, `--version`, and the help screen say Niki Agent.
 - The Rust client (phase 3 of the independence plan) talks to this Python engine
   over the existing protocol. It does not reimplement the agent loop.
 

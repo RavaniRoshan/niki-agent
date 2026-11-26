@@ -4,16 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "niki-agent"
-version = "1.0.1"
+version = "1.1.0"
 description = "Niki Agent - an independent terminal coding agent with persistent memory, customizable skills, subagents, and approval controls."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Niki Agent contributors" }]
 maintainers = [{ name = "Niki Agent contributors" }]
 requires-python = ">=3.12,<4.0"
-keywords = ["agents", "ai", "cli", "terminal", "llm", "langgraph", "niki"]
+keywords = ["agents", "ai", "cli", "terminal", "llm", "coding-agent", "niki"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -164,7 +164,7 @@ Homepage = "https://github.com/RavaniRoshan/niki-agent"
 Documentation = "https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/README.md"
 Repository = "https://github.com/RavaniRoshan/niki-agent"
 Issues = "https://github.com/RavaniRoshan/niki-agent/issues"
-Changelog = "https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/libs/code/CHANGELOG.md"
+Changelog = "https://github.com/RavaniRoshan/niki-agent/releases"
 
 [dependency-groups]
 test = [

@@ -45,7 +45,7 @@ was implemented in `niki_agent/memory_note.py` and is covered by
 | Screen readers | `NIKI_SCREEN_READER=1`: linear, append-only, no in-place rewriting | DONE | `tests/unit_tests/niki/test_screen_reader.py` — in-process run asserts no spinner and no escape sequences; a PTY run asserts a bare launch explains the linear mode and exits 2 |
 | Keyboard | every action reachable without a pointer | DONE | `tests/unit_tests/niki/test_keymap.py::test_every_advertised_action_has_a_handler` |
 | Layout | 40, 80, 120 columns without clipping; 80×24 default | DONE | `tests/unit_tests/niki/test_snapshots.py` — 40×20, 50×16, 80×24, 120×38, 160×45 first-run and typed; 40/50/120 with the slash menu and help open |
-| Language | plain words, no icon-only affordances, errors say what to do next | DONE | `tests/unit_tests/niki/test_error_rendering.py`, copy review in `docs/niki/DESIGN.md` |
+| Language | plain words, no icon-only affordances, errors say what to do next | DONE | `tests/unit_tests/niki/test_error_rendering.py`, copy review in `docs/niki/history/DESIGN.md` |
 
 ### Narrow-width placeholder
 

@@ -211,7 +211,7 @@ DEBUG_DIRECTORY = "NIKI_DEBUG_DIRECTORY"
 DEBUG_FILE = "NIKI_DEBUG_FILE"
 """Deprecated debug file path; its parent is used when `DEBUG_DIRECTORY` is unset."""
 
-DEFAULT_DEBUG_DIRECTORY = "/tmp/deepagents_debug"  # noqa: S108  # opt-in debug logs
+DEFAULT_DEBUG_DIRECTORY = "/tmp/niki_debug"  # noqa: S108  # opt-in debug logs
 """Default directory for debug logs when no debug path override is set."""
 
 DEBUG_MCP_PROJECT_TRUST = "NIKI_DEBUG_MCP_PROJECT_TRUST"

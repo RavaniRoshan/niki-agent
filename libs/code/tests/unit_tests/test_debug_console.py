@@ -75,7 +75,7 @@ class TestDebugConsoleScreen:
             ),
             SnapshotField(
                 "Debug log",
-                "/tmp/deepagents_debug/a/very/long/path/to/the/log/file.log",
+                "/tmp/niki_debug/a/very/long/path/to/the/log/file.log",
             ),
         ]
         app = _Harness()

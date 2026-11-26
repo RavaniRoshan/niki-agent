@@ -61,7 +61,7 @@ the provider's).
 Getting any of this wrong is quiet: `_build_price_overrides` logs one warning
 and drops the source, and the model then shows `$0` — exactly what it showed
 before the entry was added. The `provider.id` must be the id genai-prices uses,
-because that is what dcode's provider aliasing resolves to.
+because that is what Niki's provider aliasing resolves to.
 
 Beyond `input_mtok` / `output_mtok`, the schema carries `cache_read_mtok`,
 `cache_write_mtok`, `output_reasoning_mtok`, `input_audio_mtok`, and tiered
@@ -72,7 +72,7 @@ priced separately.
 ## User overrides
 
 Users can add their own overrides for models neither catalog covers via
-`prices.json` in the dcode user config directory (`~/.deepagents/prices.json`,
+`prices.json` in the Niki user config directory (`~/.niki/prices.json`,
 same provider-array schema). On conflicting `(provider id, model id)` entries,
 the user file wins over this built-in one. See
 [`PRICING.md`](https://github.com/langchain-ai/deepagents/blob/main/libs/code/PRICING.md)

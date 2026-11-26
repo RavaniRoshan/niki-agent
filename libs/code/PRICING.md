@@ -6,7 +6,7 @@ catalog and refreshes it hourly in the background (opt out with
 `NIKI_PRICES_AUTO_UPDATE=0`, or `[update].prices_auto_update = false`
 in `config.toml`).
 
-Estimates are display-only. Nothing in dcode caps spend or gates execution on
+Estimates are display-only. Nothing in Niki caps spend or gates execution on
 them, so a wrong rate costs you an inaccurate number and nothing else.
 
 ## When a model has no rates
@@ -20,11 +20,11 @@ provider name that does not line up with what genai-prices calls it. If you woul
 rather see an estimate than a gap, write your own rates to:
 
 ```
-~/.deepagents/prices.json
+~/.niki/prices.json
 ```
 
 The file is read once, on the first request that needs it. **Edits take effect on
-the next dcode start**, not mid-session.
+the next Niki start**, not mid-session.
 
 ## File format
 
@@ -53,9 +53,9 @@ Required, and easy to omit:
 
 | Field | Where | Notes |
 | --- | --- | --- |
-| `id` | provider | Must be the provider id dcode reports for the request — see below. |
+| `id` | provider | Must be the provider id Niki reports for the request — see below. |
 | `name` | provider | Any display string. |
-| `api_pattern` | provider | Regex against the API URL. Unused by dcode, but the schema requires it. |
+| `api_pattern` | provider | Regex against the API URL. Unused by Niki, but the schema requires it. |
 | `id` | model | Any identifier; used in log messages. |
 | `match` | model | How to recognize the model: `{"equals": ...}`, `{"starts_with": ...}`, `{"contains": ...}`, or `{"regex": ...}`. |
 | `prices` | model | At least one rate. |
@@ -68,11 +68,11 @@ dropped.
 
 ## Getting the provider id right
 
-This is where a hand-written file usually goes wrong. dcode resolves the
+This is where a hand-written file usually goes wrong. Niki resolves the
 LangChain provider name through its own alias table before looking anything up,
 so the id it searches on is not always the string you would expect.
 
-If no provider in your file claims that id, dcode falls back to searching **every**
+If no provider in your file claims that id, Niki falls back to searching **every**
 provider in the file by model id alone. That keeps your entry reachable, but it
 also means an entry can price a request that ran against a different provider —
 `llama-3.3-70b` costs very different amounts on Bedrock, Together, and Groq. When
@@ -86,7 +86,7 @@ session:
 
 | What you see | What it means |
 | --- | --- |
-| Nothing at all, cost still missing | The file is not where dcode looks, or is empty. Both are silent by design. |
+| Nothing at all, cost still missing | The file is not where Niki looks, or is empty. Both are silent by design. |
 | "No pricing override matched model=… though … contributed N model entries" | The file loaded, but nothing matched. The `provider_id` in the message is the post-alias id your entry must use. |
 | "Could not parse … as JSON" / "must be an array of providers" | Syntax or shape problem. The payload must be a bare array, not `{"providers": [...]}`. |
 | "the entries failed validation against the genai-prices provider schema" | A required field is missing or mistyped. |
@@ -98,7 +98,7 @@ pricing: the bad source is dropped and everything else still prices.
 
 ## Built-in stopgaps
 
-dcode also ships a small maintainer-curated catalog for models upstream has not
+Niki also ships a small maintainer-curated catalog for models upstream has not
 priced yet. Your file wins over it on a conflicting `(provider id, model id)`
 pair, and both are consulted only when genai-prices itself has no rates. See
 [`niki_agent/bundled_prices.README.md`](./niki_agent/bundled_prices.README.md)

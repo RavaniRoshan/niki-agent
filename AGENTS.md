@@ -21,8 +21,8 @@ Python client until its parity gates are green.
 - `install/` — the release installer for Linux/macOS and Windows.
 - `archive/` — the former upstream packages. Not built, not tested, not
   installed. History is in Git.
-- `docs/niki` — architecture, design, keymap, progress, and the independence
-  record.
+- `docs/niki` — architecture, keymap, progress, the independence record, and
+  the fork-era history under `docs/niki/history/`.
 - `docs/superpowers/plans` — implementation plans.
 
 ## Commands

@@ -989,7 +989,7 @@ class ServerProcess:
 
             logger.info("Starting langgraph dev server: %s", " ".join(cmd))
             self._log_file = tempfile.NamedTemporaryFile(  # noqa: SIM115
-                prefix="deepagents_server_log_",
+                prefix="niki_server_log_",
                 suffix=".txt",
                 delete=False,
                 mode="w",

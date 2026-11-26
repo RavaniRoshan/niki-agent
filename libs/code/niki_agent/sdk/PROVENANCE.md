@@ -8,7 +8,7 @@ product no longer imports an upstream distribution at runtime.
 | Upstream project | <https://github.com/langchain-ai/deepagents> |
 | Upstream package | `deepagents` 0.7.21 |
 | Copied from | this repository at commit `39a7a8c5` (`libs/deepagents/deepagents`) |
-| License | MIT — see `/LICENSE` and `/NOTICE` at the repository root |
+| License | MIT — see `LICENSE` in this directory and `/NOTICE` at the repository root |
 
 ## Changes made
 

@@ -9,7 +9,7 @@ optional upstream dependency.
 | Upstream project | <https://github.com/langchain-ai/deepagents> |
 | Upstream package | `deepagents-acp` 0.0.12 |
 | Copied from | this repository at commit `39a7a8c5` (`libs/acp/deepagents_acp`) |
-| License | MIT — see `/LICENSE` and `/NOTICE` at the repository root |
+| License | MIT — see `LICENSE` in this directory and `/NOTICE` at the repository root |
 
 ## Changes made
 

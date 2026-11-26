@@ -35,12 +35,14 @@ uv run niki
 
 ## Independence
 
-Niki ships its own implementation of the agent loop. The Deep Agents SDK it
-started from is vendored under `niki_agent/sdk/` with its MIT notice intact
-(see `niki_agent/sdk/PROVENANCE.md`); there is no runtime dependency on an
-upstream distribution. The old `dcode` and `deepagents-code` console scripts
-remain as deprecated aliases for two minor versions, and `DEEPAGENTS_CODE_*`
-environment variables are read as deprecated aliases of `NIKI_*`.
+Niki ships its own implementation of the agent loop. The agent SDK and the ACP
+runtime are vendored under `niki_agent/` with their MIT notices intact (see
+`niki_agent/sdk/PROVENANCE.md` and `niki_agent/acp_sdk/PROVENANCE.md`); there is
+no runtime dependency on an upstream distribution.
+
+The old `dcode` and `deepagents-code` console scripts remain as deprecated
+aliases for two minor versions, and `DEEPAGENTS_CODE_*` environment variables are
+read as deprecated aliases of `NIKI_*`.
 
 The user profile moves from `~/.deepagents` to `~/.niki` on first launch, with
 the old directory migrated in place.
@@ -61,5 +63,5 @@ Niki in a directory you do not trust without a sandbox backend; see
 
 ## License
 
-MIT. The original Deep Agents copyright notice is retained in `/NOTICE` and
-`/LICENSE`; vendored files keep their provenance notes.
+MIT. Third-party copyright notices are retained in `/NOTICE` and `/LICENSE`;
+vendored directories keep their license and provenance notes.

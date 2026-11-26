@@ -152,9 +152,7 @@ def resolve_env_var(name: str) -> str | None:
     return environ.get(name) or None
 
 
-PROVIDERS_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/providers#provider-reference"
-)
+PROVIDERS_DOCS_URL = "https://github.com/RavaniRoshan/niki-agent#providers"
 """Public docs page for configuring model providers.
 
 Referenced by `UnknownProviderError` and the `/auth` manager so the same
@@ -767,7 +765,7 @@ class ProviderConfig(TypedDict, total=False):
 
 
 DEFAULT_CONFIG_DIR = PATHS.profile.root
-"""User-level Deep Agents directory, optionally set by `NIKI_HOME`."""
+"""User-level Niki Agent directory, optionally set by `NIKI_HOME`."""
 
 DEFAULT_CONFIG_PATH = PATHS.profile.config_file
 """Path to the selected profile's model configuration file."""
@@ -783,7 +781,7 @@ doesn't conflate state with agents.
 
 
 def default_cache_dir() -> Path:
-    """Return the OS-appropriate cache directory for Deep Agents Code.
+    """Return the OS-appropriate cache directory for Niki Agent.
 
     Uses `~/Library/Caches` on macOS, `LOCALAPPDATA` on Windows (falling back
     to `~/AppData/Local`), and `XDG_CACHE_HOME` elsewhere when it is an

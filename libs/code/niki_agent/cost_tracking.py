@@ -884,7 +884,7 @@ Every deterministic outcome caches -- including malformed JSON, a payload
 upstream's schema rejects, and a file whose permissions or type make it
 permanently unreadable -- because re-reading the same bytes cannot produce a
 different answer. So a build caches at most once per process, and editing
-`prices.json` mid-session has no effect until dcode is restarted.
+`prices.json` mid-session has no effect until Niki is restarted.
 """
 
 _USER_OVERRIDE_ENTRIES = 0

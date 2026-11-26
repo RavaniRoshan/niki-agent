@@ -74,7 +74,7 @@ Install just one provider's extra instead of all of them with
 ```bash
 uv run niki                      # interactive
 uv run niki --help               # usage and options
-uv run niki --version            # Niki Agent 1.0.1
+uv run niki --version            # Niki Agent 1.1.0
 uv run niki -n "summarize this repo"   # headless
 ```
 
@@ -85,9 +85,9 @@ uv run niki -n "summarize this repo"   # headless
   launch and a marker records the move.
 - **Own environment namespace.** `NIKI_*`. Old `DEEPAGENTS_CODE_*` names are
   read once and copied, with a deprecation notice.
-- **Own agent loop.** The Deep Agents SDK is vendored under
-  `libs/code/niki_agent/sdk/` with its MIT notice and a provenance file. The ACP
-  integration is vendored the same way.
+- **Own agent loop.** The agent SDK and the ACP integration are vendored under
+  `libs/code/niki_agent/` with their MIT notices and a provenance file beside
+  each, so nothing imports an upstream distribution at runtime.
 - **Deprecated aliases.** `dcode` and `deepagents-code` still launch the product
   for two minor versions and print a one-line notice.
 
@@ -172,7 +172,7 @@ uv run pytest tests/unit_tests/niki/ -q    # no network, no API key, no terminal
 ## Rust client
 
 `rust/` is a second front end for the same engine, written in Rust. It speaks the
-LangGraph HTTP/SSE protocol directly, so the Python client stays the product and
+engine's HTTP/SSE protocol directly, so the Python client stays the product and
 the Rust binary is the fast path being built toward.
 
 ```bash
@@ -204,6 +204,6 @@ lands. `niki --version` starts in about 1 ms and the first replay frame in about
 
 ## License
 
-MIT. The Deep Agents copyright notice is retained in [`NOTICE`](NOTICE) and
-[`LICENSE`](LICENSE). Vendored code carries a provenance note beside it; that
-attribution is a legal requirement and is never removed by branding work.
+MIT. Third-party copyright notices are retained in [`NOTICE`](NOTICE), and
+every vendored directory carries its license and a provenance note beside it.
+That attribution is a legal requirement and is never removed by branding work.
