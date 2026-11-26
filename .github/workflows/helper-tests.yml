@@ -21,6 +21,7 @@ on:
     branches: [niki-agent]
   pull_request:
   merge_group:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
