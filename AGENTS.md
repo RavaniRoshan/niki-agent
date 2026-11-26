@@ -77,9 +77,10 @@ justify a suppression, the code is probably the problem.
 ## Releases
 
 Push a `v<version>` tag or dispatch **Niki Release**. The workflow builds the
-wheel on Linux, macOS (arm64 and x64), and Windows, assembles a release tarball
+wheel on Linux and Windows, assembles three archives (Linux, macOS, Windows)
 with `install/install.sh` or `install/install.ps1`, and publishes a GitHub
-Release. See `.github/RELEASING.md`.
+Release. The macOS archive is assembled on Linux: the wheel is pure Python, and
+this repository has no macOS runner entitlement. See `.github/RELEASING.md`.
 
 ## CI
 
