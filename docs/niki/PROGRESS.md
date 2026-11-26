@@ -466,8 +466,25 @@ before the fix, and the merged tree is verified again below.
 
 ### Known debt
 
-- `.github/scripts/tests` still contains suites for workflows removed with the
-  upstream release automation (`release_please*`, `check_sdk_pin`, `_test`,
-  `auto-label-by-package`, `pr_labeler_backfill`). They fail on missing files and
-  are the next cleanup slice; `libs/code`'s own gate is unaffected.
 - `openwiki/` describes the pre-trim monorepo and has not been regenerated.
+- The issue templates and a few historical notes still spell the upstream
+  project name; `UPSTREAM_README.md` and `DESIGN.md` are deliberately kept as
+  snapshots.
+
+## Session 4 — CI cleanup, release, install proof
+
+- `.github/scripts` now matches the live tree: the upstream release, README
+  gate, curated-notes, and integration-matrix scripts and tests are gone, and
+  the workflow tests read only the workflows that still exist. Helper suite:
+  142 passed.
+- The PR labeler no longer requires a GitHub App: the App token is optional, the
+  workflow falls back to `GITHUB_TOKEN`, and the repository owner counts as
+  internal. Membership lookups use the repository owner instead of a hardcoded
+  upstream org.
+- `Niki Release` now smoke-installs its own packaged artifact per platform
+  before uploading, writes `SHA256SUMS` beside the archives, and fails when an
+  artifact is missing. `install.ps1` looks for the wheel name the build actually
+  produces (`niki_agent-*.whl`).
+- Local install proof: built `niki_agent-1.0.0-py3-none-any.whl`, ran
+  `install/install.sh` into an empty prefix, and `niki --version` printed
+  `Niki Agent 1.0.0` (exit 0).
