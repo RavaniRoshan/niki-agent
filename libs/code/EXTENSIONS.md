@@ -99,7 +99,7 @@ Sources load in this order:
 | Source | Version and trust behavior |
 | --- | --- |
 | `~/.niki/extensions/` | User-owned loose files; implicitly authorized. |
-| `[extensions].extra_files` and `extra_dirs` | Explicit paths in trusted user configuration. |
+| `[extensions].extra_paths` | Explicit files or directories in trusted user configuration. |
 | `-e/--extension PATH` | Temporary file or directory authorized for one run. |
 | Enabled installed plugins | Identified by `name@marketplace`, loaded from the versioned plugin cache. Installing and enabling the plugin authorizes its code. |
 | `niki.extensions` entry points | Modules from installed Python distributions (`dcode.extensions` is read as a deprecated fallback). |
@@ -121,9 +121,12 @@ project path. Headless or CI launches can opt in for one run with
 [extensions]
 enabled = true
 trust = "ask"  # ask | always | never
-extra_files = ["~/src/policy.py"]
-extra_dirs = ["~/src/company-extensions"]
+extra_paths = ["~/src/policy.py", "~/src/company-extensions"]
 ```
+
+`extra_paths` is a list of file or directory paths. A relative path resolves
+against the directory holding `config.toml` (`~/.niki`), not the directory you
+launch from.
 
 Environment overrides:
 
