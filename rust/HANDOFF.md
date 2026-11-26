@@ -176,6 +176,11 @@ server on loopback, runs the binary as a child process, and asserts the file the
 model asked for exists and that the tool result travelled back in the second
 request body. W3 kept it green without touching it.
 
+The screen draws its first frame, then only when a worker event, a spinner
+tick while a turn is busy, or an input event changes something. An idle poll
+waits 60 s and paints nothing when it times out, so a pty sitting open writes
+no bytes; typing still repaints. Keep the claim tied to that loop.
+
 The W3 gates need no terminal:
 `crates/niki-tui-live/tests/screen.rs` renders into a ratatui `TestBackend`
 buffer and reads the cells back; `tests/turn.rs` runs real turns through the
