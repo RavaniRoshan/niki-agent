@@ -5,8 +5,8 @@
 #
 # Why an installer and not a compiled single-file binary
 # ------------------------------------------------------
-# `niki` resolves a lot at runtime -- LangChain providers are loaded
-# lazily, Textual reads `.tcss` and bundled JSON from disk, and the plugin system
+# `niki` resolves a lot at runtime -- model providers are loaded lazily,
+# Textual reads `.tcss` and bundled JSON from disk, and the plugin system
 # imports by name. That is exactly the shape PyInstaller most often gets wrong,
 # and a frozen build that fails at runtime on someone else's machine is worse
 # than no frozen build. So each artifact is a real wheel plus a launcher that
@@ -35,8 +35,8 @@ permissions:
   contents: write
 
 jobs:
-  # The upstream monorepo pins SDK versions across sibling packages; the
-  # installer artifact must be built from the same tree, so this runs in-repo.
+  # The installer artifact must be built from the tagged tree so the wheel and
+  # the installers in it always agree.
   build:
     name: build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

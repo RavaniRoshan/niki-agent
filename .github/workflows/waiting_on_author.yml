@@ -47,7 +47,7 @@ jobs:
   # `workflow_run` consumer, which re-fetches and verifies everything.
   record-author-response:
     if: >-
-      github.repository == 'langchain-ai/deepagents' &&
+      github.repository == 'RavaniRoshan/niki-agent' &&
       contains(
         fromJSON('["issue_comment", "pull_request_review", "pull_request_review_comment"]'),
         github.event_name
@@ -88,7 +88,7 @@ jobs:
 
   close-expired-items:
     if: >-
-      github.repository == 'langchain-ai/deepagents' &&
+      github.repository == 'RavaniRoshan/niki-agent' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
