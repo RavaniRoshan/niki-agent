@@ -1,5 +1,5 @@
 # Automatically tag issues as "org:external" or "org:internal" based on whether
-# the author is a member of the langchain-ai GitHub organization, and
+# the author is a member of the GitHub organization that owns this repository, and
 # apply contributor tier labels to external contributors based on their
 # merged PR history.
 #

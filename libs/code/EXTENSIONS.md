@@ -11,7 +11,7 @@ An installed plugin declares one or more Python entry files in its manifest:
   "name": "shared-memory",
   "version": "1.0.0",
   "extensions": {
-    "com.langchain.deepagents.code": {
+    "com.niki.agent": {
       "pythonExtensions": "./extension.py"
     }
   }
