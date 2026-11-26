@@ -35,7 +35,7 @@ impl Tool for WriteFile {
     }
 
     async fn run(&self, args: Value, ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
-        let path = args::required_str(&args, "path")?;
+        let path = args::required_str_any(&args, &["file_path", "path"])?;
         let content = args::required_str(&args, "content")?;
 
         let resolved = ctx.resolve(path)?;

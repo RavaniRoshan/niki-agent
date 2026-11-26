@@ -362,3 +362,63 @@ async fn registry_specs_cover_every_tool() {
     assert!(serde_json::to_string(&specs).is_ok());
     assert!(registry.get("no_such_tool").is_none());
 }
+
+#[tokio::test]
+async fn write_file_accepts_the_wire_file_path_alias() {
+    let dir = TempDir::new().expect("temp dir");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(
+        &registry,
+        &ctx,
+        "write_file",
+        json!({"file_path": "alias.txt", "content": "hello"}),
+    )
+    .await;
+
+    assert!(output.text.contains("alias.txt"));
+    assert_eq!(
+        fs::read_to_string(dir.path().join("alias.txt")).expect("read back"),
+        "hello"
+    );
+}
+
+#[tokio::test]
+async fn edit_file_accepts_the_wire_string_aliases() {
+    let dir = TempDir::new().expect("temp dir");
+    fs::write(dir.path().join("alias.txt"), "one two\n").expect("write");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    ok(
+        &registry,
+        &ctx,
+        "edit_file",
+        json!({"file_path": "alias.txt", "old_string": "one", "new_string": "three"}),
+    )
+    .await;
+
+    assert_eq!(
+        fs::read_to_string(dir.path().join("alias.txt")).expect("read back"),
+        "three two\n"
+    );
+}
+
+#[tokio::test]
+async fn read_file_accepts_the_wire_file_path_alias() {
+    let dir = TempDir::new().expect("temp dir");
+    fs::write(dir.path().join("alias.txt"), "alias body\n").expect("write");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(
+        &registry,
+        &ctx,
+        "read_file",
+        json!({"file_path": "alias.txt"}),
+    )
+    .await;
+
+    assert!(output.text.contains("alias body"));
+}

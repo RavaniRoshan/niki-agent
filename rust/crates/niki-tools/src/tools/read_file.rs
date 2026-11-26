@@ -43,7 +43,7 @@ impl Tool for ReadFile {
     }
 
     async fn run(&self, args: Value, ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
-        let path = args::required_str(&args, "path")?;
+        let path = args::required_str_any(&args, &["file_path", "path"])?;
         let offset = u64::from(args::optional_u32(&args, "offset")?.unwrap_or(1).max(1));
         let limit =
             args::optional_u32(&args, "limit")?.and_then(|limit| usize::try_from(limit).ok());
