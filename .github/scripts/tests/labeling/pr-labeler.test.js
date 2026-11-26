@@ -197,7 +197,7 @@ const typeCases = [
 for (const [type, label] of typeCases) {
   test(`${type} titles derive ${label} alongside package/integration labels`, () => {
     const result = helpers().matchTitleLabels(`${type}(code,quickjs): update behavior`);
-    assert.deepEqual([...result.labels].sort(), [label, 'package:code', 'package:quickjs'].sort());
+    assert.deepEqual([...result.labels].sort(), [label, 'package:code'].sort());
   });
 }
 

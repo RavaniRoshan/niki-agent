@@ -71,20 +71,6 @@
       "exclude-paths": [
         "libs/code/tests"
       ]
-    },
-    "libs/partners/quickjs": {
-      "release-type": "python",
-      "package-name": "quickjs",
-      "component": "quickjs",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
-      "extra-files": [
-        "pyproject.toml"
-      ],
-      "changelog-path": "CHANGELOG.md",
-      "exclude-paths": [
-        "libs/partners/quickjs/tests"
-      ]
     }
   },
   "tag-separator": "==",

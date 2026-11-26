@@ -292,18 +292,16 @@ class TestRefreshCommand:
             {
                 "deepagents": "../deepagents",
                 "deepagents-acp": "../acp",
-                "langchain-quickjs": "../partners/quickjs",
             },
         )
         deepagents = (code / "../deepagents").resolve()
         acp = (code / "../acp").resolve()
-        quickjs = (code / "../partners/quickjs").resolve()
 
         command = dep_floor_check.refresh_command()
 
         assert command == (
             f"/usr/bin/uv pip install --directory {code} --python /venv/bin/python "
-            f"-e {code} -e {deepagents} -e {acp} -e {quickjs} --upgrade"
+            f"-e {code} -e {deepagents} -e {acp} --upgrade"
         )
 
     def test_each_source_is_included_independently(

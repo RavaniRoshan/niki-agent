@@ -108,9 +108,10 @@ Rule of thumb: say **chat input** for the main composer and name any other surfa
 
 ## Vendored SDK
 
-The Deep Agents SDK lives at `niki_agent/sdk/` and the ACP runtime at
-`niki_agent/acp_sdk/`. They are copies, not dependencies. `PROVENANCE.md` in
-each directory names the upstream version, commit, and the mechanical changes.
+The Deep Agents SDK lives at `niki_agent/sdk/`, the ACP runtime at
+`niki_agent/acp_sdk/`, and the JS interpreter at `niki_agent/_vendor/quickjs/`.
+They are copies, not dependencies. `PROVENANCE.md` in each directory names the
+upstream version, commit, and the mechanical changes.
 
 - Do not edit the vendored trees for style or branding. They are excluded from
   ruff and ty so their diff against `PROVENANCE.md` stays auditable.

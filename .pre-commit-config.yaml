@@ -70,12 +70,12 @@ repos:
         name: check lockfiles are up-to-date
         language: system
         entry: python3 .github/scripts/checks/check_lockfiles_pre_commit.py
-        files: (^libs/code/pyproject\.toml|^libs/code/uv\.lock|^libs/partners/quickjs/(pyproject\.toml|uv\.lock))$
+        files: (^libs/code/pyproject\.toml|^libs/code/uv\.lock)$
       - id: extras-sync
         name: check extras sync with required deps
         language: system
         entry: python3 .github/scripts/checks/check_extras_sync.py
-        files: ^libs/(code|partners/quickjs)/pyproject\.toml$
+        files: ^libs/code/pyproject\.toml$
       - id: version-equality
         name: check pyproject.toml and _version.py match
         language: system

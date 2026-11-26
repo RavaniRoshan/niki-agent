@@ -9,7 +9,7 @@
 | `type:*` | Issue/PR work type and PR breaking marker | Issue forms + PR title labeler + maintainers |
 | `package:*` | Repository package | Labeler + maintainers |
 | `topic:*` | Technical subject spanning packages | Labeler (paths + model classification) + maintainers |
-| `integration:*` | External sandbox or service under `libs/partners/` | Labeler + maintainers |
+| `integration:*` | External sandbox or service integration | Labeler + maintainers |
 | `org:*` | Author provenance | Automation |
 | `priority:*` | Priority | Maintainers + automation (issue default and PR propagation) |
 | `size:*` | PR diff size | Automation |
@@ -37,8 +37,7 @@ Rules that are easy to get wrong:
 
 | Label | Scopes | Paths |
 | --- | --- | --- |
-| `package:code` | `code`, `sdk` | `libs/code/` |
-| `package:quickjs` | `quickjs` | `libs/partners/quickjs/` |
+| `package:code` | `code`, `sdk`, `quickjs` | `libs/code/` |
 | `package:rust` | `rust` | `rust/` |
 | `package:infra` | `infra` | `install/` |
 | `package:docs` | `docs` | `docs/` |

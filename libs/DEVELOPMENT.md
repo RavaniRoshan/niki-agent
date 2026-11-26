@@ -31,12 +31,11 @@ The product is a single package under `libs/`:
 
 ```txt
 libs/
-├── code/                  # niki-agent — the whole product
-│   ├── niki_agent/        # Textual TUI, headless mode, MCP, skills, CLI
-│   ├── niki_agent/sdk/    # vendored agent SDK
-│   └── niki_agent/acp_sdk/ # vendored ACP runtime
-└── partners/
-    └── quickjs/           # the JS interpreter, built from this repository
+└── code/                  # niki-agent — the whole product
+    ├── niki_agent/        # Textual TUI, headless mode, MCP, skills, CLI
+    ├── niki_agent/sdk/    # vendored agent SDK
+    ├── niki_agent/acp_sdk/ # vendored ACP runtime
+    └── niki_agent/_vendor/quickjs/ # vendored JS interpreter
 ```
 
 Each package has its own `pyproject.toml`, `Makefile`, and `README.md`. There is
@@ -191,8 +190,7 @@ Maintainers can apply the `ci:allow-warnings` PR label and re-run failed jobs to
 
 ## Benchmarks
 
-`libs/code` and `libs/partners/quickjs` define `bench` (walltime) and
-`bench-memory` (heap) targets.
+`libs/code` defines `bench` (walltime) and `bench-memory` (heap) targets.
 
 These targets are the single source of truth for the benchmark invocation. Both local runs and the reusable CI workflow (`.github/workflows/_benchmark.yml`) call them. To change how benchmarks run, edit the Makefile; CI inherits the change.
 
@@ -200,8 +198,7 @@ These targets are the single source of truth for the benchmark invocation. Both 
 # Single package (same target CI invokes):
 make -C libs/code bench
 
-# `code` from the fan-out target (BENCH_PACKAGES in libs/Makefile;
-# note quickjs is not included):
+# `code` from the fan-out target (BENCH_PACKAGES in libs/Makefile):
 make -C libs bench-all
 
 # Plain pytest-benchmark without CodSpeed instrumentation — faster, for
