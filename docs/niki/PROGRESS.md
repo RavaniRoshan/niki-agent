@@ -583,3 +583,6 @@ before the fix, and the merged tree is verified again below.
   Niki Agent.
 - Removed `fix_onboard.py`, a fork-era one-off that patched onboarding copy
   the tree no longer contains.
+- Released as `v1.1.1`: `SHA256SUMS` verified for the Linux archive, a
+  fresh-prefix install reports `Niki Agent 1.1.1`, and `niki doctor` exits 0
+  with `/etc/niki/managed_config.toml` on the clean profile.
