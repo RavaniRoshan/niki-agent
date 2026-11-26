@@ -170,9 +170,13 @@ jobs:
         run: |
           set -euo pipefail
           cd artifacts
-          # One checksum line per artifact, uploaded beside the release files.
+          # `download-artifact` nests each artifact in its own directory, but the
+          # release publishes the files flat. Record basenames only, so
+          # `sha256sum -c SHA256SUMS` works beside the downloaded assets.
           find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 \
-            | sort -z | xargs -0 sha256sum > SHA256SUMS
+            | sort -z | xargs -0 sha256sum \
+            | while read -r hash path; do printf '%s  %s\n' "$hash" "$(basename "$path")"; done \
+            > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create the release
