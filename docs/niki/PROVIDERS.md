@@ -26,7 +26,7 @@ runtime dependency** — all three are reachable through packages already in
 `[project.optional-dependencies]`. They are not built-in `init_chat_model`
 providers, so each is configured with `class_path` + `base_url`.
 
-Drop the block you want into `~/.deepagents/config.toml`:
+Drop the block you want into `~/.niki/config.toml`:
 
 ```toml
 [providers.kimi]
