@@ -17,7 +17,7 @@ The markdown sub-widget is never measured because the transcript's height
 measurement is scheduled by the agent/thread lifecycle, which a synthetic mount
 does not stand up. So the *on-screen* half of V11 — headings, lists, tables,
 links, code-block language labels, and stability while streaming — is
-**OWNER-VERIFY**, with exact steps in `docs/niki/OWNER_VERIFY.md`.
+**OWNER-VERIFY**, with exact steps in `the internal owner-verification notes`.
 
 What remains below is the part that is genuinely decidable: that the message
 pipeline actually carries markdown source into a `Markdown` widget. That is
@@ -139,5 +139,5 @@ async def test_v11_markdown_widget_is_present_but_unmeasured_in_isolation() -> N
     assert height == 0, (
         f"V11: a synthetic assistant message now lays out (height={height}). If "
         "that is expected, the markdown rendering tests can be restored and the "
-        "OWNER-VERIFY note in docs/niki/CHECKLIST.md retired in this change."
+        "OWNER-VERIFY note in the internal readiness checklist retired in this change."
     )

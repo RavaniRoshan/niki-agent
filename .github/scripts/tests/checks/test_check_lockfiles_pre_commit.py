@@ -41,7 +41,7 @@ def test_empty_paths_check_all_packages() -> None:
 def test_unowned_paths_skip_lock_check() -> None:
     """Non-package edits should not run lock checks in PR mode."""
     assert _packages_for_paths([".github/workflows/ci.yml"]) == []
-    assert _packages_for_paths(["docs/niki/PROGRESS.md"]) == []
+    assert _packages_for_paths(["docs/niki/ARCHITECTURE.md"]) == []
 
 
 def test_lock_command_targets_the_product_directory() -> None:

@@ -1160,7 +1160,7 @@ async def _execute_offload(
             # to the latest checkpoint rather than the one it read, so a
             # `messages` write here would be unattributed to any run and could
             # clobber messages a concurrent run appended in that window. See
-            # THREAT_MODEL.md (TB10/DF27) before relaxing this.
+            # the internal threat model (TB10/DF27) before relaxing this.
             #
             # Checked as an allowlist against `OffloadStateUpdate` rather than
             # for `messages` alone, so the runtime guard enforces the same
@@ -1242,7 +1242,7 @@ async def offload(request: Request) -> JSONResponse:
     Invariants this boundary owns: it reads and hydrates checkpoint state itself,
     it commits only the channels `OffloadStateUpdate` permits and refuses any
     `messages` write outright, and it settles the drained cost records on every
-    exit path. See THREAT_MODEL.md C18 (TB10/DF27).
+    exit path. See the internal threat model C18 (TB10/DF27).
 
     Returns:
         JSON operation response.

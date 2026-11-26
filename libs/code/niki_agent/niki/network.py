@@ -1,6 +1,6 @@
 """Niki's outbound-network policy.
 
-The audit is in `docs/niki/history/DESIGN.md` §5; this module is where the policy is
+The audit is in `the internal design audit` §5; this module is where the policy is
 enforced. Three things reach the network on their own:
 
 1. `update_check.py` polls `https://pypi.org/pypi/niki-agent/json`.

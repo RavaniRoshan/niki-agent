@@ -3483,7 +3483,7 @@ def test_the_writer_refuses_the_managed_path(
 ) -> None:
     """The managed tier is read-only by guard, not only by convention.
 
-    `THREAT_MODEL.md` states that the CLI never writes the managed file. That
+    `the internal threat model` states that the CLI never writes the managed file. That
     held because no caller passed the path, which is not the same as being
     unable to.
     """

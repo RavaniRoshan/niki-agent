@@ -963,7 +963,7 @@ class TestReloadFromEnvironment:
         The classifier authorizes gated tool calls in Auto mode, so a cloned repo
         that could set this would silently downgrade the review — including its
         resistance to prompt injection in the untrusted text it reads. Picking
-        the classifier stays a user-level decision (THREAT_MODEL T14).
+        the classifier stays a user-level decision (internal threat model T14).
         """
         from niki_agent.config import _load_dotenv
 
