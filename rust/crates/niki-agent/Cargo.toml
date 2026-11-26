@@ -9,6 +9,7 @@ description = "Turn loop for the Niki agent: model, tool calls, results, model"
 
 [dependencies]
 futures-util.workspace = true
+niki-hooks = { path = "../niki-hooks" }
 niki-policy = { path = "../niki-policy" }
 niki-provider = { path = "../niki-provider" }
 niki-tools = { path = "../niki-tools" }
