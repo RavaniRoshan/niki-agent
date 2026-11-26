@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-description = "LangGraph SSE protocol types and replay fixtures for the Niki client"
+description = "Engine stream protocol types and replay fixtures for the Niki client"
 
 [dependencies]
 serde.workspace = true

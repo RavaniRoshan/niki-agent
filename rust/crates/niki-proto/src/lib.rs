@@ -1,7 +1,6 @@
-//! LangGraph SSE protocol types and committed replay fixtures.
+//! Engine stream protocol types and committed replay fixtures.
 //!
-//! The Rust client speaks the same HTTP/SSE protocol as the Python engine's
-//! `RemoteGraph` client. This crate owns the wire vocabulary: frame names,
+//! This crate owns the wire vocabulary the engine serves: frame names,
 //! incremental SSE parsing, the fixture container, and the schema test that
 //! rejects an event the client does not understand.
 
@@ -13,7 +12,7 @@ use serde_json::Value;
 
 pub const FIXTURE_FORMAT: &str = "niki.protocol.fixture.v1";
 
-/// Every stream event the LangGraph API has emitted for a Niki run.
+/// Every stream event the engine has emitted for a Niki run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum EventName {
     #[serde(rename = "metadata")]
@@ -223,7 +222,7 @@ pub fn parse_sse(input: &str) -> Result<Vec<RawFrame>, ProtoError> {
     Ok(frames)
 }
 
-/// Read `content` from a LangGraph message object.
+/// Read `content` from an engine message object.
 #[must_use]
 pub fn message_content(value: &Value) -> Option<String> {
     match value.get("content")? {
@@ -247,7 +246,7 @@ pub fn message_content(value: &Value) -> Option<String> {
     }
 }
 
-/// The role carried by a LangGraph message object.
+/// The role carried by an engine message object.
 #[must_use]
 pub fn message_role(value: &Value) -> &str {
     value

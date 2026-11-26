@@ -2,7 +2,7 @@
 //!
 //! Two entry points share one renderer: `replay` folds a committed protocol
 //! fixture into a frame with no engine running, and `session` streams the same
-//! frames from a live LangGraph engine. `replay` is what the parity tests pin.
+//! frames from a live engine. `replay` is what the parity tests pin.
 
 use std::io::{IsTerminal, Write};
 
@@ -27,7 +27,7 @@ USAGE:
 
 COMMANDS:
     replay <fixture>   Render a committed protocol fixture, no engine needed
-    session            Run one prompt against a live LangGraph engine
+    session            Run one prompt against a live engine
     keys               Print the app-level keymap
     --version          Print the version line
     --help             Print this text
@@ -40,7 +40,7 @@ REPLAY OPTIONS:
     --check            Fail when the fixture yields no messages
 
 SESSION OPTIONS:
-    --engine <URL>     LangGraph API base (default: NIKI_ENGINE_URL or
+    --engine <URL>     Engine base URL (default: NIKI_ENGINE_URL or
                        http://127.0.0.1:2024)
     --assistant <ID>   Assistant id (default: agent)
     --prompt <TEXT>    Prompt to send (required)

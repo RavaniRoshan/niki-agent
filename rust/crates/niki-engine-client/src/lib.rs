@@ -1,4 +1,4 @@
-//! LangGraph HTTP/SSE engine client.
+//! HTTP/SSE client for the Niki engine.
 //!
 //! Owns the connection lifecycle — thread creation, a streaming run, cancel,
 //! and state reads — and decodes SSE incrementally. Rendering never happens
@@ -11,7 +11,7 @@ use niki_proto::{EventName, Frame, ProtoError, RawFrame, parse_sse};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// A run request in the shape the LangGraph API accepts.
+/// A run request in the shape the engine accepts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunRequest {
     pub assistant_id: String,
@@ -129,7 +129,7 @@ pub enum ClientError {
     Status { status: u16, body: String },
 }
 
-/// A LangGraph engine connection.
+/// A connection to the Niki engine.
 #[derive(Clone)]
 pub struct EngineClient {
     base: String,
@@ -337,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn request_serializes_the_langgraph_shape() {
+    fn request_matches_the_engine_shape() {
         let request = RunRequest::prompt("agent", "Say hello");
         let value = serde_json::to_value(&request).unwrap();
         assert_eq!(value["assistant_id"], "agent");
