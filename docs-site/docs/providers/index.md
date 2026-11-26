@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/PROVIDERS.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: d6d4cb6b7cfd7a74d798366f6715fc755cda8edf30d2c22de144b50bdd9daa06
+  source-sha256: 8ea51919fc8b6ab37cd244e9dd1333991b3c2a374aec6bd2e168baf8a5e3c778
 -->
 # Providers
 
@@ -25,6 +25,11 @@ cd libs/code
 uv sync --extra <name>          # one integration
 uv sync --all-extras            # providers and sandboxes
 ```
+
+The three integrations above are installed with the app, so `/install` is not
+needed for them; their extra names are listed so a source checkout can enable
+the same integration with `uv sync --extra`. Every other row is an optional
+extra.
 
 | Provider | Extra | Key environment variable |
 | --- | --- | --- |
