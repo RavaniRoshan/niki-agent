@@ -16,8 +16,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.client.launch import server as server_module
-from deepagents_code.client.launch.server import (
+from niki_agent.client.launch import server as server_module
+from niki_agent.client.launch.server import (
     ServerProcess,
     _server_process_group,
     _terminate_server_process,
@@ -111,22 +111,22 @@ class TestServerPortSelection:
         process.poll.return_value = None
         with (
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=self._mock_log_file(tmp_path),
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=43210,
             ) as find_free,
-            patch("deepagents_code.client.launch.server._port_in_use") as in_use,
+            patch("niki_agent.client.launch.server._port_in_use") as in_use,
         ):
             await server.start()
 
@@ -142,21 +142,21 @@ class TestServerPortSelection:
         process.poll.return_value = None
         with (
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=self._mock_log_file(tmp_path),
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
             patch(
-                "deepagents_code.client.launch.server._port_in_use", return_value=False
+                "niki_agent.client.launch.server._port_in_use", return_value=False
             ) as in_use,
-            patch("deepagents_code.client.launch.server._find_free_port") as find_free,
+            patch("niki_agent.client.launch.server._find_free_port") as find_free,
         ):
             await server.start()
 
@@ -172,22 +172,22 @@ class TestServerPortSelection:
         process.poll.return_value = None
         with (
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=self._mock_log_file(tmp_path),
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
             patch(
-                "deepagents_code.client.launch.server._port_in_use", return_value=True
+                "niki_agent.client.launch.server._port_in_use", return_value=True
             ) as in_use,
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=43210,
             ) as find_free,
         ):
@@ -211,10 +211,10 @@ class TestWaitForServerHealthy:
             "Traceback (most recent call last):\n"
             "ValueError: No Runloop API key found\n"
             "Sandbox creation failed for 'runloop': No Runloop API key found. "
-            "Set RUNLOOP_API_KEY or DEEPAGENTS_CODE_RUNLOOP_API_KEY.\n"
+            "Set RUNLOOP_API_KEY or NIKI_RUNLOOP_API_KEY.\n"
             "DEEPAGENTS_STARTUP_ERROR:Sandbox creation failed for 'runloop': "
             "No Runloop API key found. Set RUNLOOP_API_KEY or "
-            "DEEPAGENTS_CODE_RUNLOOP_API_KEY.\n"
+            "NIKI_RUNLOOP_API_KEY.\n"
             "2026-05-11T03:37:44.911664Z [error    ] "
             "Application startup failed. Exiting. [uvicorn.error]"
         )
@@ -231,7 +231,7 @@ class TestWaitForServerHealthy:
         assert first_line == (
             "Server process exited with code 3: Sandbox creation failed for "
             "'runloop': No Runloop API key found. Set RUNLOOP_API_KEY or "
-            "DEEPAGENTS_CODE_RUNLOOP_API_KEY."
+            "NIKI_RUNLOOP_API_KEY."
         )
 
 
@@ -251,7 +251,7 @@ class TestServerProcess:
         def _raise(_pid: int) -> int:
             raise ProcessLookupError
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.getpgid", _raise)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.getpgid", _raise)
 
     async def test_start_is_noop_when_already_running(self) -> None:
         """`start()` on an already-running server spawns no second process.
@@ -265,7 +265,7 @@ class TestServerProcess:
         running_proc.poll.return_value = None  # still alive
         server._process = running_proc
 
-        with patch("deepagents_code.client.launch.server.subprocess.Popen") as popen:
+        with patch("niki_agent.client.launch.server.subprocess.Popen") as popen:
             await server.start()
 
         popen.assert_not_called()
@@ -348,7 +348,7 @@ class TestServerProcess:
         """
         # See sibling health-failure test: pin debug off so the log file is
         # unlinked and the `not log_path.exists()` assertion can't flake.
-        monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG", raising=False)
+        monkeypatch.delenv("NIKI_DEBUG", raising=False)
 
         config_dir = tmp_path / "runtime"
         config_dir.mkdir()
@@ -376,19 +376,19 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(side_effect=asyncio.CancelledError),
             ),
             pytest.raises(asyncio.CancelledError),
@@ -433,19 +433,19 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(side_effect=RuntimeError("startup boom")),
             ),
             patch.object(
@@ -481,19 +481,19 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -574,19 +574,19 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -617,19 +617,19 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -667,22 +667,20 @@ class TestServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
+            patch("niki_agent.client.launch.server._port_in_use", return_value=False),
             patch(
-                "deepagents_code.client.launch.server._port_in_use", return_value=False
-            ),
-            patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -839,28 +837,26 @@ class TestServerProcess:
         second_log_file = MagicMock()
         second_log_file.name = str(tmp_path / "server-2.log")
 
-        env_key = "DEEPAGENTS_CODE_SERVER_RUBRIC_MAX_ITERATIONS"
+        env_key = "NIKI_SERVER_RUBRIC_MAX_ITERATIONS"
         server = ServerProcess(config_dir=config_dir, owns_config_dir=False)
         server.persist_env(**{env_key: "12"})
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
+            patch("niki_agent.client.launch.server._port_in_use", return_value=False),
             patch(
-                "deepagents_code.client.launch.server._port_in_use", return_value=False
-            ),
-            patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 side_effect=[first_log_file, second_log_file],
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 side_effect=[first_process, second_process],
             ) as popen,
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -897,28 +893,26 @@ class TestServerProcess:
         second_log_file = MagicMock()
         second_log_file.name = str(tmp_path / "server-2.log")
 
-        env_key = "DEEPAGENTS_CODE_SERVER_RUBRIC_MAX_ITERATIONS"
+        env_key = "NIKI_SERVER_RUBRIC_MAX_ITERATIONS"
         server = ServerProcess(config_dir=config_dir, owns_config_dir=False)
         server.persist_env(**{env_key: "10"})
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
+            patch("niki_agent.client.launch.server._port_in_use", return_value=False),
             patch(
-                "deepagents_code.client.launch.server._port_in_use", return_value=False
-            ),
-            patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 side_effect=[first_log_file, second_log_file],
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 side_effect=[first_process, second_process],
             ) as popen,
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
         ):
@@ -945,7 +939,7 @@ class TestServerProcess:
         server = ServerProcess(config_dir=config_dir, owns_config_dir=False)
         server._process = process  # simulate already started
 
-        old_value = os.environ.get("DEEPAGENTS_CODE_SERVER_MODEL")
+        old_value = os.environ.get("NIKI_SERVER_MODEL")
 
         async def failing_start(**_: object) -> None:
             await asyncio.sleep(0)
@@ -953,15 +947,15 @@ class TestServerProcess:
             raise RuntimeError(msg)
 
         server._start = failing_start  # ty: ignore
-        server.update_env(DEEPAGENTS_CODE_SERVER_MODEL="should-be-rolled-back")
+        server.update_env(NIKI_SERVER_MODEL="should-be-rolled-back")
 
         with pytest.raises(RuntimeError, match="restart failed"):
             await server.restart()
 
         # Env should be rolled back
-        assert os.environ.get("DEEPAGENTS_CODE_SERVER_MODEL") == old_value
+        assert os.environ.get("NIKI_SERVER_MODEL") == old_value
         # Overrides NOT cleared (available for retry)
-        assert "DEEPAGENTS_CODE_SERVER_MODEL" in server._env_overrides
+        assert "NIKI_SERVER_MODEL" in server._env_overrides
 
 
 class TestServerProcessStopIdempotency:
@@ -1079,7 +1073,7 @@ class TestPreservedLogNotice:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """With debug on, `stop()` preserves the log and defers the notice."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG", "1")
+        monkeypatch.setenv("NIKI_DEBUG", "1")
         log_path = tmp_path / "server.log"
         server = self._make_stopped_server(log_path)
 
@@ -1097,7 +1091,7 @@ class TestPreservedLogNotice:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """`emit_preserved_log_notices()` prints the path once, then drains it."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG", "1")
+        monkeypatch.setenv("NIKI_DEBUG", "1")
         log_path = tmp_path / "server.log"
         server = self._make_stopped_server(log_path)
         server.stop()
@@ -1119,7 +1113,7 @@ class TestPreservedLogNotice:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """With debug off, the log is unlinked and no path is queued."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG", raising=False)
+        monkeypatch.delenv("NIKI_DEBUG", raising=False)
         log_path = tmp_path / "server.log"
         server = self._make_stopped_server(log_path)
 
@@ -1143,7 +1137,7 @@ class TestPreservedLogNotice:
         print would be swallowed) then emitting after the terminal is restored
         yields exactly one visible line.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG", "1")
+        monkeypatch.setenv("NIKI_DEBUG", "1")
         log_path = tmp_path / "server.log"
         server = self._make_stopped_server(log_path)
 
@@ -1174,28 +1168,26 @@ class TestServerSessionIsolation:
         self, tmp_path: Path, platform: str, monkeypatch: pytest.MonkeyPatch
     ) -> MagicMock:
         """Run `start()` on a patched platform and return the `Popen` mock."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", platform
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", platform)
         server = self._make_server(tmp_path)
         process = MagicMock(pid=4321)
         process.poll.return_value = None
         popen = MagicMock(return_value=process)
         with (
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=self._mock_log_file(tmp_path),
             ),
-            patch("deepagents_code.client.launch.server.subprocess.Popen", popen),
+            patch("niki_agent.client.launch.server.subprocess.Popen", popen),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(),
             ),
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=43210,
             ),
-            patch("deepagents_code.client.launch.server._port_in_use"),
+            patch("niki_agent.client.launch.server._port_in_use"),
         ):
             await server.start()
         return popen
@@ -1225,35 +1217,29 @@ class TestServerProcessGroup:
 
     def test_returns_none_on_windows(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Windows uses console groups instead of POSIX process groups."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         assert _server_process_group(4321) is None
 
     def test_returns_none_when_process_gone(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A vanished process yields no group to signal."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
 
         def _raise(_pid: int) -> int:
             raise ProcessLookupError
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.getpgid", _raise)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.getpgid", _raise)
         assert _server_process_group(4321) is None
 
     def test_returns_none_when_not_group_leader(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A process that does not lead its own group is not group-signaled."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
         # pgid (5000) != pid (4321): the server shares another group.
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.os.getpgid",
+            "niki_agent.client.launch.server.os.getpgid",
             lambda pid: 5000 if pid == 4321 else 999,
         )
         assert _server_process_group(4321) is None
@@ -1262,23 +1248,19 @@ class TestServerProcessGroup:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The server's group is never signaled when it equals dcode's own."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
         # Both the server and dcode (pid 0) resolve to the same group.
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.os.getpgid",
+            "niki_agent.client.launch.server.os.getpgid",
             lambda _pid: 4321,
         )
         assert _server_process_group(4321) is None
 
     def test_returns_dedicated_group(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A dedicated leader group distinct from dcode's is returned."""
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.os.getpgid",
+            "niki_agent.client.launch.server.os.getpgid",
             lambda pid: 4321 if pid == 4321 else 999,
         )
         assert _server_process_group(4321) == 4321
@@ -1287,14 +1269,12 @@ class TestServerProcessGroup:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         """A non-`ProcessLookupError` failure falls back to root but is logged."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
 
         def _raise(_pid: int) -> int:
             raise PermissionError
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.getpgid", _raise)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.getpgid", _raise)
 
         with caplog.at_level(logging.WARNING):
             assert _server_process_group(4321) is None
@@ -1315,11 +1295,9 @@ class TestTerminateServerProcess:
     @staticmethod
     def _patch_own_group(monkeypatch: pytest.MonkeyPatch) -> None:
         """Make pid 4321 a dedicated group leader distinct from dcode's."""
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.os.getpgid",
+            "niki_agent.client.launch.server.os.getpgid",
             lambda pid: 4321 if pid == 4321 else 999,
         )
 
@@ -1333,7 +1311,7 @@ class TestTerminateServerProcess:
         """SIGTERM is sent to the whole group and the process exits gracefully."""
         self._patch_own_group(monkeypatch)
         killpg = MagicMock(side_effect=self._gone_after_signal)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1361,8 +1339,8 @@ class TestTerminateServerProcess:
                 raise ProcessLookupError
 
         killpg = MagicMock(side_effect=_killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server._SHUTDOWN_TIMEOUT", 0)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server._SHUTDOWN_TIMEOUT", 0)
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1388,9 +1366,9 @@ class TestTerminateServerProcess:
             if isinstance(result, BaseException):
                 raise result
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", _probe)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", _probe)
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.time.sleep", lambda _: None
+            "niki_agent.client.launch.server.time.sleep", lambda _: None
         )
         process = self._own_group_process()
         process.poll.return_value = 0
@@ -1418,7 +1396,7 @@ class TestTerminateServerProcess:
             if leader_reaped:
                 raise ProcessLookupError
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", _probe)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", _probe)
         process = self._own_group_process()
         process.poll.side_effect = _poll
 
@@ -1437,9 +1415,9 @@ class TestTerminateServerProcess:
             assert sig == 0
             raise next(probes)
 
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", _probe)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", _probe)
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.time.sleep", lambda _: None
+            "niki_agent.client.launch.server.time.sleep", lambda _: None
         )
         process = self._own_group_process()
 
@@ -1452,16 +1430,14 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """When the server shares dcode's group, only the root proc is signaled."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "linux"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "linux")
         # Server pid and dcode (pid 0) resolve to the same group id.
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server.os.getpgid",
+            "niki_agent.client.launch.server.os.getpgid",
             lambda _pid: 4321,
         )
         killpg = MagicMock()
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1473,9 +1449,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """On Windows Ctrl+Break permits graceful shutdown before escalation."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.wait.side_effect = [
             subprocess.TimeoutExpired(cmd="langgraph", timeout=3),
@@ -1497,9 +1471,7 @@ class TestTerminateServerProcess:
         The word in the log line is the only observable effect of the win32
         clause in `signal_scope`, so nothing else can catch its removal.
         """
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.send_signal.side_effect = ProcessLookupError
 
@@ -1517,9 +1489,7 @@ class TestTerminateServerProcess:
         graceful signal's scope here would claim a group kill that never
         happened and hide the orphaned descendants.
         """
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.wait.side_effect = [
             subprocess.TimeoutExpired(cmd="langgraph", timeout=3),
@@ -1537,9 +1507,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A responsive Windows server exits through Uvicorn's SIGBREAK path."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1560,7 +1528,7 @@ class TestTerminateServerProcess:
             raise ProcessLookupError
 
         killpg = MagicMock(side_effect=_killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1578,7 +1546,7 @@ class TestTerminateServerProcess:
             raise PermissionError
 
         killpg = MagicMock(side_effect=_killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
         process = self._own_group_process()
 
         with caplog.at_level(logging.ERROR):
@@ -1599,8 +1567,8 @@ class TestTerminateServerProcess:
                 raise ProcessLookupError
 
         killpg = MagicMock(side_effect=_killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server._SHUTDOWN_TIMEOUT", 0)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server._SHUTDOWN_TIMEOUT", 0)
         process = self._own_group_process()
 
         _terminate_server_process(process)
@@ -1622,8 +1590,8 @@ class TestTerminateServerProcess:
                 raise PermissionError
 
         killpg = MagicMock(side_effect=_killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server._SHUTDOWN_TIMEOUT", 0)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server._SHUTDOWN_TIMEOUT", 0)
         process = self._own_group_process()
 
         with caplog.at_level(logging.ERROR):
@@ -1638,9 +1606,9 @@ class TestTerminateServerProcess:
         self._patch_own_group(monkeypatch)
         # The group never disappears: every liveness probe reports it alive.
         killpg = MagicMock(return_value=None)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
-        monkeypatch.setattr("deepagents_code.client.launch.server._SHUTDOWN_TIMEOUT", 0)
-        monkeypatch.setattr("deepagents_code.client.launch.server._SIGKILL_TIMEOUT", 0)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server._SHUTDOWN_TIMEOUT", 0)
+        monkeypatch.setattr("niki_agent.client.launch.server._SIGKILL_TIMEOUT", 0)
         process = self._own_group_process()
 
         with caplog.at_level(logging.WARNING):
@@ -1658,9 +1626,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         """On Windows a process that ignores SIGKILL is reported after the wait."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.wait.side_effect = [
             subprocess.TimeoutExpired(cmd="langgraph", timeout=3),
@@ -1677,10 +1643,10 @@ class TestTerminateServerProcess:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A failed startup tears down the detached server group, not just root."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG", raising=False)
+        monkeypatch.delenv("NIKI_DEBUG", raising=False)
         self._patch_own_group(monkeypatch)
         killpg = MagicMock(side_effect=self._gone_after_signal)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
 
         config_dir = tmp_path / "runtime"
         config_dir.mkdir()
@@ -1693,19 +1659,19 @@ class TestTerminateServerProcess:
 
         with (
             patch(
-                "deepagents_code.client.launch.server._find_free_port",
+                "niki_agent.client.launch.server._find_free_port",
                 return_value=12345,
             ),
             patch(
-                "deepagents_code.client.launch.server.tempfile.NamedTemporaryFile",
+                "niki_agent.client.launch.server.tempfile.NamedTemporaryFile",
                 return_value=log_file,
             ),
             patch(
-                "deepagents_code.client.launch.server.subprocess.Popen",
+                "niki_agent.client.launch.server.subprocess.Popen",
                 return_value=process,
             ),
             patch(
-                "deepagents_code.client.launch.server.wait_for_server_healthy",
+                "niki_agent.client.launch.server.wait_for_server_healthy",
                 new=AsyncMock(side_effect=RuntimeError("boom")),
             ),
             pytest.raises(RuntimeError, match="boom"),
@@ -1724,7 +1690,7 @@ class TestTerminateServerProcess:
         """Restart tears down the old server group before starting a new one."""
         self._patch_own_group(monkeypatch)
         killpg = MagicMock(side_effect=self._gone_after_signal)
-        monkeypatch.setattr("deepagents_code.client.launch.server.os.killpg", killpg)
+        monkeypatch.setattr("niki_agent.client.launch.server.os.killpg", killpg)
 
         config_dir = tmp_path / "runtime"
         config_dir.mkdir()
@@ -1748,9 +1714,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A Windows process that vanishes before Ctrl+Break needs no SIGKILL."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.send_signal.side_effect = ProcessLookupError
 
@@ -1765,9 +1729,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         """A headless Windows child is terminated when Ctrl+Break is unavailable."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.send_signal.side_effect = OSError("no console")
 
@@ -1786,9 +1748,7 @@ class TestTerminateServerProcess:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         """On Windows a failed escalation SIGKILL reports the orphan risk."""
-        monkeypatch.setattr(
-            "deepagents_code.client.launch.server.sys.platform", "win32"
-        )
+        monkeypatch.setattr("niki_agent.client.launch.server.sys.platform", "win32")
         process = self._own_group_process()
         process.wait.side_effect = subprocess.TimeoutExpired(cmd="langgraph", timeout=3)
         process.kill.side_effect = PermissionError
@@ -1810,7 +1770,7 @@ class TestTerminateServerProcess:
         process.poll.return_value = None
         server._process = process
         monkeypatch.setattr(
-            "deepagents_code.client.launch.server._terminate_server_process",
+            "niki_agent.client.launch.server._terminate_server_process",
             MagicMock(),
         )
 

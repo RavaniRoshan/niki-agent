@@ -7,9 +7,9 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-from deepagents_code.config import Credentials
-from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-from deepagents_code.tool_catalog import (
+from niki_agent.config import Credentials
+from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+from niki_agent.tool_catalog import (
     ToolEntry,
     UnavailableServer,
     _load_mcp_server_info,
@@ -90,14 +90,14 @@ class TestCollectBuiltInTools:
         ]
         with (
             patch(
-                "deepagents_code.agent.create_cli_agent",
+                "niki_agent.agent.create_cli_agent",
                 return_value=(SimpleNamespace(), None),
             ),
             patch(
-                "deepagents_code.tool_catalog.collect_tools_from_agent",
+                "niki_agent.tool_catalog.collect_tools_from_agent",
                 return_value=leaked,
             ),
-            caplog.at_level("ERROR", logger="deepagents_code.tool_catalog"),
+            caplog.at_level("ERROR", logger="niki_agent.tool_catalog"),
         ):
             names = {
                 tool.name for tool in collect_built_in_tools(fs_tools=["read_file"])
@@ -124,14 +124,14 @@ class TestCollectBuiltInTools:
         ]
         with (
             patch(
-                "deepagents_code.agent.create_cli_agent",
+                "niki_agent.agent.create_cli_agent",
                 return_value=(SimpleNamespace(), None),
             ),
             patch(
-                "deepagents_code.tool_catalog.collect_tools_from_agent",
+                "niki_agent.tool_catalog.collect_tools_from_agent",
                 return_value=applied,
             ),
-            caplog.at_level("ERROR", logger="deepagents_code.tool_catalog"),
+            caplog.at_level("ERROR", logger="niki_agent.tool_catalog"),
         ):
             collect_built_in_tools(fs_tools=["read_file"])
 
@@ -187,7 +187,7 @@ class TestCollectMcpCatalog:
             ),
         ]
         loader = AsyncMock(return_value=servers)
-        with patch("deepagents_code.tool_catalog._load_mcp_server_info", new=loader):
+        with patch("niki_agent.tool_catalog._load_mcp_server_info", new=loader):
             groups, unavailable, mcp_error = collect_mcp_catalog(
                 mcp_config_path="/tmp/mcp.json",
                 trust_project_mcp=True,
@@ -231,7 +231,7 @@ class TestCollectMcpCatalog:
             ),
         ]
         with patch(
-            "deepagents_code.tool_catalog._load_mcp_server_info",
+            "niki_agent.tool_catalog._load_mcp_server_info",
             new=AsyncMock(return_value=servers),
         ):
             groups, unavailable, mcp_error = collect_mcp_catalog()
@@ -248,7 +248,7 @@ class TestCollectMcpCatalog:
 
     def test_discovery_failure_returns_generic_error_without_leaking(self) -> None:
         with patch(
-            "deepagents_code.tool_catalog._load_mcp_server_info",
+            "niki_agent.tool_catalog._load_mcp_server_info",
             new=AsyncMock(side_effect=RuntimeError("secret /path/mcp.json boom")),
         ):
             groups, unavailable, mcp_error = collect_mcp_catalog()
@@ -283,10 +283,10 @@ class TestLoadMcpServerInfo:
         loader = AsyncMock(return_value=([], session_manager, server_info))
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=None,
             ),
-            patch("deepagents_code.mcp_tools.resolve_and_load_mcp_tools", new=loader),
+            patch("niki_agent.mcp_tools.resolve_and_load_mcp_tools", new=loader),
         ):
             result = asyncio.run(
                 _load_mcp_server_info(mcp_config_path=None, trust_project_mcp=None)
@@ -307,10 +307,10 @@ class TestLoadMcpServerInfo:
         loader = AsyncMock(return_value=([], session_manager, server_info))
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=None,
             ),
-            patch("deepagents_code.mcp_tools.resolve_and_load_mcp_tools", new=loader),
+            patch("niki_agent.mcp_tools.resolve_and_load_mcp_tools", new=loader),
         ):
             # A cleanup failure must not mask the return value or propagate.
             result = asyncio.run(
@@ -322,10 +322,10 @@ class TestLoadMcpServerInfo:
         loader = AsyncMock(return_value=([], None, []))
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 side_effect=OSError("no cwd"),
             ),
-            patch("deepagents_code.mcp_tools.resolve_and_load_mcp_tools", new=loader),
+            patch("niki_agent.mcp_tools.resolve_and_load_mcp_tools", new=loader),
         ):
             result = asyncio.run(
                 _load_mcp_server_info(mcp_config_path=None, trust_project_mcp=None)

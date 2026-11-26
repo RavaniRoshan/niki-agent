@@ -7,7 +7,7 @@ from collections.abc import (
 from typing import Any
 
 import pytest
-from deepagents.middleware.subagents import SubAgentMiddleware
+from niki_agent.sdk.middleware.subagents import SubAgentMiddleware
 from langchain.agents import create_agent
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage

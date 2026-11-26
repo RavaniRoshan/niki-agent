@@ -45,19 +45,19 @@ if TYPE_CHECKING:
     from textual.screen import ModalScreen
     from textual.widget import Widget
 
-from deepagents_code.notifications import (
+from niki_agent.notifications import (
     ActionId,
     MissingDepPayload,
     NotificationAction,
     PendingNotification,
     UpdateAvailablePayload,
 )
-from deepagents_code.tui.widgets.agent_selector import AgentSelectorScreen
-from deepagents_code.tui.widgets.effort_selector import EffortSelectorScreen
-from deepagents_code.tui.widgets.notification_center import NotificationCenterScreen
-from deepagents_code.tui.widgets.notification_detail import NotificationDetailScreen
-from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
-from deepagents_code.tui.widgets.update_available import UpdateAvailableScreen
+from niki_agent.tui.widgets.agent_selector import AgentSelectorScreen
+from niki_agent.tui.widgets.effort_selector import EffortSelectorScreen
+from niki_agent.tui.widgets.notification_center import NotificationCenterScreen
+from niki_agent.tui.widgets.notification_detail import NotificationDetailScreen
+from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
+from niki_agent.tui.widgets.update_available import UpdateAvailableScreen
 
 FOOTER_SIZES = [(80, 24), (60, 20), (50, 20)]
 
@@ -73,7 +73,7 @@ def _update_entry() -> PendingNotification:
             NotificationAction(ActionId.SKIP_VERSION, "Skip this version"),
         ),
         payload=UpdateAvailablePayload(
-            latest="2.0.0", upgrade_cmd="uv tool upgrade deepagents-code"
+            latest="2.0.0", upgrade_cmd="uv tool upgrade niki-agent"
         ),
     )
 

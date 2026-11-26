@@ -10,8 +10,8 @@ These tests verify that:
 import logging
 from unittest.mock import MagicMock
 
-from deepagents_code.file_ops import FileOpTracker
-from deepagents_code.tools import web_search
+from niki_agent.file_ops import FileOpTracker
+from niki_agent.tools import web_search
 
 
 class TestToolsExceptionHandling:
@@ -29,7 +29,7 @@ class TestFileOpsExceptionHandling:
 
         tracker = FileOpTracker(assistant_id=None, backend=mock_backend)
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent"):
             tracker.start_operation(
                 "write_file",
                 {"file_path": "/test.txt", "content": "test"},
@@ -60,7 +60,7 @@ class TestFileOpsExceptionHandling:
 
         tracker = FileOpTracker(assistant_id=None, backend=mock_backend)
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent"):
             tracker.start_operation(
                 "write_file",
                 {"file_path": "/test.bin", "content": "test"},

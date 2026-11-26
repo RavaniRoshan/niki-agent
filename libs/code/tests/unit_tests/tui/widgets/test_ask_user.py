@@ -10,8 +10,8 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 
-import deepagents_code
-from deepagents_code.tui.widgets.ask_user import (
+import niki_agent
+from niki_agent.tui.widgets.ask_user import (
     MISSING_ANSWER_TOAST,
     MISSING_OTHER_TEXT_TOAST,
     AskUserMenu,
@@ -22,11 +22,11 @@ from deepagents_code.tui.widgets.ask_user import (
 if TYPE_CHECKING:
     import pytest
 
-    from deepagents_code._ask_user_types import AskUserWidgetResult, Question
+    from niki_agent._ask_user_types import AskUserWidgetResult, Question
 
 
 class _AskUserTestApp(App[None]):
-    CSS_PATH = Path(deepagents_code.__file__).resolve().parent / "app.tcss"
+    CSS_PATH = Path(niki_agent.__file__).resolve().parent / "app.tcss"
 
     def __init__(self, questions: list[Question]) -> None:
         super().__init__()
@@ -66,7 +66,7 @@ class TestAskUserMenu:
         so leaving `question_type` as `multi_select` would make the help footer
         advertise "Space toggle" for what is actually a text box.
         """
-        with caplog.at_level("WARNING", logger="deepagents_code.tui.widgets.ask_user"):
+        with caplog.at_level("WARNING", logger="niki_agent.tui.widgets.ask_user"):
             question_widget = _QuestionWidget(
                 {"question": "Pick?", "type": "multi_select", "choices": []}, 0
             )
@@ -78,7 +78,7 @@ class TestAskUserMenu:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A collapsed paste in a text answer expands in the submitted value."""
-        from deepagents_code.tui.widgets import _paste_textarea as paste_textarea_module
+        from niki_agent.tui.widgets import _paste_textarea as paste_textarea_module
 
         monkeypatch.setattr(
             paste_textarea_module, "_collapse_pastes_enabled", lambda: True
@@ -399,9 +399,7 @@ class TestAskUserMenu:
 
             before = [w.checked for w in question._multi_select_widgets]
             question._selected_choice = 99
-            with caplog.at_level(
-                "ERROR", logger="deepagents_code.tui.widgets.ask_user"
-            ):
+            with caplog.at_level("ERROR", logger="niki_agent.tui.widgets.ask_user"):
                 question.action_toggle_choice()
 
             assert [w.checked for w in question._multi_select_widgets] == before

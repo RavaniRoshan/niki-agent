@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from deepagents_code.tui.widgets.chat_input import ChatTextArea
+from niki_agent.tui.widgets.chat_input import ChatTextArea
 from unit_tests.niki.turn_harness import (
     Gate,
     Raise,
@@ -27,7 +27,7 @@ from unit_tests.niki.turn_harness import (
 if TYPE_CHECKING:
     from textual.pilot import Pilot
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
 SIZE = (100, 32)
 
@@ -187,13 +187,13 @@ async def test_l5_a_turn_crash_logs_a_traceback_and_shows_a_friendly_error(
     """L5: a failing turn writes a traceback to the debug log and stays usable."""
     import logging
 
-    from deepagents_code import _debug
+    from niki_agent import _debug
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG", "1")
-    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_DIRECTORY", str(tmp_path))
+    monkeypatch.setenv("NIKI_DEBUG", "1")
+    monkeypatch.setenv("NIKI_DEBUG_DIRECTORY", str(tmp_path))
     # Mirror the `.env` reload path: the env var is set after import, so the
     # package logger must be re-configured before the session binds its file.
-    package_logger = logging.getLogger("deepagents_code")
+    package_logger = logging.getLogger("niki_agent")
     original_level = package_logger.level
     _debug.configure_debug_logging(package_logger)
     try:
@@ -233,7 +233,7 @@ def test_l8_clean_exit_prints_the_resume_summary(monkeypatch) -> None:
     """L8: teardown prints the thread's resume command."""
     from rich.console import Console
 
-    from deepagents_code import main as main_module, sessions
+    from niki_agent import main as main_module, sessions
 
     async def _exists(_thread_id: str) -> bool:
         await asyncio.sleep(0)
@@ -241,9 +241,9 @@ def test_l8_clean_exit_prints_the_resume_summary(monkeypatch) -> None:
 
     monkeypatch.setattr(sessions, "thread_exists", _exists)
     monkeypatch.setattr(main_module, "_resume_term_program", lambda: None)
-    monkeypatch.setattr("deepagents_code._invocation.invoked_name", lambda: "dcode")
+    monkeypatch.setattr("niki_agent._invocation.invoked_name", lambda: "dcode")
     monkeypatch.setattr(
-        "deepagents_code.config.build_langsmith_thread_url", lambda _tid: None
+        "niki_agent.config.build_langsmith_thread_url", lambda _tid: None
     )
 
     console = Console(record=True, width=100)
@@ -259,7 +259,7 @@ def test_l8_failed_exit_adds_the_resume_caveat(monkeypatch) -> None:
     """L8: a non-zero exit warns that resuming may fail."""
     from rich.console import Console
 
-    from deepagents_code import main as main_module, sessions
+    from niki_agent import main as main_module, sessions
 
     async def _exists(_thread_id: str) -> bool:
         await asyncio.sleep(0)
@@ -267,9 +267,9 @@ def test_l8_failed_exit_adds_the_resume_caveat(monkeypatch) -> None:
 
     monkeypatch.setattr(sessions, "thread_exists", _exists)
     monkeypatch.setattr(main_module, "_resume_term_program", lambda: None)
-    monkeypatch.setattr("deepagents_code._invocation.invoked_name", lambda: "dcode")
+    monkeypatch.setattr("niki_agent._invocation.invoked_name", lambda: "dcode")
     monkeypatch.setattr(
-        "deepagents_code.config.build_langsmith_thread_url", lambda _tid: None
+        "niki_agent.config.build_langsmith_thread_url", lambda _tid: None
     )
 
     console = Console(record=True, width=100)

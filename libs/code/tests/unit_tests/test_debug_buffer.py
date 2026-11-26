@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-import deepagents_code._debug_buffer as debug_buffer
-from deepagents_code._debug_buffer import InMemoryLogBuffer
+import niki_agent._debug_buffer as debug_buffer
+from niki_agent._debug_buffer import InMemoryLogBuffer
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -50,7 +50,7 @@ class TestInMemoryLogBuffer:
             raise ValueError(msg)  # noqa: TRY301  # deliberately raised to capture a traceback
         except ValueError:
             record = logging.LogRecord(
-                name="deepagents_code.x",
+                name="niki_agent.x",
                 level=logging.ERROR,
                 pathname=__file__,
                 lineno=1,
@@ -70,10 +70,10 @@ class TestInMemoryLogBuffer:
 
     def test_debug_flood_does_not_evict_other_levels(self) -> None:
         buffer = InMemoryLogBuffer(capacity=3)
-        buffer.emit(_record("deepagents_code", "keep-info", level=logging.INFO))
-        buffer.emit(_record("deepagents_code", "keep-warning", level=logging.WARNING))
+        buffer.emit(_record("niki_agent", "keep-info", level=logging.INFO))
+        buffer.emit(_record("niki_agent", "keep-warning", level=logging.WARNING))
         for i in range(10):  # flood DEBUG well past the per-level capacity
-            buffer.emit(_record("deepagents_code", f"debug{i}", level=logging.DEBUG))
+            buffer.emit(_record("niki_agent", f"debug{i}", level=logging.DEBUG))
 
         records, total = buffer.snapshot_records_since(0)
         messages = [record.message for record in records]
@@ -94,9 +94,9 @@ class TestInMemoryLogBuffer:
     def test_per_level_bound_is_independent(self) -> None:
         buffer = InMemoryLogBuffer(capacity=2)
         for i in range(5):
-            buffer.emit(_record("deepagents_code", f"info{i}", level=logging.INFO))
+            buffer.emit(_record("niki_agent", f"info{i}", level=logging.INFO))
         for i in range(5):
-            buffer.emit(_record("deepagents_code", f"err{i}", level=logging.ERROR))
+            buffer.emit(_record("niki_agent", f"err{i}", level=logging.ERROR))
 
         records, _total = buffer.snapshot_records_since(0)
 
@@ -114,7 +114,7 @@ class TestInMemoryLogBuffer:
         # LOG_LEVELS, so they must share the fallback bucket rather than each
         # getting its own unbounded deque.
         for i in range(4):
-            buffer.emit(_record("deepagents_code", f"custom{i}", level=25 + i))
+            buffer.emit(_record("niki_agent", f"custom{i}", level=25 + i))
 
         records, _total = buffer.snapshot_records_since(0)
 
@@ -129,8 +129,8 @@ class TestInMemoryLogBuffer:
         """
         buffer = InMemoryLogBuffer(capacity=2)
         for i in range(3):  # INFO and ERROR alternate; both overflow capacity=2
-            buffer.emit(_record("deepagents_code", f"info{i}", level=logging.INFO))
-            buffer.emit(_record("deepagents_code", f"err{i}", level=logging.ERROR))
+            buffer.emit(_record("niki_agent", f"info{i}", level=logging.INFO))
+            buffer.emit(_record("niki_agent", f"err{i}", level=logging.ERROR))
 
         records, _total = buffer.snapshot_records_since(0)
 
@@ -154,8 +154,8 @@ class TestInMemoryLogBuffer:
         retained in their (un-flooded) buckets.
         """
         buffer = InMemoryLogBuffer(capacity=3)
-        buffer.emit(_record("deepagents_code", "info0", level=logging.INFO))
-        buffer.emit(_record("deepagents_code", "warn0", level=logging.WARNING))
+        buffer.emit(_record("niki_agent", "info0", level=logging.INFO))
+        buffer.emit(_record("niki_agent", "warn0", level=logging.WARNING))
 
         first, resume = buffer.snapshot_records_since(0)
         assert [record.message for record in first] == ["info0", "warn0"]
@@ -164,8 +164,8 @@ class TestInMemoryLogBuffer:
         # Flood DEBUG past its own capacity; the INFO/WARNING buckets are
         # untouched, so info0/warn0 remain retained but already consumed.
         for i in range(5):
-            buffer.emit(_record("deepagents_code", f"debug{i}", level=logging.DEBUG))
-        buffer.emit(_record("deepagents_code", "info1", level=logging.INFO))
+            buffer.emit(_record("niki_agent", f"debug{i}", level=logging.DEBUG))
+        buffer.emit(_record("niki_agent", "info1", level=logging.INFO))
 
         second, resume2 = buffer.snapshot_records_since(resume)
         messages = [record.message for record in second]
@@ -186,7 +186,7 @@ class TestInMemoryLogBuffer:
             i = 0
             while not stop.is_set():
                 try:
-                    buffer.emit(_record("deepagents_code", f"msg{i}"))
+                    buffer.emit(_record("niki_agent", f"msg{i}"))
                 except BaseException as exc:  # noqa: BLE001  # report thread failures
                     errors.append(exc)
                     stop.set()

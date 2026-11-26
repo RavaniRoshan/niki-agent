@@ -10,7 +10,7 @@ import pytest
 
 _SCRIPT = (
     Path(__file__).resolve().parents[3]
-    / "deepagents_code"
+    / "niki_agent"
     / "built_in_skills"
     / "deepagents-thread-inspector"
     / "scripts"

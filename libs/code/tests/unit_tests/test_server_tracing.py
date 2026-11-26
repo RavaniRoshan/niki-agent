@@ -11,16 +11,16 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from deepagents_code import config as config_module
-from deepagents_code._server_config import ServerConfig
-from deepagents_code.workspace import WorkspaceConflictError, resolve_workspace
+from niki_agent import config as config_module
+from niki_agent._server_config import ServerConfig
+from niki_agent.workspace import WorkspaceConflictError, resolve_workspace
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
     from types import ModuleType
 
-    from deepagents_code.workspace import WorkspaceBinding
+    from niki_agent.workspace import WorkspaceBinding
 
 
 @pytest.fixture
@@ -28,8 +28,8 @@ def server(monkeypatch: pytest.MonkeyPatch) -> Iterator[ModuleType]:
     """Use real tracing publication with an inert client and no model or tools."""
     from langsmith import Client, configure, run_trees, utils
 
-    sys.modules.pop("deepagents_code.server_graph", None)
-    module = importlib.import_module("deepagents_code.server_graph")
+    sys.modules.pop("niki_agent.server_graph", None)
+    module = importlib.import_module("niki_agent.server_graph")
     monkeypatch.setattr(run_trees, "_CLIENT", None)
     monkeypatch.setattr(
         config_module,
@@ -69,17 +69,17 @@ def _workspace(path: Path, environment: dict[str, str]) -> WorkspaceBinding:
     ("selector", "value"),
     [
         ("LANGSMITH_TRACING", "false"),
-        ("DEEPAGENTS_CODE_LANGSMITH_TRACING", "false"),
+        ("NIKI_LANGSMITH_TRACING", "false"),
         ("LANGSMITH_API_KEY", "other-test-key"),
-        ("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "other-test-key"),
+        ("NIKI_LANGSMITH_API_KEY", "other-test-key"),
         ("LANGSMITH_ENDPOINT", "https://other.example.com"),
         ("LANGSMITH_PROJECT", "other-project"),
-        ("DEEPAGENTS_CODE_LANGSMITH_PROJECT", "other-project"),
+        ("NIKI_LANGSMITH_PROJECT", "other-project"),
         ("LANGSMITH_PROFILE", "other-profile"),
         ("LANGSMITH_CONFIG_FILE", "/unused/profile.json"),
         ("LANGSMITH_WORKSPACE_ID", "other-workspace"),
         ("LANGSMITH_RUNS_ENDPOINTS", '{"https://other.example.com":"test-key"}'),
-        ("DEEPAGENTS_CODE_LANGSMITH_REDACT", "false"),
+        ("NIKI_LANGSMITH_REDACT", "false"),
     ],
 )
 async def test_conflicting_workspace_preserves_cached_tracing(

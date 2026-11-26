@@ -9,7 +9,7 @@ from unittest.mock import patch
 from langchain_core.tools import tool
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from deepagents_code.tools import (
+from niki_agent.tools import (
     create_web_search_tool,
     is_web_search_tool,
     web_search,
@@ -35,7 +35,7 @@ class TestToolIdentity:
         assert is_web_search_tool(create_web_search_tool("key"))
 
     def test_rejects_an_unrelated_tool(self) -> None:
-        from deepagents_code.tools import fetch_url
+        from niki_agent.tools import fetch_url
 
         assert not is_web_search_tool(fetch_url)
         assert not is_web_search_tool(object())

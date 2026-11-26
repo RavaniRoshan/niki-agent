@@ -37,7 +37,7 @@ from unit_tests.niki.perf_probe import (
 )
 
 if TYPE_CHECKING:
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
 ARTIFACT = Path(__file__).parent / "perf_results.json"
 
@@ -56,7 +56,7 @@ _SIZES = {"compact": (50, 16), "standard": (80, 24), "roomy": (120, 38)}
 
 def _niki_app() -> DeepAgentsApp:
     """A NikiApp wired to a mock agent, post-paint work stubbed out."""
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-probe")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -65,7 +65,7 @@ def _niki_app() -> DeepAgentsApp:
 
 def _app() -> DeepAgentsApp:
     """Build an app wired to a mock agent, post-paint work stubbed out."""
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="niki-probe")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -145,7 +145,7 @@ async def test_niki_app_is_perfectly_still_when_idle() -> None:
     zero. The `blink_cursor=True` case is asserted separately so this stays a
     default rather than a hard-off.
     """
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-idle")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -161,7 +161,7 @@ async def test_niki_app_is_perfectly_still_when_idle() -> None:
 
 async def test_blink_cursor_stays_available_as_a_setting() -> None:
     """The S4 fix must not become a hard-off: opt-in blink still works."""
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-blink")
     app.blink_cursor = True
@@ -176,7 +176,7 @@ async def test_blink_cursor_stays_available_as_a_setting() -> None:
 
 async def test_upstream_baseline_is_recorded_for_comparison() -> None:
     """Pin the upstream idle cost so the Niki number has something to beat."""
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="base-idle")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -200,8 +200,8 @@ async def test_render_cost_is_flat_across_transcript_depth() -> None:
     the worst case a user can reach is the window itself, and that ratio is what
     this asserts.
     """
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.message_store import NikiMessageStore
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.message_store import NikiMessageStore
 
     window = NikiMessageStore.WINDOW_SIZE
     shallow = await measure_stream(_niki_app(), (80, 24), depth=100)
@@ -227,7 +227,7 @@ async def test_render_cost_is_flat_across_transcript_depth() -> None:
 
 async def test_niki_app_installs_the_bounded_message_store() -> None:
     """The S3 fix only works if the bounded store is the one actually mounted."""
-    from deepagents_code.niki.message_store import NikiMessageStore
+    from niki_agent.niki.message_store import NikiMessageStore
 
     app = _niki_app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -248,8 +248,8 @@ async def test_niki_app_installs_the_bounded_message_store() -> None:
 
 def test_five_thousand_message_history_stays_bounded_and_hydratable() -> None:
     """S5: scrolling to the oldest row keeps only a small mount window live."""
-    from deepagents_code.niki.message_store import NikiMessageStore
-    from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+    from niki_agent.niki.message_store import NikiMessageStore
+    from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
     store = NikiMessageStore()
     messages = [

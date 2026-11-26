@@ -1,7 +1,7 @@
 # Python extensions
 
 Python extensions customize the agent server without modifying `dcode`. They
-are experimental and load only when `DEEPAGENTS_CODE_EXPERIMENTAL=1` is set
+are experimental and load only when `NIKI_EXPERIMENTAL=1` is set
 before starting `dcode`.
 
 An installed plugin declares one or more Python entry files in its manifest:
@@ -125,8 +125,8 @@ extra_dirs = ["~/src/company-extensions"]
 
 Environment overrides:
 
-- `DEEPAGENTS_CODE_EXTENSIONS` enables or disables all extension loading.
-- `DEEPAGENTS_CODE_EXTENSIONS_TRUST` overrides the project trust policy.
+- `NIKI_EXTENSIONS` enables or disables all extension loading.
+- `NIKI_EXTENSIONS_TRUST` overrides the project trust policy.
 
 Relative extra paths resolve from `~/.deepagents/`. Repeat `-e PATH` to add
 multiple temporary sources for one invocation.

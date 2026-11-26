@@ -15,8 +15,8 @@ from langchain.agents.middleware.types import (
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 
-from deepagents_code._cli_context import CLIContext, CLIContextSchema
-from deepagents_code.configurable_model import (
+from niki_agent._cli_context import CLIContext, CLIContextSchema
+from niki_agent.configurable_model import (
     ConfigurableModelMiddleware,
     _checkpoint_command,
     _get_context,
@@ -96,7 +96,7 @@ def _make_model_result(
     )
 
 
-_PATCH_CREATE = "deepagents_code.config.create_model"
+_PATCH_CREATE = "niki_agent.config.create_model"
 
 # The shared instance pins the OpenAI cache-key flag explicitly so it does not
 # read config at import time — that keeps it hermetic regardless of a
@@ -110,7 +110,7 @@ class TestCheckpointPersistence:
 
     def test_startup_custom_provider_uses_configured_spec(self) -> None:
         """Custom classes must checkpoint their configured provider alias."""
-        from deepagents_code.config import runtime_state
+        from niki_agent.config import runtime_state
 
         model = _make_model("fake")
         model._get_ls_params.return_value = {
@@ -141,7 +141,7 @@ class TestCheckpointPersistence:
             return _make_response()
 
         with patch(
-            "deepagents_code.configurable_model._utc_now_iso",
+            "niki_agent.configurable_model._utc_now_iso",
             side_effect=lambda: next(clock),
         ):
             result = middleware.wrap_model_call(request, slow_handler)
@@ -217,15 +217,15 @@ async def test_cache_activity_keeps_each_requests_identity(asynchronous: bool) -
         )
         with (
             patch(
-                "deepagents_code.configurable_model._utc_now_iso",
+                "niki_agent.configurable_model._utc_now_iso",
                 return_value=timestamp,
             ),
             patch(
-                "deepagents_code.configurable_model._cache_endpoint_identity",
+                "niki_agent.configurable_model._cache_endpoint_identity",
                 return_value="default",
             ),
             patch(
-                "deepagents_code.configurable_model._effective_cache_params",
+                "niki_agent.configurable_model._effective_cache_params",
                 return_value={"prompt_cache_retention": "24h"},
             ),
         ):
@@ -364,7 +364,7 @@ def test_checkpoint_records_effective_cache_params() -> None:
     dedicated `_last_cache_params` channel so resume never re-reads it as
     per-session overrides.
     """
-    from deepagents_code.model_config import ModelConfig
+    from niki_agent.model_config import ModelConfig
 
     config = ModelConfig(
         providers={"openai": {"params": {"prompt_cache_retention": "24h"}}}
@@ -373,7 +373,7 @@ def test_checkpoint_records_effective_cache_params() -> None:
         _make_model("gpt-5.5"),
         context=CLIContext(),
     )
-    with patch("deepagents_code.model_config.ModelConfig.load", return_value=config):
+    with patch("niki_agent.model_config.ModelConfig.load", return_value=config):
         result = ConfigurableModelMiddleware().wrap_model_call(
             request, lambda _r: _make_response()
         )
@@ -422,7 +422,7 @@ def test_checkpoint_records_reasoning_effort_for_cache_identity(
 @pytest.mark.parametrize("effort", ["high", "low"])
 def test_checkpoint_composes_configured_reasoning_effort(effort: str) -> None:
     """Runtime effort overrides nested config in the saved cache identity."""
-    from deepagents_code.model_config import ModelConfig
+    from niki_agent.model_config import ModelConfig
 
     config = ModelConfig(
         providers={
@@ -437,7 +437,7 @@ def test_checkpoint_composes_configured_reasoning_effort(effort: str) -> None:
         _make_model("gpt-5.6"),
         context=CLIContext(model_params={"reasoning_effort": effort}),
     )
-    with patch("deepagents_code.model_config.ModelConfig.load", return_value=config):
+    with patch("niki_agent.model_config.ModelConfig.load", return_value=config):
         result = ConfigurableModelMiddleware().wrap_model_call(
             request, lambda _r: _make_response()
         )
@@ -487,7 +487,7 @@ def test_checkpoint_cache_params_exclude_unrelated_config() -> None:
     pins configured defaults like `temperature` into old threads and silently
     overrides newer config.
     """
-    from deepagents_code.model_config import ModelConfig
+    from niki_agent.model_config import ModelConfig
 
     config = ModelConfig(
         providers={
@@ -506,7 +506,7 @@ def test_checkpoint_cache_params_exclude_unrelated_config() -> None:
         _make_model("gpt-5.5"),
         context=CLIContext(model_params={"reasoning_effort": "high"}),
     )
-    with patch("deepagents_code.model_config.ModelConfig.load", return_value=config):
+    with patch("niki_agent.model_config.ModelConfig.load", return_value=config):
         result = ConfigurableModelMiddleware().wrap_model_call(
             request, lambda _r: _make_response()
         )
@@ -529,7 +529,7 @@ class TestModelSwap:
 
     def test_create_model_error_falls_back_to_original(self) -> None:
         """ModelConfigError falls back to original model instead of crashing."""
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent.model_config import ModelConfigError
 
         original = _make_model("claude-sonnet-4-6")
         original._get_ls_params.return_value = {"ls_provider": "anthropic"}
@@ -560,7 +560,7 @@ class TestModelSwap:
 
     def test_strict_model_resolution_propagates_config_error(self) -> None:
         """Nested grader routing must not silently retain its startup model."""
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent.model_config import ModelConfigError
 
         request = _make_request(
             _make_model("claude-sonnet-4-6"),
@@ -678,7 +678,7 @@ class TestModelSwap:
 
     async def test_async_strict_model_resolution_propagates_config_error(self) -> None:
         """The TUI streams, so the async path is the one the grader runs on."""
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent.model_config import ModelConfigError
 
         request = _make_request(
             _make_model("claude-sonnet-4-6"),
@@ -702,7 +702,7 @@ class TestModelSwap:
 
     def test_model_policy_error_does_not_fall_back_to_original(self) -> None:
         """A blocked runtime switch propagates instead of using the old model."""
-        from deepagents_code.model_config import ModelNotAllowedError
+        from niki_agent.model_config import ModelNotAllowedError
 
         original = _make_model("claude-sonnet-4-6")
         request = _make_request(
@@ -723,7 +723,7 @@ class TestModelSwap:
 
     async def test_async_model_policy_error_does_not_fall_back(self) -> None:
         """The asynchronous runtime-switch path propagates policy denials."""
-        from deepagents_code.model_config import ModelNotAllowedError
+        from niki_agent.model_config import ModelNotAllowedError
 
         original = _make_model("claude-sonnet-4-6")
         request = _make_request(
@@ -836,9 +836,7 @@ class TestFireworksSessionSettings:
         )
         captured: list[ModelRequest] = []
 
-        with caplog.at_level(
-            logging.WARNING, logger="deepagents_code.configurable_model"
-        ):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.configurable_model"):
             _mw.wrap_model_call(
                 request, lambda r: (captured.append(r), _make_response())[1]
             )
@@ -962,7 +960,7 @@ class TestOpenAIPromptCacheKey:
         pinning that the default is on end-to-end rather than only asserting the
         config helper in isolation.
         """
-        from deepagents_code import config_manifest
+        from niki_agent import config_manifest
 
         monkeypatch.setattr(config_manifest, "load_config_toml", dict)
         middleware = ConfigurableModelMiddleware()
@@ -987,7 +985,7 @@ class TestOpenAIPromptCacheKey:
         before building the middleware.
         """
         monkeypatch.setattr(
-            "deepagents_code.config.is_openai_prompt_cache_key_enabled",
+            "niki_agent.config.is_openai_prompt_cache_key_enabled",
             lambda: False,
         )
         middleware = ConfigurableModelMiddleware()
@@ -1070,7 +1068,7 @@ class TestOpenAIPromptCacheKey:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.config.is_openai_prompt_cache_key_enabled",
+            "niki_agent.config.is_openai_prompt_cache_key_enabled",
             _boom,
         )
         middleware = ConfigurableModelMiddleware()
@@ -1104,7 +1102,7 @@ class TestOpenAIPromptCacheKey:
             raise BlockingError
 
         monkeypatch.setattr(
-            "deepagents_code.config.is_openai_prompt_cache_key_enabled",
+            "niki_agent.config.is_openai_prompt_cache_key_enabled",
             _boom,
         )
         with pytest.raises(BlockingError):
@@ -1192,7 +1190,7 @@ class TestWorkspaceEnvironment:
 
     def test_model_switch_uses_bound_environment(self) -> None:
         """Construction context is restored around deferred model creation."""
-        from deepagents_code.config import active_environment
+        from niki_agent.config import active_environment
 
         request = _make_request(
             _make_model("gpt-5.5"),

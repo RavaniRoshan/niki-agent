@@ -53,7 +53,7 @@
       "statement": "dcode's SubagentPanel turns custom QuickJS subagent lifecycle events into phase-grouped live UI, preserves timing across replayed starts, surfaces orphan errors, cancels only live rows on interrupted turns, and sanitizes untrusted event text before plain-text rendering.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/tui/widgets/subagent_panel.py",
+          "resource": "repo://libs/code/niki_agent/tui/widgets/subagent_panel.py",
           "version": "repo-file-v1:sha256:3894275615d00771fd63981ee78f1b2d1ce15444860c7052c771721b75f27d93"
         },
         {
@@ -113,7 +113,7 @@
           "version": "repo-file-v1:sha256:1044d5960a89cb0a26efdc7ff02036cba8f13332e6c4c6b1e08f443c49796aed"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/server_graph.py",
+          "resource": "repo://libs/code/niki_agent/server_graph.py",
           "version": "repo-file-v1:sha256:30ae0790edfb9b0b747b1c24e462f4c50b7ffb2cdf130889c7a30f2ca61f4b3d"
         }
       ]

@@ -25,8 +25,8 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langsmith.run_helpers import trace
 
-from deepagents import RubricMiddleware, create_deep_agent
-from deepagents.middleware.rubric import RUBRIC_GRADER_MESSAGE_SOURCE, RubricEvaluation
+from niki_agent.sdk import RubricMiddleware, create_deep_agent
+from niki_agent.sdk.middleware.rubric import RUBRIC_GRADER_MESSAGE_SOURCE, RubricEvaluation
 
 AGENT_MODEL = "anthropic:claude-sonnet-4-6"
 """Default model that drafts and revises the document."""

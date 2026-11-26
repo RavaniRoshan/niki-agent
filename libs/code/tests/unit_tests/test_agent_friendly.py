@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from deepagents_code.ui import show_help
+from niki_agent.ui import show_help
 
 # ---------------------------------------------------------------------------
 # Section 1: Help screen Examples sections
@@ -28,7 +28,7 @@ class TestHelpScreenExamples:
     def _render(fn: object) -> str:
         buf = io.StringIO()
         test_console = Console(file=buf, highlight=False, width=200)
-        with patch("deepagents_code.ui.console", test_console):
+        with patch("niki_agent.ui.console", test_console):
             fn()  # ty: ignore
         return buf.getvalue()
 
@@ -43,7 +43,7 @@ class TestResetDryRun:
 
     def test_dry_run_text_no_mutation(self, tmp_path: Path) -> None:
         """--dry-run should not remove the agent directory."""
-        from deepagents_code.agent import reset_agent
+        from niki_agent.agent import reset_agent
 
         agent_dir = tmp_path / "coder"
         agent_dir.mkdir()
@@ -52,14 +52,14 @@ class TestResetDryRun:
         buf = io.StringIO()
         test_console = Console(file=buf, highlight=False, width=200)
         with (
-            patch("deepagents_code.agent.credentials") as mock_settings,
-            patch("deepagents_code.agent.console", test_console),
+            patch("niki_agent.agent.credentials") as mock_settings,
+            patch("niki_agent.agent.console", test_console),
             patch(
-                "deepagents_code.agent.get_default_coding_instructions",
+                "niki_agent.agent.get_default_coding_instructions",
                 return_value="default",
             ),
         ):
-            mock_settings.user_deepagents_dir = tmp_path
+            mock_settings.user_niki_dir = tmp_path
             reset_agent("coder", dry_run=True)
 
         assert agent_dir.exists()
@@ -70,7 +70,7 @@ class TestResetDryRun:
 
     def test_dry_run_json(self, tmp_path: Path) -> None:
         """--dry-run --json should include dry_run: true."""
-        from deepagents_code.agent import reset_agent
+        from niki_agent.agent import reset_agent
 
         agent_dir = tmp_path / "coder"
         agent_dir.mkdir()
@@ -78,15 +78,15 @@ class TestResetDryRun:
 
         stdout_buf = io.StringIO()
         with (
-            patch("deepagents_code.agent.credentials") as mock_settings,
-            patch("deepagents_code.agent.console"),
+            patch("niki_agent.agent.credentials") as mock_settings,
+            patch("niki_agent.agent.console"),
             patch(
-                "deepagents_code.agent.get_default_coding_instructions",
+                "niki_agent.agent.get_default_coding_instructions",
                 return_value="default",
             ),
             patch("sys.stdout", stdout_buf),
         ):
-            mock_settings.user_deepagents_dir = tmp_path
+            mock_settings.user_niki_dir = tmp_path
             reset_agent("coder", dry_run=True, output_format="json")
 
         result = json.loads(stdout_buf.getvalue())
@@ -131,7 +131,7 @@ class TestSkillsCreateIdempotency:
 
     def test_already_exists_text_no_error(self, tmp_path: Path) -> None:
         """Re-creating an existing skill should print informational msg, not error."""
-        from deepagents_code.skills.commands import _create
+        from niki_agent.skills.commands import _create
 
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()
@@ -143,12 +143,12 @@ class TestSkillsCreateIdempotency:
         mock_settings.project_root = None
         mock_settings.ensure_user_skills_dir.return_value = tmp_path
         with (
-            patch("deepagents_code.config.Credentials") as settings_cls,
+            patch("niki_agent.config.Credentials") as settings_cls,
             patch(
-                "deepagents_code.skills.commands.ensure_user_skills_dir",
+                "niki_agent.skills.commands.ensure_user_skills_dir",
                 return_value=tmp_path,
             ),
-            patch("deepagents_code.config.console", test_console),
+            patch("niki_agent.config.console", test_console),
         ):
             settings_cls.from_environment.return_value = mock_settings
             _create("my-skill", "agent")
@@ -159,7 +159,7 @@ class TestSkillsCreateIdempotency:
 
     def test_already_exists_json(self, tmp_path: Path) -> None:
         """Re-creating an existing skill in JSON mode returns already_existed."""
-        from deepagents_code.skills.commands import _create
+        from niki_agent.skills.commands import _create
 
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()
@@ -170,12 +170,12 @@ class TestSkillsCreateIdempotency:
         mock_settings.project_root = None
         mock_settings.ensure_user_skills_dir.return_value = tmp_path
         with (
-            patch("deepagents_code.config.Credentials") as settings_cls,
+            patch("niki_agent.config.Credentials") as settings_cls,
             patch(
-                "deepagents_code.skills.commands.ensure_user_skills_dir",
+                "niki_agent.skills.commands.ensure_user_skills_dir",
                 return_value=tmp_path,
             ),
-            patch("deepagents_code.config.console"),
+            patch("niki_agent.config.console"),
             patch("sys.stdout", stdout_buf),
         ):
             settings_cls.from_environment.return_value = mock_settings
@@ -190,7 +190,7 @@ class TestThreadsDeleteIdempotency:
 
     def test_not_found_not_red(self) -> None:
         """Not-found message should not contain Error prefix."""
-        from deepagents_code import sessions
+        from niki_agent import sessions
 
         buf = io.StringIO()
         test_console = Console(file=buf, highlight=False, width=200)
@@ -201,7 +201,7 @@ class TestThreadsDeleteIdempotency:
                 new_callable=AsyncMock,
                 return_value=False,
             ),
-            patch("deepagents_code.config.console", test_console),
+            patch("niki_agent.config.console", test_console),
         ):
             asyncio.run(sessions.delete_thread_command("missing"))
 
@@ -229,15 +229,15 @@ class TestErrorMessageHints:
 
     def test_reset_source_not_found_has_hint(self, tmp_path: Path) -> None:
         """Reset with missing source agent should suggest agents list."""
-        from deepagents_code.agent import reset_agent
+        from niki_agent.agent import reset_agent
 
         buf = io.StringIO()
         test_console = Console(file=buf, highlight=False, width=200)
         with (  # separate to satisfy PT012
-            patch("deepagents_code.agent.credentials") as mock_settings,
-            patch("deepagents_code.agent.console", test_console),
+            patch("niki_agent.agent.credentials") as mock_settings,
+            patch("niki_agent.agent.console", test_console),
         ):
-            mock_settings.user_deepagents_dir = tmp_path
+            mock_settings.user_niki_dir = tmp_path
             with pytest.raises(SystemExit):
                 reset_agent("coder", "nonexistent")
 
@@ -257,6 +257,6 @@ class TestHelpScreenDriftExtended:
         """show_help should mention the tools subcommand."""
         buf = io.StringIO()
         test_console = Console(file=buf, highlight=False, width=200)
-        with patch("deepagents_code.ui.console", test_console):
+        with patch("niki_agent.ui.console", test_console):
             show_help()
-        assert "dcode tools" in buf.getvalue()
+        assert "niki tools" in buf.getvalue()

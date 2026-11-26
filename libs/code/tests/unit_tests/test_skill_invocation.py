@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.skills.load import load_skill_content
+from niki_agent.skills.load import load_skill_content
 
 
 class TestLoadSkillContent:
@@ -49,7 +49,7 @@ class TestSkillCommandParsing:
 
 def _make_app() -> MagicMock:
     """Create a mock app with the methods _handle_skill_command needs."""
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = MagicMock(spec=DeepAgentsApp)
     app._assistant_id = "agent"
@@ -86,7 +86,7 @@ def _make_app() -> MagicMock:
 
 def _app_message_texts(app: MagicMock) -> list[str]:
     """Extract plain text from AppMessage widgets mounted by the mock app."""
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.tui.widgets.messages import AppMessage
 
     return [str(m.content) for m in app._mounted_messages if isinstance(m, AppMessage)]
 
@@ -113,7 +113,7 @@ class TestBuildSkillInvocationEnvelope:
 
     def test_happy_path_with_args(self) -> None:
         """Envelope should contain wrapped prompt and full metadata."""
-        from deepagents_code.skills.invocation import build_skill_invocation_envelope
+        from niki_agent.skills.invocation import build_skill_invocation_envelope
 
         skill = {
             "name": "code-review",
@@ -147,8 +147,8 @@ class TestHandleSkillCommand:
     async def test_skill_not_found(self) -> None:
         app = _make_app()
         with (
-            patch("deepagents_code.skills.load.list_skills", return_value=[]),
-            patch("deepagents_code.config.credentials"),
+            patch("niki_agent.skills.load.list_skills", return_value=[]),
+            patch("niki_agent.config.credentials"),
         ):
             await app._handle_skill_command("/skill:nonexistent")
 
@@ -160,15 +160,15 @@ class TestHandleSkillCommand:
         app = _make_app()
         skill = _fake_skill()
         with (
-            patch("deepagents_code.skills.load.list_skills", return_value=[skill]),
+            patch("niki_agent.skills.load.list_skills", return_value=[skill]),
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=PermissionError(
                     "Skill path /tmp/evil resolves outside "
                     "all allowed skill directories."
                 ),
             ),
-            patch("deepagents_code.config.credentials"),
+            patch("niki_agent.config.credentials"),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -177,17 +177,17 @@ class TestHandleSkillCommand:
         app._send_to_agent.assert_not_awaited()
 
     async def test_happy_path_with_args(self) -> None:
-        from deepagents_code.tui.widgets.messages import SkillMessage
+        from niki_agent.tui.widgets.messages import SkillMessage
 
         app = _make_app()
         skill = _fake_skill()
         with (
-            patch("deepagents_code.skills.load.list_skills", return_value=[skill]),
+            patch("niki_agent.skills.load.list_skills", return_value=[skill]),
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 return_value="# Instructions\nDo stuff",
             ),
-            patch("deepagents_code.config.credentials"),
+            patch("niki_agent.config.credentials"),
         ):
             await app._handle_skill_command("/skill:test-skill find quantum")
 
@@ -202,10 +202,10 @@ class TestHandleSkillCommand:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.skills.load.list_skills",
+                "niki_agent.skills.load.list_skills",
                 side_effect=PermissionError("access denied"),
             ),
-            patch("deepagents_code.config.credentials"),
+            patch("niki_agent.config.credentials"),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -217,10 +217,10 @@ class TestHandleSkillCommand:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.skills.load.list_skills",
+                "niki_agent.skills.load.list_skills",
                 side_effect=TypeError("bad argument"),
             ),
-            patch("deepagents_code.config.credentials"),
+            patch("niki_agent.config.credentials"),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -260,11 +260,11 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=[self._CONTAINMENT_ERROR, "# Instructions\nDo stuff"],
             ),
             patch(
-                "deepagents_code.skills.trust.trust_skill_dir", return_value=True
+                "niki_agent.skills.trust.trust_skill_dir", return_value=True
             ) as mock_trust,
         ):
             await app._handle_skill_command("/skill:test-skill")
@@ -281,7 +281,7 @@ class TestPromptSkillTrustAndRetry:
         app._skill_trust_denied.add(self._target_dir())
         app._push_screen_wait = AsyncMock(return_value=True)
         with patch(
-            "deepagents_code.skills.load.load_skill_content",
+            "niki_agent.skills.load.load_skill_content",
             side_effect=self._CONTAINMENT_ERROR,
         ):
             await app._handle_skill_command("/skill:test-skill")
@@ -296,10 +296,10 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=[self._CONTAINMENT_ERROR, self._CONTAINMENT_ERROR],
             ),
-            patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True),
+            patch("niki_agent.skills.trust.trust_skill_dir", return_value=True),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -312,10 +312,10 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=[self._CONTAINMENT_ERROR, None],
             ),
-            patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True),
+            patch("niki_agent.skills.trust.trust_skill_dir", return_value=True),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -328,10 +328,10 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=[self._CONTAINMENT_ERROR, "# Body"],
             ),
-            patch("deepagents_code.skills.trust.trust_skill_dir", return_value=False),
+            patch("niki_agent.skills.trust.trust_skill_dir", return_value=False),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -345,10 +345,10 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=[self._CONTAINMENT_ERROR, OSError("disk gone")],
             ),
-            patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True),
+            patch("niki_agent.skills.trust.trust_skill_dir", return_value=True),
         ):
             await app._handle_skill_command("/skill:test-skill")
 
@@ -366,11 +366,11 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 side_effect=self._CONTAINMENT_ERROR,
             ),
             patch(
-                "deepagents_code.app._resolve_parent_dir",
+                "niki_agent.app._resolve_parent_dir",
                 side_effect=OSError("ELOOP"),
             ),
         ):
@@ -391,7 +391,7 @@ class TestPromptSkillTrustAndRetry:
         app = self._cache_hit_app()
         app._push_screen_wait = AsyncMock(side_effect=RuntimeError("screen stack"))
         with patch(
-            "deepagents_code.skills.load.load_skill_content",
+            "niki_agent.skills.load.load_skill_content",
             side_effect=self._CONTAINMENT_ERROR,
         ):
             await app._handle_skill_command("/skill:test-skill")
@@ -410,12 +410,12 @@ class TestPromptSkillTrustAndRetry:
         app._push_screen_wait = AsyncMock(return_value=True)
         with (
             patch(
-                "deepagents_code.skills.load.load_skill_content",
+                "niki_agent.skills.load.load_skill_content",
                 # 1st invoke: containment fails then the retry succeeds.
                 # 2nd invoke: loads directly (dir already allowlisted).
                 side_effect=[self._CONTAINMENT_ERROR, "# Body", "# Body"],
             ),
-            patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True),
+            patch("niki_agent.skills.trust.trust_skill_dir", return_value=True),
         ):
             await app._handle_skill_command("/skill:test-skill")
             await app._handle_skill_command("/skill:test-skill")
@@ -445,7 +445,7 @@ class TestDiscoverSkillsAndRoots:
         real (non-symlink) dir could not tell these apart because `resolve()`
         would be idempotent.
         """
-        from deepagents_code.skills.invocation import discover_skills_and_roots
+        from niki_agent.skills.invocation import discover_skills_and_roots
 
         real_trusted = tmp_path / "real_trusted"
         real_trusted.mkdir()
@@ -462,12 +462,12 @@ class TestDiscoverSkillsAndRoots:
 
         with (
             patch(
-                "deepagents_code.config.credentials",
+                "niki_agent.config.credentials",
                 SimpleNamespace(project_root=tmp_path),
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=[]),
+            patch("niki_agent.skills.load.list_skills", return_value=[]),
             patch(
-                "deepagents_code.skills.trust.load_trusted_skill_dirs",
+                "niki_agent.skills.trust.load_trusted_skill_dirs",
                 return_value=[link_trusted],
             ),
         ):
@@ -483,7 +483,7 @@ class TestDiscoverSkillsAndRoots:
         self, tmp_path: Path
     ) -> None:
         """Relative allowlist entries keep the cwd used by config loading."""
-        from deepagents_code.skills.invocation import discover_skills_and_roots
+        from niki_agent.skills.invocation import discover_skills_and_roots
 
         project_root = tmp_path / "project"
         user_cwd = project_root / "subdir"
@@ -498,12 +498,12 @@ class TestDiscoverSkillsAndRoots:
 
         with (
             patch(
-                "deepagents_code.config.credentials",
+                "niki_agent.config.credentials",
                 SimpleNamespace(project_root=project_root),
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=[]),
+            patch("niki_agent.skills.load.list_skills", return_value=[]),
             patch(
-                "deepagents_code.skills.trust.load_trusted_skill_dirs",
+                "niki_agent.skills.trust.load_trusted_skill_dirs",
                 return_value=[],
             ),
         ):
@@ -529,7 +529,7 @@ class TestResolveParentDir:
         `load_skill_content` enforces (it resolves the file), i.e. the resolved
         target's parent — so the retry's containment check can pass.
         """
-        from deepagents_code.app import _resolve_parent_dir
+        from niki_agent.app import _resolve_parent_dir
 
         disc = tmp_path / "disc"
         disc.mkdir()
@@ -583,7 +583,7 @@ class TestSkillTrustRealContainment:
         """Approving an outside skill reads it through the real gate on retry."""
         app, _root, outside = self._outside_skill(tmp_path)
         app._push_screen_wait = AsyncMock(return_value=True)
-        with patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True):
+        with patch("niki_agent.skills.trust.trust_skill_dir", return_value=True):
             await app._handle_skill_command("/skill:linked-skill")
 
         app._send_to_agent.assert_awaited_once()
@@ -616,7 +616,7 @@ class TestSkillTrustRealContainment:
             return True
 
         app._push_screen_wait = AsyncMock(side_effect=approve_then_swap)
-        with patch("deepagents_code.skills.trust.trust_skill_dir", return_value=True):
+        with patch("niki_agent.skills.trust.trust_skill_dir", return_value=True):
             await app._handle_skill_command("/skill:linked-skill")
 
         assert any("location changed" in t.lower() for t in _app_message_texts(app))

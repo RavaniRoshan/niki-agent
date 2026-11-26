@@ -14,10 +14,10 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Input, OptionList, RadioButton, RadioSet, Static
 
-from deepagents_code import auth_store, model_config
-from deepagents_code._paths import PATHS
-from deepagents_code.config import get_glyphs
-from deepagents_code.tui.widgets.auth import (
+from niki_agent import auth_store, model_config
+from niki_agent._paths import PATHS
+from niki_agent.config import get_glyphs
+from niki_agent.tui.widgets.auth import (
     _ENDPOINT_BY_REGION,
     PROVIDER_API_KEY_URLS,
     PROVIDER_DISPLAY_NAMES,
@@ -30,7 +30,7 @@ from deepagents_code.tui.widgets.auth import (
     provider_display_name,
     provider_short_name,
 )
-from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -55,7 +55,7 @@ def _restore_model_caches() -> Iterator[None]:
 def fake_state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect the credential store into a temp directory."""
     state_dir = tmp_path / ".state"
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state_dir)
     return state_dir
 
 
@@ -74,7 +74,7 @@ class _AuthHostApp(App[None]):
 
     async def _reload_settings_from_environment_serialized(self) -> list[str]:
         """Use the production reload core while modeling its app-level lock."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         async with self._environment_mutation_lock:
             return await DeepAgentsApp._reload_settings_from_environment()
@@ -322,7 +322,7 @@ class TestAuthPromptScreen:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Opening a provider with env auth shows the current credential source."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OPENAI_API_KEY", raising=False)
         monkeypatch.setenv("OPENAI_API_KEY", "from-env")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -342,7 +342,7 @@ class TestAuthPromptScreen:
     ) -> None:
         """Prefixed env auth doesn't invite users to scope the key again."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "from-prefixed")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "from-prefixed")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             app.show_prompt("openai", "OPENAI_API_KEY")
@@ -351,10 +351,10 @@ class TestAuthPromptScreen:
             status = app.screen.query_one("#auth-prompt-env-status", Static)
             text = str(status.content)
             assert get_glyphs().warning in str(title.content)
-            assert "DEEPAGENTS_CODE_OPENAI_API_KEY" in text
+            assert "NIKI_OPENAI_API_KEY" in text
             assert "scoped env var takes priority" in text
             assert "saved key will be used only when" in text
-            assert "DEEPAGENTS_CODE_OPENAI_API_KEY is unset" in text
+            assert "NIKI_OPENAI_API_KEY is unset" in text
             assert "use a different key" not in text
             content = cast("Content", status.content)
             assert any("$warning" in str(span.style) for span in content.spans)
@@ -364,7 +364,7 @@ class TestAuthPromptScreen:
     ) -> None:
         """A scoped env override is shown even when stored auth exists."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "from-prefixed")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "from-prefixed")
         auth_store.set_stored_key("openai", "from-store")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -375,7 +375,7 @@ class TestAuthPromptScreen:
             text = str(status.content)
             assert get_glyphs().warning in str(title.content)
             assert "Replace key for OpenAI (stored)" in str(title.content)
-            assert "DEEPAGENTS_CODE_OPENAI_API_KEY" in text
+            assert "NIKI_OPENAI_API_KEY" in text
             assert "scoped env var takes priority" in text
             assert "saved key will be used only when" in text
 
@@ -722,7 +722,7 @@ api_key_url = "javascript:alert(1)"
         # env mutation); the toast runs immediately after it on the LangSmith
         # branch, so the branch is still exercised end to end.
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.auth.apply_stored_langsmith_auth",
+            "niki_agent.tui.widgets.auth.apply_stored_langsmith_auth",
             lambda **_kwargs: None,
         )
 
@@ -756,9 +756,9 @@ api_key_url = "javascript:alert(1)"
             "LANGSMITH_TRACING",
             "LANGCHAIN_TRACING_V2",
             "LANGSMITH_PROJECT",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
-            "DEEPAGENTS_CODE_LANGSMITH_TRACING",
-            "DEEPAGENTS_CODE_LANGSMITH_PROJECT",
+            "NIKI_LANGSMITH_API_KEY",
+            "NIKI_LANGSMITH_TRACING",
+            "NIKI_LANGSMITH_PROJECT",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -793,7 +793,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Choosing the Europe region stores the canonical EU endpoint."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
         app = _AuthHostApp()
@@ -842,7 +842,7 @@ api_key_url = "javascript:alert(1)"
 
     async def test_langsmith_existing_eu_endpoint_preselects_region(self) -> None:
         """Reopening with a stored EU endpoint preselects the Europe region."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         auth_store.set_stored_key(
             "langsmith", "lsv2_existing", base_url=LANGSMITH_EU_ENDPOINT
@@ -875,7 +875,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A CLI-stored literal US URL reopens as United States, not Custom."""
-        from deepagents_code.config import LANGSMITH_US_ENDPOINT
+        from niki_agent.config import LANGSMITH_US_ENDPOINT
 
         monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
         auth_store.set_stored_key(
@@ -938,7 +938,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Typing a custom URL then switching to Europe saves the EU endpoint."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
         app = _AuthHostApp()
@@ -1289,7 +1289,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """Ctrl+R dismisses with SAVED (and clears caches) once creds resolve."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         notices: list[tuple[str, str | None]] = []
 
         def _capture_notify(
@@ -1308,7 +1308,7 @@ api_key_url = "javascript:alert(1)"
             cache_clears += 1
             real_clear()
 
-        monkeypatch.setattr("deepagents_code.tui.widgets.auth.clear_caches", _spy_clear)
+        monkeypatch.setattr("niki_agent.tui.widgets.auth.clear_caches", _spy_clear)
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             monkeypatch.setattr(app, "notify", _capture_notify)
@@ -1327,7 +1327,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """A corrupt store must not hide a newly resolvable env credential."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         store_dir = anyio.Path(fake_state_dir)
         await store_dir.mkdir(parents=True, exist_ok=True)
         await (store_dir / "auth.json").write_text("{", encoding="utf-8")
@@ -1348,7 +1348,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """Ctrl+R with nothing newly set keeps the modal open (no false SAVED)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         notices: list[tuple[str, str | None]] = []
 
         def _capture_notify(
@@ -1380,7 +1380,7 @@ api_key_url = "javascript:alert(1)"
             return []
 
         monkeypatch.setattr(
-            "deepagents_code.config.credentials.reload_from_environment",
+            "niki_agent.config.credentials.reload_from_environment",
             blocked_reload,
         )
         app = _AuthHostApp()
@@ -1409,7 +1409,7 @@ api_key_url = "javascript:alert(1)"
             return []
 
         monkeypatch.setattr(
-            "deepagents_code.config.credentials.reload_from_environment",
+            "niki_agent.config.credentials.reload_from_environment",
             reload_from_environment,
         )
         app = _AuthHostApp()
@@ -1429,7 +1429,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A retained policy generation cannot be reported as reloaded."""
-        from deepagents_code.config import MANAGED_RELOAD_BLOCKED_PREFIX
+        from niki_agent.config import MANAGED_RELOAD_BLOCKED_PREFIX
 
         blocked = (
             f"{MANAGED_RELOAD_BLOCKED_PREFIX}remote managed config could not "
@@ -1443,7 +1443,7 @@ api_key_url = "javascript:alert(1)"
             notices.append((str(message), severity))
 
         monkeypatch.setattr(
-            "deepagents_code.config.credentials.reload_from_environment",
+            "niki_agent.config.credentials.reload_from_environment",
             lambda: [blocked],
         )
         cache_cleared = False
@@ -1453,7 +1453,7 @@ api_key_url = "javascript:alert(1)"
             cache_cleared = True
 
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.auth.clear_caches",
+            "niki_agent.tui.widgets.auth.clear_caches",
             clear_caches,
         )
         app = _AuthHostApp()
@@ -1503,7 +1503,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """An in-progress key survives the reload recompose."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
@@ -1536,7 +1536,7 @@ api_key_url = "javascript:alert(1)"
                 raise ValueError(msg)
 
             monkeypatch.setattr(
-                "deepagents_code.config.credentials.reload_from_environment", _boom
+                "niki_agent.config.credentials.reload_from_environment", _boom
             )
             await pilot.press("ctrl+r")
             await pilot.pause()
@@ -1564,7 +1564,7 @@ api_key_url = "javascript:alert(1)"
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
         model_config.clear_caches()
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
 
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -1591,7 +1591,7 @@ api_key_url = "javascript:alert(1)"
         """
         for var in (
             "LANGSMITH_API_KEY",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
+            "NIKI_LANGSMITH_API_KEY",
             "LANGSMITH_ENDPOINT",
             "LANGCHAIN_ENDPOINT",
         ):
@@ -1635,7 +1635,7 @@ api_key_url = "javascript:alert(1)"
 
     async def test_ctrl_d_opens_confirm_then_deletes(self) -> None:
         """Ctrl+D opens the confirmation modal; Enter completes the delete."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         auth_store.set_stored_key("openai", "to-be-removed")
         app = _AuthHostApp()
@@ -1655,7 +1655,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A completed delete surfaces a confirmation toast naming the provider."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         # `openai` resolves to "OpenAI" via the built-in display-name map but
         # would title-case to "Openai" via the bare fallback, so asserting on it
@@ -1697,7 +1697,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A failed delete shows an inline error and fires no success toast."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         notices: list[tuple[str, str | None]] = []
 
@@ -1741,7 +1741,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A delete that finds nothing surfaces only the 'already removed' toast."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         notices: list[tuple[str, str | None, bool]] = []
 
@@ -1791,7 +1791,7 @@ api_key_url = "javascript:alert(1)"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Store warnings on the delete rewrite fire and suppress the success toast."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         notices: list[tuple[str, str | None, bool]] = []
 
@@ -1835,7 +1835,7 @@ api_key_url = "javascript:alert(1)"
 
     async def test_ctrl_d_then_escape_keeps_credential(self) -> None:
         """Esc on the confirm modal returns to the prompt without deleting."""
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         auth_store.set_stored_key("openai", "still-here")
         app = _AuthHostApp()
@@ -1856,7 +1856,7 @@ api_key_url = "javascript:alert(1)"
         The `priority` binding would otherwise swallow the app-level
         Ctrl+D=quit, leaving the key dead in the modal.
         """
-        from deepagents_code.tui.widgets.auth import DeleteCredentialConfirmScreen
+        from niki_agent.tui.widgets.auth import DeleteCredentialConfirmScreen
 
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -1893,7 +1893,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """A corrupt auth.json must not crash the prompt at construction."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         path = fake_state_dir / "auth.json"
         path.parent.mkdir(parents=True)
         path.write_text("{not json")
@@ -1923,7 +1923,7 @@ api_key_url = "javascript:alert(1)"
             await pilot.pause()
             meta = app.screen.query_one("#auth-prompt-key-meta", Static)
             text = str(meta.content)
-            assert "DEEPAGENTS_CODE_OPENAI_API_KEY" in text
+            assert "NIKI_OPENAI_API_KEY" in text
             assert "dcode only, highest priority" in text
             assert "OPENAI_API_KEY" in text
             assert "shared, lowest priority" in text
@@ -1948,7 +1948,7 @@ api_key_url = "javascript:alert(1)"
             assert "Override the provider endpoint for this stored key" in text
             assert "Leave blank to use the provider default" in text
             assert "Env override order" in text
-            assert "DEEPAGENTS_CODE_OPENAI_BASE_URL, then OPENAI_BASE_URL" in text
+            assert "NIKI_OPENAI_BASE_URL, then OPENAI_BASE_URL" in text
             # It must not claim blank *uses* the plain var (it gets cleared).
             assert "use OPENAI_BASE_URL" not in text
 
@@ -1974,9 +1974,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """The surviving env var is named (not its value) so blank is unambiguous."""
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", tmp_path / "none.toml")
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_OPENAI_BASE_URL", "https://scoped.example/v1"
-        )
+        monkeypatch.setenv("NIKI_OPENAI_BASE_URL", "https://scoped.example/v1")
         model_config.clear_caches()
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -1985,7 +1983,7 @@ api_key_url = "javascript:alert(1)"
             hint = app.screen.query_one("#auth-prompt-base-url-hint", Static)
             text = str(hint.content)
             assert "Override the provider endpoint for this stored key" in text
-            assert "Leave blank to use DEEPAGENTS_CODE_OPENAI_BASE_URL" in text
+            assert "Leave blank to use NIKI_OPENAI_BASE_URL" in text
             assert "Env override order" in text
             # The URL value itself is not leaked into the hint.
             assert "scoped.example" not in text
@@ -1995,9 +1993,7 @@ api_key_url = "javascript:alert(1)"
     ) -> None:
         """The blank-endpoint hint includes alternate env vars that still resolve."""
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", tmp_path / "none.toml")
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_BASETEN_API_BASE", "https://legacy.example/v1"
-        )
+        monkeypatch.setenv("NIKI_BASETEN_API_BASE", "https://legacy.example/v1")
         model_config.clear_caches()
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -2005,9 +2001,9 @@ api_key_url = "javascript:alert(1)"
             await pilot.pause()
             hint = app.screen.query_one("#auth-prompt-base-url-hint", Static)
             text = str(hint.content)
-            assert "Leave blank to use DEEPAGENTS_CODE_BASETEN_API_BASE" in text
-            assert "DEEPAGENTS_CODE_BASETEN_BASE_URL, then BASETEN_BASE_URL" in text
-            assert "DEEPAGENTS_CODE_BASETEN_API_BASE, then BASETEN_API_BASE" in text
+            assert "Leave blank to use NIKI_BASETEN_API_BASE" in text
+            assert "NIKI_BASETEN_BASE_URL, then BASETEN_BASE_URL" in text
+            assert "NIKI_BASETEN_API_BASE, then BASETEN_API_BASE" in text
             assert "legacy.example" not in text
 
     async def test_no_logging_of_secret(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -2159,13 +2155,13 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: True,
         )
         auth_store.set_stored_key("openai", "k")
@@ -2185,13 +2181,13 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """Configured services float above missing provider rows."""
         for var in (
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
             "TAVILY_API_KEY",
-            "DEEPAGENTS_CODE_TAVILY_API_KEY",
+            "NIKI_TAVILY_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: True,
         )
         monkeypatch.setenv("TAVILY_API_KEY", "from-env")
@@ -2220,15 +2216,15 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
             "GROQ_API_KEY",
-            "DEEPAGENTS_CODE_GROQ_API_KEY",
+            "NIKI_GROQ_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider != "groq",
         )
         auth_store.set_stored_key("openai", "k")
@@ -2257,13 +2253,13 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: True,
         )
         app = _AuthHostApp()
@@ -2302,20 +2298,20 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
             "LANGSMITH_API_KEY",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
+            "NIKI_LANGSMITH_API_KEY",
             "TAVILY_API_KEY",
-            "DEEPAGENTS_CODE_TAVILY_API_KEY",
+            "NIKI_TAVILY_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         # Only these two count as installed, so the manageable rows are
         # `anthropic`, `openai`, and the two services — a short enough list
         # that the alphabetical head is predictable.
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "anthropic"},
         )
         app = _AuthHostApp()
@@ -2349,17 +2345,17 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "COHERE_API_KEY",
-            "DEEPAGENTS_CODE_COHERE_API_KEY",
+            "NIKI_COHERE_API_KEY",
             "MISTRAL_API_KEY",
-            "DEEPAGENTS_CODE_MISTRAL_API_KEY",
+            "NIKI_MISTRAL_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: True,
         )
         auth_store.set_stored_key("anthropic", "k")
@@ -2389,13 +2385,13 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: True,
         )
         monkeypatch.setenv("OPENAI_API_KEY", "from-env")
@@ -2434,7 +2430,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Canonical env var only → label shows the canonical name."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OPENAI_API_KEY", raising=False)
         monkeypatch.setenv("OPENAI_API_KEY", "from-env")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
@@ -2453,7 +2449,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
     ) -> None:
         """Prefixed env var present → label shows the prefixed name."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "from-prefix")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "from-prefix")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             app.show_manager()
@@ -2464,14 +2460,14 @@ api_key_env = "MY_GATEWAY_API_KEY"
                 for i in range(options.option_count)
                 if options.get_option_at_index(i).id == "openai"
             )
-        assert "[env set: DEEPAGENTS_CODE_OPENAI_API_KEY]" in label
+        assert "[env set: NIKI_OPENAI_API_KEY]" in label
 
     async def test_env_badge_prefers_prefixed_when_both_set(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Both set → label shows the prefixed variant (matches resolve order)."""
         monkeypatch.setenv("OPENAI_API_KEY", "canonical")
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "prefixed")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "prefixed")
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             app.show_manager()
@@ -2482,7 +2478,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
                 for i in range(options.option_count)
                 if options.get_option_at_index(i).id == "openai"
             )
-        assert "[env set: DEEPAGENTS_CODE_OPENAI_API_KEY]" in label
+        assert "[env set: NIKI_OPENAI_API_KEY]" in label
 
     async def test_only_installed_well_known_providers_listed(
         self, monkeypatch: pytest.MonkeyPatch
@@ -2494,7 +2490,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         a greyed install-on-select row below the live entries.
         """
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "anthropic"},
         )
         app = _AuthHostApp()
@@ -2526,7 +2522,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         would look up a credential env var the service doesn't have.
         """
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2552,7 +2548,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         auth_store.set_stored_key("tavily", "k")
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2577,7 +2573,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         """
         auth_store.set_stored_key("groq", "k")
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2601,7 +2597,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         for discoverability rather than being hidden.
         """
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "anthropic"},
         )
         app = _AuthHostApp()
@@ -2623,12 +2619,12 @@ api_key_env = "MY_GATEWAY_API_KEY"
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Selecting a greyed-out provider opens the install confirmation."""
-        from deepagents_code.tui.widgets.install_confirm import (
+        from niki_agent.tui.widgets.install_confirm import (
             InstallProviderConfirmScreen,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2646,7 +2642,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
     ) -> None:
         """Confirming the install records the extra and dismisses the manager."""
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2671,7 +2667,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
         highlight it when reopening after the extra install.
         """
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "perplexity"},
         )
         app = _AuthHostApp()
@@ -2690,7 +2686,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
     ) -> None:
         """An initial provider absent from the list leaves the cursor at the top."""
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2706,7 +2702,7 @@ api_key_env = "MY_GATEWAY_API_KEY"
     ) -> None:
         """Declining the install records nothing and keeps the user on the manager."""
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         app = _AuthHostApp()
@@ -2739,7 +2735,7 @@ enabled = false
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
         model_config.clear_caches()
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "anthropic"},
         )
         app = _AuthHostApp()
@@ -2765,11 +2761,11 @@ enabled = false
         a `None` extra.
         """
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider != "groq",
         )
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.provider_install_extra",
+            "niki_agent.config_manifest.provider_install_extra",
             lambda provider: None if provider == "groq" else provider,
         )
         app = _AuthHostApp()
@@ -2813,16 +2809,16 @@ enabled = false
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
             "TAVILY_API_KEY",
-            "DEEPAGENTS_CODE_TAVILY_API_KEY",
+            "NIKI_TAVILY_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider in {"openai", "anthropic"},
         )
         auth_store.set_stored_key("openai", "stored-key")
@@ -2869,7 +2865,7 @@ models = ["managed-model"]
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
         model_config.clear_caches()
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
         auth_store.set_stored_key("unknown_provider", "test-key")
@@ -2941,7 +2937,7 @@ enabled = false
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
         model_config.clear_caches()
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda provider: provider == "openai",
         )
 
@@ -2961,8 +2957,8 @@ enabled = false
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Missing token store renders the "[sign in to chatgpt]" badge."""
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
 
         monkeypatch.setattr(
             codex_integration, "default_store_path", lambda: tmp_path / "missing.json"
@@ -2986,9 +2982,9 @@ enabled = false
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Choosing `openai_codex` while signed out opens the OAuth modal."""
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         # Stub the OAuth flow so the modal does not try to bind a real
         # loopback port or run a token exchange when it mounts.
@@ -3040,8 +3036,8 @@ enabled = false
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Esc after the OAuth worker starts dismisses the modal as cancelled."""
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         async def _fake_run(
             *_args: object, **_kwargs: object
@@ -3072,9 +3068,9 @@ enabled = false
         import json
         from datetime import datetime, timedelta
 
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
-        from deepagents_code.tui.widgets.codex_auth import CodexSignedInScreen
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
+        from niki_agent.tui.widgets.codex_auth import CodexSignedInScreen
 
         path = tmp_path / "auth.json"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -3131,9 +3127,9 @@ enabled = false
         sign-out has to stay reachable, which only the signed-in overlay
         offers.
         """
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
-        from deepagents_code.tui.widgets.codex_auth import (
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
+        from niki_agent.tui.widgets.codex_auth import (
             CodexAuthScreen,
             CodexSignedInScreen,
         )
@@ -3213,9 +3209,9 @@ enabled = false
         signing out only re-labels the row if the dispatch invalidates that
         cache — this fails if either `clear_caches` or the refresh is dropped.
         """
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
-        from deepagents_code.tui.widgets.codex_auth import CodexSignedInAction
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
+        from niki_agent.tui.widgets.codex_auth import CodexSignedInAction
 
         path = tmp_path / "auth.json"
         self._write_token(path)
@@ -3254,9 +3250,9 @@ enabled = false
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`REAUTH` from the overlay opens a fresh sign-in flow."""
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.model_config import clear_caches
-        from deepagents_code.tui.widgets.codex_auth import (
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.model_config import clear_caches
+        from niki_agent.tui.widgets.codex_auth import (
             CodexAuthScreen,
             CodexSignedInAction,
         )
@@ -3294,8 +3290,8 @@ enabled = false
         """The worker SUCCESS path dismisses `True` and toasts the plan."""
         from datetime import datetime, timedelta
 
-        from deepagents_code.integrations import openai_codex as codex_integration
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.integrations import openai_codex as codex_integration
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         async def _fake_run(  # noqa: RUF029  # async signature dictated by protocol
             *_args: object, **_kwargs: object
@@ -3335,7 +3331,7 @@ class TestRegionEndpointMapping:
 
     def test_fixed_saas_regions_round_trip(self) -> None:
         """Each fixed-SaaS region maps to an endpoint that maps back to it."""
-        from deepagents_code.config import LANGSMITH_US_ENDPOINT
+        from niki_agent.config import LANGSMITH_US_ENDPOINT
 
         for region in (Region.US, Region.EU):
             assert _region_for_endpoint(_ENDPOINT_BY_REGION[region]) == region

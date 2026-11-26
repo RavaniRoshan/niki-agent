@@ -8,11 +8,11 @@ from typing import Any, cast
 
 import pytest
 
-from deepagents_code.application.workflows import (
+from niki_agent.application.workflows import (
     InMemoryWorkflowRepository,
     WorkflowRunner,
 )
-from deepagents_code.domain.workflow import (
+from niki_agent.domain.workflow import (
     WorkflowDefinition,
     WorkflowRun,
     WorkflowStep,
@@ -344,10 +344,10 @@ async def test_closing_workflow_stream_cancels_active_step():
 
 
 def test_profile_workflow_repository_persists_definitions(tmp_path, monkeypatch):
-    from deepagents_code.application.workflows import ProfileWorkflowRepository
+    from niki_agent.application.workflows import ProfileWorkflowRepository
 
     monkeypatch.setattr(
-        "deepagents_code.sessions.get_workflows_dir", lambda: tmp_path / "workflows"
+        "niki_agent.sessions.get_workflows_dir", lambda: tmp_path / "workflows"
     )
     definition = WorkflowDefinition(
         name="verify",
@@ -366,16 +366,14 @@ def test_profile_workflow_repository_persists_definitions(tmp_path, monkeypatch)
 def test_profile_workflow_repository_rejects_symlinked_definition(
     tmp_path, monkeypatch
 ):
-    from deepagents_code.application.workflows import ProfileWorkflowRepository
+    from niki_agent.application.workflows import ProfileWorkflowRepository
 
     workflow_dir = tmp_path / "workflows"
     workflow_dir.mkdir()
     outside = tmp_path / "outside.json"
     outside.write_text('{"name":"verify","version":1,"steps":[]}', encoding="utf-8")
     (workflow_dir / "verify.json").symlink_to(outside)
-    monkeypatch.setattr(
-        "deepagents_code.sessions.get_workflows_dir", lambda: workflow_dir
-    )
+    monkeypatch.setattr("niki_agent.sessions.get_workflows_dir", lambda: workflow_dir)
 
     with pytest.raises(ValueError, match="profile directory"):
         ProfileWorkflowRepository().load("verify")
@@ -385,11 +383,11 @@ def test_profile_workflow_repository_rejects_symlinked_definition(
 async def test_workflow_list_command_shows_saved_definitions(tmp_path, monkeypatch):
     from textual.screen import ModalScreen
 
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.application.workflows import ProfileWorkflowRepository
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.application.workflows import ProfileWorkflowRepository
 
     monkeypatch.setattr(
-        "deepagents_code.sessions.get_workflows_dir", lambda: tmp_path / "workflows"
+        "niki_agent.sessions.get_workflows_dir", lambda: tmp_path / "workflows"
     )
     ProfileWorkflowRepository().save(
         WorkflowDefinition("verify", 1, (WorkflowStep("inspect", "inspect"),))

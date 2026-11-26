@@ -13,9 +13,9 @@ from unittest.mock import patch
 
 import pytest
 
-import deepagents_code
-from deepagents_code import _debug
-from deepagents_code._debug import (
+import niki_agent
+from niki_agent import _debug
+from niki_agent._debug import (
     bind_debug_logging_to_thread,
     configure_debug_logging,
     installed_debug_log_path,
@@ -44,7 +44,7 @@ def _icacls_entries(path) -> list[str]:
     "level", [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 )
 def test_file_and_console_log_format_match(tmp_path: Path, level: int) -> None:
-    from deepagents_code._debug_buffer import InMemoryLogBuffer
+    from niki_agent._debug_buffer import InMemoryLogBuffer
 
     logger = logging.getLogger("test.debug.format")
     path = tmp_path / "format.log"
@@ -81,8 +81,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
@@ -129,8 +129,8 @@ class TestConfigureDebugLogging:
             patch.dict(
                 os.environ,
                 {
-                    "DEEPAGENTS_CODE_DEBUG": "1",
-                    "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                    "NIKI_DEBUG": "1",
+                    "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
                 },
             ),
             patch.object(_debug, "_prepare_debug_file", side_effect=OSError("nope")),
@@ -156,8 +156,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(tmp_path),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(tmp_path),
             },
         ):
             configure_debug_logging(logger)
@@ -169,12 +169,12 @@ class TestConfigureDebugLogging:
 
     def test_invalid_log_level_warns_and_uses_default(self, capsys) -> None:
         logger = logging.getLogger("test.debug.bad_level")
-        with patch.dict(os.environ, {"DEEPAGENTS_CODE_LOG_LEVEL": "TRACE"}, clear=True):
+        with patch.dict(os.environ, {"NIKI_LOG_LEVEL": "TRACE"}, clear=True):
             configure_debug_logging(logger)
             bind_debug_logging_to_thread("test-thread")
         assert logger.level == logging.INFO
         captured = capsys.readouterr()
-        assert "DEEPAGENTS_CODE_LOG_LEVEL" in captured.err
+        assert "NIKI_LOG_LEVEL" in captured.err
 
     def test_custom_path_used(self, tmp_path) -> None:
         logger = logging.getLogger("test.debug.custom_path")
@@ -182,8 +182,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
@@ -204,8 +204,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
@@ -232,8 +232,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
@@ -246,8 +246,7 @@ class TestConfigureDebugLogging:
             # Both the pre-existing foreign handler and our tagged handler remain.
             assert foreign in file_handlers
             assert any(
-                getattr(h, "_deepagents_code_debug_handler", False)
-                for h in file_handlers
+                getattr(h, "_niki_agent_debug_handler", False) for h in file_handlers
             )
         finally:
             for h in file_handlers:
@@ -261,8 +260,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
@@ -287,8 +286,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(tmp_path),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(tmp_path),
             },
         ):
             configure_debug_logging(logger)
@@ -311,8 +310,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(directory),
-                "DEEPAGENTS_CODE_DEBUG_FILE": str(tmp_path / "legacy" / "debug.log"),
+                "NIKI_DEBUG_DIRECTORY": str(directory),
+                "NIKI_DEBUG_FILE": str(tmp_path / "legacy" / "debug.log"),
             },
             clear=True,
         ):
@@ -326,8 +325,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(directory),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(directory),
             },
         ):
             configure_debug_logging(logger)
@@ -351,7 +350,7 @@ class TestConfigureDebugLogging:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch(
-                "deepagents_code.config_manifest.load_config_toml",
+                "niki_agent.config_manifest.load_config_toml",
                 return_value={"debug": {"file": str(legacy_file)}},
             ),
         ):
@@ -361,7 +360,7 @@ class TestConfigureDebugLogging:
         legacy_file = tmp_path / "legacy" / "debug.log"
         with patch.dict(
             os.environ,
-            {"DEEPAGENTS_CODE_DEBUG_FILE": str(legacy_file)},
+            {"NIKI_DEBUG_FILE": str(legacy_file)},
             clear=True,
         ):
             assert _debug._debug_directory() == legacy_file.parent
@@ -377,8 +376,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(link),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(link),
             },
         ):
             configure_debug_logging(logger)
@@ -392,8 +391,8 @@ class TestConfigureDebugLogging:
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(tmp_path),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(tmp_path),
             },
         ):
             configure_debug_logging(logger)
@@ -413,10 +412,10 @@ class TestConfigureDebugLogging:
 class TestInstalledDebugLogPath:
     def test_returns_none_when_no_handler(self) -> None:
         """Absent a tagged handler, the helper reports no log file."""
-        logger = logging.getLogger("deepagents_code")
+        logger = logging.getLogger("niki_agent")
         original = list(logger.handlers)
         for h in logger.handlers[:]:
-            if getattr(h, "_deepagents_code_debug_handler", False):
+            if getattr(h, "_niki_agent_debug_handler", False):
                 logger.removeHandler(h)
         try:
             assert installed_debug_log_path() is None
@@ -430,21 +429,19 @@ class TestInstalledDebugLogPath:
 
     def test_returns_path_when_handler_installed(self, tmp_path) -> None:
         """The helper returns the path of the actually-installed handler."""
-        logger = logging.getLogger("deepagents_code")
+        logger = logging.getLogger("niki_agent")
         log_file = tmp_path / "installed" / "test-thread.log"
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
             configure_debug_logging(logger)
             bind_debug_logging_to_thread("test-thread")
         installed = [
-            h
-            for h in logger.handlers
-            if getattr(h, "_deepagents_code_debug_handler", False)
+            h for h in logger.handlers if getattr(h, "_niki_agent_debug_handler", False)
         ]
         try:
             assert installed_debug_log_path() == log_file
@@ -457,22 +454,20 @@ class TestInstalledDebugLogPath:
         """A foreign FileHandler does not count as an installed debug log.
 
         Mirrors the divergence the helper exists to catch: a truthy
-        `DEEPAGENTS_CODE_DEBUG` set after import (e.g. via `.env`) never installs
+        `NIKI_DEBUG` set after import (e.g. via `.env`) never installs
         our tagged handler, so the helper must report `None` regardless of any
         unrelated handlers present.
         """
-        logger = logging.getLogger("deepagents_code")
+        logger = logging.getLogger("niki_agent")
         pre_existing = [
-            h
-            for h in logger.handlers
-            if getattr(h, "_deepagents_code_debug_handler", False)
+            h for h in logger.handlers if getattr(h, "_niki_agent_debug_handler", False)
         ]
         for h in pre_existing:
             logger.removeHandler(h)
         foreign = logging.FileHandler(str(tmp_path / "foreign.log"), mode="a")
         logger.addHandler(foreign)
         try:
-            with patch.dict(os.environ, {"DEEPAGENTS_CODE_DEBUG": "1"}, clear=True):
+            with patch.dict(os.environ, {"NIKI_DEBUG": "1"}, clear=True):
                 # Env is truthy but no tagged handler was installed.
                 assert installed_debug_log_path() is None
         finally:
@@ -482,27 +477,27 @@ class TestInstalledDebugLogPath:
                 logger.addHandler(h)
 
     def test_package_import_configures_package_logger(self, tmp_path) -> None:
-        logger = logging.getLogger("deepagents_code")
+        logger = logging.getLogger("niki_agent")
         original_handlers = list(logger.handlers)
         original_level = logger.level
         log_file = tmp_path / "package" / "test-thread.log"
         with patch.dict(
             os.environ,
             {
-                "DEEPAGENTS_CODE_DEBUG": "1",
-                "DEEPAGENTS_CODE_DEBUG_DIRECTORY": str(log_file.parent),
+                "NIKI_DEBUG": "1",
+                "NIKI_DEBUG_DIRECTORY": str(log_file.parent),
             },
         ):
-            importlib.reload(deepagents_code)
+            importlib.reload(niki_agent)
             bind_debug_logging_to_thread("test-thread")
 
         new_handlers = [h for h in logger.handlers if h not in original_handlers]
         try:
-            child = logging.getLogger("deepagents_code.test_child")
+            child = logging.getLogger("niki_agent.test_child")
             child.warning("package child warning")
             for h in new_handlers:
                 h.flush()
-            assert "deepagents_code.test_child package child warning" in (
+            assert "niki_agent.test_child package child warning" in (
                 log_file.read_text()
             )
         finally:
@@ -512,9 +507,9 @@ class TestInstalledDebugLogPath:
             logger.setLevel(original_level)
             # Reload with the debug env cleared so cleanup never re-attaches a
             # handler to the real package logger (e.g. when a developer runs the
-            # suite with DEEPAGENTS_CODE_DEBUG exported in their shell).
+            # suite with NIKI_DEBUG exported in their shell).
             with patch.dict(os.environ, {}, clear=True):
-                importlib.reload(deepagents_code)
+                importlib.reload(niki_agent)
 
 
 class TestSweepDebugHandlers:

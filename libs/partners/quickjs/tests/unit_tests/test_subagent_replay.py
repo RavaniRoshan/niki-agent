@@ -6,8 +6,8 @@ import asyncio
 from collections import Counter
 from typing import Any
 
-from deepagents import create_deep_agent
-from deepagents.middleware.subagents import CompiledSubAgent
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.middleware.subagents import CompiledSubAgent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph

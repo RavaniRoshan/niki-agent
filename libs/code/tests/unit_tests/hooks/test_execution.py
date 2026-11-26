@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.capabilities import (
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.capabilities import (
     ExitCodePolicy,
     PlainOutputPolicy,
     get_event_spec,
 )
-from deepagents_code.hooks.env import sanitize_hook_environ
-from deepagents_code.hooks.models.config import HooksConfig
-from deepagents_code.hooks.models.domain import (
+from niki_agent.hooks.env import sanitize_hook_environ
+from niki_agent.hooks.models.config import HooksConfig
+from niki_agent.hooks.models.domain import (
     HookContext,
     HookEvent,
     HookInvocation,
@@ -25,17 +25,17 @@ from deepagents_code.hooks.models.domain import (
     SessionStartEvent,
     ToolCallData,
 )
-from deepagents_code.hooks.models.wire import HookWireOutput
-from deepagents_code.hooks.reducer import MAX_STOP_CONTINUATIONS, reduce_hook_results
-from deepagents_code.hooks.runner import HandlerResult, run_command_handler
-from deepagents_code.hooks.snapshot import HooksSnapshot
-from deepagents_code.hooks.tools import format_mcp_wire_name, to_wire_call
-from deepagents_code.hooks.validate_terminal_sequence import validate_terminal_sequence
+from niki_agent.hooks.models.wire import HookWireOutput
+from niki_agent.hooks.reducer import MAX_STOP_CONTINUATIONS, reduce_hook_results
+from niki_agent.hooks.runner import HandlerResult, run_command_handler
+from niki_agent.hooks.snapshot import HooksSnapshot
+from niki_agent.hooks.tools import format_mcp_wire_name, to_wire_call
+from niki_agent.hooks.validate_terminal_sequence import validate_terminal_sequence
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from deepagents_code.hooks.snapshot import HookHandler
+    from niki_agent.hooks.snapshot import HookHandler
 
 
 def _invocation(tmp_path: Path) -> HookInvocation:

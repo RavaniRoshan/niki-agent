@@ -7,7 +7,7 @@ from collections.abc import (
 )
 from typing import TYPE_CHECKING, Any
 
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 

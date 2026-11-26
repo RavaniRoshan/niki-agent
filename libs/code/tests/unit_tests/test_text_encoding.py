@@ -8,9 +8,9 @@ from types import ModuleType
 
 import pytest
 
-from deepagents_code import agent, config, model_config
-from deepagents_code.hooks import legacy as legacy_hooks
-from deepagents_code.skills import commands
+from niki_agent import agent, config, model_config
+from niki_agent.hooks import legacy as legacy_hooks
+from niki_agent.skills import commands
 
 _PACKAGE = Path(config.__file__).parent
 
@@ -83,7 +83,7 @@ def test_reset_agent_preserves_unicode(
     source.mkdir()
     content = "# Instructions\nUse → to describe changes — café 日本語.\n"
     (source / "AGENTS.md").write_text(content, encoding="utf-8")
-    monkeypatch.setattr(agent, "user_deepagents_dir", lambda: tmp_path)
+    monkeypatch.setattr(agent, "user_niki_dir", lambda: tmp_path)
 
     agent.reset_agent("target", source_agent="source")
 

@@ -4,15 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code.extensions.discovery import discover_extensions
-from deepagents_code.extensions.registry import SourceScope
+from niki_agent.extensions.discovery import discover_extensions
+from niki_agent.extensions.registry import SourceScope
 
 
 @pytest.fixture(autouse=True)
 def _experimental(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DEEPAGENTS_CODE_EXPERIMENTAL", "1")
+    monkeypatch.setenv("NIKI_EXPERIMENTAL", "1")
     monkeypatch.setattr(
-        "deepagents_code.extensions.discovery.importlib.metadata.entry_points",
+        "niki_agent.extensions.discovery.importlib.metadata.entry_points",
         lambda **_: (),
     )
 
@@ -33,7 +33,7 @@ def test_sources_resolve_in_authority_order(
     temporary = _extension(tmp_path / "temporary", "c.py")
     project = _extension(tmp_path / "project", "d.py")
     monkeypatch.setattr(
-        "deepagents_code.extensions.discovery.user_extensions_dir",
+        "niki_agent.extensions.discovery.user_extensions_dir",
         lambda: user.parent,
     )
 
@@ -63,7 +63,7 @@ def test_invalid_explicit_path_is_isolated(
     """A missing CLI source reports an error without blocking valid files."""
     valid = _extension(tmp_path, "valid.py")
     monkeypatch.setattr(
-        "deepagents_code.extensions.discovery.user_extensions_dir",
+        "niki_agent.extensions.discovery.user_extensions_dir",
         lambda: tmp_path / "absent-user-dir",
     )
 

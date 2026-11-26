@@ -2,7 +2,7 @@
 
 import pytest
 
-from deepagents_code.config import (
+from niki_agent.config import (
     SHELL_ALLOW_ALL,
     contains_dangerous_patterns,
     is_shell_command_allowed,

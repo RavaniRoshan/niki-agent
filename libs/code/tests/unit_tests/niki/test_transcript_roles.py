@@ -29,13 +29,13 @@ if TYPE_CHECKING:
     from textual.app import App
     from textual.pilot import Pilot
 
-    from deepagents_code.tui.widgets.messages import AssistantMessage, UserMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage, UserMessage
 
 
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-v4")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -46,7 +46,7 @@ async def _mount_pair(
     app: App, pilot: Pilot[None]
 ) -> tuple[UserMessage, AssistantMessage]:
     """Mount one user turn and one assistant turn side by side."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage, UserMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage, UserMessage
 
     await app.query_one("#messages").mount(UserMessage("what is 2+2"))
     await app.query_one("#messages").mount(AssistantMessage("4"))
@@ -104,7 +104,7 @@ async def test_v4_the_gutter_is_drawn_in_the_niki_accent() -> None:
     `$primary`, so swapping the theme recolours it with no extra work. A literal
     here would silently keep the old palette's colour forever.
     """
-    from deepagents_code.niki.theme import NIKI_DARK
+    from niki_agent.niki.theme import NIKI_DARK
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:

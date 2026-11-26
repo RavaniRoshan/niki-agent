@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.formatting import (
+from niki_agent.formatting import (
     format_duration,
     format_message_timestamp,
     uses_24_hour_clock,
@@ -68,9 +68,7 @@ class TestFormatMessageTimestamp:
 
     def test_today_omits_date(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Today's messages show only the time, not the date."""
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: False)
         today = (
             datetime.now()
             .astimezone()
@@ -80,18 +78,14 @@ class TestFormatMessageTimestamp:
 
     def test_other_day_includes_date(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Messages from other days keep the leading date."""
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: False)
         with _utc_timezone():
             # 2024-01-01 12:00:05 UTC — a fixed past date.
             assert format_message_timestamp(1_704_110_405.0) == "Jan 1, 12:00:05 PM"
 
     def test_24_hour_clock_drops_am_pm(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A 24-hour clock renders time without an AM/PM suffix."""
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: True
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: True)
         with _utc_timezone():
             # 2024-01-01 13:00:05 UTC — a fixed past afternoon time.
             assert format_message_timestamp(1_704_114_005.0) == "Jan 1, 13:00:05"
@@ -100,9 +94,7 @@ class TestFormatMessageTimestamp:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The 12-hour branch renders midnight as `12:..:.. AM`, not `0:`."""
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: False)
         with _utc_timezone():
             # 2024-01-01 00:00:05 UTC — exercises the `hour % 12 or 12` path.
             assert format_message_timestamp(1_704_067_205.0) == "Jan 1, 12:00:05 AM"
@@ -119,7 +111,7 @@ class TestUses24HourClock:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """On macOS the explicit 24-hour preference is honored over locale."""
-        import deepagents_code.formatting as fmt
+        import niki_agent.formatting as fmt
 
         self._clear_cache()
         monkeypatch.setattr(fmt.sys, "platform", "darwin")
@@ -133,7 +125,7 @@ class TestUses24HourClock:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """On macOS an explicit 12-hour preference overrides the locale."""
-        import deepagents_code.formatting as fmt
+        import niki_agent.formatting as fmt
 
         self._clear_cache()
         monkeypatch.setattr(fmt.sys, "platform", "darwin")

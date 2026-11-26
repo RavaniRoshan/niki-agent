@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from deepagents_code._session_stats import SessionStats
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.resume_state import (
+from niki_agent._session_stats import SessionStats
+from niki_agent.app import DeepAgentsApp
+from niki_agent.resume_state import (
     ResumeStateMiddleware,
     _extract_context_tokens,
     coerce_goal_status,
@@ -194,7 +194,7 @@ class TestCostDisplayCallbacks:
         self, monkeypatch: pytest.MonkeyPatch, *, preload: bool
     ) -> None:
         """Resume and prefetched thread switches restore saved cost detail."""
-        from deepagents_code.cost_tracking import _empty_cost_breakdown
+        from niki_agent.cost_tracking import _empty_cost_breakdown
 
         breakdown = _empty_cost_breakdown()
         breakdown.update(request_count=2, input_tokens=100, total_cost_usd=1.25)
@@ -222,7 +222,7 @@ class TestCostDisplayCallbacks:
         self, saved_breakdown: object
     ) -> None:
         """Legacy or malformed history must not inherit another thread's detail."""
-        from deepagents_code.cost_tracking import _empty_cost_breakdown
+        from niki_agent.cost_tracking import _empty_cost_breakdown
 
         app = DeepAgentsApp(thread_id="thread-2")
         app._set_session_cost(2.5, breakdown=_empty_cost_breakdown())
@@ -260,7 +260,7 @@ class TestCostDisplayCallbacks:
 
     async def test_resumed_zero_cost_usage_is_not_reported_as_unused(self) -> None:
         """Checkpoint history preserves usage when its total cannot prove it."""
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         app = DeepAgentsApp(thread_id="thread-1")
         payload = _ThreadHistoryPayload(

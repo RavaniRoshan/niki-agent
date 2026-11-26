@@ -8,7 +8,7 @@ from datetime import datetime
 
 from langchain.chat_models import init_chat_model
 from langchain_google_genai import ChatGoogleGenerativeAI
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 
 from research_agent.prompts import (
     RESEARCHER_INSTRUCTIONS,

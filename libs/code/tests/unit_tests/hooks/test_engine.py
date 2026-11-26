@@ -11,12 +11,12 @@ import pytest
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.engine import HookEngine
-from deepagents_code.hooks.migration import migrate_legacy_hooks
-from deepagents_code.hooks.models.adapters import HOOK_WIRE_INPUT_ADAPTER
-from deepagents_code.hooks.models.config import HooksConfig
-from deepagents_code.hooks.models.domain import (
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.engine import HookEngine
+from niki_agent.hooks.migration import migrate_legacy_hooks
+from niki_agent.hooks.models.adapters import HOOK_WIRE_INPUT_ADAPTER
+from niki_agent.hooks.models.config import HooksConfig
+from niki_agent.hooks.models.domain import (
     AgentIdentity,
     CompactTrigger,
     DcodeNotification,
@@ -51,16 +51,16 @@ from deepagents_code.hooks.models.domain import (
     UserPromptSubmitDecision,
     UserPromptSubmitEvent,
 )
-from deepagents_code.hooks.models.wire import HookWireOutput
-from deepagents_code.hooks.projection import project_hook_input
-from deepagents_code.hooks.reducer import reduce_hook_results
-from deepagents_code.hooks.runner import HandlerResult, run_command_handler
-from deepagents_code.hooks.snapshot import HookHandler, HooksSnapshot
+from niki_agent.hooks.models.wire import HookWireOutput
+from niki_agent.hooks.projection import project_hook_input
+from niki_agent.hooks.reducer import reduce_hook_results
+from niki_agent.hooks.runner import HandlerResult, run_command_handler
+from niki_agent.hooks.snapshot import HookHandler, HooksSnapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from deepagents_code.hooks.models.domain import HookDomainEvent
+    from niki_agent.hooks.models.domain import HookDomainEvent
 
 
 def _context(tmp_path: Path, *, agent: AgentIdentity | None = None) -> HookContext:

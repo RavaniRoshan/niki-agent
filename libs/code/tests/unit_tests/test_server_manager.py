@@ -11,16 +11,16 @@ if TYPE_CHECKING:
 
 import pytest
 
-from deepagents_code._env_vars import SERVER_ENV_PREFIX
-from deepagents_code._server_config import ServerConfig
-from deepagents_code.client.launch.server_manager import (
+from niki_agent._env_vars import SERVER_ENV_PREFIX
+from niki_agent._server_config import ServerConfig
+from niki_agent.client.launch.server_manager import (
     _apply_server_config,
     _runtime_package_dependency,
     _write_pyproject,
     server_session,
     start_server_and_get_agent,
 )
-from deepagents_code.project_utils import ProjectContext
+from niki_agent.project_utils import ProjectContext
 
 
 class TestServerConfigRoundTrip:
@@ -151,18 +151,18 @@ class TestStartServerAndGetAgent:
         with (
             patch.dict(os.environ, {}, clear=False),
             patch(
-                "deepagents_code.client.launch.server_manager.tempfile.mkdtemp",
+                "niki_agent.client.launch.server_manager.tempfile.mkdtemp",
                 return_value=str(work_dir),
             ),
             patch(
-                "deepagents_code.client.launch.server_manager._scaffold_workspace"
+                "niki_agent.client.launch.server_manager._scaffold_workspace"
             ) as mock_scaffold,
             patch(
-                "deepagents_code.client.launch.server.ServerProcess",
+                "niki_agent.client.launch.server.ServerProcess",
                 return_value=mock_server,
             ) as mock_server_process,
             patch(
-                "deepagents_code.client.remote_client.RemoteAgent",
+                "niki_agent.client.remote_client.RemoteAgent",
                 return_value=MagicMock(),
             ),
         ):
@@ -194,21 +194,19 @@ class TestStartServerAndGetAgent:
         with (
             patch.dict(os.environ, {}, clear=False),
             patch(
-                "deepagents_code.client.launch.server_manager.tempfile.mkdtemp",
+                "niki_agent.client.launch.server_manager.tempfile.mkdtemp",
                 return_value=str(work_dir),
             ),
-            patch("deepagents_code.client.launch.server_manager._scaffold_workspace"),
+            patch("niki_agent.client.launch.server_manager._scaffold_workspace"),
             patch(
-                "deepagents_code.client.launch.server_manager._apply_server_config",
+                "niki_agent.client.launch.server_manager._apply_server_config",
                 side_effect=captured.append,
             ),
             patch(
-                "deepagents_code.client.launch.server.ServerProcess",
+                "niki_agent.client.launch.server.ServerProcess",
                 return_value=server,
             ),
-            patch(
-                "deepagents_code.client.remote_client.RemoteAgent", return_value=agent
-            ),
+            patch("niki_agent.client.remote_client.RemoteAgent", return_value=agent),
         ):
             await start_server_and_get_agent(
                 assistant_id="agent",
@@ -231,15 +229,15 @@ class TestStartServerAndGetAgent:
         """Operations use an authenticated route, not addressable siblings."""
         import json
 
-        from deepagents_code.client.launch.server import generate_langgraph_json
+        from niki_agent.client.launch.server import generate_langgraph_json
 
         # The production default (see `server_manager`) resolves to the real
         # installed module.
         generate_langgraph_json(tmp_path)
         config = json.loads((tmp_path / "langgraph.json").read_text())
-        assert config["graphs"] == {"agent": "deepagents_code.server_graph:make_graph"}
+        assert config["graphs"] == {"agent": "niki_agent.server_graph:make_graph"}
         assert config["http"] == {
-            "app": "deepagents_code.offload_api:app",
+            "app": "niki_agent.offload_api:app",
             "enable_custom_route_auth": True,
         }
 
@@ -269,22 +267,22 @@ class TestStartServerAndGetAgent:
         with (
             patch.dict(os.environ, {}, clear=False),
             patch(
-                "deepagents_code.client.launch.server_manager.tempfile.mkdtemp",
+                "niki_agent.client.launch.server_manager.tempfile.mkdtemp",
                 return_value=str(work_dir),
             ),
-            patch("deepagents_code.client.launch.server_manager._write_checkpointer"),
-            patch("deepagents_code.client.launch.server_manager._write_pyproject"),
+            patch("niki_agent.client.launch.server_manager._write_checkpointer"),
+            patch("niki_agent.client.launch.server_manager._write_pyproject"),
             patch(
-                "deepagents_code.client.launch.server_manager._apply_server_config",
+                "niki_agent.client.launch.server_manager._apply_server_config",
                 side_effect=captured.append,
             ),
-            patch("deepagents_code.client.launch.server.generate_langgraph_json"),
+            patch("niki_agent.client.launch.server.generate_langgraph_json"),
             patch(
-                "deepagents_code.client.launch.server.ServerProcess",
+                "niki_agent.client.launch.server.ServerProcess",
                 return_value=mock_server,
             ),
             patch(
-                "deepagents_code.client.remote_client.RemoteAgent",
+                "niki_agent.client.remote_client.RemoteAgent",
                 return_value=MagicMock(),
             ),
         ):
@@ -313,7 +311,7 @@ class TestWritePyproject:
 
         dependency = _runtime_package_dependency(package_root)
 
-        assert dependency == f"deepagents-code @ {package_root.as_uri()}"
+        assert dependency == f"niki-agent @ {package_root.as_uri()}"
 
     def test_runtime_dependency_default_uses_package_project_root(
         self, monkeypatch: pytest.MonkeyPatch
@@ -321,7 +319,7 @@ class TestWritePyproject:
         """The default root should not depend on `server_manager.py` depth."""
         from pathlib import Path
 
-        import deepagents_code
+        import niki_agent
 
         # Derive the expected project root independently, from this test file's
         # own location (libs/code/tests/unit_tests/ -> libs/code), rather than
@@ -329,28 +327,28 @@ class TestWritePyproject:
         # implementation would let a bug in that expression pass unnoticed.
         project_root = Path(__file__).resolve().parents[2]
         monkeypatch.setattr(
-            deepagents_code,
+            niki_agent,
             "__file__",
-            str(project_root / "deepagents_code" / "__init__.py"),
+            str(project_root / "niki_agent" / "__init__.py"),
         )
 
         dependency = _runtime_package_dependency()
 
-        assert dependency == f"deepagents-code @ {project_root.as_uri()}"
+        assert dependency == f"niki-agent @ {project_root.as_uri()}"
 
     def test_runtime_pyproject_excludes_langgraph_cli_dependency(
         self, tmp_path: Path
     ) -> None:
         """The runtime project should rely on the app package dependency only."""
         with patch(
-            "deepagents_code.client.launch.server_manager._runtime_package_dependency",
-            return_value="deepagents-code==1.2.3",
+            "niki_agent.client.launch.server_manager._runtime_package_dependency",
+            return_value="niki-agent==1.2.3",
         ):
             _write_pyproject(tmp_path)
 
         content = (tmp_path / "pyproject.toml").read_text()
 
-        assert '"deepagents-code==1.2.3"' in content
+        assert '"niki-agent==1.2.3"' in content
         assert "langgraph-cli[inmem]" not in content
 
 
@@ -363,7 +361,7 @@ class TestServerSession:
         mock_server.stop = MagicMock()
 
         with patch(
-            "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+            "niki_agent.client.launch.server_manager.start_server_and_get_agent",
             new_callable=AsyncMock,
             return_value=(MagicMock(), mock_server, None),
         ) as start:
@@ -387,7 +385,7 @@ class TestServerSession:
         mock_server.stop = MagicMock()
 
         with patch(
-            "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+            "niki_agent.client.launch.server_manager.start_server_and_get_agent",
             new_callable=AsyncMock,
             return_value=(MagicMock(), mock_server, None),
         ) as start:

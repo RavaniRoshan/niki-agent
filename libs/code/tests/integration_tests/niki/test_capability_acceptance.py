@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from deepagents_code.domain.events import RunEventKind
+from niki_agent.domain.events import RunEventKind
 
 
 def test_python_capability_acceptance_matrix():
     # smoke: core contracts importable
-    from deepagents_code.application.orchestration.team import TeamCoordinator
-    from deepagents_code.application.ports.workspace import WorkspacePort
-    from deepagents_code.application.run_turn import RunTurnCoordinator
-    from deepagents_code.application.workflows import WorkflowRunner
+    from niki_agent.application.orchestration.team import TeamCoordinator
+    from niki_agent.application.ports.workspace import WorkspacePort
+    from niki_agent.application.run_turn import RunTurnCoordinator
+    from niki_agent.application.workflows import WorkflowRunner
 
     assert RunTurnCoordinator
     assert WorkspacePort

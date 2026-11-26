@@ -19,9 +19,9 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
-from deepagents_code._paths import PATHS, get_built_in_skills_dir
-from deepagents_code.agent import create_cli_agent
-from deepagents_code.offload import _ArtifactsStorage
+from niki_agent._paths import PATHS, get_built_in_skills_dir
+from niki_agent.agent import create_cli_agent
+from niki_agent.offload import _ArtifactsStorage
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Sequence
@@ -122,38 +122,38 @@ def _mock_settings(tmp_path: Path) -> Generator[None, None, None]:
     )
 
     with (
-        patch("deepagents_code.agent.credentials") as mock_s,
-        patch("deepagents_code.agent.runtime_state") as mock_runtime_state,
-        patch("deepagents_code.agent.ensure_agent_dir", return_value=agent_dir),
+        patch("niki_agent.agent.credentials") as mock_s,
+        patch("niki_agent.agent.runtime_state") as mock_runtime_state,
+        patch("niki_agent.agent.ensure_agent_dir", return_value=agent_dir),
         patch(
-            "deepagents_code.agent.ensure_user_skills_dir",
+            "niki_agent.agent.ensure_user_skills_dir",
             return_value=skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_user_agent_md_path",
+            "niki_agent.agent.get_user_agent_md_path",
             return_value=agent_dir / "AGENTS.md",
         ),
-        patch("deepagents_code.agent.get_project_skills_dir", return_value=None),
-        patch("deepagents_code.agent.get_project_agent_md_path", return_value=[]),
+        patch("niki_agent.agent.get_project_skills_dir", return_value=None),
+        patch("niki_agent.agent.get_project_agent_md_path", return_value=[]),
         patch(
-            "deepagents_code.agent.get_user_agents_dir",
+            "niki_agent.agent.get_user_agents_dir",
             return_value=tmp_path / "agents",
         ),
-        patch("deepagents_code.agent.get_project_agents_dir", return_value=None),
+        patch("niki_agent.agent.get_project_agents_dir", return_value=None),
         patch(
-            "deepagents_code.agent.get_user_agent_skills_dir",
+            "niki_agent.agent.get_user_agent_skills_dir",
             return_value=tmp_path / "agents_skills",
         ),
         patch(
-            "deepagents_code.agent.get_project_agent_skills_dir",
+            "niki_agent.agent.get_project_agent_skills_dir",
             return_value=None,
         ),
         patch(
-            "deepagents_code.agent.get_user_claude_skills_dir",
+            "niki_agent.agent.get_user_claude_skills_dir",
             return_value=tmp_path / "claude_skills",
         ),
         patch(
-            "deepagents_code.agent.get_project_claude_skills_dir",
+            "niki_agent.agent.get_project_claude_skills_dir",
             return_value=None,
         ),
     ):
@@ -170,13 +170,13 @@ def _mock_settings(tmp_path: Path) -> Generator[None, None, None]:
         # across machines and runs.
         with (
             patch(
-                "deepagents_code.agent._artifacts_root",
+                "niki_agent.agent._artifacts_root",
                 return_value=_ArtifactsStorage(
                     root=(tmp_path / "dcode-artifacts").as_posix()
                 ),
             ),
             patch(
-                "deepagents_code.agent._offload_fallback_root",
+                "niki_agent.agent._offload_fallback_root",
                 return_value=tmp_path / ".deepagents",
             ),
         ):
@@ -213,7 +213,7 @@ def _capture_system_prompt(
         # Mock the local-context detection script so the local-context
         # section in the prompt is reproducible.
         with patch(
-            "deepagents_code.local_context.LocalContextMiddleware._run_detect_script",
+            "niki_agent.local_context.LocalContextMiddleware._run_detect_script",
             return_value=_FIXED_LOCAL_CONTEXT,
         ):
             try:

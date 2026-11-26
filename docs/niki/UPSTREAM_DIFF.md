@@ -4,7 +4,7 @@ Records edits to upstream-owned files made while evolving Niki.
 
 ## Task 4
 
-- `deepagents_code.adapters.runtime.acp.ACPAgentRuntime` now executes the
+- `niki_agent.adapters.runtime.acp.ACPAgentRuntime` now executes the
   checkpointed graph, emits assistant text and approval events, resumes with a
   LangGraph `Command`, and cancels its owned stream task. It does not import or
   depend on `AgentSessionContext`; that type configures the ACP server's graph

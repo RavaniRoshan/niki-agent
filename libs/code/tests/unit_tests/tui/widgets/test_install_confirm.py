@@ -7,7 +7,7 @@ from textual.content import Content
 from textual.style import Style as TStyle
 from textual.widgets import Static
 
-from deepagents_code.tui.widgets.install_confirm import (
+from niki_agent.tui.widgets.install_confirm import (
     InstallPackageConfirmScreen,
     InstallProviderConfirmScreen,
 )

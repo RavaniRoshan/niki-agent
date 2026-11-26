@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from langchain.agents.middleware.types import AgentMiddleware
 
-from deepagents_code.extensions import ExtensionAPI, ExtensionMode
-from deepagents_code.extensions.registry import ExtensionRegistry, SourceInfo
+from niki_agent.extensions import ExtensionAPI, ExtensionMode
+from niki_agent.extensions.registry import ExtensionRegistry, SourceInfo
 
 
 class _Middleware(AgentMiddleware):

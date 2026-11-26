@@ -17,8 +17,8 @@ no API key, no real model.
 | --- | --- | --- |
 | CLI start, cold | `uv run dcode -v` | **349 ms** |
 | CLI start, warm ×5 | `uv run dcode -v` | **260 ms** |
-| import, light | `python -c "import deepagents_code"` | **18.7 ms** |
-| import, app module | `python -c "import deepagents_code.app"` | **738.9 ms** |
+| import, light | `python -c "import niki_agent"` | **18.7 ms** |
+| import, app module | `python -c "import niki_agent.app"` | **738.9 ms** |
 | import, heavy chain | `python -c "import langchain, langgraph, deepagents"` | **4546.8 ms** |
 
 The heavy chain dominates. This is the S1 lever.
@@ -216,7 +216,7 @@ anything. It was not worth doing, and the earlier framing was wrong.
 
 ### What is actually left on the critical path
 
-Interpreter start, `import deepagents_code`, and the CLI dispatch chain. The
+Interpreter start, `import niki_agent`, and the CLI dispatch chain. The
 in-process `run_test` figure (186.9-194.3 ms) begins *after* all of that and
 therefore cannot see it, which is why both measurements are kept:
 

@@ -362,7 +362,7 @@ test('live title labels use the corrected title from scope renaming', async () =
 // `edited` skips the file block, so the path signal needs a push-like action.
 test('live topics come from the changed modules', async () => {
   const api = labelerApi('fix(code): correct behavior', [], [
-    { filename: 'libs/code/deepagents_code/mcp_tools.py', additions: 1, deletions: 0 },
+    { filename: 'libs/code/niki_agent/mcp_tools.py', additions: 1, deletions: 0 },
   ]);
   await runLabeler('live', api, { action: 'synchronize' });
   assert.ok(api.assigned.has('topic:mcp'), 'a touched module must contribute its topic');
@@ -466,10 +466,10 @@ test('topic labels come from the modules a PR touched', () => {
     ['libs/deepagents/deepagents/middleware/subagents.py', ['topic:middleware', 'topic:subagents']],
     ['libs/deepagents/deepagents/middleware/async_subagents.py', ['topic:async-subagents', 'topic:middleware']],
     ['libs/deepagents/deepagents/backends/sandbox.py', ['topic:backends', 'topic:sandboxes']],
-    ['libs/code/deepagents_code/mcp_tools.py', ['topic:mcp']],
-    ['libs/code/deepagents_code/skills/index.py', ['topic:skills']],
+    ['libs/code/niki_agent/mcp_tools.py', ['topic:mcp']],
+    ['libs/code/niki_agent/skills/index.py', ['topic:skills']],
     ['libs/deepagents/deepagents/profiles/harness/base.py', []],
-    ['libs/code/deepagents_code/_tracing.py', ['topic:tracing']],
+    ['libs/code/niki_agent/_tracing.py', ['topic:tracing']],
     ['README.md', []],
     ['libs/deepagents/pyproject.toml', []],
   ];

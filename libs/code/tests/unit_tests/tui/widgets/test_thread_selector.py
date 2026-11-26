@@ -16,11 +16,11 @@ from textual.widget import MountError
 from textual.widgets import Checkbox, Input, Select, Static
 from textual.widgets._select import SelectCurrent
 
-from deepagents_code.app import DeepAgentsApp, _ThreadHistoryPayload
-from deepagents_code.hooks.manager import HooksManager
-from deepagents_code.sessions import ThreadInfo
-from deepagents_code.tui.widgets.message_store import MessageData
-from deepagents_code.tui.widgets.thread_selector import (
+from niki_agent.app import DeepAgentsApp, _ThreadHistoryPayload
+from niki_agent.hooks.manager import HooksManager
+from niki_agent.sessions import ThreadInfo
+from niki_agent.tui.widgets.message_store import MessageData
+from niki_agent.tui.widgets.thread_selector import (
     ContainedSelect,
     ContainedSelectOverlay,
     DeleteThreadConfirmScreen,
@@ -87,7 +87,7 @@ def _patch_list_threads(threads: list[ThreadInfo] | None = None) -> Any:  # noqa
     """
     data = threads if threads is not None else MOCK_THREADS
     return patch(
-        "deepagents_code.sessions.list_threads",
+        "niki_agent.sessions.list_threads",
         new_callable=AsyncMock,
         return_value=data,
     )
@@ -97,7 +97,7 @@ def _patch_columns(columns: dict[str, bool] | None = None) -> Any:  # noqa: ANN4
     """Patch thread config loaders for tests."""
     import contextlib
 
-    from deepagents_code.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
+    from niki_agent.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
 
     cols = columns if columns is not None else THREAD_COLUMN_DEFAULTS
 
@@ -105,15 +105,15 @@ def _patch_columns(columns: dict[str, bool] | None = None) -> Any:  # noqa: ANN4
     def _ctx() -> Any:  # noqa: ANN401
         with (
             patch(
-                "deepagents_code.model_config.load_thread_columns",
+                "niki_agent.model_config.load_thread_columns",
                 return_value=dict(cols),
             ),
             patch(
-                "deepagents_code.model_config.load_thread_sort_order",
+                "niki_agent.model_config.load_thread_sort_order",
                 return_value="updated_at",
             ),
             patch(
-                "deepagents_code.model_config.load_thread_config",
+                "niki_agent.model_config.load_thread_config",
                 return_value=ThreadConfig(
                     columns=dict(cols),
                     relative_time=True,
@@ -135,7 +135,7 @@ def _patch_available_agents(names: list[str] | None = None) -> Any:  # noqa: ANN
             the agent filter depends only on the (deterministic) thread data.
     """
     return patch(
-        "deepagents_code.agent.get_available_agent_names",
+        "niki_agent.agent.get_available_agent_names",
         return_value=list(names) if names is not None else [],
     )
 
@@ -332,7 +332,7 @@ class TestThreadSelectorTabSort:
             _patch_list_threads(),
             _patch_columns(),
             patch(
-                "deepagents_code.model_config.save_thread_sort_order",
+                "niki_agent.model_config.save_thread_sort_order",
                 mock_save,
             ),
         ):
@@ -406,10 +406,10 @@ class TestThreadSelectorScopePersistedDefault:
 
     def test_persisted_all_scope_starts_unfiltered(self) -> None:
         """A persisted scope of "all" should start the picker with no cwd filter."""
-        from deepagents_code.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
+        from niki_agent.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
 
         with patch(
-            "deepagents_code.model_config.load_thread_config",
+            "niki_agent.model_config.load_thread_config",
             return_value=ThreadConfig(
                 columns=dict(THREAD_COLUMN_DEFAULTS),
                 relative_time=True,
@@ -422,11 +422,11 @@ class TestThreadSelectorScopePersistedDefault:
 
     def test_persisted_cwd_scope_starts_filtered(self) -> None:
         """A persisted scope of "cwd" should scope the picker to the cwd."""
-        from deepagents_code.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
+        from niki_agent.model_config import THREAD_COLUMN_DEFAULTS, ThreadConfig
 
         with (
             patch(
-                "deepagents_code.model_config.load_thread_config",
+                "niki_agent.model_config.load_thread_config",
                 return_value=ThreadConfig(
                     columns=dict(THREAD_COLUMN_DEFAULTS),
                     relative_time=True,
@@ -435,7 +435,7 @@ class TestThreadSelectorScopePersistedDefault:
                 ),
             ),
             patch(
-                "deepagents_code.tui.widgets.thread_selector._safe_cwd_string",
+                "niki_agent.tui.widgets.thread_selector._safe_cwd_string",
                 return_value="/home/user/project-a",
             ),
         ):
@@ -553,14 +553,14 @@ class TestThreadSelectorScopeSelect:
         mock_save = MagicMock(return_value=True)
 
         with (
-            patch("deepagents_code.sessions.list_threads", mock_list),
+            patch("niki_agent.sessions.list_threads", mock_list),
             _patch_columns(),
             patch(
-                "deepagents_code.tui.widgets.thread_selector._safe_cwd_string",
+                "niki_agent.tui.widgets.thread_selector._safe_cwd_string",
                 return_value=starting_cwd,
             ),
             patch(
-                "deepagents_code.model_config.save_thread_scope",
+                "niki_agent.model_config.save_thread_scope",
                 mock_save,
             ),
         ):
@@ -596,14 +596,14 @@ class TestThreadSelectorScopeSelect:
         mock_save = MagicMock(return_value=True)
 
         with (
-            patch("deepagents_code.sessions.list_threads", mock_list),
+            patch("niki_agent.sessions.list_threads", mock_list),
             _patch_columns(),
             patch(
-                "deepagents_code.tui.widgets.thread_selector._safe_cwd_string",
+                "niki_agent.tui.widgets.thread_selector._safe_cwd_string",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.model_config.save_thread_scope",
+                "niki_agent.model_config.save_thread_scope",
                 mock_save,
             ),
         ):
@@ -633,7 +633,7 @@ class TestThreadSelectorClickHandling:
     """Tests for mouse click handling."""
 
 
-_WEBBROWSER_OPEN = "deepagents_code.tui.widgets._links.webbrowser.open"
+_WEBBROWSER_OPEN = "niki_agent.tui.widgets._links.webbrowser.open"
 
 
 class TestThreadSelectorPointer:
@@ -660,11 +660,11 @@ class TestFetchThreadUrl:
 
         with (
             patch(
-                "deepagents_code.sessions.list_threads",
+                "niki_agent.sessions.list_threads",
                 new=_blocking_list_threads,
             ),
             patch(
-                "deepagents_code.tui.widgets.thread_selector.build_langsmith_thread_url",
+                "niki_agent.tui.widgets.thread_selector.build_langsmith_thread_url",
                 return_value="https://smith.langchain.com/p/t/abc12345",
             ),
         ):
@@ -710,7 +710,7 @@ class TestFetchThreadUrl:
         with (
             _patch_list_threads(),
             patch(
-                "deepagents_code.tui.widgets.thread_selector.build_langsmith_thread_url",
+                "niki_agent.tui.widgets.thread_selector.build_langsmith_thread_url",
                 return_value="https://smith.langchain.com/p/t/abc12345",
             ),
         ):
@@ -748,11 +748,11 @@ class TestFetchThreadUrl:
         with (
             _patch_list_threads(),
             patch(
-                "deepagents_code.tui.widgets.thread_selector._URL_FETCH_TIMEOUT",
+                "niki_agent.tui.widgets.thread_selector._URL_FETCH_TIMEOUT",
                 0.01,
             ),
             patch(
-                "deepagents_code.tui.widgets.thread_selector.build_langsmith_thread_url",
+                "niki_agent.tui.widgets.thread_selector.build_langsmith_thread_url",
                 side_effect=_blocking,
             ),
         ):
@@ -791,7 +791,7 @@ class TestThreadSelectorErrorHandling:
     async def test_list_threads_error_still_dismissable(self) -> None:
         """Database error should not crash; Escape still works."""
         with patch(
-            "deepagents_code.sessions.list_threads",
+            "niki_agent.sessions.list_threads",
             new_callable=AsyncMock,
             side_effect=OSError("database is locked"),
         ):
@@ -818,7 +818,7 @@ class TestThreadSelectorErrorHandling:
     async def test_unexpected_load_error_surfaces_and_completes(self) -> None:
         """A non-OSError/sqlite3 error must surface and not strand the UI."""
         with patch(
-            "deepagents_code.sessions.list_threads",
+            "niki_agent.sessions.list_threads",
             new_callable=AsyncMock,
             side_effect=ValueError("malformed row"),
         ):
@@ -872,13 +872,13 @@ class TestThreadSelectorLimit:
 
         with (
             patch(
-                "deepagents_code.sessions.list_threads",
+                "niki_agent.sessions.list_threads",
                 new_callable=AsyncMock,
                 return_value=threads_without_details,
             ),
             _patch_columns(),
             patch(
-                "deepagents_code.sessions.populate_thread_checkpoint_details",
+                "niki_agent.sessions.populate_thread_checkpoint_details",
                 new_callable=AsyncMock,
                 side_effect=_populate,
             ) as mock_populate,
@@ -929,13 +929,13 @@ class TestThreadSelectorPrefetchedRows:
             }
         ]
 
-        from deepagents_code import sessions
+        from niki_agent import sessions
 
         sessions._initial_prompt_cache.clear()
         sessions._initial_prompt_cache["abc12345"] = ("cp_1", "cached prompt")
         try:
             with patch(
-                "deepagents_code.sessions.list_threads",
+                "niki_agent.sessions.list_threads",
                 new_callable=AsyncMock,
                 return_value=refreshed,
             ):
@@ -1022,7 +1022,7 @@ class TestThreadSelectorColumnConfig:
 
     async def test_relative_time_visibility_tracks_timestamp_columns(self) -> None:
         """Relative timestamps should hide unless a timestamp column is enabled."""
-        from deepagents_code.model_config import THREAD_COLUMN_DEFAULTS
+        from niki_agent.model_config import THREAD_COLUMN_DEFAULTS
 
         columns = {
             **THREAD_COLUMN_DEFAULTS,
@@ -1033,7 +1033,7 @@ class TestThreadSelectorColumnConfig:
             _patch_list_threads(),
             _patch_columns(columns),
             patch(
-                "deepagents_code.model_config.save_thread_columns",
+                "niki_agent.model_config.save_thread_columns",
                 return_value=True,
             ),
         ):
@@ -1111,7 +1111,7 @@ class TestThreadSelectorColumnConfig:
             _patch_list_threads(threads_without_prompt),
             _patch_columns(columns),
             patch(
-                "deepagents_code.sessions.populate_thread_checkpoint_details",
+                "niki_agent.sessions.populate_thread_checkpoint_details",
                 new_callable=AsyncMock,
                 side_effect=_populate,
             ) as mock_populate,
@@ -1261,7 +1261,7 @@ class TestResumeThread:
     def _switch_app() -> DeepAgentsApp:
         from textual.css.query import NoMatches as _NoMatches
 
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp(thread_id="old-thread")
         app._agent = MagicMock()
@@ -1325,11 +1325,11 @@ class TestResumeThread:
 
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.sessions.get_thread_agent",
+                "niki_agent.sessions.get_thread_agent",
                 AsyncMock(return_value="agent"),
             ),
             patch.object(app, "_schedule_thread_message_link"),
@@ -1366,11 +1366,11 @@ class TestResumeThread:
 
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.sessions.get_thread_agent",
+                "niki_agent.sessions.get_thread_agent",
                 AsyncMock(return_value="agent"),
             ),
             patch.object(app, "_schedule_thread_message_link"),
@@ -1400,7 +1400,7 @@ class TestResumeThread:
 
         # Hold the clock still so a second toast is attributable to the reset
         # rather than to the toast lifetime quietly expiring.
-        with patch("deepagents_code.app._monotonic", return_value=100.0):
+        with patch("niki_agent.app._monotonic", return_value=100.0):
             # No-op records the suppression entry.
             await app._resume_thread("old-thread")
             # Real switches away and back must clear it.
@@ -1456,7 +1456,7 @@ class TestResumeThread:
         app._session_state = _mock_session_state("old-thread")
         app._pending_messages = MagicMock()
         app._queued_widgets = MagicMock()
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         mock_payload = _ThreadHistoryPayload(
             messages=[], context_tokens=0, model_spec=""
@@ -1568,7 +1568,7 @@ class TestFetchThreadHistoryData:
 
     async def test_extracts_nonzero_context_tokens(self) -> None:
         """Persisted _context_tokens should propagate to the payload."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         app._agent = MagicMock()
@@ -1585,7 +1585,7 @@ class TestFetchThreadHistoryData:
 
     async def test_extracts_model_spec(self) -> None:
         """Persisted `_model_spec` should propagate to the payload."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         app._agent = MagicMock()
@@ -1605,7 +1605,7 @@ class TestFetchThreadHistoryData:
 
     async def test_missing_model_spec_is_empty(self) -> None:
         """A legacy thread without `_model_spec` yields `model_spec=""`."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         app._agent = MagicMock()
@@ -1622,7 +1622,7 @@ class TestFetchThreadHistoryData:
 
     async def test_extracts_cache_endpoint_identity(self) -> None:
         """Persisted cache endpoint should propagate to the restore payload."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         app._agent = MagicMock()
@@ -1647,7 +1647,7 @@ class TestFetchThreadHistoryData:
 
     async def test_none_context_tokens_coerced_to_zero(self) -> None:
         """`_context_tokens: None` in checkpoint should coerce to 0."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         app._agent = MagicMock()
@@ -1668,7 +1668,7 @@ class TestLoadThreadHistory:
 
     async def test_resume_seeds_context_tokens_from_state(self) -> None:
         """Resuming a thread with persisted tokens should seed the local cache."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp(thread_id="tid-1")
 
@@ -1683,7 +1683,7 @@ class TestLoadThreadHistory:
         messages_container.mount = AsyncMock()
         _app_test_double(app).query_one = MagicMock(return_value=messages_container)
 
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         preloaded = _ThreadHistoryPayload(
             messages=[MessageData(type=MessageType.USER, content="hello")],
@@ -1696,7 +1696,7 @@ class TestLoadThreadHistory:
 
     async def test_resume_seeds_cost_for_empty_thread_history(self) -> None:
         """Checkpoint metadata restores before the empty-transcript return."""
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         app = DeepAgentsApp(thread_id="tid-1")
         app._set_session_cost(9.0)
@@ -1727,7 +1727,7 @@ class TestLoadThreadHistory:
 
     async def test_resume_restores_cache_endpoint_identity(self) -> None:
         """Resumed threads retain the endpoint used for their cached prefix."""
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         app = DeepAgentsApp(thread_id="tid-1")
         preloaded = _ThreadHistoryPayload(
@@ -1752,7 +1752,7 @@ class TestLoadThreadHistory:
 
     async def test_zero_context_tokens_does_not_overwrite_cache(self) -> None:
         """Loading a payload with 0 tokens should not reset an existing cache."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp(thread_id="tid-1")
         app._context_tokens = 5000  # pre-existing cache from a previous thread
@@ -1768,7 +1768,7 @@ class TestLoadThreadHistory:
         messages_container.mount = AsyncMock()
         _app_test_double(app).query_one = MagicMock(return_value=messages_container)
 
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         preloaded = _ThreadHistoryPayload(
             messages=[MessageData(type=MessageType.USER, content="hello")],
@@ -1802,7 +1802,7 @@ class TestResumeModelAdoption:
         with_messages: bool = True,
         model_params: dict[str, Any] | None = None,
     ) -> _ThreadHistoryPayload:
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         messages = (
             [MessageData(type=MessageType.USER, content="hello")]
@@ -1844,7 +1844,7 @@ class TestResumeAdoptionFailureMessage:
 
     async def test_omits_fallback_when_no_current_model(self) -> None:
         """With no resolvable current model, the fallback clause is dropped."""
-        from deepagents_code.config import runtime_state
+        from niki_agent.config import runtime_state
 
         app = DeepAgentsApp()
         app._model_override = None
@@ -1871,7 +1871,7 @@ class TestEffectiveModelSpec:
 
     async def test_prefers_session_override(self) -> None:
         """A `/model` override wins over process-wide runtime model state."""
-        from deepagents_code.config import runtime_state
+        from niki_agent.config import runtime_state
 
         app = DeepAgentsApp()
         app._model_override = "openai:gpt-5.1"
@@ -1883,7 +1883,7 @@ class TestEffectiveModelSpec:
 
     async def test_falls_back_to_settings_spec(self) -> None:
         """With no override, the resolved runtime `provider:model` is used."""
-        from deepagents_code.config import runtime_state
+        from niki_agent.config import runtime_state
 
         app = DeepAgentsApp()
         app._model_override = None
@@ -1895,7 +1895,7 @@ class TestEffectiveModelSpec:
 
     async def test_none_when_spec_incomplete(self) -> None:
         """No override and a blank model yields `None` (no malformed spec)."""
-        from deepagents_code.config import runtime_state
+        from niki_agent.config import runtime_state
 
         app = DeepAgentsApp()
         app._model_override = None
@@ -1912,16 +1912,14 @@ class TestThreadLinksConfigured:
     def test_false_without_langsmith_project(self) -> None:
         """Tracing without a project cannot produce thread links."""
         app = DeepAgentsApp()
-        with patch(
-            "deepagents_code.config.get_langsmith_project_name", return_value=None
-        ):
+        with patch("niki_agent.config.get_langsmith_project_name", return_value=None):
             assert app._thread_links_configured() is False
 
     def test_true_with_langsmith_project(self) -> None:
         """An active LangSmith project enables thread links."""
         app = DeepAgentsApp()
         with patch(
-            "deepagents_code.config.get_langsmith_project_name", return_value="project"
+            "niki_agent.config.get_langsmith_project_name", return_value="project"
         ):
             assert app._thread_links_configured() is True
 
@@ -1932,7 +1930,7 @@ class TestBuildThreadMessage:
     async def test_plain_text_when_tracing_not_configured(self) -> None:
         """Returns plain string when LangSmith URL is not available."""
         app = DeepAgentsApp()
-        target = "deepagents_code.config.build_langsmith_thread_url"
+        target = "niki_agent.config.build_langsmith_thread_url"
         with patch(target, return_value=None):
             result = await app._build_thread_message("Resumed thread", "tid-123")
 
@@ -1946,7 +1944,7 @@ class TestBuildThreadMessage:
 
         app = DeepAgentsApp()
         url = "https://smith.langchain.com/o/org/projects/p/proj/t/tid-123"
-        target = "deepagents_code.config.build_langsmith_thread_url"
+        target = "niki_agent.config.build_langsmith_thread_url"
         with patch(target, return_value=url):
             result = await app._build_thread_message("Resumed thread", "tid-123")
 
@@ -1973,7 +1971,7 @@ class TestBuildThreadMessage:
         from textual.content import Content
         from textual.style import Style as TStyle
 
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plain_spans = AppMessage("Previous thread: tid-123").render()._spans
         assert len(plain_spans) == 1
@@ -1984,7 +1982,7 @@ class TestBuildThreadMessage:
 
         app = DeepAgentsApp()
         url = "https://smith.langchain.com/o/org/projects/p/proj/t/tid-123"
-        target = "deepagents_code.config.build_langsmith_thread_url"
+        target = "niki_agent.config.build_langsmith_thread_url"
         with patch(target, return_value=url):
             result = await app._build_thread_message(
                 "Previous thread", "tid-123", suffix=" (Resume with /threads -r)"
@@ -2011,7 +2009,7 @@ class TestBuildThreadMessage:
             coro.close()
             raise TimeoutError
 
-        with patch("deepagents_code.app.asyncio.wait_for", new=_raise_timeout):
+        with patch("niki_agent.app.asyncio.wait_for", new=_raise_timeout):
             result = await app._build_thread_message("Resumed thread", "t-1")
 
         assert isinstance(result, str)
@@ -2021,7 +2019,7 @@ class TestBuildThreadMessage:
         """Returns plain string when URL resolution raises an exception."""
         app = DeepAgentsApp()
         with patch(
-            "deepagents_code.config.build_langsmith_thread_url",
+            "niki_agent.config.build_langsmith_thread_url",
             side_effect=OSError("network error"),
         ):
             result = await app._build_thread_message("Resumed thread", "t-1")
@@ -2115,7 +2113,7 @@ class TestConvertMessagesToData:
 
     def test_ai_message_content_block_list(self) -> None:
         """AIMessage with list-of-blocks content should extract text."""
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         blocks: list[dict[str, str]] = [
             {"type": "text", "text": "Part 1. "},
@@ -2137,9 +2135,9 @@ class TestConvertMessagesToData:
         the row degrades to generic formatting, so this pins the args plumbing the
         whole feature rests on.
         """
-        from deepagents_code._ask_user_types import ASK_USER_FAILED_SUMMARY
-        from deepagents_code.tui.widgets.message_store import ToolStatus
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent._ask_user_types import ASK_USER_FAILED_SUMMARY
+        from niki_agent.tui.widgets.message_store import ToolStatus
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         args = {"questions": [{"question": "Deploy?"}]}
         msgs = [
@@ -2166,7 +2164,7 @@ class TestConvertMessagesToData:
 
     def test_checkpoint_edit_restores_diff(self) -> None:
         """Checkpointed edit arguments rebuild the diff omitted from graph state."""
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         tool, diff = DeepAgentsApp._convert_messages_to_data(
             [
@@ -2196,7 +2194,7 @@ class TestConvertMessagesToData:
         assert all(getattr(row, "selection_prefix", 2) == 2 for row in widget.compose())
 
     def test_ai_message_reasoning_blocks_follow_preference(self) -> None:
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         messages = [
             self._make_ai(
@@ -2251,7 +2249,7 @@ class TestThreadSelectorAgentFilter:
 
     def test_collect_agent_options_loading_while_pending(self) -> None:
         """While loading with no known agents, the dropdown shows 'Loading...'."""
-        from deepagents_code.tui.widgets.thread_selector import (
+        from niki_agent.tui.widgets.thread_selector import (
             _AGENT_LABEL_LOADING,
             _AGENT_VALUE_ALL,
             _AGENT_VALUE_LOADING,
@@ -2272,7 +2270,7 @@ class TestThreadSelectorAgentFilter:
 
     async def test_agent_select_label_refreshes_after_empty_load(self) -> None:
         """The loading placeholder is replaced by the final all-agents label."""
-        from deepagents_code.tui.widgets.thread_selector import (
+        from niki_agent.tui.widgets.thread_selector import (
             _AGENT_SELECT_ID,
             _AGENT_VALUE_ALL,
             _AGENT_VALUE_LOADING,
@@ -2287,7 +2285,7 @@ class TestThreadSelectorAgentFilter:
             return []
 
         with (
-            patch("deepagents_code.sessions.list_threads", list_threads_after_signal),
+            patch("niki_agent.sessions.list_threads", list_threads_after_signal),
             _patch_columns(),
             _patch_available_agents([]),
         ):
@@ -2331,7 +2329,7 @@ class TestThreadSelectorAgentFilter:
 
     async def test_tab_keys_move_open_agent_select_highlight(self) -> None:
         """Tab and Shift+Tab should move the agent dropdown highlight while open."""
-        from deepagents_code.tui.widgets.thread_selector import _AGENT_SELECT_ID
+        from niki_agent.tui.widgets.thread_selector import _AGENT_SELECT_ID
 
         with _patch_list_threads(), _patch_columns():
             app = ThreadSelectorTestApp()
@@ -2370,7 +2368,7 @@ class TestThreadSelectorAgentFilter:
 
     async def test_escape_closes_open_agent_select_without_dismissing(self) -> None:
         """Esc should close the agent dropdown before it cancels the selector."""
-        from deepagents_code.tui.widgets.thread_selector import _AGENT_SELECT_ID
+        from niki_agent.tui.widgets.thread_selector import _AGENT_SELECT_ID
 
         with _patch_list_threads(), _patch_columns():
             app = ThreadSelectorTestApp()
@@ -2407,7 +2405,7 @@ class TestThreadSelectorAgentFilter:
             _patch_list_threads(),
             _patch_columns(),
             patch(
-                "deepagents_code.agent.get_available_agent_names",
+                "niki_agent.agent.get_available_agent_names",
                 side_effect=RuntimeError("agent scan blew up"),
             ),
         ):
@@ -2436,7 +2434,7 @@ class TestThreadSelectorAgentFilter:
 
     async def test_reload_preserves_present_agent_filter(self) -> None:
         """Reloading with the selected agent still present keeps the filter."""
-        from deepagents_code.tui.widgets.thread_selector import _AGENT_SELECT_ID
+        from niki_agent.tui.widgets.thread_selector import _AGENT_SELECT_ID
 
         with _patch_list_threads(), _patch_columns():
             app = ThreadSelectorTestApp()

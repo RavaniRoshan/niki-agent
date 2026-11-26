@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
 
-from deepagents_code.integrations.sandbox_provider import (
+from niki_agent.integrations.sandbox_provider import (
     SandboxInstallHint,
     SandboxProvider,
 )
 
 if TYPE_CHECKING:
-    from deepagents.backends.protocol import SandboxBackendProtocol
+    from niki_agent.sdk.backends.protocol import SandboxBackendProtocol
 
 
 @pytest.mark.parametrize(

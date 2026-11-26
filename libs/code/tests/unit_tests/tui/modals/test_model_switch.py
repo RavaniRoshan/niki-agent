@@ -2,7 +2,7 @@
 
 from textual.app import App
 
-from deepagents_code.tui.modals.model_switch import ModelSwitchWarningScreen
+from niki_agent.tui.modals.model_switch import ModelSwitchWarningScreen
 
 
 class _Host(App[None]):

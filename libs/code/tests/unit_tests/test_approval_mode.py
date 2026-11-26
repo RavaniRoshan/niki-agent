@@ -10,7 +10,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from deepagents_code.approval_mode import (
+from niki_agent.approval_mode import (
     APPROVAL_MODE_NAMESPACE,
     ApprovalMode,
     approval_mode_key,
@@ -128,7 +128,7 @@ def test_read_approval_mode_from_store_non_string_key_fails_closed() -> None:
 def test_read_approval_mode_from_store_exception_fails_closed(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    with caplog.at_level("WARNING", logger="deepagents_code.approval_mode"):
+    with caplog.at_level("WARNING", logger="niki_agent.approval_mode"):
         assert (
             read_approval_mode_from_store(
                 _FailingStore(),
@@ -180,7 +180,7 @@ def test_save_fails_open_on_lock_timeout(
     """A lock-wait timeout returns False without raising (fail open)."""
     from filelock import Timeout
 
-    from deepagents_code import approval_mode
+    from niki_agent import approval_mode
 
     path = tmp_path / "approval.json"
 
@@ -211,7 +211,7 @@ def test_load_corrupt_state_logs_warning(
     path = tmp_path / "approval.json"
     path.write_text("not-json\n", encoding="utf-8")
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.approval_mode"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.approval_mode"):
         assert not has_auto_mode_notice(path)
         assert not has_yolo_acknowledgement(path)
 
@@ -226,7 +226,7 @@ def test_load_missing_state_does_not_log(
 
     path = tmp_path / "missing" / "approval.json"
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.approval_mode"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.approval_mode"):
         assert not has_auto_mode_notice(path)
 
     assert caplog.records == []

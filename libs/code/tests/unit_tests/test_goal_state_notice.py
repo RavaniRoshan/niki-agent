@@ -6,17 +6,17 @@ import logging
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from deepagents_code._constants import (
+from niki_agent._constants import (
     LOCAL_CONTEXT_MESSAGE_SOURCE,
     SYSTEM_MESSAGE_PREFIX,
 )
-from deepagents_code.goal_state_limits import (
+from niki_agent.goal_state_limits import (
     GOAL_NOTICE_TEXT_CHAR_LIMIT,
     GOAL_OBJECTIVE_CHAR_LIMIT,
     GOAL_STATUS_NOTE_CHAR_LIMIT,
     RUBRIC_CHAR_LIMIT,
 )
-from deepagents_code.goal_state_notice import (
+from niki_agent.goal_state_notice import (
     GOAL_CONTROL_MESSAGE_SOURCE,
     GOAL_MESSAGE_SCHEMA_VERSION,
     GOAL_STATE_MESSAGE_SOURCE,
@@ -596,7 +596,7 @@ def test_projection_fails_closed_on_an_unrecognized_status(
     goal the client reports as absent — the exact "silently active goal" the
     sibling normalizer exists to prevent.
     """
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.goal_state_notice"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.goal_state_notice"):
         projected = project_goal_state(
             {"_goal_objective": "ship it", "_goal_status": "bogus"}
         )

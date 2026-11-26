@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.goal_state_limits import GoalStateSizeError
+from niki_agent.app import DeepAgentsApp
+from niki_agent.goal_state_limits import GoalStateSizeError
 
 
 def _app(*, supports_goal_criteria: bool = True) -> DeepAgentsApp:
@@ -44,7 +44,7 @@ async def test_criteria_run_forwards_profile_override_context() -> None:
 
     with (
         patch(
-            "deepagents_code.tui.textual_adapter.execute_task_textual",
+            "niki_agent.tui.textual_adapter.execute_task_textual",
             execute,
         ),
         patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
@@ -74,7 +74,7 @@ async def test_create_request_contains_data_not_a_model_prompt() -> None:
 
     with (
         patch.object(app, "_run_goal_criteria_request", submit),
-        patch("deepagents_code.app.uuid.uuid4") as uuid4,
+        patch("niki_agent.app.uuid.uuid4") as uuid4,
     ):
         uuid4.return_value.hex = "request-2"
         await app._propose_goal_rubric(
@@ -112,13 +112,13 @@ async def test_criteria_size_rejection_keeps_its_limit_text() -> None:
 
     with (
         patch(
-            "deepagents_code.tui.textual_adapter.execute_task_textual",
+            "niki_agent.tui.textual_adapter.execute_task_textual",
             execute,
         ),
         patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
         patch.object(app, "_mount_message", mount),
         patch(
-            "deepagents_code.app._langsmith_gateway_key_mismatch",
+            "niki_agent.app._langsmith_gateway_key_mismatch",
             return_value=None,
         ),
     ):
@@ -226,13 +226,13 @@ async def test_goal_submission_never_constructs_a_model_client_side() -> None:
 
     with (
         patch(
-            "deepagents_code.tui.textual_adapter.execute_task_textual",
+            "niki_agent.tui.textual_adapter.execute_task_textual",
             execute,
         ),
         patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
-        patch("deepagents_code.config.create_model") as create_model,
-        patch("deepagents_code.goal_rubric.create_goal_criteria_agent") as make_agent,
-        patch("deepagents_code.app.uuid.uuid4") as uuid4,
+        patch("niki_agent.config.create_model") as create_model,
+        patch("niki_agent.goal_rubric.create_goal_criteria_agent") as make_agent,
+        patch("niki_agent.app.uuid.uuid4") as uuid4,
     ):
         uuid4.return_value.hex = "request-behavioral"
         await app._propose_goal_rubric("add refresh tokens")

@@ -13,7 +13,7 @@ from langgraph.types import Command
 if TYPE_CHECKING:
     from langgraph.pregel import Pregel
 
-    from deepagents_code._cli_context import CLIContextSchema
+    from niki_agent._cli_context import CLIContextSchema
 
 
 async def test_auto_graph_adds_trusted_prompt_context() -> None:
@@ -29,7 +29,7 @@ async def test_auto_graph_adds_trusted_prompt_context() -> None:
 
     graph = Graph()
     store = InMemoryStore()
-    from deepagents_code.acp import _AutoGraph, _prompt
+    from niki_agent.acp import _AutoGraph, _prompt
 
     token = _prompt.set("Update parser.py")
     try:
@@ -50,12 +50,12 @@ async def test_auto_graph_adds_trusted_prompt_context() -> None:
     assert context.approval_mode == "auto"
     assert context.thread_id == "session-1"
     assert context.approval_mode_key
-    item = store.get(("deepagents_code", "approval_mode"), context.approval_mode_key)
+    item = store.get(("niki_agent", "approval_mode"), context.approval_mode_key)
     assert item
     assert item.value == {"mode": "auto"}
     message = cast("dict[str, Any]", graph.call["value"])["messages"][0]
     assert isinstance(message, HumanMessage)
-    metadata = message.additional_kwargs["deepagents_code_user_prompt"]
+    metadata = message.additional_kwargs["niki_agent_user_prompt"]
     assert metadata["literal_user_text"] == "Update parser.py"
     assert metadata["turn_id"] == context.turn_id
 
@@ -70,7 +70,7 @@ async def test_auto_graph_bypasses_coordinator_outside_niki_scope(monkeypatch) -
             self.call: dict[str, object] = {"value": value, **kwargs}
             yield "native-chunk"
 
-    from deepagents_code import acp as acp_module
+    from niki_agent import acp as acp_module
 
     def fail_if_coordinated(*_args: object, **_kwargs: object) -> AsyncIterator[object]:
         msg = "legacy ACP route must not use the runtime coordinator"
@@ -102,10 +102,10 @@ async def test_auto_graph_bypasses_coordinator_outside_niki_scope(monkeypatch) -
 
 
 async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) -> None:
-    from deepagents_code import acp as acp_module
-    from deepagents_code.acp import AgentServerACP, _RuntimeProgress
-    from deepagents_code.domain.events import RunEvent, RunEventKind, TurnStatus
-    from deepagents_code.niki.runtime_mode import niki_runtime_scope
+    from niki_agent import acp as acp_module
+    from niki_agent.acp import AgentServerACP, _RuntimeProgress
+    from niki_agent.domain.events import RunEvent, RunEventKind, TurnStatus
+    from niki_agent.niki.runtime_mode import niki_runtime_scope
 
     class Graph:
         checkpointer = MemorySaver()
@@ -191,10 +191,10 @@ async def test_niki_acp_prompt_preserves_native_protocol_updates(monkeypatch) ->
 async def test_niki_acp_approval_resume_keeps_runtime_turn_identity(
     monkeypatch,
 ) -> None:
-    from deepagents_code import acp as acp_module
-    from deepagents_code.acp import AgentServerACP, _RuntimeProgress
-    from deepagents_code.domain.events import RunEvent, RunEventKind
-    from deepagents_code.niki.runtime_mode import niki_runtime_scope
+    from niki_agent import acp as acp_module
+    from niki_agent.acp import AgentServerACP, _RuntimeProgress
+    from niki_agent.domain.events import RunEvent, RunEventKind
+    from niki_agent.niki.runtime_mode import niki_runtime_scope
 
     class Graph:
         checkpointer = MemorySaver()

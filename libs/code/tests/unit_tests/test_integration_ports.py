@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from deepagents_code.adapters.runtime.langgraph_remote import LangGraphRemoteRuntime
-from deepagents_code.application.run_turn import RunTurnCoordinator
-from deepagents_code.domain.events import RunEvent, RunEventKind, TurnRequest
+from niki_agent.adapters.runtime.langgraph_remote import LangGraphRemoteRuntime
+from niki_agent.application.run_turn import RunTurnCoordinator
+from niki_agent.domain.events import RunEvent, RunEventKind, TurnRequest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Mapping, Sequence
@@ -67,7 +67,7 @@ async def test_provider_timeout_emits_recoverable_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_mcp_disconnect_is_visible_and_cleanup_is_idempotent():
-    from deepagents_code.mcp_tools import (
+    from niki_agent.mcp_tools import (
         MCPSessionManager,
         _classify_connect_failure,
     )
@@ -109,7 +109,7 @@ def test_domain_application_do_not_import_integration_adapters():
 import importlib
 import sys
 
-for module in ("deepagents_code.domain", "deepagents_code.application"):
+for module in ("niki_agent.domain", "niki_agent.application"):
     importlib.import_module(module)
 
 forbidden = {"textual", "rich", "deepagents", "langchain", "langgraph"}
@@ -131,9 +131,9 @@ import importlib
 import sys
 
 for module in (
-    "deepagents_code.mcp_tools",
-    "deepagents_code.plugins.adapters.hooks",
-    "deepagents_code.plugins.adapters.skills",
+    "niki_agent.mcp_tools",
+    "niki_agent.plugins.adapters.hooks",
+    "niki_agent.plugins.adapters.skills",
 ):
     importlib.import_module(module)
 

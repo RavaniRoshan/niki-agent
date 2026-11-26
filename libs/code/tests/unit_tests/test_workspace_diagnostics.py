@@ -7,12 +7,12 @@ from contextlib import closing
 
 import pytest
 
-from deepagents_code.workspace import (
+from niki_agent.workspace import (
     WorkspaceConflictError,
     bind_thread_workspace,
     require_thread_workspace,
 )
-from deepagents_code.workspace_diagnostics import (
+from niki_agent.workspace_diagnostics import (
     FieldChange,
     WorkspaceDiagnostics,
     diff_snapshots,
@@ -25,7 +25,7 @@ from deepagents_code.workspace_diagnostics import (
 def workspace_database(tmp_path, monkeypatch: pytest.MonkeyPatch):
     """Point bindings at an isolated SQLite database."""
     database = tmp_path / "sessions.db"
-    monkeypatch.setenv("DEEPAGENTS_CODE_SERVER_DB_PATH", str(database))
+    monkeypatch.setenv("NIKI_SERVER_DB_PATH", str(database))
     return database
 
 
@@ -34,8 +34,8 @@ class TestSnapshotAllowlist:
         self,
     ) -> None:
         """A new payload field is never snapshotted until it is allowlisted."""
-        from deepagents_code._server_config import ServerConfig
-        from deepagents_code.workspace_diagnostics import SAFE_SNAPSHOT_FIELDS
+        from niki_agent._server_config import ServerConfig
+        from niki_agent.workspace_diagnostics import SAFE_SNAPSHOT_FIELDS
 
         payload_keys = set(ServerConfig().to_workspace_payload())
         assert payload_keys > SAFE_SNAPSHOT_FIELDS
@@ -90,7 +90,7 @@ class TestSnapshotAllowlist:
             {"auto_approve": True, "shell_allow_list": ["git status", "ls"]}
         )
 
-        from deepagents_code.workspace_diagnostics import WorkspaceSnapshot
+        from niki_agent.workspace_diagnostics import WorkspaceSnapshot
 
         parsed = WorkspaceSnapshot.from_json(snapshot.to_json())
 
@@ -98,7 +98,7 @@ class TestSnapshotAllowlist:
         assert parsed.fields["shell_allow_list"] == ["git status", "ls"]
 
     def test_snapshot_rejects_malformed_json(self) -> None:
-        from deepagents_code.workspace_diagnostics import WorkspaceSnapshot
+        from niki_agent.workspace_diagnostics import WorkspaceSnapshot
 
         with pytest.raises(ValueError, match="not valid JSON"):
             WorkspaceSnapshot.from_json("not-json")
@@ -180,7 +180,7 @@ async def test_binding_rejection_is_logged(caplog, tmp_path) -> None:
     await bind_thread_workspace("thread-1", str(tmp_path), {"auto_approve": False})
 
     with (
-        caplog.at_level(logging.WARNING, logger="deepagents_code.workspace"),
+        caplog.at_level(logging.WARNING, logger="niki_agent.workspace"),
         pytest.raises(WorkspaceConflictError),
     ):
         await bind_thread_workspace("thread-1", str(tmp_path), {"auto_approve": True})
@@ -193,7 +193,7 @@ async def test_binding_rejection_is_logged(caplog, tmp_path) -> None:
 async def test_legacy_binding_reports_snapshot_unavailable(tmp_path) -> None:
     """A pre-snapshot binding refuses with an explicit unavailable status."""
     await bind_thread_workspace("thread-1", str(tmp_path), {"auto_approve": False})
-    import deepagents_code.workspace as workspace_mod
+    import niki_agent.workspace as workspace_mod
 
     db = workspace_mod._database_path()
     with closing(sqlite3.connect(db)) as conn, conn:

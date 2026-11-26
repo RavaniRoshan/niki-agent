@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from textual.app import App, ComposeResult
 
-from deepagents_code.tui.widgets.loading import LoadingWidget
+from niki_agent.tui.widgets.loading import LoadingWidget
 
 
 class LoadingWidgetApp(App[None]):
@@ -30,7 +30,7 @@ class TestLoadingWidget:
         def fake_time() -> float:
             return now
 
-        monkeypatch.setattr("deepagents_code.tui.widgets.loading.time", fake_time)
+        monkeypatch.setattr("niki_agent.tui.widgets.loading.time", fake_time)
         widget = LoadingWidget()
         widget._start_time = now
 
@@ -52,7 +52,7 @@ class TestLoadingWidget:
             widget = pilot.app.query_one("#loading", LoadingWidget)
             widget._start_time = 100.0
             monkeypatch.setattr(
-                "deepagents_code.tui.widgets.loading.time",
+                "niki_agent.tui.widgets.loading.time",
                 lambda: 112.7,
             )
 

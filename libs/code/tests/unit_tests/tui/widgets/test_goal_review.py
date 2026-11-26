@@ -10,8 +10,8 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-import deepagents_code
-from deepagents_code.tui.widgets.goal_review import (
+import niki_agent
+from niki_agent.tui.widgets.goal_review import (
     GoalReviewMenu,
     GoalReviewResult,
     GoalReviewTextArea,
@@ -22,14 +22,14 @@ if TYPE_CHECKING:
 
 
 class _GoalReviewTestApp(App[None]):
-    CSS_PATH = Path(deepagents_code.__file__).resolve().parent / "app.tcss"
+    CSS_PATH = Path(niki_agent.__file__).resolve().parent / "app.tcss"
 
     def compose(self) -> ComposeResult:
         yield GoalReviewMenu("add refresh tokens", "- tests pass", id="goal-review")
 
 
 class _GoalAmendmentReviewTestApp(App[None]):
-    CSS_PATH = Path(deepagents_code.__file__).resolve().parent / "app.tcss"
+    CSS_PATH = Path(niki_agent.__file__).resolve().parent / "app.tcss"
 
     def compose(self) -> ComposeResult:
         yield GoalReviewMenu(
@@ -116,10 +116,10 @@ class TestGoalReviewMenu:
         `newline_shortcut` returns `Ctrl+J`/`Option+Enter`; the goal editor must
         advertise that key rather than a Shift+Enter that would submit instead.
         """
-        from deepagents_code import config as config_module
+        from niki_agent import config as config_module
 
         # `newline_hint` resolves `newline_shortcut` via a call-time
-        # `from deepagents_code.config import newline_shortcut`, so patch the
+        # `from niki_agent.config import newline_shortcut`, so patch the
         # name on the config module it actually looks up.
         monkeypatch.setattr(config_module, "newline_shortcut", lambda: "Ctrl+J")
         app = _GoalReviewTestApp()
@@ -144,7 +144,7 @@ class TestGoalReviewMenu:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A collapsed paste in the editor expands in the submitted criteria."""
-        from deepagents_code.tui.widgets import _paste_textarea as paste_textarea_module
+        from niki_agent.tui.widgets import _paste_textarea as paste_textarea_module
 
         monkeypatch.setattr(
             paste_textarea_module, "_collapse_pastes_enabled", lambda: True
@@ -179,7 +179,7 @@ class TestGoalReviewMenu:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A collapsed paste in the feedback box expands in the regenerate message."""
-        from deepagents_code.tui.widgets import _paste_textarea as paste_textarea_module
+        from niki_agent.tui.widgets import _paste_textarea as paste_textarea_module
 
         monkeypatch.setattr(
             paste_textarea_module, "_collapse_pastes_enabled", lambda: True

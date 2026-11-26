@@ -8,21 +8,21 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from textual.app import App, ComposeResult
 
-from deepagents_code import model_config
-from deepagents_code._cli_context import INHERIT_SUMMARIZATION_MODEL
-from deepagents_code._paths import PATHS
-from deepagents_code.app import DeepAgentsApp, _extract_model_params_flag
-from deepagents_code.client.remote_client import RemoteAgent
-from deepagents_code.config import runtime_state
-from deepagents_code.model_config import (
+from niki_agent import model_config
+from niki_agent._cli_context import INHERIT_SUMMARIZATION_MODEL
+from niki_agent._paths import PATHS
+from niki_agent.app import DeepAgentsApp, _extract_model_params_flag
+from niki_agent.client.remote_client import RemoteAgent
+from niki_agent.config import runtime_state
+from niki_agent.model_config import (
     ModelSpec,
     ProviderAuthSource,
     ProviderAuthState,
     ProviderAuthStatus,
     clear_caches,
 )
-from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
-from deepagents_code.tui.widgets.status import StatusBar
+from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
+from niki_agent.tui.widgets.status import StatusBar
 
 _CONFIGURED_AUTH_STATUS = ProviderAuthStatus(
     state=ProviderAuthState.CONFIGURED,
@@ -115,7 +115,7 @@ def mock_create_model() -> Iterator[Mock]:
         )
 
     with patch(
-        "deepagents_code.config.create_model",
+        "niki_agent.config.create_model",
         side_effect=fake_create_model,
     ) as mock:
         yield mock
@@ -166,11 +166,11 @@ class TestModelSwitchNoOp:
         # rather than to the toast lifetime quietly expiring.
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
-            patch("deepagents_code.app._monotonic", return_value=100.0),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.app._monotonic", return_value=100.0),
         ):
             # No-op records the suppression entry.
             await app._switch_model("anthropic:claude-opus-4-5")
@@ -202,7 +202,7 @@ class TestModelSwitchNoOp:
         runtime_state.model_provider = "openai"
 
         with patch(
-            "deepagents_code.model_config.get_provider_auth_status",
+            "niki_agent.model_config.get_provider_auth_status",
             return_value=ProviderAuthStatus(
                 state=ProviderAuthState.CONFIGURED,
                 provider="openai",
@@ -240,7 +240,7 @@ class TestModelSwitchNoOp:
         app._model_params_override = {"num_ctx": 16384}
 
         with patch(
-            "deepagents_code.model_config.get_provider_auth_status",
+            "niki_agent.model_config.get_provider_auth_status",
             return_value=_CONFIGURED_AUTH_STATUS,
         ):
             await app._switch_model("anthropic:claude-opus-4-5")
@@ -260,7 +260,7 @@ class TestModelSwitchNoOp:
         )
 
         with patch(
-            "deepagents_code.model_config.get_provider_auth_status",
+            "niki_agent.model_config.get_provider_auth_status",
             return_value=_CONFIGURED_AUTH_STATUS,
         ):
             await app._switch_model("anthropic:claude-opus-4-5")
@@ -276,7 +276,7 @@ class TestModelSwitchNoOp:
         model_config.save_effort_for_model("openai:gpt-5.5", "high")
 
         with patch(
-            "deepagents_code.model_config.get_provider_auth_status",
+            "niki_agent.model_config.get_provider_auth_status",
             return_value=ProviderAuthStatus(
                 state=ProviderAuthState.CONFIGURED,
                 provider="openai",
@@ -315,7 +315,7 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=ProviderAuthStatus(
                     state=ProviderAuthState.MISSING,
                     provider="anthropic",
@@ -357,10 +357,10 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=False),
+            patch("niki_agent.model_config.save_recent_model", return_value=False),
             patch.object(ErrorMessage, "__init__", capture_err),
             patch.object(AppMessage, "__init__", capture_app),
         ):
@@ -393,11 +393,11 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
             patch(
-                "deepagents_code.model_config.save_recent_model", return_value=True
+                "niki_agent.model_config.save_recent_model", return_value=True
             ) as mock_save,
             patch.object(AppMessage, "__init__", capture_init),
         ):
@@ -425,10 +425,10 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
         ):
             await app._switch_model(
                 "anthropic:claude-sonnet-4-5",
@@ -456,10 +456,10 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
         ):
             await app._switch_model(
                 "anthropic:claude-sonnet-4-5",
@@ -490,10 +490,10 @@ class TestModelSwitchErrorHandling:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
             patch.object(AppMessage, "__init__", capture_init),
         ):
             await app._switch_model(
@@ -542,10 +542,10 @@ class TestModelSwitchConcurrencyGuard:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
         ):
             await app._switch_model("anthropic:claude-sonnet-4-5")
 
@@ -569,10 +569,10 @@ class TestModelSwitchSessionReadiness:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
-            patch("deepagents_code.model_config.save_recent_model", return_value=True),
+            patch("niki_agent.model_config.save_recent_model", return_value=True),
         ):
             await app._switch_model("anthropic:claude-sonnet-4-5")
 
@@ -623,7 +623,7 @@ class TestModelSwitchFailedStartupRecovery:
 
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=ProviderAuthStatus(
                     state=ProviderAuthState.MISSING,
                     provider="anthropic",
@@ -740,7 +740,7 @@ models = ["llama3"]
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
             patch(
-                "deepagents_code.model_config.save_recent_model", return_value=True
+                "niki_agent.model_config.save_recent_model", return_value=True
             ) as mock_save,
             patch.object(AppMessage, "__init__", capture_app),
         ):
@@ -773,13 +773,13 @@ class TestModelSwitchBareModelName:
             original_init(self, message, **kwargs)
 
         with (
-            patch("deepagents_code.config.detect_provider", return_value="openai"),
+            patch("niki_agent.config.detect_provider", return_value="openai"),
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
             patch(
-                "deepagents_code.model_config.save_recent_model", return_value=True
+                "niki_agent.model_config.save_recent_model", return_value=True
             ) as mock_save,
             patch.object(AppMessage, "__init__", capture_init),
         ):
@@ -816,11 +816,11 @@ class TestModelSwitchBareModelName:
         model_id = "accounts/fireworks/models/kimi-k2p7-code"
         with (
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_CONFIGURED_AUTH_STATUS,
             ),
             patch(
-                "deepagents_code.model_config.save_recent_model", return_value=True
+                "niki_agent.model_config.save_recent_model", return_value=True
             ) as mock_save,
             patch.object(AppMessage, "__init__", capture_init),
         ):
@@ -849,9 +849,9 @@ class TestModelSwitchBareModelName:
             original_init(self, message, **kwargs)
 
         with (
-            patch("deepagents_code.config.detect_provider", return_value="openai"),
+            patch("niki_agent.config.detect_provider", return_value="openai"),
             patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=ProviderAuthStatus(
                     state=ProviderAuthState.MISSING,
                     provider="openai",
@@ -934,7 +934,7 @@ class TestSummarizationModelCommand:
         resolved = Mock(provider="openai", model_name="gpt-5.4-mini")
 
         with patch(
-            "deepagents_code.app._create_model_with_deepagents_import_lock",
+            "niki_agent.app._create_model_with_deepagents_import_lock",
             return_value=resolved,
         ):
             await app._handle_command("/summarization-model openai:gpt-5.4-mini")
@@ -958,7 +958,7 @@ class TestSummarizationModelCommand:
         resolved = Mock(provider="anthropic", model_name="claude-haiku-4-5")
 
         with patch(
-            "deepagents_code.app._create_model_with_deepagents_import_lock",
+            "niki_agent.app._create_model_with_deepagents_import_lock",
             return_value=resolved,
         ):
             await app._handle_command("/summarization-model haiku")
@@ -974,7 +974,7 @@ class TestSummarizationModelCommand:
 
         with (
             patch(
-                "deepagents_code.app._create_model_with_deepagents_import_lock"
+                "niki_agent.app._create_model_with_deepagents_import_lock"
             ) as create_model,
             patch.object(AppMessage, "__init__", capture_init),
         ):
@@ -999,7 +999,7 @@ class TestSummarizationModelCommand:
         app._mount_message = AsyncMock()  # ty: ignore[invalid-assignment]
 
         with patch(
-            "deepagents_code.app._create_model_with_deepagents_import_lock"
+            "niki_agent.app._create_model_with_deepagents_import_lock"
         ) as create_model:
             await app._handle_command(f"/summarization-model {word}")
 
@@ -1188,7 +1188,7 @@ class TestSummarizationModelCommand:
 
         with (
             patch(
-                "deepagents_code.app._create_model_with_deepagents_import_lock"
+                "niki_agent.app._create_model_with_deepagents_import_lock"
             ) as create_model,
             patch.object(ErrorMessage, "__init__", capture_init),
         ):
@@ -1206,7 +1206,7 @@ class TestSummarizationModelCommand:
 
         with (
             patch(
-                "deepagents_code.app._create_model_with_deepagents_import_lock",
+                "niki_agent.app._create_model_with_deepagents_import_lock",
                 side_effect=ValueError("bad model"),
             ),
             patch.object(ErrorMessage, "__init__", capture_init),

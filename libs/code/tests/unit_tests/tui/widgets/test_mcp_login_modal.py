@@ -13,7 +13,7 @@ from mcp.client.auth import OAuthClientProvider
 from textual.app import App, ComposeResult
 from textual.widgets import Input, Static
 
-from deepagents_code.tui.widgets.mcp_login import MCPLoginCancelledError, MCPLoginScreen
+from niki_agent.tui.widgets.mcp_login import MCPLoginCancelledError, MCPLoginScreen
 
 if TYPE_CHECKING:
     from fastmcp.client.transports import StreamableHttpTransport
@@ -264,12 +264,12 @@ class TestMCPLoginScreenWithLoginCoroutine:
 
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import FileTokenStorage, login
+        from niki_agent.mcp_auth import FileTokenStorage, login
 
         fake_home = tmp_path
         monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR",
+            "niki_agent.model_config.DEFAULT_STATE_DIR",
             fake_home / ".deepagents" / ".state",
         )
 
@@ -289,9 +289,7 @@ class TestMCPLoginScreenWithLoginCoroutine:
             storage = FileTokenStorage(server_name, server_url=connection.url)
             await storage.set_tokens(OAuthToken(access_token="t", token_type="Bearer"))
 
-        monkeypatch.setattr(
-            "deepagents_code.mcp_auth._drive_handshake", _fake_handshake
-        )
+        monkeypatch.setattr("niki_agent.mcp_auth._drive_handshake", _fake_handshake)
 
         app = _LoginTestApp()
         async with app.run_test() as pilot:

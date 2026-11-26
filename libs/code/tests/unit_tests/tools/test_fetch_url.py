@@ -11,8 +11,8 @@ import pytest
 import requests
 import responses
 
-from deepagents_code import tools
-from deepagents_code.tools import (
+from niki_agent import tools
+from niki_agent.tools import (
     _html_to_markdown_content,
     _TextExtractor,
     _UrlValidationError,

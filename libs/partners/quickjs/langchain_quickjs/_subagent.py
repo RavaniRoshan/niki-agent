@@ -16,7 +16,7 @@ from langgraph.errors import GraphInterrupt
 from langchain_quickjs._format import coerce_tool_output_for_ptc
 
 try:
-    from deepagents.middleware.subagents import SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY
+    from niki_agent.sdk.middleware.subagents import SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY
 except ImportError:  # pragma: no cover - compatibility with older deepagents
     SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY = "__deepagents_subagent_response_format"
 

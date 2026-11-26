@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 import pytest
 
-import deepagents_code._dep_floor_check as dep_floor_check
-import deepagents_code.main as main_module
-from deepagents_code._dep_floor_check import (
+import niki_agent._dep_floor_check as dep_floor_check
+import niki_agent.main as main_module
+from niki_agent._dep_floor_check import (
     _DEBUG_VIOLATION,
     _find_floor_violations,
     _FloorViolation,
@@ -28,7 +28,7 @@ from deepagents_code._dep_floor_check import (
     prompt_if_editable_deps_stale,
     warn_if_editable_deps_stale,
 )
-from deepagents_code.main import _TrustAction, _TrustPromptOutcome
+from niki_agent.main import _TrustAction, _TrustPromptOutcome
 
 _VIOLATIONS = [
     _FloorViolation(
@@ -462,13 +462,13 @@ class TestBestEffort:
 
 
 class TestDebugDepFloor:
-    """`DEEPAGENTS_CODE_DEBUG_DEP_FLOOR` synthesizes a stale-deps warning."""
+    """`NIKI_DEBUG_DEP_FLOOR` synthesizes a stale-deps warning."""
 
     def test_debug_var_synthesizes_warning_on_non_editable_install(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The synthetic warning bypasses the editable gate and real versions."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_DEP_FLOOR", "1")
+        monkeypatch.setenv("NIKI_DEBUG_DEP_FLOOR", "1")
         monkeypatch.setattr(dep_floor_check, "_is_editable_install", lambda: False)
 
         def _fail(*_args: object, **_kwargs: object) -> None:
@@ -493,7 +493,7 @@ class TestDebugDepFloor:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The synthetic violation reaches the interactive prompt path."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_DEP_FLOOR", "1")
+        monkeypatch.setenv("NIKI_DEBUG_DEP_FLOOR", "1")
         monkeypatch.setattr(dep_floor_check, "_is_editable_install", lambda: False)
         seen: list[list[_FloorViolation]] = []
 
@@ -509,8 +509,8 @@ class TestDebugDepFloor:
     def test_debug_var_falsy_falls_back_to_real_check(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """`DEEPAGENTS_CODE_DEBUG_DEP_FLOOR=0` means no synthetic warning."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_DEP_FLOOR", "0")
+        """`NIKI_DEBUG_DEP_FLOOR=0` means no synthetic warning."""
+        monkeypatch.setenv("NIKI_DEBUG_DEP_FLOOR", "0")
         monkeypatch.setattr(dep_floor_check, "_is_editable_install", lambda: False)
 
         warn_if_editable_deps_stale()

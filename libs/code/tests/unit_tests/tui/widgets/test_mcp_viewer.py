@@ -6,8 +6,8 @@ from textual.containers import Vertical
 from textual.widget import Widget
 from textual.widgets import Static
 
-from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-from deepagents_code.tui.widgets.mcp_viewer import (
+from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+from niki_agent.tui.widgets.mcp_viewer import (
     MCPServerErrorScreen,
     MCPServerHeaderItem,
     MCPToolItem,
@@ -970,7 +970,7 @@ class TestMCPViewerScreen:
         """Plugin server badges survive selection across every connection status."""
         from dataclasses import replace
 
-        from deepagents_code.plugins.adapters.mcp import scoped_mcp_server_name
+        from niki_agent.plugins.adapters.mcp import scoped_mcp_server_name
 
         servers = [
             replace(server, name=scoped_mcp_server_name("demo@market", server.name))
@@ -993,7 +993,7 @@ class TestMCPViewerScreen:
 
     async def test_status_indicator_glyphs_use_glyph_set(self) -> None:
         """Status icons reuse existing `Glyphs` (unicode by default)."""
-        from deepagents_code.config import get_glyphs
+        from niki_agent.config import get_glyphs
 
         app = MCPViewerTestApp()
         async with app.run_test() as pilot:
@@ -1080,7 +1080,7 @@ class TestModuleLevelHelpers:
 
     def test_sort_servers_is_stable_within_groups(self) -> None:
         """Original config order is preserved among same-priority servers."""
-        from deepagents_code.tui.widgets.mcp_viewer import _sort_servers_for_display
+        from niki_agent.tui.widgets.mcp_viewer import _sort_servers_for_display
 
         info = [
             MCPServerInfo(name="ok-a", transport="stdio"),
@@ -1115,7 +1115,7 @@ class TestModuleLevelHelpers:
 
     def test_sort_servers_no_unauthenticated_preserves_order(self) -> None:
         """When no server is unauthenticated, the order is identical."""
-        from deepagents_code.tui.widgets.mcp_viewer import _sort_servers_for_display
+        from niki_agent.tui.widgets.mcp_viewer import _sort_servers_for_display
 
         info = _sample_info()
         ordered = _sort_servers_for_display(info)
@@ -1123,7 +1123,7 @@ class TestModuleLevelHelpers:
 
     def test_sort_servers_all_unauthenticated_preserves_order(self) -> None:
         """When every server is unauthenticated, config order is preserved."""
-        from deepagents_code.tui.widgets.mcp_viewer import _sort_servers_for_display
+        from niki_agent.tui.widgets.mcp_viewer import _sort_servers_for_display
 
         info = [
             MCPServerInfo(
@@ -1193,7 +1193,7 @@ class TestModuleLevelHelpers:
         self,
     ) -> None:
         """Without a filter, empty-tool servers return () so their header renders."""
-        from deepagents_code.tui.widgets.mcp_viewer import _visible_tools_for
+        from niki_agent.tui.widgets.mcp_viewer import _visible_tools_for
 
         info = MCPServerInfo(
             name="github",

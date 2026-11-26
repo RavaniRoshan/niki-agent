@@ -18,8 +18,8 @@ from textual.content import Content
 from textual.geometry import Offset
 from textual.widgets import Markdown, Static
 
-from deepagents_code import _textual_patches  # triggers patch
-from deepagents_code.tui.widgets.diff import _DiffRowStatic
+from niki_agent import _textual_patches  # triggers patch
+from niki_agent.tui.widgets.diff import _DiffRowStatic
 
 
 def _keys_for(sequence: str, *, alt: bool) -> list[tuple[str, str | None]]:
@@ -37,7 +37,7 @@ class SelectableTextApp(App[None]):
 
 def test_ascii_mode_replaces_every_textual_border_glyph() -> None:
     code = (
-        "import deepagents_code._textual_patches\n"
+        "import niki_agent._textual_patches\n"
         "from textual._border import BORDER_CHARS, INVISIBLE_EDGE_TYPES\n"
         "ascii_border = BORDER_CHARS['ascii']\n"
         "assert all(border == ascii_border for name, border in "
@@ -47,7 +47,7 @@ def test_ascii_mode_replaces_every_textual_border_glyph() -> None:
     )
     result = subprocess.run(
         [sys.executable, "-c", code],
-        env={**os.environ, "DEEPAGENTS_CODE_UI_CHARSET_MODE": "ascii"},
+        env={**os.environ, "NIKI_UI_CHARSET_MODE": "ascii"},
         capture_output=True,
         text=True,
         timeout=30,
@@ -219,7 +219,7 @@ def test_missing_shift_selection_internals_does_not_break_import() -> None:
         "import textual.selection\n"
         "del textual.selection.SelectEnd\n"
         "del textual.selection.SelectState\n"
-        "import deepagents_code._textual_patches\n"
+        "import niki_agent._textual_patches\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", code],

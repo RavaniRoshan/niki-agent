@@ -95,7 +95,7 @@
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
         "pyproject.toml",
-        "deepagents_code/_version.py"
+        "niki_agent/_version.py"
       ],
       "changelog-path": "CHANGELOG.md",
       "exclude-paths": [

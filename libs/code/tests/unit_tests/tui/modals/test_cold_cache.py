@@ -2,7 +2,7 @@
 
 from textual.app import App
 
-from deepagents_code.cold_cache import (
+from niki_agent.cold_cache import (
     CacheConfidence,
     CacheWriteBucket,
     ColdCacheReason,
@@ -10,7 +10,7 @@ from deepagents_code.cold_cache import (
     PromptCachePolicy,
     RewarmEstimate,
 )
-from deepagents_code.tui.modals.cold_cache import (
+from niki_agent.tui.modals.cold_cache import (
     ColdCacheChoice,
     ColdCacheWarningScreen,
 )

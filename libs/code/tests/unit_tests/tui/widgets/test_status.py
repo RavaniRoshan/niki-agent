@@ -13,9 +13,9 @@ from textual.content import Content
 from textual.geometry import Offset
 from textual.widgets import Static
 
-from deepagents_code._env_vars import HIDE_CWD
-from deepagents_code.config import ASCII_GLYPHS, reset_glyphs_cache
-from deepagents_code.tui.widgets.status import (
+from niki_agent._env_vars import HIDE_CWD
+from niki_agent.config import ASCII_GLYPHS, reset_glyphs_cache
+from niki_agent.tui.widgets.status import (
     _PICKER_TARGET_META,
     BranchLabel,
     CwdLabel,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from rich.style import Style
     from textual.pilot import Pilot
 
-    from deepagents_code.cold_cache import CacheConfidence
+    from niki_agent.cold_cache import CacheConfidence
 
 
 @pytest.fixture(autouse=True)
@@ -74,7 +74,7 @@ class TestApprovalModeDisplay:
 class TestCwdDisplay:
     """Tests for the cwd display in the status bar."""
 
-    LONG_CWD = "/home/user/projects/deepagents/libs/code/deepagents_code/tui/widgets"
+    LONG_CWD = "/home/user/projects/deepagents/libs/code/niki_agent/tui/widgets"
 
     async def test_tooltip_is_full_plain_path(self) -> None:
         """The tooltip preserves the untruncated path as plain content."""
@@ -218,7 +218,7 @@ class TestBranchDisplay:
             await pilot.pause()
             display = pilot.app.query_one("#branch-display")
             rendered = str(display.render())
-            from deepagents_code.config import get_glyphs
+            from niki_agent.config import get_glyphs
 
             assert rendered.startswith(get_glyphs().git_branch)
 
@@ -304,7 +304,7 @@ class TestCacheTimingDisplay:
             bar = pilot.app.query_one("#status-bar", StatusBar)
             now = datetime.now(UTC)
             with patch(
-                "deepagents_code.tui.widgets.status.datetime", wraps=datetime
+                "niki_agent.tui.widgets.status.datetime", wraps=datetime
             ) as clock:
                 clock.now.return_value = now
                 bar.set_cache_tokens(1000, 2000, input_tokens=3000)
@@ -424,7 +424,7 @@ class TestModelLabelPrefixStripping:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.status.get_glyphs", lambda: ASCII_GLYPHS
+            "niki_agent.tui.widgets.status.get_glyphs", lambda: ASCII_GLYPHS
         )
         async with StatusBarApp().run_test() as pilot:
             label = pilot.app.query_one("#model-display", ModelLabel)
@@ -562,7 +562,7 @@ class TestModelLabelClickTargets:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Ctrl+click copies the raw slug instead of opening the model picker."""
-        from deepagents_code import clipboard as clipboard_module
+        from niki_agent import clipboard as clipboard_module
 
         copied: list[str] = []
 
@@ -635,7 +635,7 @@ class TestBusyIndicator:
 
     async def test_set_busy_shows_message_and_spinner(self) -> None:
         """`set_busy` should render a spinner-prefixed message and run the timer."""
-        from deepagents_code.config import get_glyphs
+        from niki_agent.config import get_glyphs
 
         async with StatusBarApp().run_test() as pilot:
             bar = pilot.app.query_one("#status-bar", StatusBar)
@@ -680,10 +680,10 @@ class TestQueuedCount:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """ASCII glyph mode should not leak Unicode in the combined indicator."""
-        from deepagents_code.config import ASCII_GLYPHS, UNICODE_GLYPHS
+        from niki_agent.config import ASCII_GLYPHS, UNICODE_GLYPHS
 
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.status.get_glyphs",
+            "niki_agent.tui.widgets.status.get_glyphs",
             lambda: ASCII_GLYPHS,
         )
         async with StatusBarApp().run_test() as pilot:

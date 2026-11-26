@@ -10,47 +10,47 @@ sources:
   - id: openwiki-source-6f5b1b7a043ee1d414708793
     resource: repo://libs/code/ARCHITECTURE.md
   - id: openwiki-source-3396dda6599f7426e19ed526
-    resource: repo://libs/code/deepagents_code/__init__.py
+    resource: repo://libs/code/niki_agent/__init__.py
   - id: openwiki-source-5e41cb15122d503b08dad541
-    resource: repo://libs/code/deepagents_code/__main__.py
+    resource: repo://libs/code/niki_agent/__main__.py
   - id: openwiki-source-1728494bdd59604ce9b5f65b
-    resource: repo://libs/code/deepagents_code/_server_config.py
+    resource: repo://libs/code/niki_agent/_server_config.py
   - id: openwiki-source-4d4186e9d62fb4abe495cdd0
-    resource: repo://libs/code/deepagents_code/acp.py
+    resource: repo://libs/code/niki_agent/acp.py
   - id: openwiki-source-05106e66a949150d557266a2
-    resource: repo://libs/code/deepagents_code/agent.py
+    resource: repo://libs/code/niki_agent/agent.py
   - id: openwiki-source-fdf5afeb1dd1d11652374e88
-    resource: repo://libs/code/deepagents_code/app.py
+    resource: repo://libs/code/niki_agent/app.py
   - id: openwiki-source-b9ef532d79a0667acf40e58b
-    resource: repo://libs/code/deepagents_code/client/launch/server_manager.py
+    resource: repo://libs/code/niki_agent/client/launch/server_manager.py
   - id: openwiki-source-b7d66cbdbe9dae9f133a7c5e
-    resource: repo://libs/code/deepagents_code/client/remote_client.py
+    resource: repo://libs/code/niki_agent/client/remote_client.py
   - id: openwiki-source-2fb89d2b59c886d0cb3ee3ea
-    resource: repo://libs/code/deepagents_code/config_manifest.py
+    resource: repo://libs/code/niki_agent/config_manifest.py
   - id: openwiki-source-7f6b98925b5f1ba065df3a04
-    resource: repo://libs/code/deepagents_code/config.py
+    resource: repo://libs/code/niki_agent/config.py
   - id: openwiki-source-fa408b1d4395cf38b0e4e5ff
-    resource: repo://libs/code/deepagents_code/hooks/models/domain.py
+    resource: repo://libs/code/niki_agent/hooks/models/domain.py
   - id: openwiki-source-6edbdd620f44ae4fba5cde4b
-    resource: repo://libs/code/deepagents_code/hooks/projection.py
+    resource: repo://libs/code/niki_agent/hooks/projection.py
   - id: openwiki-source-2e03fee957625ca21a1c21af
-    resource: repo://libs/code/deepagents_code/main.py
+    resource: repo://libs/code/niki_agent/main.py
   - id: openwiki-source-e59c3d25feac176713c41be3
-    resource: repo://libs/code/deepagents_code/mcp_middleware.py
+    resource: repo://libs/code/niki_agent/mcp_middleware.py
   - id: openwiki-source-a9eb680bb6bdae179f52a3ac
-    resource: repo://libs/code/deepagents_code/server_graph.py
+    resource: repo://libs/code/niki_agent/server_graph.py
   - id: openwiki-source-c817008792b0375d78348c10
-    resource: repo://libs/code/deepagents_code/system_prompt.md
+    resource: repo://libs/code/niki_agent/system_prompt.md
   - id: openwiki-source-1326222fbf96b7f18194e63b
-    resource: repo://libs/code/deepagents_code/tui/modals/session_cost.py
+    resource: repo://libs/code/niki_agent/tui/modals/session_cost.py
   - id: openwiki-source-29a60a7d68da0bf4ec625403
-    resource: repo://libs/code/deepagents_code/tui/textual_adapter.py
+    resource: repo://libs/code/niki_agent/tui/textual_adapter.py
   - id: openwiki-source-9b7dc6bc03826e98808c6a5c
-    resource: repo://libs/code/deepagents_code/tui/widgets/subagent_panel.py
+    resource: repo://libs/code/niki_agent/tui/widgets/subagent_panel.py
   - id: openwiki-source-17253964e859bb0abf2094e8
-    resource: repo://libs/code/deepagents_code/workspace_diagnostics.py
+    resource: repo://libs/code/niki_agent/workspace_diagnostics.py
   - id: openwiki-source-030d8bd153a9c3ea2a99cb7d
-    resource: repo://libs/code/deepagents_code/workspace.py
+    resource: repo://libs/code/niki_agent/workspace.py
   - id: openwiki-source-599fbd14ff0c0636bf987169
     resource: repo://libs/code/tests/unit_tests/hooks/test_engine.py
   - id: openwiki-source-5d8ba8d4a18a79ed18cff663
@@ -100,7 +100,7 @@ sequenceDiagram
 
 ## Entrypoints and ownership
 
-`python -m deepagents_code` obtains the package's lazy `cli_main` attribute, avoiding import of `main.py` and its startup machinery until the command actually runs. Normal interactive and headless runs use `start_server_and_get_agent`: it resolves and exports `ServerConfig`, scaffolds a temporary LangGraph project with a SQLite checkpointer module, starts `langgraph dev`, waits until the `agent` graph is ready, and returns a workspace-bound `RemoteAgent`. A failed or cancelled startup before handoff stops the process; the caller that receives a completed handoff owns eventual cleanup.
+`python -m niki_agent` obtains the package's lazy `cli_main` attribute, avoiding import of `main.py` and its startup machinery until the command actually runs. Normal interactive and headless runs use `start_server_and_get_agent`: it resolves and exports `ServerConfig`, scaffolds a temporary LangGraph project with a SQLite checkpointer module, starts `langgraph dev`, waits until the `agent` graph is ready, and returns a workspace-bound `RemoteAgent`. A failed or cancelled startup before handoff stops the process; the caller that receives a completed handoff owns eventual cleanup.
 
 `run_textual_app` keeps startup at the UI boundary. Given `server_kwargs` but no agent, it renders connection state and starts server work in a background worker. Resume resolution is asynchronous; focused app tests cover deferred startup, resume ordering, recovery, approvals, and teardown.
 

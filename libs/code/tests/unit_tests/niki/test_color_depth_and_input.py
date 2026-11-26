@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-v13")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -51,8 +51,8 @@ def test_niki_supports_16_color_output_without_truecolor_escape(
     from rich.text import Text
     from textual.color import Color
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import (
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import (
         NIKI_ANSI16_DARK,
         NIKI_ANSI16_LIGHT,
         NIKI_DARK,
@@ -88,8 +88,8 @@ def test_niki_supports_16_color_output_without_truecolor_escape(
 
 def test_niki_light_theme_uses_light_terminal_background() -> None:
     """The registered light theme describes a genuinely light background."""
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import NIKI_DARK, NIKI_LIGHT, relative_luminance
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import NIKI_DARK, NIKI_LIGHT, relative_luminance
 
     light = NikiApp._build_niki_theme("niki-light", NIKI_LIGHT, dark=False)
     dark = NikiApp._build_niki_theme("niki", NIKI_DARK, dark=True)
@@ -108,8 +108,8 @@ def test_niki_default_theme_keeps_measured_rgb_palette(
     """ANSI fallback is opt-in; normal Niki launches retain RGB tokens."""
     from unittest.mock import MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import NIKI_DARK
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import NIKI_DARK
 
     monkeypatch.delenv("NIKI_COLOR_DEPTH", raising=False)
     app = NikiApp(agent=MagicMock(), thread_id="niki-rgb")
@@ -122,7 +122,7 @@ def test_niki_default_theme_keeps_measured_rgb_palette(
 
 def test_v13_the_ascii_glyph_set_contains_no_non_ascii() -> None:
     """V13: the fallback set must be usable on a terminal that cannot show more."""
-    from deepagents_code.config import ASCII_GLYPHS, Glyphs
+    from niki_agent.config import ASCII_GLYPHS, Glyphs
 
     offenders = []
     for field in dataclasses.fields(Glyphs):
@@ -142,7 +142,7 @@ def test_v13_every_glyph_has_a_distinct_unicode_counterpart() -> None:
     character would make, say, a selected option indistinguishable from an
     unselected one.
     """
-    from deepagents_code.config import ASCII_GLYPHS, UNICODE_GLYPHS, Glyphs
+    from niki_agent.config import ASCII_GLYPHS, UNICODE_GLYPHS, Glyphs
 
     blank = []
     for field in dataclasses.fields(Glyphs):
@@ -166,7 +166,7 @@ def test_v13_niki_ships_no_hardcoded_unicode_in_its_own_source() -> None:
     `get_glyphs()`"). The fork has to hold to the same bar, otherwise Niki would
     be the thing that breaks on an ASCII terminal.
     """
-    from deepagents_code.niki import theme as niki_theme
+    from niki_agent.niki import theme as niki_theme
 
     # `motion.py` is the one place Niki *defines* glyphs -- the same
     # relationship `theme.py` has to colours. Exempting it here is narrow and

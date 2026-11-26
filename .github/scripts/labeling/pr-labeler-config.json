@@ -220,11 +220,11 @@
     },
     {
       "label": "topic:skills",
-      "prefix": "libs/code/deepagents_code/skills/"
+      "prefix": "libs/code/niki_agent/skills/"
     },
     {
       "label": "topic:skills",
-      "prefix": "libs/code/deepagents_code/built_in_skills/"
+      "prefix": "libs/code/niki_agent/built_in_skills/"
     },
     {
       "label": "topic:mcp",
@@ -232,7 +232,7 @@
     },
     {
       "label": "topic:mcp",
-      "prefix": "libs/code/deepagents_code/mcp_providers/"
+      "prefix": "libs/code/niki_agent/mcp_providers/"
     },
     {
       "label": "topic:models",

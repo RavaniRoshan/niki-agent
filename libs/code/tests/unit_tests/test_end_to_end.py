@@ -1,4 +1,4 @@
-"""End-to-end unit tests for deepagents-code with fake LLM models."""
+"""End-to-end unit tests for niki-agent with fake LLM models."""
 
 import logging
 import uuid
@@ -9,8 +9,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from deepagents.backends import CompositeBackend
-from deepagents.backends.filesystem import FilesystemBackend
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
@@ -21,7 +19,9 @@ from langchain_core.tools import BaseTool, tool
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
-from deepagents_code.agent import create_cli_agent
+from niki_agent.agent import create_cli_agent
+from niki_agent.sdk.backends import CompositeBackend
+from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
 
 @tool(description="Sample tool")
@@ -89,14 +89,14 @@ def mock_settings(
 
     # Patch settings
     with (
-        patch("deepagents_code.agent.credentials") as mock_settings_obj,
-        patch("deepagents_code.agent.runtime_state") as mock_runtime_state,
+        patch("niki_agent.agent.credentials") as mock_settings_obj,
+        patch("niki_agent.agent.runtime_state") as mock_runtime_state,
         patch(
-            "deepagents_code.agent._offload_fallback_root",
+            "niki_agent.agent._offload_fallback_root",
             return_value=tmp_path / ".deepagents",
         ),
     ):
-        mock_settings_obj.user_deepagents_dir = tmp_path / "agents"
+        mock_settings_obj.user_niki_dir = tmp_path / "agents"
         mock_settings_obj.ensure_agent_dir.return_value = agent_dir
         mock_settings_obj.ensure_user_skills_dir.return_value = skills_dir
         mock_settings_obj.get_project_skills_dir.return_value = None
@@ -125,7 +125,7 @@ def mock_settings(
 
 
 class TestDeepAgentsCLIEndToEnd:
-    """Test suite for end-to-end deepagents-code functionality with fake LLM.
+    """Test suite for end-to-end niki-agent functionality with fake LLM.
 
     These invoke the graph asynchronously because that is what the CLI does:
     every production entrypoint streams (`app.py`, `tui/textual_adapter.py`,
@@ -447,7 +447,7 @@ class TestDeepAgentsCLIEndToEnd:
                 enable_ask_user=True,
             )
 
-            with caplog.at_level(logging.WARNING, logger="deepagents_code.ask_user"):
+            with caplog.at_level(logging.WARNING, logger="niki_agent.ask_user"):
                 result = await agent.ainvoke(
                     {"messages": [HumanMessage(content="Ask me something")]},
                     {"configurable": {"thread_id": str(uuid.uuid4())}},

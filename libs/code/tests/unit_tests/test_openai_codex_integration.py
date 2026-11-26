@@ -1,4 +1,4 @@
-"""Unit tests for `deepagents_code.integrations.openai_codex`.
+"""Unit tests for `niki_agent.integrations.openai_codex`.
 
 Covers status detection, build-model wiring, and the orchestration of the
 browser-loopback OAuth flow without ever hitting the network or opening a
@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from deepagents_code.integrations import openai_codex
-from deepagents_code.model_config import (
+from niki_agent.integrations import openai_codex
+from niki_agent.model_config import (
     CODEX_PROVIDER,
     ProviderAuthSource,
     ProviderAuthState,

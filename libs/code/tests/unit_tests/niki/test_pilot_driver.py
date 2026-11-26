@@ -16,7 +16,7 @@ import pytest
 if TYPE_CHECKING:
     from textual.app import App
 
-from deepagents_code.app import DeepAgentsApp
+from niki_agent.app import DeepAgentsApp
 
 
 def _app() -> DeepAgentsApp:

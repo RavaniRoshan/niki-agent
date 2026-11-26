@@ -12,7 +12,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 ACTION_PATH = ROOT / "action.yml"
-MAIN_PATH = ROOT / "libs" / "code" / "deepagents_code" / "main.py"
+MAIN_PATH = ROOT / "libs" / "code" / "niki_agent" / "main.py"
 
 EXPECTED_DCODE_INPUT_FLAGS = {
     "agent_name": ("--agent",),

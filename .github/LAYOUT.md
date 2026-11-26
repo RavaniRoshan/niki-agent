@@ -1,103 +1,31 @@
 # `.github` layout
 
-Quick map of CI/automation files in this folder.
+One product, one pipeline. Every workflow below is live.
 
-## Top level
-
-| Path | Purpose |
+| Workflow | What it does |
 | --- | --- |
-| `workflows/` | GitHub Actions workflows (entrypoints and reusable callers) |
-| `actions/` | Local composite actions consumed by workflows |
-| `scripts/` | Helper scripts invoked by workflows, plus their tests |
-| `ISSUE_TEMPLATE/` | Issue forms |
-| `PULL_REQUEST_TEMPLATE.md` | Default PR body template |
-| `CODEOWNERS` | Review routing for paths in this tree |
-| `dependabot.yml` | Dependabot update groups |
-| `LABELS.md` | Label taxonomy: prefixes, who applies each label, what reads it |
-| `RELEASING.md` | Release-please / publish process |
-| `SECRETS.md` | Non-`GITHUB_TOKEN` CI credential inventory (names and scopes only) |
-| `images/` | Static assets referenced by workflows or docs |
+| `ci.yml` | Runs `make check` in `libs/code`; publishes the aggregate **✅ CI Success** check. |
+| `niki-release.yml` | On a `v*` tag or manual dispatch, builds the wheel on Linux/macOS/Windows and publishes a GitHub Release. |
+| `pr_lint.yml` | Validates Conventional Commits titles and the allowed scope list. |
+| `pr_lint_trailer.yml` | Checks the required commit trailer. |
+| `branch_name_check.yml` | Enforces `<user>/<scope>/<description>` branch names. |
+| `block_fork_main_prs.yml` | Blocks PRs whose head ref is a fork's `main`/`master`. |
+| `markdown_file_check.yml` | Validates Markdown files. |
+| `pr_labeler.yml` | Applies labels from changed paths. |
+| `pr_scope_file_check.yml` | Keeps a PR's changed paths inside its declared scope. |
+| `require_issue_link.yml` | Requires an issue link on external PRs. |
+| `openwiki-update.yml` | Refreshes the generated `openwiki/` index. |
+| `close_old_prs.yml`, `close_unchecked_issues.yml`, `keep_open_on_comment.yml`, `waiting_on_author*.yml`, `reopen_on_assignment.yml`, `clear_pending_deletion.yml`, `sync_priority_labels.yml`, `sync_topic_labels.yml`, `ripgrep_timeout_comment.yml`, `tag-external-issues.yml` | Housekeeping automation inherited from the upstream repository. |
 
-Repository-wide CI conventions live in root [`AGENTS.md`](../AGENTS.md). The partner onboarding checklist lives in [`libs/partners/AGENTS.md`](../libs/partners/AGENTS.md).
+## Scripts
 
-## Workflows (`workflows/`)
+- `.github/scripts/checks/` — repo gates invoked by `make check`:
+  `check_version_equality.py`, `check_extras_sync.py`, and the lockfile helper.
+- `.github/scripts/release/` — release-note and freshness helpers. The
+  release-please fan-out scripts are retained for history but are no longer
+  wired to a workflow.
+- `.github/scripts/labeling/` — PR label and scope helpers.
 
-- **Entry workflows** (no leading underscore) run on events such as `pull_request`, `push`, `schedule`, or `workflow_dispatch`.
-- **Reusable workflows** are named `_*.yml` (for example `_lint.yml`, `_test.yml`, `_eval.yml`) and are called from entry workflows via `workflow_call`.
-- Prefer extending an existing reusable workflow over pasting setup/checkout/`uv` boilerplate into a new entry file.
+## Branching
 
-Credential placement rules are in [`SECRETS.md`](./SECRETS.md). Release wiring is in [`RELEASING.md`](./RELEASING.md).
-
-### Labeling workflows
-
-- `pr_labeler.yml` — unified PR labeler: size, title-derived change type and breaking marker, package/integration, org provenance, contributor tier.
-- `pr_labeler_backfill.yml` — manual backfill of those labels on open PRs.
-- `auto-label-by-package.yml` — applies `package:*`/`integration:*` to issues from the form's Area section.
-- `tag-external-issues.yml` — applies `org:external`/`org:internal` to issues, plus the contributor tier.
-- `sync_priority_labels.yml` — copies `priority:*` from linked issues onto PRs.
-
-The label taxonomy — the `type:`/`package:`/`topic:`/`integration:`/`org:`/
-`priority:`/`size:`/`triage:`/`auto:`/`ci:` prefixes, who applies each label and
-which gate reads it — is in [`LABELS.md`](./LABELS.md).
-
-The two PR labelers also appear in [`RELEASING.md`](./RELEASING.md#ci-guardrails-around-releases) because the release guardrails section lists every check a PR may hit; the labelers' output does not drive release gating. The two issue labelers are not release-gated either.
-
-### PR gate workflows
-
-Blocking pre-merge checks that read PR metadata and fail until it is fixed or a
-bypass label is applied. They consume labels rather than apply them.
-
-- `pr_scope_file_check.yml` — fails when the PR title's package scope does not cover the package dirs it changes; bypass with `ci:allow-scope-mismatch`.
-- `markdown_file_check.yml` — fails non-`docs` PRs that add Markdown files; bypass with `ci:ack-markdown`.
-- `project_readme_check.yml` — fails non-`docs` PRs that edit a project README; bypass with `ci:ack-readme`.
-
-None of these gate merges on their own — each must be added to the branch's
-required status checks.
-
-## Local composite actions (`actions/`)
-
-Reusable steps shared by multiple workflows. Today this is mainly `actions/uv_setup` (Python + pinned `uv` with caching). Add a new composite action here only when two or more workflows need the same multi-step setup.
-
-## Helper scripts (`scripts/`)
-
-Production helpers are nested by domain:
-
-```text
-scripts/
-├── checks/      # repo integrity / sync checkers
-├── labeling/    # PR/issue labeling and triage automation
-├── release/     # release-please guards, notes, pin checks
-└── tests/       # tests for the helpers above (and some workflow contracts)
-```
-
-### Placement rules
-
-1. **Put new helpers in an existing domain folder** when they clearly belong there.
-2. **Add a domain folder** only for a sustained new area (not a one-off script). Keep the name short and topic-style like the neighbors.
-3. Prefer plain modules invoked with `python .github/scripts/<domain>/<script>.py` (or `node …`) from workflow steps. Avoid inventing a package install story under `.github/`.
-4. Keep secrets out of scripts; read them from the environment the workflow injects.
-
-### Tests (`scripts/tests/`)
-
-Tests mirror top-level layout:
-
-```text
-scripts/<domain>/<name>.py
-scripts/tests/<domain>/test_<name>.py
-```
-
-Special cases:
-
-| Location | What goes there |
-| --- | --- |
-| `scripts/tests/workflows/` | Contract tests over workflow/action YAML (job graphs, options matrices, secret scoping, root `action.yml`) — not a production `scripts/workflows/` tree |
-| `scripts/tests/conftest.py` | Shared pytest path setup so domain helpers import without packaging |
-
-`conftest.py` puts each domain directory (`checks`, `labeling`, `release`) on `sys.path`. New domains must be added there if their tests import modules by bare filename the same way.
-
-## Related docs
-
-- [`RELEASING.md`](./RELEASING.md) — version branches, release-please, fan-out guards, publishing
-- [`SECRETS.md`](./SECRETS.md) — secret/variable names and environment scopes
-- [`../AGENTS.md`](../AGENTS.md) — monorepo conventions and PR title scopes
-- [`../libs/partners/AGENTS.md`](../libs/partners/AGENTS.md) — adding a new partner to CI
+The default branch is `niki-agent`. There is no `main`.

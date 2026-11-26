@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NotRequired
 
-from deepagents.middleware._utils import append_to_system_message
+from niki_agent.sdk.middleware._utils import append_to_system_message
 from langchain.agents.middleware.types import (
     AgentMiddleware,
     AgentState,
@@ -217,7 +217,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
 
     Example:
         ```python
-        from deepagents import create_deep_agent
+        from niki_agent.sdk import create_deep_agent
         from langchain_quickjs import CodeInterpreterMiddleware
 
         agent = create_deep_agent(

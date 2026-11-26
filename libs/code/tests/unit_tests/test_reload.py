@@ -12,28 +12,28 @@ from unittest.mock import AsyncMock, MagicMock
 import dotenv as _dotenv_module
 import pytest
 
-from deepagents_code import _env_vars
-from deepagents_code.config import Credentials, runtime_state
-from deepagents_code.skills.load import ExtendedSkillMetadata
+from niki_agent import _env_vars
+from niki_agent.config import Credentials, runtime_state
+from niki_agent.skills.load import ExtendedSkillMetadata
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Mapping
     from pathlib import Path
 
-    from deepagents_code.app import _PluginFingerprint
-    from deepagents_code.configuration.types import TomlSnapshot
-    from deepagents_code.plugins.models import PluginInstance
-    from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
-    from deepagents_code.tui.modals.plugin_manager.models import PluginManagerResult
+    from niki_agent.app import _PluginFingerprint
+    from niki_agent.configuration.types import TomlSnapshot
+    from niki_agent.plugins.models import PluginInstance
+    from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
+    from niki_agent.tui.modals.plugin_manager.models import PluginManagerResult
 
 # Capture before any monkeypatching replaces it on the module.
 _real_load_dotenv = _dotenv_module.load_dotenv
 
 
 def _resolved_config_value(key: str, *, path_base: Path | None = None) -> object:
-    from deepagents_code.config import _use_extra_skills_path_base
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration.resolver import get_config_resolver
+    from niki_agent.config import _use_extra_skills_path_base
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration.resolver import get_config_resolver
 
     option = get_option(key)
     assert option is not None
@@ -53,7 +53,7 @@ def _extra_skills_dirs(*, path_base: Path | None = None) -> list[Path] | None:
 
 
 def _test_plugin_fingerprint(version: str) -> _PluginFingerprint:
-    from deepagents_code.app import _PluginFingerprint
+    from niki_agent.app import _PluginFingerprint
 
     return _PluginFingerprint(version=version, manifest=None, components=())
 
@@ -66,20 +66,20 @@ async def _check_plugin_reload(screen: PluginManagerScreen) -> bool | None:
 
 _RELOAD_ENV_KEYS = (
     "OPENAI_API_KEY",
-    "DEEPAGENTS_CODE_OPENAI_API_KEY",
+    "NIKI_OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
-    "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
+    "NIKI_ANTHROPIC_API_KEY",
     "GOOGLE_API_KEY",
-    "DEEPAGENTS_CODE_GOOGLE_API_KEY",
+    "NIKI_GOOGLE_API_KEY",
     "NVIDIA_API_KEY",
-    "DEEPAGENTS_CODE_NVIDIA_API_KEY",
+    "NIKI_NVIDIA_API_KEY",
     "TAVILY_API_KEY",
-    "DEEPAGENTS_CODE_TAVILY_API_KEY",
+    "NIKI_TAVILY_API_KEY",
     "GOOGLE_CLOUD_PROJECT",
-    "DEEPAGENTS_CODE_GOOGLE_CLOUD_PROJECT",
-    "DEEPAGENTS_CODE_LANGSMITH_PROJECT",
-    "DEEPAGENTS_CODE_SHELL_ALLOW_LIST",
-    "DEEPAGENTS_CODE_EXTRA_SKILLS_DIRS",
+    "NIKI_GOOGLE_CLOUD_PROJECT",
+    "NIKI_LANGSMITH_PROJECT",
+    "NIKI_SHELL_ALLOW_LIST",
+    "NIKI_EXTRA_SKILLS_DIRS",
 )
 
 
@@ -107,7 +107,7 @@ class TestReloadFromEnvironment:
         )
         # Point global dotenv to a nonexistent path so it's never loaded
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH",
+            "niki_agent.config._GLOBAL_DOTENV_PATH",
             tmp_path / "nonexistent" / ".env",
         )
 
@@ -128,7 +128,7 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Readers retain the old generation until one complete swap."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-old")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-anthropic-old")
@@ -163,7 +163,7 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """A failure after candidate construction cannot publish it."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("OPENAI_API_KEY", "sk-old")
         owner = Credentials.from_environment(start_path=tmp_path)
@@ -193,14 +193,14 @@ class TestReloadFromEnvironment:
         target = tmp_path / "target"
         current.mkdir()
         target.mkdir()
-        (target / ".env").write_text("DEEPAGENTS_CODE_SHELL_ALLOW_LIST=ls\n")
+        (target / ".env").write_text("NIKI_SHELL_ALLOW_LIST=ls\n")
         credentials = Credentials.from_environment(start_path=current)
 
         changes = credentials.preview_reload_from_environment(start_path=target)
 
         assert any(change.startswith("shell_allow_list:") for change in changes)
         assert _shell_allow_list() is None
-        assert "DEEPAGENTS_CODE_SHELL_ALLOW_LIST" not in os.environ
+        assert "NIKI_SHELL_ALLOW_LIST" not in os.environ
 
     def test_preview_reload_sees_shell_allow_list_toml_edit(
         self, tmp_path: Path
@@ -212,7 +212,7 @@ class TestReloadFromEnvironment:
         the edit, breaking the preview/apply contract. The preview resolves
         the user tier from a fresh file read instead.
         """
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         credentials = Credentials.from_environment(start_path=tmp_path)
@@ -228,7 +228,7 @@ class TestReloadFromEnvironment:
         self, tmp_path: Path
     ) -> None:
         """A preview and accepted reload use the same fresh skill roots."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         skills_dir = tmp_path / "external-skills"
         skills_dir.mkdir()
@@ -253,7 +253,7 @@ class TestReloadFromEnvironment:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A cwd-switch reload interprets skill roots from the target project."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -298,7 +298,7 @@ class TestReloadFromEnvironment:
         reloaded. No changes detected." They edited the file a moment ago and
         would have no way to tell the edit was rejected.
         """
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -316,7 +316,7 @@ class TestReloadFromEnvironment:
 
     def test_preview_reports_an_unparseable_user_config(self, tmp_path: Path) -> None:
         """The preview reports its own read, so accept/decline agree with it."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -333,7 +333,7 @@ class TestReloadFromEnvironment:
         self, tmp_path: Path
     ) -> None:
         """A healthy file reports changes only -- no spurious notice."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -374,7 +374,7 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """One reload must use one managed-policy file generation."""
-        from deepagents_code.configuration import service
+        from niki_agent.configuration import service
 
         credentials = Credentials.from_environment(start_path=tmp_path)
         original_load = service._load_managed
@@ -461,11 +461,11 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Reload should update parsed shell allow-list values."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "ls,cat")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "ls,cat")
         credentials = Credentials.from_environment(start_path=tmp_path)
         assert _shell_allow_list() == ["ls", "cat"]
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "ls,grep")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "ls,grep")
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
         assert _shell_allow_list() == ["ls", "grep"]
@@ -475,14 +475,14 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Reloads retain the session-scoped CLI allow-list winner."""
-        from deepagents_code.configuration.provider import CliProvider
-        from deepagents_code.configuration.resolver import install_cli_provider
+        from niki_agent.configuration.provider import CliProvider
+        from niki_agent.configuration.resolver import install_cli_provider
 
         install_cli_provider(CliProvider({"shell_allow_list": "ls,cat"}))
         credentials = Credentials.from_environment(start_path=tmp_path)
         assert _shell_allow_list() == ["ls", "cat"]
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "grep")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "grep")
         preview = credentials.preview_reload_from_environment(start_path=tmp_path)
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
@@ -512,7 +512,7 @@ class TestReloadFromEnvironment:
         global_env = tmp_path / "global" / ".env"
         global_env.parent.mkdir()
         global_env.write_text("OPENAI_API_KEY=sk-global\n")
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
 
         project_env = tmp_path / ".env"
         project_env.write_text("ANTHROPIC_API_KEY=sk-project\n")
@@ -541,15 +541,15 @@ class TestReloadFromEnvironment:
         broken = MagicMock()
         msg = "permission denied"
         broken.is_file.side_effect = OSError(msg)
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", broken)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", broken)
 
         project_env = tmp_path / ".env"
         project_env.write_text("OPENAI_API_KEY=sk-fallback\n")
 
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_READ_PROJECT_DOTENV", raising=False)
+        monkeypatch.delenv("NIKI_READ_PROJECT_DOTENV", raising=False)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config"):
             credentials.reload_from_environment(start_path=tmp_path)
 
         assert any(
@@ -565,14 +565,14 @@ class TestReloadFromEnvironment:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """OSError from the dotenv parser itself is caught."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         credentials = Credentials.from_environment(start_path=tmp_path)
 
         global_env = tmp_path / "global" / ".env"
         global_env.parent.mkdir()
         global_env.write_text("KEY=val\n")
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
 
         project_env = tmp_path / ".env"
         project_env.write_text("OPENAI_API_KEY=sk-ok\n")
@@ -593,7 +593,7 @@ class TestReloadFromEnvironment:
 
         monkeypatch.setattr(config_mod, "_dotenv_values_from", _fail_on_global)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config"):
             credentials.reload_from_environment(start_path=tmp_path)
 
         # The unreadable global file must be attempted before project loading.
@@ -609,7 +609,7 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Project `.env` must not inject keys that alter subprocess startup."""
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text(
@@ -639,7 +639,7 @@ class TestReloadFromEnvironment:
             "DEEPAGENTS_INHERITED_PYTHONPATH=/tmp/evil\n"
             'DEEPAGENTS_USER_LANGSMITH_ENV={"launch": {}, "user": {}}\n'
             "deepagents_user_langsmith_env=lowercase-spelling\n"
-            "DEEPAGENTS_HOME=/tmp/attacker-profile\n"
+            "NIKI_HOME=/tmp/attacker-profile\n"
             "OPENAI_API_KEY=sk-ok\n"
         )
         for key in (
@@ -667,7 +667,7 @@ class TestReloadFromEnvironment:
             "WINDIR",
             "DEEPAGENTS_INHERITED_PYTHONPATH",
             "DEEPAGENTS_USER_LANGSMITH_ENV",
-            "DEEPAGENTS_HOME",
+            "NIKI_HOME",
             "OPENAI_API_KEY",
         ):
             monkeypatch.delenv(key, raising=False)
@@ -704,29 +704,29 @@ class TestReloadFromEnvironment:
         assert "DEEPAGENTS_INHERITED_PYTHONPATH" not in os.environ
         assert "DEEPAGENTS_USER_LANGSMITH_ENV" not in os.environ
         assert "deepagents_user_langsmith_env" not in os.environ
-        assert "DEEPAGENTS_HOME" not in os.environ
+        assert "NIKI_HOME" not in os.environ
         assert os.environ["OPENAI_API_KEY"] == "sk-ok"
 
     def test_global_dotenv_cannot_set_deepagents_home(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """The global dotenv cannot replace the launch-selected trust root."""
-        from deepagents_code._paths import get_deepagents_home
-        from deepagents_code.config import _load_dotenv
+        from niki_agent._paths import get_deepagents_home
+        from niki_agent.config import _load_dotenv
 
         global_dir = tmp_path / "global"
         global_dir.mkdir()
         global_env = global_dir / ".env"
-        global_env.write_text("DEEPAGENTS_HOME=/tmp/attacker-profile\n")
+        global_env.write_text("NIKI_HOME=/tmp/attacker-profile\n")
         isolated = tmp_path / "isolated"
         isolated.mkdir()
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
-        monkeypatch.delenv("DEEPAGENTS_HOME", raising=False)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.delenv("NIKI_HOME", raising=False)
         captured = get_deepagents_home()
 
         _load_dotenv(start_path=isolated)
 
-        assert "DEEPAGENTS_HOME" not in os.environ
+        assert "NIKI_HOME" not in os.environ
         assert get_deepagents_home() == captured
 
     def test_project_dotenv_denies_lowercase_git_config_keys(
@@ -741,7 +741,7 @@ class TestReloadFromEnvironment:
         startup detection. On POSIX the lowercase spelling is inert (git reads
         only the canonical case), so denying it there is harmless.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text(
@@ -790,7 +790,7 @@ class TestReloadFromEnvironment:
         `~/.deepagents/.env` still loads — disabling is scoped to the untrusted,
         repo-traveling file, not the user's own global defaults.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text("GIT_CONFIG_COUNT=1\nPROJECT_ONLY_KEY=project-value\n")
@@ -798,13 +798,13 @@ class TestReloadFromEnvironment:
         global_dir.mkdir()
         global_env = global_dir / ".env"
         global_env.write_text("GLOBAL_ONLY_KEY=global-value\n")
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
         for key in ("GIT_CONFIG_COUNT", "PROJECT_ONLY_KEY", "GLOBAL_ONLY_KEY"):
             monkeypatch.delenv(key, raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_READ_PROJECT_DOTENV", raising=False)
+        monkeypatch.delenv("NIKI_READ_PROJECT_DOTENV", raising=False)
 
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.resolve_read_project_dotenv",
+            "niki_agent.config_manifest.resolve_read_project_dotenv",
             lambda **_kw: False,
         )
 
@@ -819,27 +819,27 @@ class TestReloadFromEnvironment:
     ) -> None:
         """A project `.env` cannot inject the toggle that skips it.
 
-        `DEEPAGENTS_CODE_READ_PROJECT_DOTENV` is denied from every `.env` (the
+        `NIKI_READ_PROJECT_DOTENV` is denied from every `.env` (the
         `_DOTENV_DENIED_ENV_KEYS` set), so a hostile project file cannot pin it
         true and block the trusted global file from opting out via
         first-write-wins.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text(
-            "DEEPAGENTS_CODE_READ_PROJECT_DOTENV=1\nPROJECT_ONLY_KEY=project-value\n"
+            "NIKI_READ_PROJECT_DOTENV=1\nPROJECT_ONLY_KEY=project-value\n"
         )
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH",
+            "niki_agent.config._GLOBAL_DOTENV_PATH",
             tmp_path / "nonexistent" / ".env",
         )
-        monkeypatch.delenv("DEEPAGENTS_CODE_READ_PROJECT_DOTENV", raising=False)
+        monkeypatch.delenv("NIKI_READ_PROJECT_DOTENV", raising=False)
         monkeypatch.delenv("PROJECT_ONLY_KEY", raising=False)
 
         _load_dotenv(start_path=tmp_path)
 
-        assert "DEEPAGENTS_CODE_READ_PROJECT_DOTENV" not in os.environ
+        assert "NIKI_READ_PROJECT_DOTENV" not in os.environ
         assert os.environ["PROJECT_ONLY_KEY"] == "project-value"
 
     def test_global_dotenv_read_project_dotenv_false_protects_startup(
@@ -848,11 +848,11 @@ class TestReloadFromEnvironment:
         """The trusted global `.env` opt-out is honored for the current startup.
 
         The toggle is read from the global file *before* the project file is
-        touched, so `DEEPAGENTS_CODE_READ_PROJECT_DOTENV=false` in
+        touched, so `NIKI_READ_PROJECT_DOTENV=false` in
         `~/.deepagents/.env` skips the untrusted project `.env` even though the
         global file is otherwise loaded after it.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_dir = tmp_path / "project"
         project_dir.mkdir()
@@ -860,13 +860,13 @@ class TestReloadFromEnvironment:
         global_dir = tmp_path / "global"
         global_dir.mkdir()
         (global_dir / ".env").write_text(
-            "DEEPAGENTS_CODE_READ_PROJECT_DOTENV=false\nGLOBAL_ONLY_KEY=global-value\n"
+            "NIKI_READ_PROJECT_DOTENV=false\nGLOBAL_ONLY_KEY=global-value\n"
         )
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH", global_dir / ".env"
+            "niki_agent.config._GLOBAL_DOTENV_PATH", global_dir / ".env"
         )
         for key in (
-            "DEEPAGENTS_CODE_READ_PROJECT_DOTENV",
+            "NIKI_READ_PROJECT_DOTENV",
             "PROJECT_ONLY_KEY",
             "GLOBAL_ONLY_KEY",
         ):
@@ -877,7 +877,7 @@ class TestReloadFromEnvironment:
         assert "PROJECT_ONLY_KEY" not in os.environ
         # The toggle's env var is denied from every `.env`, so the global file's
         # own copy is consumed for the decision but not injected into os.environ.
-        assert "DEEPAGENTS_CODE_READ_PROJECT_DOTENV" not in os.environ
+        assert "NIKI_READ_PROJECT_DOTENV" not in os.environ
         # The global file's other values still load.
         assert os.environ["GLOBAL_ONLY_KEY"] == "global-value"
 
@@ -891,17 +891,17 @@ class TestReloadFromEnvironment:
         with a `.env` and pre-approve their own servers, defeating the whole
         point of the trust gate. Ordinary project vars are still loaded.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text(
             f"{_env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS}=exfil\n"
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS=\n"
+            "NIKI_DISABLED_PROJECT_MCP_SERVERS=\n"
             "OPENAI_API_KEY=sk-ok\n"
         )
         for key in (
             _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS",
+            "NIKI_DISABLED_PROJECT_MCP_SERVERS",
             "OPENAI_API_KEY",
         ):
             monkeypatch.delenv(key, raising=False)
@@ -909,7 +909,7 @@ class TestReloadFromEnvironment:
         _load_dotenv(start_path=tmp_path)
 
         assert _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS not in os.environ
-        assert "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS" not in os.environ
+        assert "NIKI_DISABLED_PROJECT_MCP_SERVERS" not in os.environ
         # A normal project var is unaffected — only the trust-list keys are gated.
         assert os.environ["OPENAI_API_KEY"] == "sk-ok"
 
@@ -925,24 +925,24 @@ class TestReloadFromEnvironment:
         would fail here rather than silently breaking the user's own global
         pre-approval path.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         global_dir = tmp_path / "global"
         global_dir.mkdir()
         global_env = global_dir / ".env"
         global_env.write_text(
             f"{_env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS}=docs\n"
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS=blocked\n"
+            "NIKI_DISABLED_PROJECT_MCP_SERVERS=blocked\n"
         )
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
         # No project `.env`, so the global file is the only source.
         monkeypatch.setattr(
-            "deepagents_code.config._find_dotenv_from_start_path",
+            "niki_agent.config._find_dotenv_from_start_path",
             lambda _: None,
         )
         for key in (
             _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS",
+            "NIKI_DISABLED_PROJECT_MCP_SERVERS",
         ):
             monkeypatch.delenv(key, raising=False)
 
@@ -953,9 +953,7 @@ class TestReloadFromEnvironment:
         assert (
             os.environ.get(_env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS) == "docs"
         )
-        assert (
-            os.environ.get("DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS") == "blocked"
-        )
+        assert os.environ.get("NIKI_DISABLED_PROJECT_MCP_SERVERS") == "blocked"
 
     def test_project_dotenv_cannot_set_auto_classifier_model(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -967,7 +965,7 @@ class TestReloadFromEnvironment:
         resistance to prompt injection in the untrusted text it reads. Picking
         the classifier stays a user-level decision (THREAT_MODEL T14).
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         project_env = tmp_path / ".env"
         project_env.write_text(
@@ -993,7 +991,7 @@ class TestReloadFromEnvironment:
         scoped to the *project* `.env`, so a regression that gates the key
         unconditionally would break the user's own configuration path.
         """
-        from deepagents_code.config import _load_dotenv
+        from niki_agent.config import _load_dotenv
 
         global_dir = tmp_path / "global"
         global_dir.mkdir()
@@ -1001,9 +999,9 @@ class TestReloadFromEnvironment:
         global_env.write_text(
             f"{_env_vars.AUTO_CLASSIFIER_MODEL}=anthropic:claude-haiku-4-5\n"
         )
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
         monkeypatch.setattr(
-            "deepagents_code.config._find_dotenv_from_start_path",
+            "niki_agent.config._find_dotenv_from_start_path",
             lambda _: None,
         )
         monkeypatch.delenv(_env_vars.AUTO_CLASSIFIER_MODEL, raising=False)
@@ -1026,7 +1024,7 @@ class TestReloadFromEnvironment:
         `_preview_dotenv_environ`; keep their coverage parallel so the two copies
         cannot drift.
         """
-        from deepagents_code.config import _preview_dotenv_environ
+        from niki_agent.config import _preview_dotenv_environ
 
         project_env = tmp_path / ".env"
         project_env.write_text(
@@ -1048,24 +1046,22 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Preview allows the global `.env` (is_project=False) to set trust lists."""
-        from deepagents_code.config import _preview_dotenv_environ
+        from niki_agent.config import _preview_dotenv_environ
 
         global_env = tmp_path / "global" / ".env"
         global_env.parent.mkdir()
-        global_env.write_text("DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS=blocked\n")
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        global_env.write_text("NIKI_DISABLED_PROJECT_MCP_SERVERS=blocked\n")
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
         # No project `.env` to find, so only the global file contributes.
         monkeypatch.setattr(
-            "deepagents_code.config._find_dotenv_from_start_path",
+            "niki_agent.config._find_dotenv_from_start_path",
             lambda _: None,
         )
-        monkeypatch.delenv(
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS", raising=False
-        )
+        monkeypatch.delenv("NIKI_DISABLED_PROJECT_MCP_SERVERS", raising=False)
 
         env = _preview_dotenv_environ(start_path=tmp_path)
 
-        assert env["DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS"] == "blocked"
+        assert env["NIKI_DISABLED_PROJECT_MCP_SERVERS"] == "blocked"
 
     def test_multiple_simultaneous_changes(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -1075,7 +1071,7 @@ class TestReloadFromEnvironment:
 
         monkeypatch.setenv("OPENAI_API_KEY", "sk-new")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant")
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "ls")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "ls")
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
         assert len(changes) == 3
@@ -1085,11 +1081,11 @@ class TestReloadFromEnvironment:
     def test_prefixed_env_var_beats_canonical(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """DEEPAGENTS_CODE_ prefixed var should override canonical on reload."""
+        """NIKI_ prefixed var should override canonical on reload."""
         credentials = Credentials.from_environment(start_path=tmp_path)
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-canonical")
-        monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-override")
+        monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-override")
         credentials.reload_from_environment(start_path=tmp_path)
 
         assert credentials.anthropic_api_key == "sk-override"
@@ -1097,9 +1093,9 @@ class TestReloadFromEnvironment:
     def test_from_environment_uses_prefixed_var(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """Credentials.from_environment should honour the DEEPAGENTS_CODE_ prefix."""
+        """Credentials.from_environment should honour the NIKI_ prefix."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-canonical")
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-override")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-override")
 
         credentials = Credentials.from_environment(start_path=tmp_path)
 
@@ -1110,7 +1106,7 @@ class TestReloadFromEnvironment:
     ) -> None:
         """Google Cloud location follows the standard prefixed-env precedence."""
         monkeypatch.setenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-        monkeypatch.setenv("DEEPAGENTS_CODE_GOOGLE_CLOUD_LOCATION", "us-east5")
+        monkeypatch.setenv("NIKI_GOOGLE_CLOUD_LOCATION", "us-east5")
 
         credentials = Credentials.from_environment(start_path=tmp_path)
 
@@ -1120,10 +1116,10 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Preview env mirrors `_load_dotenv`: a shell var beats a project `.env`."""
-        from deepagents_code.config import _preview_dotenv_environ
+        from niki_agent.config import _preview_dotenv_environ
 
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH",
+            "niki_agent.config._GLOBAL_DOTENV_PATH",
             tmp_path / "nonexistent" / ".env",
         )
         (tmp_path / ".env").write_text("TEST_PREVIEW_KEY=project-value\n")
@@ -1137,13 +1133,13 @@ class TestReloadFromEnvironment:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Preview env mirrors `_load_dotenv`: project `.env` beats global `.env`."""
-        from deepagents_code.config import _preview_dotenv_environ
+        from niki_agent.config import _preview_dotenv_environ
 
         global_dir = tmp_path / "global"
         global_dir.mkdir()
         global_env = global_dir / ".env"
         global_env.write_text("TEST_PREVIEW_KEY2=global-value\n")
-        monkeypatch.setattr("deepagents_code.config._GLOBAL_DOTENV_PATH", global_env)
+        monkeypatch.setattr("niki_agent.config._GLOBAL_DOTENV_PATH", global_env)
         (tmp_path / ".env").write_text("TEST_PREVIEW_KEY2=project-value\n")
         monkeypatch.delenv("TEST_PREVIEW_KEY2", raising=False)
 
@@ -1163,7 +1159,7 @@ class TestReloadFromEnvironment:
         visibly parallel to the mutating path, and asserts the debug breadcrumb
         names the denied key (and only the key, never its value).
         """
-        from deepagents_code.config import _preview_dotenv_environ
+        from niki_agent.config import _preview_dotenv_environ
 
         denied_keys = (
             "BASH_ENV",
@@ -1184,7 +1180,7 @@ class TestReloadFromEnvironment:
         evil_value = "/tmp/evil.sh"  # test fixture value, never read
 
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH",
+            "niki_agent.config._GLOBAL_DOTENV_PATH",
             tmp_path / "nonexistent" / ".env",
         )
         dotenv_lines = [f"{key}={evil_value}\n" for key in denied_keys]
@@ -1193,7 +1189,7 @@ class TestReloadFromEnvironment:
         for key in (*denied_keys, "OPENAI_API_KEY"):
             monkeypatch.delenv(key, raising=False)
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.config"):
             env = _preview_dotenv_environ(start_path=tmp_path)
 
         for key in denied_keys:
@@ -1243,7 +1239,7 @@ class TestReloadErrorPaths:
             _fake_load_dotenv,
         )
         monkeypatch.setattr(
-            "deepagents_code.config._GLOBAL_DOTENV_PATH",
+            "niki_agent.config._GLOBAL_DOTENV_PATH",
             tmp_path / "nonexistent" / ".env",
         )
 
@@ -1251,11 +1247,11 @@ class TestReloadErrorPaths:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Malformed shell allow-list should fall back to previous value."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "ls,cat")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "ls,cat")
         credentials = Credentials.from_environment(start_path=tmp_path)
         assert _shell_allow_list() == ["ls", "cat"]
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "all,ls")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "all,ls")
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
         assert _shell_allow_list() == ["ls", "cat"]
@@ -1273,7 +1269,7 @@ class TestReloadErrorPaths:
             raise FileNotFoundError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.project_utils.find_project_root", _raise_oserror
+            "niki_agent.project_utils.find_project_root", _raise_oserror
         )
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
@@ -1285,12 +1281,12 @@ class TestReloadErrorPaths:
     ) -> None:
         """Credentials should remain consistent when one field fails to reload."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-original")
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "ls")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "ls")
         credentials = Credentials.from_environment(start_path=tmp_path)
 
         # Change API key (succeeds) + break shell allow-list (falls back)
         monkeypatch.setenv("OPENAI_API_KEY", "sk-updated")
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHELL_ALLOW_LIST", "all,ls")
+        monkeypatch.setenv("NIKI_SHELL_ALLOW_LIST", "all,ls")
         changes = credentials.reload_from_environment(start_path=tmp_path)
 
         assert credentials.openai_api_key == "sk-updated"
@@ -1306,10 +1302,10 @@ class TestReloadErrorPaths:
         `os.chdir`, so an unhandled resolution error would strand the process in
         a half-applied cwd.
         """
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         sentinel = [tmp_path / "skills"]
-        monkeypatch.setenv("DEEPAGENTS_CODE_EXTRA_SKILLS_DIRS", str(sentinel[0]))
+        monkeypatch.setenv("NIKI_EXTRA_SKILLS_DIRS", str(sentinel[0]))
         credentials = Credentials.from_environment(start_path=tmp_path)
         assert _extra_skills_dirs() == sentinel
 
@@ -1327,9 +1323,9 @@ class TestReloadErrorPaths:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """An invalid target-relative managed root cannot fall through to env."""
-        import deepagents_code.config as config_mod
-        from deepagents_code import model_config
-        from deepagents_code.configuration import service
+        import niki_agent.config as config_mod
+        from niki_agent import model_config
+        from niki_agent.configuration import service
         from unit_tests.conftest import redirect_managed_config
 
         current = tmp_path / "current"
@@ -1346,7 +1342,7 @@ class TestReloadErrorPaths:
         )
         monkeypatch.chdir(current)
         monkeypatch.setenv(
-            "DEEPAGENTS_CODE_EXTRA_SKILLS_DIRS",
+            "NIKI_EXTRA_SKILLS_DIRS",
             str(user_skills),
         )
         redirect_managed_config(monkeypatch, managed)
@@ -1393,7 +1389,7 @@ class TestReloadInputResponsiveness:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Typing should render while the detached reload task is still running."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -1430,7 +1426,7 @@ class TestReloadInputResponsiveness:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A prompt submitted before restart must wait for reload completion."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -1461,7 +1457,7 @@ class TestReloadInputResponsiveness:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A second `/reload` shares the first task rather than racing it."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -1495,7 +1491,7 @@ class TestReloadInputResponsiveness:
         self, monkeypatch: pytest.MonkeyPatch, *, restarted: bool
     ) -> None:
         """A skipped reload respawn preserves `/restart` and queued prompts."""
-        from deepagents_code.app import AppMessage, DeepAgentsApp
+        from niki_agent.app import AppMessage, DeepAgentsApp
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -1515,9 +1511,7 @@ class TestReloadInputResponsiveness:
             monkeypatch.setattr(
                 Credentials, "reload_from_environment", MagicMock(return_value=[])
             )
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
 
             task = app._schedule_reload()
             await started.wait()
@@ -1553,8 +1547,8 @@ class TestReloadInputResponsiveness:
         self, monkeypatch: pytest.MonkeyPatch, *, restart_raises: bool
     ) -> None:
         """A `/restart` requested during reload's respawn does not run twice."""
-        from deepagents_code.app import DeepAgentsApp, UserMessage, _ServerRespawnResult
-        from deepagents_code.plugins.models import PluginDiscoveryResult
+        from niki_agent.app import DeepAgentsApp, UserMessage, _ServerRespawnResult
+        from niki_agent.plugins.models import PluginDiscoveryResult
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -1593,15 +1587,13 @@ class TestReloadInputResponsiveness:
             monkeypatch.setattr(
                 Credentials, "reload_from_environment", MagicMock(return_value=[])
             )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
-            monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=()),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -1658,8 +1650,8 @@ class TestReloadSkillReport:
             discovery_ok: when `False`, simulate discovery failure
                 (preserves cache and returns `False`).
         """
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -1689,11 +1681,11 @@ async def test_reload_notifies_when_managed_policy_newly_masks_cli(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A reload-time CLI masking warning must reach the active Textual app."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.config import credentials
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.provider import CliProvider
-    from deepagents_code.configuration.resolver import install_cli_provider
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.config import credentials
+    from niki_agent.configuration import service
+    from niki_agent.configuration.provider import CliProvider
+    from niki_agent.configuration.resolver import install_cli_provider
     from unit_tests.conftest import redirect_managed_config
 
     managed = tmp_path / "managed.toml"
@@ -1751,9 +1743,9 @@ class TestReloadThemeReapply:
         Returns:
             The active theme after reload and the mounted `AppMessage` text.
         """
-        from deepagents_code import app as app_module
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent import app as app_module
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -1829,8 +1821,8 @@ class TestReloadPluginsViaReload:
         if sys.platform == "win32" or os.geteuid() == 0:
             pytest.skip("chmod-based unreadability is not enforced here")
 
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import ComponentInventory, PluginInstance
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import ComponentInventory, PluginInstance
 
         skills_root = tmp_path / "skills"
         locked = skills_root / "locked"
@@ -1866,8 +1858,8 @@ class TestReloadPluginsViaReload:
 
     def test_fingerprint_does_not_follow_symlinks(self, tmp_path: Path) -> None:
         """A nested directory symlink is recorded without scanning its target."""
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import ComponentInventory, PluginInstance
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import ComponentInventory, PluginInstance
 
         plugin_root = tmp_path / "plugin"
         skills_root = plugin_root / "skills"
@@ -1908,8 +1900,8 @@ class TestReloadPluginsViaReload:
         change: str,
     ) -> None:
         """Closing compares persisted state even when the modal reports no result."""
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import PluginDiscoveryResult
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import PluginDiscoveryResult
 
         if change == "fingerprint":
             # Same plugin id, different fingerprint: exercises the intersection
@@ -1941,11 +1933,11 @@ class TestReloadPluginsViaReload:
             return next(fingerprints)
 
         monkeypatch.setattr(
-            "deepagents_code.plugins.discover_plugins",
+            "niki_agent.plugins.discover_plugins",
             lambda: PluginDiscoveryResult(plugins=()),
         )
         monkeypatch.setattr(
-            "deepagents_code.plugins.store.load_enabled_plugin_ids",
+            "niki_agent.plugins.store.load_enabled_plugin_ids",
             lambda: next(enabled_ids),
         )
         monkeypatch.setattr(
@@ -1972,8 +1964,8 @@ class TestReloadPluginsViaReload:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A state read failure should not escape the modal dismiss callback."""
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import PluginDiscoveryResult
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import PluginDiscoveryResult
 
         discovery = MagicMock(
             side_effect=[
@@ -1987,9 +1979,9 @@ class TestReloadPluginsViaReload:
         callbacks: list[Callable[[PluginManagerResult], None]] = []
         scheduled: list[Coroutine[object, object, None]] = []
 
-        monkeypatch.setattr("deepagents_code.plugins.discover_plugins", discovery)
+        monkeypatch.setattr("niki_agent.plugins.discover_plugins", discovery)
         monkeypatch.setattr(
-            "deepagents_code.plugins.store.load_enabled_plugin_ids",
+            "niki_agent.plugins.store.load_enabled_plugin_ids",
             lambda: frozenset[str](),
         )
         monkeypatch.setattr(
@@ -2025,7 +2017,7 @@ class TestReloadPluginsViaReload:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A pre-open snapshot failure still opens the manager and warns on close."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp()
         pushed: list[PluginManagerScreen] = []
@@ -2079,7 +2071,7 @@ class TestReloadPluginsViaReload:
         result: PluginManagerResult,
     ) -> None:
         """Manager outcomes reload, defer, warn, or close without feedback."""
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp()
         callbacks: list[Callable[[PluginManagerResult], None]] = []
@@ -2143,9 +2135,9 @@ class TestReloadPluginsViaReload:
         Returns:
             The joined transcript text of all rendered app messages.
         """
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -2163,11 +2155,11 @@ class TestReloadPluginsViaReload:
 
             monkeypatch.setattr(app, "_discover_skills", _fake_discover)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=plugins),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
             monkeypatch.setattr(app, "_fingerprint_plugins", fingerprint_plugins)
@@ -2184,8 +2176,8 @@ class TestReloadPluginsViaReload:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A discovery failure degrades to a manual-retry note, not a crash."""
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = DeepAgentsApp()
         reload_hooks = AsyncMock()
@@ -2198,7 +2190,7 @@ class TestReloadPluginsViaReload:
 
             monkeypatch.setattr(app, "_discover_skills", _fake_discover)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 MagicMock(side_effect=PermissionError("unreadable plugin dir")),
             )
 
@@ -2229,9 +2221,9 @@ class TestReloadPluginsViaReload:
         expected_ids: frozenset[str],
     ) -> None:
         """A failed restart leaves the prior server's plugin status intact."""
-        from deepagents_code.app import DeepAgentsApp, _ServerRespawnResult
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp, _ServerRespawnResult
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plugin = MagicMock(plugin_id="new@tools")
         app = DeepAgentsApp()
@@ -2255,11 +2247,11 @@ class TestReloadPluginsViaReload:
             monkeypatch.setattr(app, "_restart_server_manual_result", _fake_restart)
             monkeypatch.setattr(app, "_discard_queue", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=(plugin,)),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2305,10 +2297,10 @@ class TestReloadPluginsViaReload:
         forbidden: str,
     ) -> None:
         """`mcp_server_info=None` means opposite things in these two sessions."""
-        from deepagents_code.app import DeepAgentsApp, _ServerRespawnResult
-        from deepagents_code.mcp_tools import MCPServerInfo
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp, _ServerRespawnResult
+        from niki_agent.mcp_tools import MCPServerInfo
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plugin = MagicMock(plugin_id="new@tools")
         app = DeepAgentsApp()
@@ -2337,11 +2329,11 @@ class TestReloadPluginsViaReload:
             monkeypatch.setattr(app, "_restart_server_manual_result", _fake_restart)
             monkeypatch.setattr(app, "_discard_queue", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=(plugin,)),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2358,9 +2350,9 @@ class TestReloadPluginsViaReload:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The refresh error identifies what broke; the log is not enough."""
-        from deepagents_code.app import DeepAgentsApp, _ServerRespawnResult
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp, _ServerRespawnResult
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plugin = MagicMock(plugin_id="new@tools")
         app = DeepAgentsApp()
@@ -2386,11 +2378,11 @@ class TestReloadPluginsViaReload:
             monkeypatch.setattr(app, "_restart_server_manual_result", _fake_restart)
             monkeypatch.setattr(app, "_discard_queue", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=(plugin,)),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2410,9 +2402,9 @@ class TestReloadPluginsViaReload:
         The plugin line still counts plugin MCP servers, so saying nothing
         implies the reload picked them up.
         """
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plugin = MagicMock(plugin_id="new@tools")
         app = DeepAgentsApp()
@@ -2430,11 +2422,11 @@ class TestReloadPluginsViaReload:
             monkeypatch.setattr(app, "_reload_hooks", AsyncMock())
             monkeypatch.setattr(app, "_discard_queue", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=(plugin,)),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2456,9 +2448,9 @@ class TestReloadPluginsViaReload:
         still `None`; calling that "remote" would mislabel the session mode and
         contradict the deferred start that `/reload` itself may trigger.
         """
-        from deepagents_code.app import DeepAgentsApp
-        from deepagents_code.plugins.models import PluginDiscoveryResult
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.app import DeepAgentsApp
+        from niki_agent.plugins.models import PluginDiscoveryResult
+        from niki_agent.tui.widgets.messages import AppMessage
 
         plugin = MagicMock(plugin_id="new@tools")
         app = DeepAgentsApp()
@@ -2487,11 +2479,11 @@ class TestReloadPluginsViaReload:
 
             monkeypatch.setattr(app, "run_worker", _run_worker_skip_server_start)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=(plugin,)),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2512,8 +2504,8 @@ class TestReloadPluginsViaReload:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Reload retains prompts queued while its active turn is cancelled."""
-        from deepagents_code.app import DeepAgentsApp, QueuedMessage
-        from deepagents_code.plugins.models import PluginDiscoveryResult
+        from niki_agent.app import DeepAgentsApp, QueuedMessage
+        from niki_agent.plugins.models import PluginDiscoveryResult
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -2535,11 +2527,11 @@ class TestReloadPluginsViaReload:
             monkeypatch.setattr(app, "_restart_server_manual", _fake_restart)
             monkeypatch.setattr(app, "_cancel_worker", app._discard_queue)
             monkeypatch.setattr(
-                "deepagents_code.plugins.discover_plugins",
+                "niki_agent.plugins.discover_plugins",
                 lambda: PluginDiscoveryResult(plugins=()),
             )
             monkeypatch.setattr(
-                "deepagents_code.plugins.adapters.mcp.plugin_mcp_configs",
+                "niki_agent.plugins.adapters.mcp.plugin_mcp_configs",
                 lambda _plugins: (),
             )
 
@@ -2561,7 +2553,7 @@ class TestConfigGenerationAdvancesOnlyOnReload:
 
     def test_hand_edit_is_inert_until_reload(self, tmp_path: Path) -> None:
         """A settings edit takes effect on `/reload`, not before."""
-        from deepagents_code.config import is_memory_auto_save_enabled
+        from niki_agent.config import is_memory_auto_save_enabled
 
         # `_isolate_state_dir` redirects `DEFAULT_CONFIG_PATH` here, and the
         # path is stable across this test — so the resolver cache key does not
@@ -2584,7 +2576,7 @@ class TestConfigGenerationAdvancesOnlyOnReload:
 
     def test_preview_does_not_advance_the_generation(self, tmp_path: Path) -> None:
         """A dry run must not swap the config every other reader observes."""
-        from deepagents_code.config import is_memory_auto_save_enabled
+        from niki_agent.config import is_memory_auto_save_enabled
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("[memory]\nauto_save = true\n", encoding="utf-8")
@@ -2626,12 +2618,12 @@ class TestDiagnosticDedupIsPerGeneration:
         """The same corrupt file warns once per generation, not once ever."""
         import logging
 
-        from deepagents_code import model_config
-        from deepagents_code.config_manifest import (
+        from niki_agent import model_config
+        from niki_agent.config_manifest import (
             _emit_ranked_diagnostics,
             get_option,
         )
-        from deepagents_code.configuration.resolver import get_config_resolver
+        from niki_agent.configuration.resolver import get_config_resolver
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -2644,9 +2636,7 @@ class TestDiagnosticDedupIsPerGeneration:
 
         def reload_and_count() -> int:
             resolver.reload()
-            with caplog.at_level(
-                logging.WARNING, logger="deepagents_code.config_manifest"
-            ):
+            with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
                 caplog.clear()
                 _emit_ranked_diagnostics(option, resolver.get(option))
             return len(caplog.records)
@@ -2661,12 +2651,12 @@ class TestDiagnosticDedupIsPerGeneration:
         """Within a generation the sweep stays deduplicated."""
         import logging
 
-        from deepagents_code import model_config
-        from deepagents_code.config_manifest import (
+        from niki_agent import model_config
+        from niki_agent.config_manifest import (
             _emit_ranked_diagnostics,
             get_option,
         )
-        from deepagents_code.configuration.resolver import get_config_resolver
+        from niki_agent.configuration.resolver import get_config_resolver
 
         config_path = model_config.DEFAULT_CONFIG_PATH
         config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -2678,7 +2668,7 @@ class TestDiagnosticDedupIsPerGeneration:
         config_path.write_text("[shell\n", encoding="utf-8")
         resolver.reload()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
             caplog.clear()
             for _ in range(5):
                 _emit_ranked_diagnostics(option, resolver.get(option))
@@ -2694,7 +2684,7 @@ def test_managed_reload_block_is_found_behind_another_change_entry() -> None:
     all four call sites depend on the notice staying first, so one entry
     prepended ahead of it would report a refused refresh as a successful one.
     """
-    from deepagents_code.config import (
+    from niki_agent.config import (
         MANAGED_RELOAD_BLOCKED_PREFIX,
         managed_reload_block,
     )

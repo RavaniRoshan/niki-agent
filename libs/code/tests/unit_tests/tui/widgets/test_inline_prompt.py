@@ -10,12 +10,12 @@ import pytest
 from textual.app import App
 from textual.events import Key, Paste
 
-from deepagents_code import input as input_module
-from deepagents_code.tui.widgets import (
+from niki_agent import input as input_module
+from niki_agent.tui.widgets import (
     _inline_prompt as inline_prompt_module,
     _paste_textarea as paste_textarea_module,
 )
-from deepagents_code.tui.widgets._inline_prompt import (
+from niki_agent.tui.widgets._inline_prompt import (
     MEDIA_UNSUPPORTED_TOAST_PREFIX,
     InlinePromptTextArea,
     _media_unsupported_toast,

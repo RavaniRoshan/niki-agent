@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.domain.events import (
+from niki_agent.app import DeepAgentsApp
+from niki_agent.domain.events import (
     GoalProgressEvent,
     GoalProgressStatus,
     RunEvent,
     RunEventKind,
 )
-from deepagents_code.tui.textual_adapter import TextualUIAdapter
-from deepagents_code.tui.widgets.goal_status import GoalStatusPanel
+from niki_agent.tui.textual_adapter import TextualUIAdapter
+from niki_agent.tui.widgets.goal_status import GoalStatusPanel
 
 
 def _event(

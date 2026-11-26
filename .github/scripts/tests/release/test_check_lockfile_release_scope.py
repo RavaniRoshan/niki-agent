@@ -98,7 +98,7 @@ def test_mixed_lock_and_source_in_dependent_not_flagged() -> None:
 def test_multi_component_real_files_flagged() -> None:
     """A bump-worthy PR that edits real files in 2+ components is multi-component."""
     changed = [
-        "libs/code/deepagents_code/models.py",
+        "libs/code/niki_agent/models.py",
         "libs/code/pyproject.toml",
         "libs/code/uv.lock",
         "libs/acp/pyproject.toml",
@@ -119,7 +119,7 @@ def test_multi_component_real_files_flagged() -> None:
 def test_multi_component_plus_lockfile_only_dependent() -> None:
     """Real multi-component edits and a lockfile-only dependent are both reported."""
     changed = [
-        "libs/code/deepagents_code/models.py",
+        "libs/code/niki_agent/models.py",
         "libs/code/pyproject.toml",
         "libs/acp/pyproject.toml",
         "libs/partners/quickjs/uv.lock",
@@ -132,7 +132,7 @@ def test_multi_component_plus_lockfile_only_dependent() -> None:
 def test_single_package_real_files_not_multi() -> None:
     """One package with real files does not trip multi-component, even with many files."""
     changed = [
-        "libs/code/deepagents_code/models.py",
+        "libs/code/niki_agent/models.py",
         "libs/code/pyproject.toml",
         "libs/code/uv.lock",
         "README.md",

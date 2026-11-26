@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.niki.motion import (
+from niki_agent.niki.motion import (
     CADENCE,
     CADENCE_ACTIVE,
     CADENCE_CALM,
@@ -116,6 +116,7 @@ def test_reduced_motion_is_honoured(
 ) -> None:
     """V10: a user who needs stillness must be able to ask for it."""
     monkeypatch.delenv("NO_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
     monkeypatch.setenv("NIKI_REDUCED_MOTION", value)
     assert reduced_motion() is True
 
@@ -125,6 +126,7 @@ def test_no_motion_is_honoured_like_no_color(
 ) -> None:
     """The well-known convention, accepted for the same reason `NO_COLOR` is."""
     monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
     monkeypatch.setenv("NO_MOTION", "1")
     assert reduced_motion() is True
 
@@ -132,6 +134,31 @@ def test_no_motion_is_honoured_like_no_color(
 def test_motion_is_on_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
     monkeypatch.delenv("NO_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
+    assert reduced_motion() is False
+
+
+@pytest.mark.parametrize(
+    "value", ["0", "off", "false", "no", "none", "disabled", " OFF "]
+)
+def test_niki_motion_off_is_honoured(
+    value: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The documented `NIKI_MOTION=off` switch stops animation."""
+    monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
+    monkeypatch.delenv("NO_MOTION", raising=False)
+    monkeypatch.setenv("NIKI_MOTION", value)
+    assert reduced_motion() is True
+
+
+@pytest.mark.parametrize("value", ["1", "on", "true"])
+def test_niki_motion_on_leaves_animation_running(
+    value: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An explicit on value must not be mistaken for an off switch."""
+    monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
+    monkeypatch.delenv("NO_MOTION", raising=False)
+    monkeypatch.setenv("NIKI_MOTION", value)
     assert reduced_motion() is False
 
 
@@ -140,6 +167,7 @@ def test_reduced_motion_yields_one_static_frame(
 ) -> None:
     """Motion reduces; the indicator must not disappear with it."""
     monkeypatch.setenv("NIKI_REDUCED_MOTION", "1")
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
     monkeypatch.delenv("UI_CHARSET_MODE", raising=False)
 
     frames = spinner_frames_for_this_terminal()
@@ -154,6 +182,8 @@ def test_ascii_charset_yields_ascii_frames(
 ) -> None:
     """A forced ASCII charset must never receive the quadrant motif."""
     monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_GLYPHS", raising=False)
     monkeypatch.setenv("UI_CHARSET_MODE", "ascii")
 
     frames = spinner_frames_for_this_terminal()
@@ -161,6 +191,23 @@ def test_ascii_charset_yields_ascii_frames(
     assert charset_is_ascii() is True
     assert all(ord(f) < 128 for f in frames)
     assert frames[0] == NIKI_SPINNER_FRAMES_ASCII[0]
+
+
+def test_niki_glyphs_ascii_forces_ascii_frames(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The documented `NIKI_GLYPHS=ascii` switch reaches the spinner."""
+    monkeypatch.delenv("NIKI_REDUCED_MOTION", raising=False)
+    monkeypatch.delenv("NIKI_MOTION", raising=False)
+    monkeypatch.delenv("NO_MOTION", raising=False)
+    monkeypatch.delenv("UI_CHARSET_MODE", raising=False)
+    monkeypatch.setenv("NIKI_GLYPHS", "ascii")
+
+    frames = spinner_frames_for_this_terminal()
+
+    assert charset_is_ascii() is True
+    assert all(ord(f) < 128 for f in frames)
+    assert frames == NIKI_SPINNER_FRAMES_ASCII
 
 
 def test_reduced_motion_and_ascii_compose(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -179,7 +226,7 @@ async def test_reduced_motion_does_not_add_idle_repaint_cost(
     """S4 and V10 must not fight: reduced motion is not an excuse for motion."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
     from unit_tests.niki.perf_probe import count_renders
 
     monkeypatch.setenv("NIKI_REDUCED_MOTION", "1")
@@ -201,7 +248,7 @@ def test_the_motion_module_hardcodes_no_color() -> None:
     import re
     from pathlib import Path
 
-    import deepagents_code.niki.motion as module
+    import niki_agent.niki.motion as module
 
     text = Path(module.__file__).read_text(encoding="utf-8")
     # Match the same rule as `test_lint_rules.py`: hex literals, not every `#`.
@@ -214,10 +261,10 @@ def test_the_motion_module_hardcodes_no_color() -> None:
 def test_niki_glyphs_are_only_installed_for_niki() -> None:
     """The glyph rebind must not happen at package import.
 
-    If it did, importing `deepagents_code.niki` would change `dcode`'s glyphs in
+    If it did, importing `niki_agent.niki` would change `dcode`'s glyphs in
     the same process, and upstream's tests would see Niki's frames.
     """
-    import deepagents_code.config as config_module
+    import niki_agent.config as config_module
 
     # Resolving Niki's glyphs must not mutate the shared cache by itself.
     before = getattr(config_module, "_glyphs_cache", None)

@@ -14,14 +14,14 @@ from textual.containers import Container
 from textual.widgets import Static
 from textual.widgets.text_area import Selection
 
-from deepagents_code.command_registry import ALWAYS_IMMEDIATE, HIDDEN_COMMANDS
-from deepagents_code.input import MediaTracker
-from deepagents_code.media_utils import create_multimodal_content
-from deepagents_code.tui.widgets import (
+from niki_agent.command_registry import ALWAYS_IMMEDIATE, HIDDEN_COMMANDS
+from niki_agent.input import MediaTracker
+from niki_agent.media_utils import create_multimodal_content
+from niki_agent.tui.widgets import (
     _paste_textarea as paste_textarea_module,
     chat_input as chat_input_module,
 )
-from deepagents_code.tui.widgets.chat_input import (
+from niki_agent.tui.widgets.chat_input import (
     _CHAT_INPUT_MANUAL_MAX_HEIGHT,
     _CHAT_INPUT_RESERVED_SCREEN_ROWS,
     ChatInput,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from textual.pilot import Pilot
 
-    from deepagents_code.sessions import ThreadInfo
+    from niki_agent.sessions import ThreadInfo
 
 
 class TestCompletionOption:
@@ -622,10 +622,10 @@ class TestThreadCompletionIntegration:
             return [threads[index] for index in order][:limit]
 
         with (
-            patch("deepagents_code.sessions.get_cached_threads", return_value=threads),
-            patch("deepagents_code.sessions.list_threads", side_effect=load_threads),
+            patch("niki_agent.sessions.get_cached_threads", return_value=threads),
+            patch("niki_agent.sessions.list_threads", side_effect=load_threads),
             patch(
-                "deepagents_code.sessions.populate_thread_checkpoint_details",
+                "niki_agent.sessions.populate_thread_checkpoint_details",
                 new=AsyncMock(),
             ),
         ):
@@ -673,12 +673,12 @@ class TestThreadCompletionIntegration:
 
         with (
             patch(
-                "deepagents_code.sessions.get_cached_threads",
+                "niki_agent.sessions.get_cached_threads",
                 return_value=threads if state in {"dismissed", "escape"} else [],
             ),
-            patch("deepagents_code.sessions.list_threads", side_effect=load_threads),
+            patch("niki_agent.sessions.list_threads", side_effect=load_threads),
             patch(
-                "deepagents_code.sessions.populate_thread_checkpoint_details",
+                "niki_agent.sessions.populate_thread_checkpoint_details",
                 new=AsyncMock(),
             ),
         ):
@@ -1355,7 +1355,7 @@ class TestPathPayloadDetectionGating:
 
     `_is_dropped_path_payload` and `_apply_inline_dropped_path_replacement`
     reach `Path.exists()` / `Path.is_file()` via
-    `deepagents_code.input.parse_pasted_path_payload`, which are synchronous
+    `niki_agent.input.parse_pasted_path_payload`, which are synchronous
     stat syscalls on the event-loop thread. They are only meaningful when a
     text change inserts more than one character (drag-drop / bracketed paste);
     on normal typing they cost real wall-clock time for no possible match.
@@ -1945,7 +1945,7 @@ class TestPromptSearchPanel:
             chat._history.add(prompt)
 
     async def test_ctrl_r_replaces_input_with_search(self, tmp_path) -> None:
-        from deepagents_code.tui.widgets.prompt_search import (
+        from niki_agent.tui.widgets.prompt_search import (
             PromptSearchInput,
             PromptSearchPanel,
         )
@@ -2004,7 +2004,7 @@ class TestPromptSearchPanel:
             assert chat.query_one(".input-row").display
 
     async def test_option_backspace_deletes_word_left(self, tmp_path) -> None:
-        from deepagents_code.tui.widgets.prompt_search import PromptSearchInput
+        from niki_agent.tui.widgets.prompt_search import PromptSearchInput
 
         app = _RecordingApp()
         async with app.run_test() as pilot:
@@ -2029,7 +2029,7 @@ class TestPromptSearchPanel:
             assert chat._prompt_search_filtered == ["alpha gamma", "alpha beta"]
 
     async def test_typing_filters_results(self, tmp_path) -> None:
-        from deepagents_code.tui.widgets.prompt_search import PromptSearchPanel
+        from niki_agent.tui.widgets.prompt_search import PromptSearchPanel
 
         app = _RecordingApp()
         async with app.run_test() as pilot:
@@ -2053,7 +2053,7 @@ class TestPromptSearchPanel:
             assert panel.styles.display == "block"
 
     async def test_queued_query_edits_keep_latest_text(self, tmp_path) -> None:
-        from deepagents_code.tui.widgets.prompt_search import PromptSearchInput
+        from niki_agent.tui.widgets.prompt_search import PromptSearchInput
 
         app = _RecordingApp()
         async with app.run_test() as pilot:
@@ -2186,7 +2186,7 @@ class TestPromptSearchPanel:
         """Empty -> hide cycles must not accumulate orphaned empty rows."""
         from textual.widgets import Static
 
-        from deepagents_code.tui.widgets.prompt_search import PromptSearchOption
+        from niki_agent.tui.widgets.prompt_search import PromptSearchOption
 
         app = _RecordingApp()
         async with app.run_test() as pilot:
@@ -2224,7 +2224,7 @@ class TestPromptSearchPanel:
         """An unreadable history file must not claim the user has no prompts."""
         from textual.widgets import Static
 
-        from deepagents_code.tui.widgets.prompt_search import PromptSearchOption
+        from niki_agent.tui.widgets.prompt_search import PromptSearchOption
 
         # A directory in place of the file is an OSError on read, the same path
         # permissions and encoding failures take.

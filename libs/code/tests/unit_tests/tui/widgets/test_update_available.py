@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from textual.app import App
 
-from deepagents_code.notifications import (
+from niki_agent.notifications import (
     ActionId,
     NotificationAction,
     PendingNotification,
     UpdateAvailablePayload,
 )
-from deepagents_code.tui.widgets.update_available import UpdateAvailableScreen
+from niki_agent.tui.widgets.update_available import UpdateAvailableScreen
 
 
 def _update_entry() -> PendingNotification:
@@ -24,7 +24,7 @@ def _update_entry() -> PendingNotification:
             NotificationAction(ActionId.SKIP_VERSION, "Skip this version"),
         ),
         payload=UpdateAvailablePayload(
-            latest="2.0.0", upgrade_cmd="uv tool upgrade deepagents-code"
+            latest="2.0.0", upgrade_cmd="uv tool upgrade niki-agent"
         ),
     )
 

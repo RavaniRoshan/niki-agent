@@ -16,7 +16,7 @@ disagree.
 
 import pathlib
 
-launch = pathlib.Path("deepagents_code/tui/widgets/launch_init.py")
+launch = pathlib.Path("niki_agent/tui/widgets/launch_init.py")
 s = launch.read_text(encoding="utf-8")
 
 pairs = [
@@ -38,14 +38,14 @@ for old, new in pairs:
         s = s.replace(old, new)
 
 # Add the import next to the module's other imports.
-anchor = "from deepagents_code.tui.widgets"
-if "from deepagents_code.niki.product import PRODUCT_NAME" not in s:
+anchor = "from niki_agent.tui.widgets"
+if "from niki_agent.niki.product import PRODUCT_NAME" not in s:
     lines = s.splitlines(keepends=True)
     imports = (
         i for i, line in enumerate(lines) if line.startswith(("from ", "import "))
     )
     last = max(imports)
-    lines.insert(last + 1, "from deepagents_code.niki.product import PRODUCT_NAME\n")
+    lines.insert(last + 1, "from niki_agent.niki.product import PRODUCT_NAME\n")
     s = "".join(lines)
 
 launch.write_text(s, encoding="utf-8")

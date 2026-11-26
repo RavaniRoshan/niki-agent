@@ -20,7 +20,7 @@ import pytest
 from mcp.client.auth import OAuthClientProvider, TokenStorage
 from mcp.shared.auth import OAuthToken
 
-from deepagents_code.mcp_auth import (
+from niki_agent.mcp_auth import (
     FileTokenStorage,
     MCPReauthRequiredError,
     find_oauth_challenge,
@@ -104,7 +104,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake))
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR",
+        "niki_agent.model_config.DEFAULT_STATE_DIR",
         fake / ".deepagents" / ".state",
     )
     return fake
@@ -623,7 +623,7 @@ class TestFileTokenStorage:
             raise OSError(msg)
 
         monkeypatch.setattr(storage, "_write", _failing_write)
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         task = asyncio.create_task(storage.set_tokens(_make_tokens()))
         try:
             assert await asyncio.to_thread(write_started.wait, 5)
@@ -756,7 +756,7 @@ class TestExpiryAwareOAuthClientProvider:
 
     async def test_initialize_restores_expiry_minus_safety_margin(self) -> None:
         """A live `expires_at` is loaded into `context.token_expiry_time`."""
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _REFRESH_SAFETY_MARGIN_SECONDS,
             build_oauth_provider,
         )
@@ -785,7 +785,7 @@ class TestExpiryAwareOAuthClientProvider:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A concurrent rotation cannot pair an old token with a new expiry."""
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _REFRESH_SAFETY_MARGIN_SECONDS,
             build_oauth_provider,
         )
@@ -822,7 +822,7 @@ class TestExpiryAwareOAuthClientProvider:
 
     async def test_initialize_treats_expired_token_as_invalid(self) -> None:
         """A past `expires_at` makes the loaded token report as invalid."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -846,7 +846,7 @@ class TestExpiryAwareOAuthClientProvider:
         self,
     ) -> None:
         """No sidecar + refresh token => assume expired so refresh path fires."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -883,7 +883,7 @@ class TestExpiryAwareOAuthClientProvider:
         self,
     ) -> None:
         """Legacy file without `refresh_token` cannot pre-empt expiry."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -916,7 +916,7 @@ class TestExpiryAwareOAuthClientProvider:
 
     async def test_initialize_with_storage_lacking_get_expires_at(self) -> None:
         """Custom `TokenStorage` impls without `get_expires_at` still initialize."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         class _MinimalStorage(TokenStorage):
             """`TokenStorage` that omits the optional `get_expires_at` method."""
@@ -968,7 +968,7 @@ class TestExpiryAwareOAuthClientProvider:
         del fake_home
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1019,7 +1019,7 @@ class TestExpiryAwareOAuthClientProvider:
         import httpx
         from mcp.client.auth import OAuthClientProvider
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _SUPPRESS_EXPECTED_REAUTH_LOGS,
             build_oauth_provider,
         )
@@ -1071,7 +1071,7 @@ class TestExpiryAwareOAuthClientProvider:
         del fake_home
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1131,7 +1131,7 @@ class TestRefreshTokenSerialization:
         the reloaded token rather than replay its own (now-revoked) refresh
         token.
         """
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1175,7 +1175,7 @@ class TestRefreshTokenSerialization:
 
     async def test_performs_locked_refresh_and_persists_rotation(self) -> None:
         """A still-stale token triggers exactly one refresh, then persists it."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1233,7 +1233,7 @@ class TestRefreshTokenSerialization:
         """A rejected locked refresh does not bypass the SDK re-auth fallback."""
         from mcp.client.auth import OAuthClientProvider
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1301,7 +1301,7 @@ class TestRefreshTokenSerialization:
         metadata are persisted and the sidecar expiry is backdated so the
         refresh branch fires against `https://auth.example/token`.
         """
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())
@@ -1335,7 +1335,7 @@ class TestRefreshTokenSerialization:
         """
         from filelock import FileLock
 
-        from deepagents_code import mcp_auth
+        from niki_agent import mcp_auth
 
         provider, storage = await self._build_stale_refreshable_provider()
         monkeypatch.setattr(mcp_auth, "_REFRESH_LOCK_TIMEOUT_SECONDS", 0.1)
@@ -1345,7 +1345,7 @@ class TestRefreshTokenSerialization:
         peer_lock = FileLock(str(storage.refresh_lock_path), thread_local=False)
         peer_lock.acquire()
         try:
-            caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+            caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
             flow = provider.async_auth_flow(
                 httpx2.Request("POST", "https://mcp.notion.com/mcp")
             )
@@ -1447,7 +1447,7 @@ class TestRefreshTokenSerialization:
         """Cancellation cannot release the refresh lock ahead of persistence."""
         from filelock import FileLock, Timeout
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1510,7 +1510,7 @@ class TestRefreshTokenSerialization:
         """A cancelled refresh reports persistence failure after releasing its lock."""
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1596,7 +1596,7 @@ class TestRefreshTokenSerialization:
         """Cancellation waits for a lock-acquire worker and releases its result."""
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1663,8 +1663,8 @@ class TestRefreshTokenSerialization:
         """
         from filelock import FileLock
 
-        from deepagents_code import mcp_auth
-        from deepagents_code.mcp_auth import (
+        from niki_agent import mcp_auth
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1698,7 +1698,7 @@ class TestRefreshTokenSerialization:
 
         task = asyncio.create_task(_enter_guard())
         try:
-            caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+            caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
             await acquire_started.wait()
             task.cancel()
             await asyncio.sleep(0)
@@ -1726,7 +1726,7 @@ class TestRefreshTokenSerialization:
         """A cleanup failure is reported without replacing the guarded error."""
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1758,7 +1758,7 @@ class TestRefreshTokenSerialization:
 
         monkeypatch.setattr(FileLock, "release", _release_then_fail)
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.mcp_auth"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.mcp_auth"),
             pytest.raises(ValueError, match="guarded operation failed") as exc_info,
         ):
             await _raise_in_guard()
@@ -1786,7 +1786,7 @@ class TestRefreshTokenSerialization:
         """
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1817,7 +1817,7 @@ class TestRefreshTokenSerialization:
 
         monkeypatch.setattr(FileLock, "release", _release_then_fail)
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.mcp_auth"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.mcp_auth"),
             pytest.raises(asyncio.CancelledError) as exc_info,
         ):
             await _cancel_in_guard()
@@ -1842,7 +1842,7 @@ class TestRefreshTokenSerialization:
         """
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1888,7 +1888,7 @@ class TestRefreshTokenSerialization:
         """
         from filelock import FileLock
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _ExpiryAwareOAuthClientProvider,
             build_oauth_provider,
         )
@@ -1925,7 +1925,7 @@ class TestRefreshTokenSerialization:
                 assert acquired
 
         monkeypatch.setattr(FileLock, "release", _blocking_release_then_fail)
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         task = asyncio.create_task(_clean_guard())
         try:
             # The guarded body has exited; cancel while the release worker is
@@ -1970,7 +1970,7 @@ class TestRefreshTokenSerialization:
             raise OSError(msg)
 
         monkeypatch.setattr(FileLock, "acquire", _raise_oserror)
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
 
         assert await provider._acquire_refresh_lock(lock) is False
         assert any(
@@ -1990,7 +1990,7 @@ class TestJoinTaskDeferringCancellation:
         deferred `CancelledError` back to the caller to re-raise, so an
         in-flight write/lock operation is never abandoned mid-flight.
         """
-        from deepagents_code.mcp_auth import _join_task_deferring_cancellation
+        from niki_agent.mcp_auth import _join_task_deferring_cancellation
 
         started = threading.Event()
         allow_finish = threading.Event()
@@ -2038,7 +2038,7 @@ class TestBasicAuthClientIdStripping:
         self,
         auth_method: Literal["client_secret_basic", "client_secret_post", "none"],
     ):
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("pylon")
         provider = build_oauth_provider(
@@ -2141,7 +2141,7 @@ class TestExpectedReauthLogFilter:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Expected non-interactive reauth logs are replaced by our login hint."""
-        from deepagents_code.mcp_auth import _SUPPRESS_EXPECTED_REAUTH_LOGS
+        from niki_agent.mcp_auth import _SUPPRESS_EXPECTED_REAUTH_LOGS
 
         sdk_logger = logging.getLogger("mcp.client.auth.oauth2")
         caplog.set_level(logging.WARNING, logger="mcp.client.auth.oauth2")
@@ -2179,7 +2179,7 @@ class TestExpectedReauthLogFilter:
         means the provider is down and the refresh token is still valid, so the
         operator must see it rather than be steered toward a pointless re-login.
         """
-        from deepagents_code.mcp_auth import _SUPPRESS_EXPECTED_REAUTH_LOGS
+        from niki_agent.mcp_auth import _SUPPRESS_EXPECTED_REAUTH_LOGS
 
         sdk_logger = logging.getLogger("mcp.client.auth.oauth2")
         caplog.set_level(logging.WARNING, logger="mcp.client.auth.oauth2")
@@ -2459,7 +2459,7 @@ class TestFormatLoginFailure:
         collapsing them to a bare class name would strip the only guidance
         the user has for fixing their `.mcp.json`.
         """
-        from deepagents_code.mcp_tools import MCPConfigError
+        from niki_agent.mcp_tools import MCPConfigError
 
         message = "mcpServers.notion.url references unset env var MCP_GATEWAY_HOST."
         summary = format_login_failure(MCPConfigError(message))
@@ -2467,7 +2467,7 @@ class TestFormatLoginFailure:
 
     def test_includes_message_for_known_loopback_errors(self) -> None:
         """Loopback-internal exceptions are token-free and may include their message."""
-        from deepagents_code.mcp_auth import _LoopbackCallbackTimeoutError
+        from niki_agent.mcp_auth import _LoopbackCallbackTimeoutError
 
         exc = _LoopbackCallbackTimeoutError("Callback timed out")
         summary = format_login_failure(exc)
@@ -2503,14 +2503,14 @@ class TestAppendQueryParams:
 
     def test_adds_params_to_url_without_query(self) -> None:
         """Params are appended when the URL has no query string."""
-        from deepagents_code.mcp_auth import _append_query_params
+        from niki_agent.mcp_auth import _append_query_params
 
         result = _append_query_params("https://example.com/x", {"team": "T123"})
         assert "team=T123" in result
 
     def test_overwrites_existing_same_key(self) -> None:
         """Existing same-key query params are replaced, not merged."""
-        from deepagents_code.mcp_auth import _append_query_params
+        from niki_agent.mcp_auth import _append_query_params
 
         result = _append_query_params("https://example.com/x?team=OLD", {"team": "NEW"})
         assert "team=NEW" in result
@@ -2518,7 +2518,7 @@ class TestAppendQueryParams:
 
     def test_url_encodes_special_characters(self) -> None:
         """Special characters in values are properly URL-encoded."""
-        from deepagents_code.mcp_auth import _append_query_params
+        from niki_agent.mcp_auth import _append_query_params
 
         result = _append_query_params("https://example.com/x", {"team": "a b&c"})
         assert "team=a+b%26c" in result
@@ -2532,7 +2532,7 @@ class TestPasteBackHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Callback URL with `code` and `state` yields both values."""
-        from deepagents_code.mcp_auth import _make_paste_back_handlers
+        from niki_agent.mcp_auth import _make_paste_back_handlers
 
         _, callback = _make_paste_back_handlers()
         monkeypatch.setattr(
@@ -2555,7 +2555,7 @@ class TestPasteBackHandlers:
         """
         from mcp.shared.auth import AuthorizationCodeResult
 
-        from deepagents_code.mcp_auth import _make_paste_back_handlers
+        from niki_agent.mcp_auth import _make_paste_back_handlers
 
         _, callback = _make_paste_back_handlers()
         monkeypatch.setattr(
@@ -2575,7 +2575,7 @@ class TestPasteBackHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A callback URL carrying only `code` leaves the optionals `None`."""
-        from deepagents_code.mcp_auth import _make_paste_back_handlers
+        from niki_agent.mcp_auth import _make_paste_back_handlers
 
         _, callback = _make_paste_back_handlers()
         monkeypatch.setattr("builtins.input", lambda _: "https://localhost/?code=abc")
@@ -2590,7 +2590,7 @@ class TestPasteBackHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """URL without `code` raises a clear error."""
-        from deepagents_code.mcp_auth import _make_paste_back_handlers
+        from niki_agent.mcp_auth import _make_paste_back_handlers
 
         _, callback = _make_paste_back_handlers()
         monkeypatch.setattr("builtins.input", lambda _: "https://localhost/?other=1")
@@ -2602,7 +2602,7 @@ class TestPasteBackHandlers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """`error=` in the callback URL surfaces provider-side denials."""
-        from deepagents_code.mcp_auth import _make_paste_back_handlers
+        from niki_agent.mcp_auth import _make_paste_back_handlers
 
         _, callback = _make_paste_back_handlers()
         monkeypatch.setattr(
@@ -2621,7 +2621,7 @@ class TestBuildOAuthProvider:
 
     def test_slack_url_is_detected(self) -> None:
         """The Slack URL detector treats slack.com subdomains as Slack."""
-        from deepagents_code.mcp_providers.slack import _is_slack_mcp_url
+        from niki_agent.mcp_providers.slack import _is_slack_mcp_url
 
         assert _is_slack_mcp_url("https://slack.com/mcp")
         assert _is_slack_mcp_url("https://deep.slack.com/mcp")
@@ -2629,7 +2629,7 @@ class TestBuildOAuthProvider:
 
     def test_slack_provider_uses_fixed_loopback_port(self) -> None:
         """SlackProvider uses a fixed port matching the Slack app registration."""
-        from deepagents_code.mcp_providers.slack import (
+        from niki_agent.mcp_providers.slack import (
             _SLACK_LOOPBACK_PORT,
             SlackProvider,
         )
@@ -2640,8 +2640,8 @@ class TestBuildOAuthProvider:
 
     def test_slack_branch_sets_public_client_metadata(self) -> None:
         """Slack branch configures a public OAuth client using the loopback URI."""
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _SLACK_REDIRECT_URI
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _SLACK_REDIRECT_URI
 
         provider = build_oauth_provider(
             server_name="slack",
@@ -2659,8 +2659,8 @@ class TestBuildOAuthProvider:
     ) -> None:
         """Expired tokens refresh against cached metadata, not guessed `/token`."""
         del fake_home
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _preseed_slack_client_info
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _preseed_slack_client_info
 
         token_endpoint = "https://slack.com/api/oauth.v2.user.access"
         storage = FileTokenStorage("slack", server_url="https://mcp.slack.com/mcp")
@@ -2691,8 +2691,8 @@ class TestBuildOAuthProvider:
         del fake_home
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _preseed_slack_client_info
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _preseed_slack_client_info
 
         token_endpoint = "https://slack.com/api/oauth.v2.user.access"
         storage = FileTokenStorage("slack", server_url="https://mcp.slack.com/mcp")
@@ -2763,8 +2763,8 @@ class TestBuildOAuthProvider:
         del fake_home
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _preseed_slack_client_info
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _preseed_slack_client_info
 
         storage = FileTokenStorage("slack", server_url="https://mcp.slack.com/mcp")
         await _preseed_slack_client_info(storage)
@@ -2799,8 +2799,8 @@ class TestBuildOAuthProvider:
         del fake_home
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _preseed_slack_client_info
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _preseed_slack_client_info
 
         storage = FileTokenStorage("slack", server_url="https://mcp.slack.com/mcp")
         await _preseed_slack_client_info(storage)
@@ -2825,7 +2825,7 @@ class TestBuildOAuthProvider:
 
     def test_generic_branch_uses_loopback_callback(self) -> None:
         """Non-Slack URLs (including Notion) use a local callback server redirect."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         provider = build_oauth_provider(
             server_name="notion",
@@ -2844,7 +2844,7 @@ class TestBuildOAuthProvider:
     def test_generic_branch_reuses_stored_loopback_port(self, fake_home: Path) -> None:
         """A persisted DCR redirect URI pins the callback port across launches."""
         del fake_home
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         storage = FileTokenStorage("notion")
         asyncio.run(storage.set_client_info(_make_client_info_with_loopback(51208)))
@@ -2870,8 +2870,8 @@ class TestBuildOAuthProvider:
     def test_fixed_loopback_port_wins_over_stored_port(self, fake_home: Path) -> None:
         """Provider-fixed callback ports take precedence over stored DCR ports."""
         del fake_home
-        from deepagents_code.mcp_auth import build_oauth_provider
-        from deepagents_code.mcp_providers.slack import _SLACK_REDIRECT_URI
+        from niki_agent.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_providers.slack import _SLACK_REDIRECT_URI
 
         storage = FileTokenStorage("slack")
         asyncio.run(storage.set_client_info(_make_client_info_with_loopback(51208)))
@@ -2898,12 +2898,10 @@ class TestBuildOAuthProvider:
         distinct from `test_build_oauth_provider_clears_stale_portless_registration`.
         """
         del fake_home
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
-        monkeypatch.setattr(
-            "deepagents_code.mcp_auth._choose_loopback_port", lambda: 60001
-        )
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
+        monkeypatch.setattr("niki_agent.mcp_auth._choose_loopback_port", lambda: 60001)
         storage = FileTokenStorage("notion")
         asyncio.run(storage.set_client_info(_make_client_info()))  # localhost, no port
         asyncio.run(storage.set_tokens(_make_tokens()))  # blocks self-heal discard
@@ -2943,7 +2941,7 @@ class TestBuildOAuthProvider:
     ) -> None:
         """Stored ports are reused only for the exact loopback callback shape."""
         del fake_home
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         storage = FileTokenStorage("notion")
         storage.path.parent.mkdir(parents=True)
         storage.path.write_text(
@@ -2970,7 +2968,7 @@ class TestBuildOAuthProvider:
     ) -> None:
         """Unreadable token files fall back with a warning breadcrumb."""
         del fake_home
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         storage = FileTokenStorage("notion")
         storage.path.parent.mkdir(parents=True)
         storage.path.write_bytes(b"{not json")
@@ -2981,7 +2979,7 @@ class TestBuildOAuthProvider:
 
     async def test_non_interactive_reauth_handlers_raise(self) -> None:
         """In non-interactive mode, both OAuth handlers raise re-auth errors."""
-        from deepagents_code.mcp_auth import _make_reauth_required_handlers
+        from niki_agent.mcp_auth import _make_reauth_required_handlers
 
         redirect, callback = _make_reauth_required_handlers("srv")
         with pytest.raises(MCPReauthRequiredError):
@@ -3003,11 +3001,11 @@ class TestLoopbackHandlers:
         from prompt_toolkit.input import create_pipe_input
         from prompt_toolkit.output import DummyOutput
 
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _LoopbackOAuthCallbackServer,
             _make_loopback_handlers,
         )
-        from deepagents_code.mcp_oauth_ui import (
+        from niki_agent.mcp_oauth_ui import (
             CliOAuthInteraction,
             MCPLoginAbortedError,
         )
@@ -3049,7 +3047,7 @@ class TestLoopbackHandlers:
         """A browser callback to the loopback URI completes the handler."""
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         del socket_enabled
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
@@ -3082,7 +3080,7 @@ class TestLoopbackHandlers:
         """Provider-side callback errors propagate with a useful message."""
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         del socket_enabled
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
@@ -3116,7 +3114,7 @@ class TestLoopbackHandlers:
         """A callback URL missing the `code` parameter sends 400 and raises."""
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         del socket_enabled
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
@@ -3146,7 +3144,7 @@ class TestLoopbackHandlers:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """When the browser cannot open, callback() falls back to paste-back at once."""
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
         monkeypatch.setattr("webbrowser.open", lambda _url: False)
@@ -3173,7 +3171,7 @@ class TestLoopbackHandlers:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A bind failure in redirect() causes callback() to fall back to paste-back."""
-        from deepagents_code.mcp_auth import (
+        from niki_agent.mcp_auth import (
             _LoopbackOAuthCallbackServer,
             build_oauth_provider,
         )
@@ -3217,7 +3215,7 @@ class TestLoopbackHandlers:
         """
         import webbrowser
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         def _raise_no_browser(*_a: object, **_kw: object) -> object:
             no_browser_msg = "no browser"
@@ -3258,10 +3256,10 @@ class TestLoopbackHandlers:
         path, a user whose browser opens but never redirects would hang
         for the full `_LOOPBACK_CALLBACK_TIMEOUT` (300s).
         """
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         del socket_enabled
-        monkeypatch.setattr("deepagents_code.mcp_auth._LOOPBACK_CALLBACK_TIMEOUT", 0.05)
+        monkeypatch.setattr("niki_agent.mcp_auth._LOOPBACK_CALLBACK_TIMEOUT", 0.05)
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
         monkeypatch.setattr("webbrowser.open", lambda _url: True)
         monkeypatch.setattr(
@@ -3295,7 +3293,7 @@ class TestLoopbackHandlers:
         """
         import httpx
 
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
         del socket_enabled
         monkeypatch.setattr("webbrowser.get", lambda *_a, **_kw: object())
@@ -3433,7 +3431,7 @@ class TestFileTokenStorageExtras:
     ) -> None:
         """A corrupt token file is surfaced (not silently swallowed)."""
         del fake_home
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         storage = FileTokenStorage("notion")
         storage.path.parent.mkdir(parents=True)
         storage.path.write_bytes(b"{not json")
@@ -3448,7 +3446,7 @@ class TestFileTokenStorageExtras:
     ) -> None:
         """A failed atomic write leaves the registration intact and warns."""
         del fake_home
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_auth")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_auth")
         storage = FileTokenStorage("notion")
         await storage.set_client_info(_make_client_info())  # portless, no tokens
         # Occupy the temp path with a directory so the real atomic write fails
@@ -3476,11 +3474,9 @@ class TestFileTokenStorageExtras:
         the registration so the handshake re-runs DCR with a matching URI.
         """
         del fake_home
-        from deepagents_code.mcp_auth import build_oauth_provider
+        from niki_agent.mcp_auth import build_oauth_provider
 
-        monkeypatch.setattr(
-            "deepagents_code.mcp_auth._choose_loopback_port", lambda: 60001
-        )
+        monkeypatch.setattr("niki_agent.mcp_auth._choose_loopback_port", lambda: 60001)
         storage = FileTokenStorage("notion")
         asyncio.run(storage.set_client_info(_make_client_info()))  # localhost, no port
 
@@ -3519,7 +3515,7 @@ class TestDeviceFlow:
         """A successful poll returns the issued `OAuthToken`."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         state = {"polls": 0}
 
@@ -3565,7 +3561,7 @@ class TestDeviceFlow:
         """`slow_down` errors bump the poll interval and continue polling."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         state = {"polls": 0}
 
@@ -3611,7 +3607,7 @@ class TestDeviceFlow:
         """Providers returning HTTP 400 for `authorization_pending` still poll."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         state = {"polls": 0}
 
@@ -3657,7 +3653,7 @@ class TestDeviceFlow:
         """Non-recoverable errors surface the provider's description."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         def _handler(request: httpx.Request) -> httpx.Response:
             if "device" in str(request.url):
@@ -3698,7 +3694,7 @@ class TestDeviceFlow:
         """A 4xx on the initial device-code request raises `RuntimeError`."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         def _handler(_request: httpx.Request) -> httpx.Response:
             return httpx.Response(400, json={})
@@ -3744,12 +3740,12 @@ class TestLogin:
         """Login validates aliases and retains transport precedence and inference."""
         from fastmcp.client.transports import SSETransport, StreamableHttpTransport
 
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         config = {**declaration, "url": f"https://example.com/{endpoint}"}
         original = config.copy()
-        with patch("deepagents_code.mcp_auth._drive_handshake") as handshake:
+        with patch("niki_agent.mcp_auth._drive_handshake") as handshake:
             await login(
                 server_name="api", server_config=config, ui=CliOAuthInteraction()
             )
@@ -3763,7 +3759,7 @@ class TestLogin:
         """Successful login persists tokens to the server-specific file."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
+        from niki_agent.mcp_auth import login
 
         async def _fake_handshake(transport: StreamableHttpTransport) -> None:
             storage = FileTokenStorage("notion", server_url=transport.url)
@@ -3772,9 +3768,9 @@ class TestLogin:
             )
             await storage.set_client_info(_make_client_info())
 
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="notion",
                 server_config={
@@ -3802,8 +3798,8 @@ class TestLogin:
         """
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         url = "https://mcp.notion.com/mcp"
         storage = FileTokenStorage("notion", server_url=url)
@@ -3824,7 +3820,7 @@ class TestLogin:
             fresh = FileTokenStorage(server_name, server_url=connection.url)
             await fresh.set_tokens(OAuthToken(access_token="new", token_type="Bearer"))
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="notion",
                 server_config={"transport": "http", "url": url, "auth": "oauth"},
@@ -3845,8 +3841,8 @@ class TestLogin:
         """An aborted re-auth leaves the working credential on disk."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         url = "https://mcp.notion.com/mcp"
         storage = FileTokenStorage("notion", server_url=url)
@@ -3858,7 +3854,7 @@ class TestLogin:
             raise RuntimeError(msg)
 
         with (
-            patch("deepagents_code.mcp_auth._drive_handshake", _failing_handshake),
+            patch("niki_agent.mcp_auth._drive_handshake", _failing_handshake),
             pytest.raises(RuntimeError, match="user aborted"),
         ):
             await login(
@@ -3873,8 +3869,8 @@ class TestLogin:
 
     async def test_login_allows_http_server_without_explicit_oauth(self) -> None:
         """Auto-detected servers (no `auth: oauth`) can still run OAuth login."""
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         async def _fake_handshake(transport: StreamableHttpTransport) -> None:
             storage = FileTokenStorage("notion", server_url=transport.url)
@@ -3883,7 +3879,7 @@ class TestLogin:
             )
             await storage.set_client_info(_make_client_info())
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="notion",
                 server_config={
@@ -3900,8 +3896,8 @@ class TestLogin:
 
     async def test_login_rejects_stdio_server(self) -> None:
         """OAuth login is limited to HTTP/SSE transports."""
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         with pytest.raises(ValueError, match="only valid for http/sse"):
             await login(
@@ -3915,7 +3911,7 @@ class TestLogin:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Configured static headers flow into the OAuth handshake connection."""
-        from deepagents_code.mcp_auth import login
+        from niki_agent.mcp_auth import login
 
         monkeypatch.setenv("MCP_GATEWAY_HOST", "mcp.notion.com")
         monkeypatch.setenv("MCP_GATEWAY_TOKEN", "gw-token")
@@ -3926,9 +3922,9 @@ class TestLogin:
             captured["url"] = transport.url
             captured["headers"] = dict(transport.headers or {})
 
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="notion",
                 server_config={
@@ -3951,9 +3947,9 @@ class TestLogin:
 
     async def test_login_unset_env_var_in_headers_raises(self) -> None:
         """Unset env vars in static headers fail before the handshake."""
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
-        from deepagents_code.mcp_tools import MCPConfigError
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_tools import MCPConfigError
 
         with pytest.raises(MCPConfigError, match="unset env var"):
             await login(
@@ -3969,9 +3965,9 @@ class TestLogin:
 
     async def test_login_unset_env_var_in_url_raises_config_error(self) -> None:
         """An unset var in a non-header field fails with its field path."""
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
-        from deepagents_code.mcp_tools import MCPConfigError
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_tools import MCPConfigError
 
         with pytest.raises(MCPConfigError, match=r"mcpServers\.notion\.url"):
             await login(
@@ -3990,9 +3986,9 @@ class TestLogin:
         Exercises the `TypeError` arm of `login()`'s resolution wrapper (the
         unset-var tests only cover the `RuntimeError` arm).
         """
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
-        from deepagents_code.mcp_tools import MCPConfigError
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_tools import MCPConfigError
 
         # Deliberately malformed (non-string header value) to hit the
         # `TypeError` arm; typed separately so the intent is explicit.
@@ -4014,8 +4010,8 @@ class TestLogin:
         """GitHub URLs short-circuit to device flow and persist client info."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_providers.github import _GITHUB_MCP_CLIENT_ID
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_providers.github import _GITHUB_MCP_CLIENT_ID
 
         async def _fake_device_flow(
             *,
@@ -4035,15 +4031,15 @@ class TestLogin:
             nonlocal handshake_called
             handshake_called = True
 
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         with (
             patch(
-                "deepagents_code.mcp_providers.github._run_device_flow",
+                "niki_agent.mcp_providers.github._run_device_flow",
                 _fake_device_flow,
             ),
             patch(
-                "deepagents_code.mcp_auth._drive_handshake",
+                "niki_agent.mcp_auth._drive_handshake",
                 _handshake_should_not_run,
             ),
         ):
@@ -4079,8 +4075,8 @@ class TestLogin:
 
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_oauth_ui import OAuthInteraction
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_oauth_ui import OAuthInteraction
 
         class _CapturingUI:
             def __init__(self) -> None:
@@ -4133,7 +4129,7 @@ class TestLogin:
             storage = FileTokenStorage(server_name, server_url=connection.url)
             await storage.set_tokens(OAuthToken(access_token="t", token_type="Bearer"))
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="slack",
                 server_config={
@@ -4150,7 +4146,7 @@ class TestLogin:
 
     async def test_slack_preseed_is_idempotent(self) -> None:
         """Preseeding Slack client info a second time reads rather than writes."""
-        from deepagents_code.mcp_providers.slack import (
+        from niki_agent.mcp_providers.slack import (
             _SLACK_MCP_CLIENT_ID,
             _preseed_slack_client_info,
         )
@@ -4182,7 +4178,7 @@ class TestDeviceFlowTimeout:
         """The device-code deadline expires when polling never resolves."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         def _handler(request: httpx.Request) -> httpx.Response:
             if "device" in str(request.url):
@@ -4222,7 +4218,7 @@ class TestDeviceFlowTimeout:
         """A provider response missing `verification_uri` surfaces as RuntimeError."""
         import httpx
 
-        from deepagents_code.mcp_auth import _run_device_flow
+        from niki_agent.mcp_auth import _run_device_flow
 
         def _handler(_request: httpx.Request) -> httpx.Response:
             return httpx.Response(

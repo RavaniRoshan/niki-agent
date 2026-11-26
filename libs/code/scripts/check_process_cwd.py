@@ -405,7 +405,13 @@ def find_violations(package_dir: Path) -> list[str]:
             otherwise go unchecked.
     """
     found: dict[CallSite, int] = {}
+    # Vendored upstream trees are not product source. Their backends already
+    # take an explicit `root_dir`; the fallback is only used by single-process
+    # CLI construction, which this check does not police.
+    vendored = {"sdk", "acp_sdk"}
     for path in sorted(package_dir.rglob("*.py")):
+        if path.relative_to(package_dir).parts[0] in vendored:
+            continue
         relative = path.relative_to(package_dir).as_posix()
         try:
             source = path.read_text(encoding="utf-8")
@@ -437,13 +443,13 @@ def find_violations(package_dir: Path) -> list[str]:
 
 
 def main() -> int:
-    """Check the package named on the command line, or `deepagents_code`.
+    """Check the package named on the command line, or `niki_agent`.
 
     Returns:
         Zero when every call the check can see is allowlisted and every entry
         matches a call, otherwise one.
     """
-    package_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("deepagents_code")
+    package_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("niki_agent")
     violations = find_violations(package_dir)
     if violations:
         print("Reads of the process working directory must be allowlisted:")

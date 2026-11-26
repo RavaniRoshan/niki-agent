@@ -24,7 +24,7 @@ import os
 from typing import Any, Literal
 
 import pytest
-from deepagents.middleware.subagents import SubAgentMiddleware
+from niki_agent.sdk.middleware.subagents import SubAgentMiddleware
 from langchain.agents import create_agent
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, ToolMessage

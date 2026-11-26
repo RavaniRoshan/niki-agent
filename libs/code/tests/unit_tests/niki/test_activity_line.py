@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-v10")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -37,7 +37,7 @@ def _app() -> App:  # type: ignore[type-arg]
 
 def test_v10_the_spinner_advances() -> None:
     """V10: the activity indicator must actually animate while working."""
-    from deepagents_code.tui.widgets.loading import Spinner
+    from niki_agent.tui.widgets.loading import Spinner
 
     spinner = Spinner()
     frames = [spinner.current_frame()]
@@ -62,8 +62,8 @@ def test_v10_the_spinner_follows_the_charset() -> None:
     What matters is that the frames come from the charset-aware glyph set, so an
     ASCII terminal gets `(-) (\\) (|) (/)`.
     """
-    from deepagents_code.config import get_glyphs
-    from deepagents_code.tui.widgets.loading import Spinner
+    from niki_agent.config import get_glyphs
+    from niki_agent.tui.widgets.loading import Spinner
 
     glyph_frames = get_glyphs().spinner_frames
     spinner = Spinner()
@@ -115,8 +115,8 @@ def test_v10_reduced_motion_has_no_static_equivalent() -> None:
     preference is added, this test fails and V10 can be marked complete in the
     same change.
     """
-    import deepagents_code
-    from deepagents_code import _env_vars
+    import niki_agent
+    from niki_agent import _env_vars
 
     names = [
         n for n in dir(_env_vars) if "REDUCED" in n.upper() or "MOTION" in n.upper()
@@ -126,4 +126,4 @@ def test_v10_reduced_motion_has_no_static_equivalent() -> None:
         "equivalent, then mark V10 complete in docs/niki/CHECKLIST.md in this "
         "same change."
     )
-    assert deepagents_code.__name__ == "deepagents_code"
+    assert niki_agent.__name__ == "niki_agent"

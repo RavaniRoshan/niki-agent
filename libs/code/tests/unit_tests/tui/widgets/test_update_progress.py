@@ -5,15 +5,15 @@ from __future__ import annotations
 from textual.app import App
 from textual.widgets import Static
 
-from deepagents_code.config import get_glyphs
-from deepagents_code.tui.widgets.update_progress import UpdateProgressScreen
+from niki_agent.config import get_glyphs
+from niki_agent.tui.widgets.update_progress import UpdateProgressScreen
 
 
 async def test_update_progress_screen_close_waits_until_done(tmp_path) -> None:
     """Esc is ignored while the update is running and closes after completion."""
     screen = UpdateProgressScreen(
         latest="2.0.0",
-        command="uv tool upgrade deepagents-code",
+        command="uv tool upgrade niki-agent",
         log_path=tmp_path / "update.log",
     )
 
@@ -37,7 +37,7 @@ async def test_update_progress_screen_failure_uses_error_glyph(tmp_path) -> None
     """Failure completion should not look visually successful."""
     screen = UpdateProgressScreen(
         latest="2.0.0",
-        command="uv tool install -U deepagents-code",
+        command="uv tool install -U niki-agent",
         log_path=tmp_path / "update.log",
     )
 
@@ -46,7 +46,7 @@ async def test_update_progress_screen_failure_uses_error_glyph(tmp_path) -> None
         app.push_screen(screen)
         await pilot.pause()
 
-        screen.mark_failure("uv tool install -U deepagents-code")
+        screen.mark_failure("uv tool install -U niki-agent")
         await pilot.pause()
 
         status = screen.query(Static).filter(".up-status").first()
@@ -61,7 +61,7 @@ async def test_update_progress_screen_warning_stays_visible(
     """Warning completion keeps the user action visible in the modal."""
     screen = UpdateProgressScreen(
         latest="2.0.0",
-        command="uv tool upgrade deepagents-code",
+        command="uv tool upgrade niki-agent",
         log_path=tmp_path / "update.log",
     )
 
@@ -111,7 +111,7 @@ async def test_update_progress_screen_warning_without_copy_text_copies_log_path(
     log_path = tmp_path / "update.log"
     screen = UpdateProgressScreen(
         latest="2.0.0",
-        command="uv tool install -U deepagents-code",
+        command="uv tool install -U niki-agent",
         log_path=log_path,
     )
 

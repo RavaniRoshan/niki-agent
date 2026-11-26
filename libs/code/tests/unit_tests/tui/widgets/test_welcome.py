@@ -8,24 +8,24 @@ from textual.color import Color as TColor
 from textual.content import Content
 from textual.style import Style as TStyle
 
-from deepagents_code import clipboard as clipboard_module
-from deepagents_code._env_vars import (
+from niki_agent import clipboard as clipboard_module
+from niki_agent._env_vars import (
     DEBUG,
     EXPERIMENTAL,
     SPLASH_SHOW_CWD,
     SPLASH_SHOW_MODEL,
 )
-from deepagents_code._version import __version__
-from deepagents_code.tui.widgets import welcome as welcome_module
-from deepagents_code.tui.widgets.welcome import WelcomeBanner, _local_tag_style
+from niki_agent._version import __version__
+from niki_agent.tui.widgets import welcome as welcome_module
+from niki_agent.tui.widgets.welcome import WelcomeBanner, _local_tag_style
 
-_EDITABLE = "deepagents_code.tui.widgets.welcome._is_editable_install"
-_PROJECT_NAME = "deepagents_code.tui.widgets.welcome.get_langsmith_project_name"
-_REPLICA_PROJECT = "deepagents_code.tui.widgets.welcome.get_langsmith_replica_project"
-_FETCH_URL = "deepagents_code.tui.widgets.welcome.fetch_langsmith_project_url"
-_DEBUG_STYLE = "deepagents_code.tui.widgets.welcome._debug_tag_style"
-_EXPERIMENTAL_STYLE = "deepagents_code.tui.widgets.welcome._experimental_tag_style"
-_LOCAL_STYLE = "deepagents_code.tui.widgets.welcome._local_tag_style"
+_EDITABLE = "niki_agent.tui.widgets.welcome._is_editable_install"
+_PROJECT_NAME = "niki_agent.tui.widgets.welcome.get_langsmith_project_name"
+_REPLICA_PROJECT = "niki_agent.tui.widgets.welcome.get_langsmith_replica_project"
+_FETCH_URL = "niki_agent.tui.widgets.welcome.fetch_langsmith_project_url"
+_DEBUG_STYLE = "niki_agent.tui.widgets.welcome._debug_tag_style"
+_EXPERIMENTAL_STYLE = "niki_agent.tui.widgets.welcome._experimental_tag_style"
+_LOCAL_STYLE = "niki_agent.tui.widgets.welcome._local_tag_style"
 
 
 def _raw_style_covering(content: Content, needle: str) -> str | TStyle:
@@ -149,7 +149,7 @@ class TestLocalTagStyle:
 
     def test_ansi_uses_bold_markup(self) -> None:
         """Under ANSI themes the tag stays visible via bold terminal text."""
-        from deepagents_code.theme import DARK_COLORS
+        from niki_agent.theme import DARK_COLORS
 
         assert _local_tag_style(ansi=True, colors=DARK_COLORS) == "bold"
 
@@ -157,7 +157,7 @@ class TestLocalTagStyle:
         """Non-ANSI themes color the tag with the theme's tool color."""
         from textual.color import Color as TColor
 
-        from deepagents_code.theme import DARK_COLORS
+        from niki_agent.theme import DARK_COLORS
 
         style = _local_tag_style(ansi=False, colors=DARK_COLORS)
         assert isinstance(style, TStyle)
@@ -177,7 +177,7 @@ class TestTitle:
     """Tests for the banner title line."""
 
     def test_no_debug_tag_when_env_falsy(self) -> None:
-        """A present-but-falsy `DEEPAGENTS_CODE_DEBUG` shows no `(debug enabled)` tag.
+        """A present-but-falsy `NIKI_DEBUG` shows no `(debug enabled)` tag.
 
         Locks the truthy gate (`is_env_truthy`) against a regression to a bare
         presence check (`DEBUG in os.environ`), which every other test would pass.
@@ -201,7 +201,7 @@ class TestTitle:
         )
 
     def test_no_experimental_tag_when_env_falsy(self) -> None:
-        """A present-but-falsy `DEEPAGENTS_CODE_EXPERIMENTAL` shows no tag.
+        """A present-but-falsy `NIKI_EXPERIMENTAL` shows no tag.
 
         Locks the truthy gate (`is_env_truthy`) against a regression to a bare
         presence check (`EXPERIMENTAL in os.environ`), which every other test
@@ -265,7 +265,7 @@ class TestThreadLine:
         link = _style_covering(content, "(open in langsmith)").link
         assert link == (
             "https://smith.langchain.com/o/org/projects/p/p1/t/abc-123"
-            "?utm_source=deepagents-code"
+            "?utm_source=niki-agent"
         )
 
     def test_no_langsmith_link_without_tracing(self) -> None:

@@ -23,7 +23,7 @@ def _app() -> App:  # type: ignore[type-arg]
     """A NikiApp wired to a mock agent, post-paint work stubbed out."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-keys")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -114,7 +114,7 @@ async def test_composer_cursor_steps_by_grapheme(
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
-        from deepagents_code.tui.widgets.chat_input import ChatTextArea
+        from niki_agent.tui.widgets.chat_input import ChatTextArea
 
         composer = app.query_one("#chat-input", ChatTextArea)
         composer.insert(text)
@@ -217,7 +217,7 @@ async def test_k6_arrows_tab_and_enter_drive_the_slash_menu() -> None:
     popup's live selection and the transcript, so a change in how the menu is
     rendered cannot make this pass vacuously.
     """
-    from deepagents_code.tui.widgets.chat_input import ChatInput
+    from niki_agent.tui.widgets.chat_input import ChatInput
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -355,7 +355,7 @@ async def test_first_run_name_prompt_owns_focus() -> None:
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-first-run", launch_init=True)
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]

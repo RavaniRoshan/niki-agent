@@ -15,7 +15,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel)
 TEST_FILE ?= tests/unit_tests/
 integration_test integration_tests: TEST_FILE=tests/integration_tests/
 
-COV_ARGS ?= --cov=deepagents_code --cov-report=term-missing
+COV_ARGS ?= --cov=niki_agent --cov-report=term-missing
 SMOKE_TESTS ?= tests/unit_tests/smoke_tests/
 PYTEST_EXTRA ?=
 
@@ -63,7 +63,7 @@ PYTHON_FILES=.
 lint format: PYTHON_FILES=.
 lint_diff format_diff: PYTHON_FILES=$(shell git diff --relative=libs/code --name-only --diff-filter=d main | grep -E '\.py$$|\.ipynb$$')
 lint_package: ## Lint only the package
-lint_package: PYTHON_FILES=deepagents_code
+lint_package: PYTHON_FILES=niki_agent
 lint_tests: ## Lint only tests
 lint_tests: PYTHON_FILES=tests
 
@@ -73,7 +73,7 @@ lint lint_diff lint_package lint_tests:
 	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff format $(PYTHON_FILES) --diff
 	$(MAKE) type PYTHON_FILES="$(PYTHON_FILES)"
 	uv run --all-groups python scripts/generate_commands_catalog.py --check
-	uv run --all-groups python scripts/check_process_cwd.py deepagents_code
+	uv run --all-groups python scripts/check_process_cwd.py niki_agent
 
 type: ## Run type checker
 type typecheck:
@@ -85,7 +85,7 @@ format format_diff:
 	[ "$(PYTHON_FILES)" = "" ] || uv run --all-groups ruff check --fix $(PYTHON_FILES)
 
 check_imports: ## Check imports
-check_imports: $(shell find deepagents_code -name '*.py')
+check_imports: $(shell find niki_agent -name '*.py')
 	uv run --all-groups python ./scripts/check_imports.py $^
 
 commands-catalog: ## Regenerate COMMANDS.md from the slash-command registry
@@ -111,9 +111,6 @@ check: lint check_imports test
 	uv run --all-groups python "$(REPO_ROOT)/.github/scripts/checks/check_version_equality.py"
 	@echo "🔒 Verifying uv.lock is up-to-date..."
 	UV_FROZEN=false uv lock --check
-	@echo "🔗 Checking SDK pin against workspace SDK (advisory)..."
-	@uv run --all-groups python "$(REPO_ROOT)/.github/scripts/release/check_sdk_pin.py" || \
-		{ rc=$$?; [ $$rc -eq 1 ] && echo "⚠️  Stale SDK pin (advisory, non-fatal)." || exit $$rc; }
 	@echo "✅ All local CI checks passed!"
 
 ######################

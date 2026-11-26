@@ -33,8 +33,8 @@ from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
 
-from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.backends import FilesystemBackend
 
 EXAMPLE_DIR = Path(__file__).parent
 console = Console()

@@ -9,14 +9,14 @@ from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
-from deepagents_code.config import get_glyphs
-from deepagents_code.extras_info import (
+from niki_agent.config import get_glyphs
+from niki_agent.extras_info import (
     MODEL_PROVIDER_EXTRAS,
     SANDBOX_EXTRAS,
     STANDALONE_EXTRAS,
     ExtraDependencyStatus,
 )
-from deepagents_code.tui.widgets.launch_init import (
+from niki_agent.tui.widgets.launch_init import (
     LaunchDependenciesScreen,
     LaunchGoalCriteriaPreferenceScreen,
     LaunchNameScreen,

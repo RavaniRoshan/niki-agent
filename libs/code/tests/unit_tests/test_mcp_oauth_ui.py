@@ -19,9 +19,9 @@ from prompt_toolkit.application import create_app_session, get_app_or_none
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 
-from deepagents_code._env_vars import DEBUG
-from deepagents_code.mcp_auth import FileTokenStorage, format_login_failure
-from deepagents_code.mcp_oauth_ui import (
+from niki_agent._env_vars import DEBUG
+from niki_agent.mcp_auth import FileTokenStorage, format_login_failure
+from niki_agent.mcp_oauth_ui import (
     MCPLoginAbortedError,
     _wait_for_browser_authorization,
 )
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from fastmcp.client.transports import StreamableHttpTransport
     from prompt_toolkit.input import PipeInput
 
-    from deepagents_code.mcp_oauth_ui import OAuthInteraction
+    from niki_agent.mcp_oauth_ui import OAuthInteraction
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake))
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR",
+        "niki_agent.model_config.DEFAULT_STATE_DIR",
         fake / ".deepagents" / ".state",
     )
     return fake
@@ -144,7 +144,7 @@ class TestLoginWithoutStdio:
         """Slack-style paste-back login completes without using stdin or stdout."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
+        from niki_agent.mcp_auth import login
 
         monkeypatch.delenv(DEBUG, raising=False)
         monkeypatch.setattr("webbrowser.open", lambda _url: False)
@@ -178,7 +178,7 @@ class TestLoginWithoutStdio:
 
         monkeypatch.setattr("builtins.input", _input_should_not_run)
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="slack",
                 server_config={
@@ -201,14 +201,14 @@ class TestLoginWithoutStdio:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Debug mode includes the token location in the success message."""
-        from deepagents_code.mcp_auth import login
-        from deepagents_code.mcp_providers import LoginResult
+        from niki_agent.mcp_auth import login
+        from niki_agent.mcp_providers import LoginResult
 
         monkeypatch.setenv(DEBUG, "1")
         ui = RecordingOAuthInteraction()
 
         with patch(
-            "deepagents_code.mcp_providers.GenericProvider.run_login",
+            "niki_agent.mcp_providers.GenericProvider.run_login",
             AsyncMock(return_value=LoginResult(completed=True)),
         ):
             await login(
@@ -235,7 +235,7 @@ class TestLoginWithoutStdio:
         """GitHub device-flow login renders codes through the UI surface."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
+        from niki_agent.mcp_auth import login
 
         async def _fake_device_flow(
             *,
@@ -269,11 +269,11 @@ class TestLoginWithoutStdio:
 
         with (
             patch(
-                "deepagents_code.mcp_providers.github._run_device_flow",
+                "niki_agent.mcp_providers.github._run_device_flow",
                 _fake_device_flow,
             ),
             patch(
-                "deepagents_code.mcp_auth._drive_handshake",
+                "niki_agent.mcp_auth._drive_handshake",
                 _handshake_should_not_run,
             ),
         ):
@@ -299,7 +299,7 @@ class TestLoginWithoutStdio:
         """Tokens must not leak into UI messages or notices."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.mcp_auth import login
+        from niki_agent.mcp_auth import login
 
         monkeypatch.setattr("webbrowser.open", lambda _url: False)
 
@@ -332,7 +332,7 @@ class TestLoginWithoutStdio:
             ),
         )
 
-        with patch("deepagents_code.mcp_auth._drive_handshake", _fake_handshake):
+        with patch("niki_agent.mcp_auth._drive_handshake", _fake_handshake):
             await login(
                 server_name="slack",
                 server_config={
@@ -467,7 +467,7 @@ class TestCliOAuthInteraction:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`request_callback_url` returns the trimmed `input()` result."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         monkeypatch.setattr(
             "builtins.input", lambda _: "  https://localhost/?code=abc  "
@@ -479,7 +479,7 @@ class TestCliOAuthInteraction:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`EOFError` on stdin becomes a `RuntimeError` with a remediation hint."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         def _raise_eof(_prompt: str) -> str:
             raise EOFError
@@ -492,7 +492,7 @@ class TestCliOAuthInteraction:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Browser-opened branch mentions the auto-launch."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         await CliOAuthInteraction().show_authorize_url(
             "https://example/auth", opened_in_browser=True
@@ -505,7 +505,7 @@ class TestCliOAuthInteraction:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Paste-back branch instructs the user to copy the callback URL."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         await CliOAuthInteraction().show_authorize_url(
             "https://example/auth", opened_in_browser=False
@@ -518,7 +518,7 @@ class TestCliOAuthInteraction:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Empty input means `None` so callers fall back to Slack's chooser."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         monkeypatch.setattr("builtins.input", lambda _: "   ")
         assert await CliOAuthInteraction().prompt_slack_team_id() is None
@@ -527,7 +527,7 @@ class TestCliOAuthInteraction:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`prompt_slack_team_id` returns the stripped team ID when non-blank."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         monkeypatch.setattr("builtins.input", lambda _: "  T01234567  ")
         assert await CliOAuthInteraction().prompt_slack_team_id() == "T01234567"
@@ -536,7 +536,7 @@ class TestCliOAuthInteraction:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`EOFError` from closed stdin returns `None` instead of propagating."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         def _raise_eof(_prompt: str) -> str:
             raise EOFError
@@ -548,7 +548,7 @@ class TestCliOAuthInteraction:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`show_device_code` writes the verification URI and user code to stdout."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         await CliOAuthInteraction().show_device_code(
             verification_uri="https://github.com/login/device",
@@ -565,7 +565,7 @@ class TestCliOAuthInteraction:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`show_success` writes to stdout, not stderr."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         await CliOAuthInteraction().show_success("Logged in to MCP server 'test'.")
         captured = capsys.readouterr()
@@ -576,7 +576,7 @@ class TestCliOAuthInteraction:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`show_notice` writes to stdout, not stderr."""
-        from deepagents_code.mcp_oauth_ui import CliOAuthInteraction
+        from niki_agent.mcp_oauth_ui import CliOAuthInteraction
 
         await CliOAuthInteraction().show_notice("Falling back to paste-back flow.")
         captured = capsys.readouterr()

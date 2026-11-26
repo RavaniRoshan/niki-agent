@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
-from deepagents_code import sessions
+from niki_agent import sessions
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -5,7 +5,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from deepagents_code.skills.commands import _create, _delete, _info, _list
+from niki_agent.skills.commands import _create, _delete, _info, _list
 
 
 class TestSkillsListJson:
@@ -23,24 +23,24 @@ class TestSkillsListJson:
         ]
         buf = StringIO()
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             patch(
-                "deepagents_code.skills.commands.get_user_skills_dir",
+                "niki_agent.skills.commands.get_user_skills_dir",
                 return_value=tmp_path / "skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_skills_dir",
+                "niki_agent.skills.commands.get_project_skills_dir",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.skills.commands.get_user_agent_skills_dir",
+                "niki_agent.skills.commands.get_user_agent_skills_dir",
                 return_value=tmp_path / "agent-skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_agent_skills_dir",
+                "niki_agent.skills.commands.get_project_agent_skills_dir",
                 return_value=None,
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=fake_skills),
+            patch("niki_agent.skills.load.list_skills", return_value=fake_skills),
             patch("sys.stdout", buf),
         ):
             settings = mock_settings_cls.from_environment.return_value
@@ -56,24 +56,24 @@ class TestSkillsListJson:
         """JSON mode returns empty array when no skills found."""
         buf = StringIO()
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             patch(
-                "deepagents_code.skills.commands.get_user_skills_dir",
+                "niki_agent.skills.commands.get_user_skills_dir",
                 return_value=tmp_path / "skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_skills_dir",
+                "niki_agent.skills.commands.get_project_skills_dir",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.skills.commands.get_user_agent_skills_dir",
+                "niki_agent.skills.commands.get_user_agent_skills_dir",
                 return_value=tmp_path / "agent-skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_agent_skills_dir",
+                "niki_agent.skills.commands.get_project_agent_skills_dir",
                 return_value=None,
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=[]),
+            patch("niki_agent.skills.load.list_skills", return_value=[]),
             patch("sys.stdout", buf),
         ):
             settings = mock_settings_cls.from_environment.return_value
@@ -99,24 +99,24 @@ class TestSkillsInfoJson:
         ]
         buf = StringIO()
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             patch(
-                "deepagents_code.skills.commands.get_user_skills_dir",
+                "niki_agent.skills.commands.get_user_skills_dir",
                 return_value=tmp_path / "skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_skills_dir",
+                "niki_agent.skills.commands.get_project_skills_dir",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.skills.commands.get_user_agent_skills_dir",
+                "niki_agent.skills.commands.get_user_agent_skills_dir",
                 return_value=tmp_path / "agent-skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_agent_skills_dir",
+                "niki_agent.skills.commands.get_project_agent_skills_dir",
                 return_value=None,
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=fake_skills),
+            patch("niki_agent.skills.load.list_skills", return_value=fake_skills),
             patch("sys.stdout", buf),
         ):
             settings = mock_settings_cls.from_environment.return_value
@@ -138,9 +138,9 @@ class TestSkillsCreateJson:
 
         buf = StringIO()
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             patch(
-                "deepagents_code.skills.commands.ensure_user_skills_dir",
+                "niki_agent.skills.commands.ensure_user_skills_dir",
                 return_value=skills_dir,
             ),
             patch("sys.stdout", buf),
@@ -177,24 +177,24 @@ class TestSkillsDeleteJson:
         ]
         buf = StringIO()
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             patch(
-                "deepagents_code.skills.commands.get_user_skills_dir",
+                "niki_agent.skills.commands.get_user_skills_dir",
                 return_value=skills_dir,
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_skills_dir",
+                "niki_agent.skills.commands.get_project_skills_dir",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.skills.commands.get_user_agent_skills_dir",
+                "niki_agent.skills.commands.get_user_agent_skills_dir",
                 return_value=tmp_path / "agent-skills",
             ),
             patch(
-                "deepagents_code.skills.commands.get_project_agent_skills_dir",
+                "niki_agent.skills.commands.get_project_agent_skills_dir",
                 return_value=None,
             ),
-            patch("deepagents_code.skills.load.list_skills", return_value=fake_skills),
+            patch("niki_agent.skills.load.list_skills", return_value=fake_skills),
             patch("sys.stdout", buf),
         ):
             settings = mock_settings_cls.from_environment.return_value

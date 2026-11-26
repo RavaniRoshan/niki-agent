@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from deepagents.backends.local_shell import LocalShellBackend
-from deepagents.backends.protocol import FileInfo, LsResult
 from langchain.agents import create_agent
 from langchain.agents.middleware.human_in_the_loop import (
     ApproveDecision,
@@ -31,11 +29,11 @@ from langgraph.errors import GraphInterrupt
 from langgraph.prebuilt.tool_node import ToolCallRequest
 from langgraph.types import Command
 
-from deepagents_code._testing_models import (
+from niki_agent._testing_models import (
     GoalCriteriaIntegrationChatModel,
     _tool_call_result,
 )
-from deepagents_code.goal_rubric import (
+from niki_agent.goal_rubric import (
     _CRITERIA_OBJECTIVE_DISPLAY_LIMIT,
     _REPOSITORY_GREP_MATCH_LIMIT,
     GOAL_RUBRIC_SYSTEM_PROMPT,
@@ -53,12 +51,14 @@ from deepagents_code.goal_rubric import (
     _rubric_interrupt_on,
     create_goal_criteria_agent,
 )
-from deepagents_code.goal_state_limits import (
+from niki_agent.goal_state_limits import (
     GOAL_APPLICATION_CHAR_LIMIT,
     RUBRIC_CHAR_LIMIT,
     GoalStateSizeError,
 )
-from deepagents_code.goal_tools import GoalToolState
+from niki_agent.goal_tools import GoalToolState
+from niki_agent.sdk.backends.local_shell import LocalShellBackend
+from niki_agent.sdk.backends.protocol import FileInfo, LsResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -69,7 +69,7 @@ if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
     from langgraph.runtime import Runtime
 
-    from deepagents_code.agent import AsyncApprovalHITLMiddleware
+    from niki_agent.agent import AsyncApprovalHITLMiddleware
 
 
 class _OversizedThenValidCriteriaModel(GoalCriteriaIntegrationChatModel):
@@ -106,7 +106,7 @@ class _LoopBoundAsyncStore:
         self.get_calls = 0
 
     async def aget(self, namespace: tuple[str, ...], key: str) -> object:
-        from deepagents_code.approval_mode import APPROVAL_MODE_NAMESPACE
+        from niki_agent.approval_mode import APPROVAL_MODE_NAMESPACE
 
         assert namespace == APPROVAL_MODE_NAMESPACE
         assert key
@@ -399,7 +399,7 @@ class TestCriteriaHitlPolicy:
         )
 
         assert rendered.startswith(
-            "Deep Agents Code wants to use docs_search while gathering context "
+            "Niki Agent wants to use docs_search while gathering context "
             "to propose acceptance criteria for: \u201c"
         )
         assert "Search the documentation server." in rendered
@@ -751,7 +751,7 @@ class TestCreateGoalCriteriaAgent:
 
         with (
             patch(
-                "deepagents.middleware.FilesystemMiddleware",
+                "niki_agent.sdk.middleware.FilesystemMiddleware",
                 return_value=filesystem,
             ) as filesystem_type,
             patch("langchain.agents.create_agent", return_value=graph),
@@ -788,7 +788,7 @@ class TestCreateGoalCriteriaAgent:
 
         with (
             patch(
-                "deepagents.middleware.FilesystemMiddleware",
+                "niki_agent.sdk.middleware.FilesystemMiddleware",
                 return_value=filesystem,
             ) as filesystem_type,
             patch("langchain.agents.create_agent", return_value=graph),
@@ -811,7 +811,7 @@ class TestCreateGoalCriteriaAgent:
 
     @staticmethod
     def _async_hitl(*, auto_mode_enabled: bool = True) -> AsyncApprovalHITLMiddleware:
-        from deepagents_code.agent import AsyncApprovalHITLMiddleware
+        from niki_agent.agent import AsyncApprovalHITLMiddleware
 
         fetch = StructuredTool.from_function(
             func=lambda url: url,
@@ -837,7 +837,7 @@ class TestCreateGoalCriteriaAgent:
 
     @staticmethod
     def _async_runtime(store: _LoopBoundAsyncStore) -> SimpleNamespace:
-        from deepagents_code.approval_mode import approval_mode_key
+        from niki_agent.approval_mode import approval_mode_key
 
         thread_id = "criteria-thread"
         return SimpleNamespace(

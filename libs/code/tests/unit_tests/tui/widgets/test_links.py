@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
-from deepagents_code._env_vars import SHOW_URL_OPEN_TOAST
-from deepagents_code.tui.widgets._links import (
+from niki_agent._env_vars import SHOW_URL_OPEN_TOAST
+from niki_agent.tui.widgets._links import (
     event_targets_link,
     open_checked_url_async,
     open_style_link,
@@ -48,7 +48,7 @@ async def test_open_checked_url_async_blocks_suspicious_url() -> None:
     notify = MagicMock()
     app = cast("App[None]", SimpleNamespace(notify=notify))
 
-    with patch("deepagents_code.tui.widgets._links.webbrowser.open") as mock_open:
+    with patch("niki_agent.tui.widgets._links.webbrowser.open") as mock_open:
         opened = await open_checked_url_async(
             "https://example.com/\u200b[admin]",
             app=app,
@@ -72,7 +72,7 @@ async def test_open_url_async_can_toast_on_success() -> None:
 
     with (
         patch.dict(os.environ, {SHOW_URL_OPEN_TOAST: "1"}),
-        patch("deepagents_code.tui.widgets._links.webbrowser.open", return_value=True),
+        patch("niki_agent.tui.widgets._links.webbrowser.open", return_value=True),
     ):
         opened = await open_url_async(
             "https://example.com",
@@ -94,7 +94,7 @@ async def test_open_url_async_warns_on_failure() -> None:
     app = cast("App[None]", SimpleNamespace(notify=notify))
 
     with patch(
-        "deepagents_code.tui.widgets._links.webbrowser.open",
+        "niki_agent.tui.widgets._links.webbrowser.open",
         return_value=False,
     ):
         opened = await open_url_async("https://example.com", app=app)
@@ -139,7 +139,7 @@ def test_open_style_link_config_can_suppress_success_toast(tmp_path: Path) -> No
 
     with (
         patch.dict(os.environ, {SHOW_URL_OPEN_TOAST: ""}),
-        patch("deepagents_code.tui.widgets._links.webbrowser.open", return_value=True),
+        patch("niki_agent.tui.widgets._links.webbrowser.open", return_value=True),
     ):
         open_style_link(event)  # ty: ignore
 
@@ -151,7 +151,7 @@ def test_open_style_link_ignores_malformed_markdown_link_action() -> None:
     """Malformed Markdown link metadata should not reach the browser opener."""
     event = _event_with_meta({"@click": "link(https://example.com)"})
 
-    with patch("deepagents_code.tui.widgets._links.webbrowser.open") as mock_open:
+    with patch("niki_agent.tui.widgets._links.webbrowser.open") as mock_open:
         open_style_link(event)  # ty: ignore
 
     mock_open.assert_not_called()

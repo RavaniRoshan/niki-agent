@@ -13,15 +13,15 @@ from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
-from deepagents_code._paths import PATHS
-from deepagents_code.config import get_glyphs
-from deepagents_code.model_config import (
+from niki_agent._paths import PATHS
+from niki_agent.config import get_glyphs
+from niki_agent.model_config import (
     ModelProfileEntry,
     ProviderAuthSource,
     ProviderAuthState,
     ProviderAuthStatus,
 )
-from deepagents_code.tui.widgets.model_selector import (
+from niki_agent.tui.widgets.model_selector import (
     MAIN_MODEL_DEFAULT_SCOPE,
     ModelSelectorScreen,
 )
@@ -49,12 +49,12 @@ def _seed_provider_credentials(
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     # Strip dotenv-loaded prefixed variants so monkeypatched canonical vars
     # win in `resolve_env_var`'s lookup order.
-    for var in ("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "DEEPAGENTS_CODE_OPENAI_API_KEY"):
+    for var in ("NIKI_ANTHROPIC_API_KEY", "NIKI_OPENAI_API_KEY"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+        "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
     )
-    from deepagents_code import model_config
+    from niki_agent import model_config
 
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", tmp_path / "config.toml")
     # The cache is a module global that monkeypatch can't undo; clear it before
@@ -317,7 +317,7 @@ class TestDefaultModelScope:
     @staticmethod
     def _stub_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
         """Reduce the catalog to a single deterministic row."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -340,7 +340,7 @@ class TestDefaultModelScope:
         shape alike, so "check permissions" alone sends users to inspect
         permissions that are already correct.
         """
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         self._stub_catalog(monkeypatch)
 
@@ -381,15 +381,15 @@ class TestDefaultModelScope:
         the provider unavailable to `dcode`. The remedy must flow through
         `safe_install_extra_recovery_command` like `/install` failures do.
         """
-        from deepagents_code.tui.widgets import model_selector
-        from deepagents_code.tui.widgets.model_selector import (
+        from niki_agent.tui.widgets import model_selector
+        from niki_agent.tui.widgets.model_selector import (
             AUTO_CLASSIFIER_DEFAULT_SCOPE,
         )
 
         self._stub_catalog(monkeypatch)
         monkeypatch.setattr(
-            "deepagents_code.update_check.install_extra_recovery_command",
-            lambda _extra: "uv tool install deepagents-code --with langchain-anthropic",
+            "niki_agent.update_check.install_extra_recovery_command",
+            lambda _extra: "uv tool install niki-agent --with langchain-anthropic",
         )
 
         app = ModelSelectorTestApp()
@@ -407,10 +407,7 @@ class TestDefaultModelScope:
             await pilot.pause()
 
         assert notified
-        assert (
-            "uv tool install deepagents-code --with langchain-anthropic"
-            in (notified[0])
-        )
+        assert "uv tool install niki-agent --with langchain-anthropic" in (notified[0])
         assert "pip install" not in notified[0]
 
     async def test_ctrl_s_clears_stored_model_with_missing_provider(
@@ -422,7 +419,7 @@ class TestDefaultModelScope:
         not *stored*; applying it to an already-stored row would block the
         only in-app path for removing the now-unusable persisted value.
         """
-        from deepagents_code.tui.widgets.model_selector import (
+        from niki_agent.tui.widgets.model_selector import (
             AUTO_CLASSIFIER_DEFAULT_SCOPE,
         )
 
@@ -466,7 +463,7 @@ class TestNamesToggle:
         holds because `_restore_help_text` recomputes rather than replaying a
         string captured when the message was set.
         """
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -499,7 +496,7 @@ class TestNamesToggle:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Ctrl+N must not wipe the only notice that saving the default failed."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -545,7 +542,7 @@ class TestRecentModelsSection:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The Recent tag uses the compact brand, not the verbose auth label."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -586,7 +583,7 @@ class TestModelSelectorAuthRouting:
     @staticmethod
     def _patch_missing_auth(monkeypatch: pytest.MonkeyPatch) -> None:
         """Force every provider to report missing (start-blocking) creds."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -625,8 +622,8 @@ class TestModelSelectorAuthRouting:
         the generic key/base-url `AuthPromptScreen` must not appear. The OAuth
         flow itself is gated behind a confirmation modal, not launched yet.
         """
-        from deepagents_code.tui.widgets.auth import AuthConfirmScreen, AuthPromptScreen
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.tui.widgets.auth import AuthConfirmScreen, AuthPromptScreen
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         self._patch_missing_auth(monkeypatch)
 
@@ -656,8 +653,8 @@ class TestModelSelectorAuthRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Confirming the gate launches the OAuth flow without dismissing."""
-        from deepagents_code.tui.widgets.auth import AuthConfirmScreen
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.tui.widgets.auth import AuthConfirmScreen
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         self._patch_missing_auth(monkeypatch)
 
@@ -686,8 +683,8 @@ class TestModelSelectorAuthRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Declining the gate returns to the selector without OAuth."""
-        from deepagents_code.tui.widgets.auth import AuthConfirmScreen
-        from deepagents_code.tui.widgets.codex_auth import CodexAuthScreen
+        from niki_agent.tui.widgets.auth import AuthConfirmScreen
+        from niki_agent.tui.widgets.codex_auth import CodexAuthScreen
 
         self._patch_missing_auth(monkeypatch)
 
@@ -715,7 +712,7 @@ class TestModelSelectorAuthRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Non-codex providers still open the API-key/base-url prompt."""
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen
+        from niki_agent.tui.widgets.auth import AuthPromptScreen
 
         self._patch_missing_auth(monkeypatch)
 
@@ -744,7 +741,7 @@ class TestModelSelectorFiltering:
 
     async def test_empty_allowlist_explains_policy(self) -> None:
         """An empty policy shows its cause instead of offering custom models."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         model_config.DEFAULT_CONFIG_PATH.write_text(
             "[models]\nallowed = []\n",
@@ -773,7 +770,7 @@ class TestModelSelectorFiltering:
         text directly would attribute every mistyped filter -- and every empty
         one -- to `models.allowed`.
         """
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         model_config.DEFAULT_CONFIG_PATH.write_text(
             '[models]\nallowed = ["anthropic:claude-sonnet-5"]\n',
@@ -799,7 +796,7 @@ class TestModelSelectorFiltering:
         self,
     ) -> None:
         """Typing a real but blocked spec does name the policy, and what is allowed."""
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         model_config.DEFAULT_CONFIG_PATH.write_text(
             '[models]\nallowed = ["anthropic:claude-sonnet-5"]\n',
@@ -858,7 +855,7 @@ class TestModelSelectorCurrentModelPreselection:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A remote-only current model survives the recommended-only subset."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         monkeypatch.setattr(
             model_selector,
@@ -989,7 +986,7 @@ class TestAvailabilityOrdering:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A configured provider listed last renders first when unfiltered."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         def fake_auth(provider: str) -> ProviderAuthStatus:
             state = (
@@ -1041,7 +1038,7 @@ class TestAvailabilityOrdering:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A filtered search ignores availability and keeps fuzzy-score order."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         def fake_auth(provider: str) -> ProviderAuthStatus:
             state = (
@@ -1085,7 +1082,7 @@ class TestAvailabilityOrdering:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Same-rank providers keep their declared order (stable sort)."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         def fake_auth(provider: str) -> ProviderAuthStatus:
             state = (
@@ -1132,7 +1129,7 @@ class TestAvailabilityOrdering:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A recent entry pins to the top even when its provider is unusable."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         def fake_auth(provider: str) -> ProviderAuthStatus:
             state = (
@@ -1234,13 +1231,13 @@ class TestFormatOptionLabel:
                 env_var="ANTHROPIC_API_KEY",
             ),
         )
-        from deepagents_code.theme import DARK_COLORS
+        from niki_agent.theme import DARK_COLORS
 
         assert DARK_COLORS.warning in label.markup
 
     def test_install_required_dims_spec_when_not_selected(self) -> None:
         """Uninstalled providers render dimmed, overriding the missing-creds warning."""
-        from deepagents_code.theme import DARK_COLORS
+        from niki_agent.theme import DARK_COLORS
 
         label = ModelSelectorScreen._format_option_label(
             "baseten:some-model",
@@ -1312,7 +1309,7 @@ class TestModelDetailFooter:
 
     def test_format_footer_non_numeric_tokens(self) -> None:
         """Non-numeric token values render gracefully instead of crashing."""
-        from deepagents_code.config import UNICODE_GLYPHS
+        from niki_agent.config import UNICODE_GLYPHS
 
         entry = ModelProfileEntry(
             profile={"max_input_tokens": "unlimited", "max_output_tokens": 64000},
@@ -1331,10 +1328,10 @@ class TestModelSelectorAuthGate:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Enter on a model whose provider has no key opens the prompt."""
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen
+        from niki_agent.tui.widgets.auth import AuthPromptScreen
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
 
         app = ModelSelectorTestApp()
         async with app.run_test() as pilot:
@@ -1351,7 +1348,7 @@ class TestModelSelectorAuthGate:
     ) -> None:
         """Saving a key in the prompt dismisses the selector with the model."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
 
         app = ModelSelectorTestApp()
         async with app.run_test() as pilot:
@@ -1378,8 +1375,8 @@ class TestModelSelectorInstallRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Recommended models missing from an installed provider's profiles surface."""
-        from deepagents_code import config_manifest
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent import config_manifest
+        from niki_agent.tui.widgets import model_selector
 
         spec = "fireworks:accounts/fireworks/models/kimi-k3"
         assert spec in model_selector._RECOMMENDED_MODELS
@@ -1412,8 +1409,8 @@ class TestModelSelectorInstallRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Config-listed models do not make a missing provider look installed."""
-        from deepagents_code import config_manifest
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent import config_manifest
+        from niki_agent.tui.widgets import model_selector
 
         spec = "baseten:moonshotai/Kimi-K3"
         assert spec in model_selector._RECOMMENDED_MODELS
@@ -1442,8 +1439,8 @@ class TestModelSelectorInstallRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A recommended model already in profiles surfaces exactly once."""
-        from deepagents_code import config_manifest
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent import config_manifest
+        from niki_agent.tui.widgets import model_selector
 
         spec = "fireworks:accounts/fireworks/models/kimi-k3"
         model = spec.split(":", 1)[1]
@@ -1476,8 +1473,8 @@ class TestModelSelectorInstallRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Every unprofiled recommended spec for one installed provider surfaces."""
-        from deepagents_code import config_manifest
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent import config_manifest
+        from niki_agent.tui.widgets import model_selector
 
         expected = {
             spec
@@ -1515,7 +1512,7 @@ class TestModelSelectorInstallRouting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Onboarding selections install from the launch flow before auth."""
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         results: list[tuple[str, str] | None] = []
         screen = ModelSelectorScreen(
@@ -1528,11 +1525,11 @@ class TestModelSelectorInstallRouting:
         dismiss = MagicMock()
         screen.dismiss = dismiss  # ty: ignore
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.provider_install_extra",
+            "niki_agent.config_manifest.provider_install_extra",
             lambda _provider: "baseten",
         )
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.is_provider_package_installed",
+            "niki_agent.config_manifest.is_provider_package_installed",
             lambda _provider: False,
         )
         monkeypatch.setattr(
@@ -1555,7 +1552,7 @@ class TestModelSelectorInstallRouting:
         if importlib.util.find_spec("langchain_baseten") is not None:
             pytest.skip("langchain_baseten is installed in this environment")
 
-        from deepagents_code.tui.widgets.install_confirm import (
+        from niki_agent.tui.widgets.install_confirm import (
             InstallProviderConfirmScreen,
         )
 
@@ -1697,7 +1694,7 @@ class TestModelSelectorInstallRouting:
     async def test_remote_selection_skips_local_provider_requirements(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code.tui.widgets import model_selector
+        from niki_agent.tui.widgets import model_selector
 
         results: list[tuple[str, str] | None] = []
         screen = ModelSelectorScreen(
@@ -1708,7 +1705,7 @@ class TestModelSelectorInstallRouting:
         dismiss = MagicMock()
         screen.dismiss = dismiss  # ty: ignore
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.provider_install_extra",
+            "niki_agent.config_manifest.provider_install_extra",
             lambda _provider: pytest.fail("local install should not be checked"),
         )
         monkeypatch.setattr(

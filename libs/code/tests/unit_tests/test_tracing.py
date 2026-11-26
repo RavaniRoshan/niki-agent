@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from langgraph.types import Command
 
-from deepagents_code._tracing import RESUME_TRACE_TAG, stream_trace_config
+from niki_agent._tracing import RESUME_TRACE_TAG, stream_trace_config
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig

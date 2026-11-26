@@ -14,13 +14,12 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from deepagents.backends.protocol import FileDownloadResponse, WriteResult
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code.config import MODEL_RETRIES_ATTR
-from deepagents_code.hooks.models.domain import HookEvent, PreCompactDecision
-from deepagents_code.offload_middleware import (
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent.config import MODEL_RETRIES_ATTR
+from niki_agent.hooks.models.domain import HookEvent, PreCompactDecision
+from niki_agent.offload_middleware import (
     _SUMMARY_TRIM_FALLBACK,
     CLICompactionMiddleware,
     _ArchiveReadGuard,
@@ -30,15 +29,15 @@ from deepagents_code.offload_middleware import (
     _runtime_model_config,
     _summary_trim_limit,
 )
+from niki_agent.sdk.backends.protocol import FileDownloadResponse, WriteResult
 
-_NO_BACKOFF = "deepagents_code.model_retry._retry_delay_seconds"
+_NO_BACKOFF = "niki_agent.model_retry._retry_delay_seconds"
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from deepagents.backends.protocol import BackendProtocol
-
-    from deepagents_code.offload_middleware import _OffloadState
+    from niki_agent.offload_middleware import _OffloadState
+    from niki_agent.sdk.backends.protocol import BackendProtocol
 
 
 class TestHITLGating:
@@ -46,16 +45,16 @@ class TestHITLGating:
 
     def test_hitl_gating_when_enabled(self) -> None:
         """With REQUIRE_COMPACT_TOOL_APPROVAL=True, tool should be gated."""
-        with patch("deepagents_code.agent.REQUIRE_COMPACT_TOOL_APPROVAL", True):
-            from deepagents_code.agent import _add_interrupt_on
+        with patch("niki_agent.agent.REQUIRE_COMPACT_TOOL_APPROVAL", True):
+            from niki_agent.agent import _add_interrupt_on
 
             result = _add_interrupt_on()
             assert "compact_conversation" in result
 
     def test_hitl_gating_when_disabled(self) -> None:
         """With REQUIRE_COMPACT_TOOL_APPROVAL=False, tool should NOT be gated."""
-        with patch("deepagents_code.agent.REQUIRE_COMPACT_TOOL_APPROVAL", False):
-            from deepagents_code.agent import _add_interrupt_on
+        with patch("niki_agent.agent.REQUIRE_COMPACT_TOOL_APPROVAL", False):
+            from niki_agent.agent import _add_interrupt_on
 
             result = _add_interrupt_on()
             assert "compact_conversation" not in result
@@ -164,11 +163,9 @@ class TestCLICompactionMiddleware:
         decisions = PreCompactDecision(event=HookEvent.PRE_COMPACT)
 
         with (
+            patch("niki_agent.offload_middleware.Path.cwd", return_value=launch_dir),
             patch(
-                "deepagents_code.offload_middleware.Path.cwd", return_value=launch_dir
-            ),
-            patch(
-                "deepagents_code.offload_middleware._invoke_hook",
+                "niki_agent.offload_middleware._invoke_hook",
                 return_value=decisions,
             ) as invoke_hook,
         ):
@@ -195,11 +192,9 @@ class TestCLICompactionMiddleware:
         decision = PreCompactDecision(event=HookEvent.PRE_COMPACT)
 
         with (
+            patch("niki_agent.offload_middleware.Path.cwd", return_value=launch_dir),
             patch(
-                "deepagents_code.offload_middleware.Path.cwd", return_value=launch_dir
-            ),
-            patch(
-                "deepagents_code.offload_middleware._invoke_hook",
+                "niki_agent.offload_middleware._invoke_hook",
                 return_value=decision,
             ) as invoke_hook,
         ):
@@ -229,9 +224,10 @@ class TestCLICompactionMiddleware:
         self, archive_status: str, tmp_path: Path
     ) -> None:
         """Snapshots stay complete without duplicating the source's archive."""
-        from deepagents.backends import FilesystemBackend
-        from deepagents.middleware.summarization import SummarizationMiddleware
         from langchain_core.language_models.fake_chat_models import FakeListChatModel
+
+        from niki_agent.sdk.backends import FilesystemBackend
+        from niki_agent.sdk.middleware.summarization import SummarizationMiddleware
 
         backend = FilesystemBackend(root_dir=tmp_path, virtual_mode=True)
         summarization = SummarizationMiddleware(
@@ -420,10 +416,10 @@ class TestCLICompactionMiddleware:
 
         with (
             patch(
-                "deepagents_code.config.create_model", return_value=result
+                "niki_agent.config.create_model", return_value=result
             ) as create_model,
             patch(
-                "deepagents_code.offload_middleware.create_summarization_middleware",
+                "niki_agent.offload_middleware.create_summarization_middleware",
                 return_value=selected,
             ) as create_summarization,
         ):
@@ -463,14 +459,14 @@ class TestCLICompactionMiddleware:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=[
                     SimpleNamespace(model=main_model),
                     SimpleNamespace(model=summary_model),
                 ],
             ) as create_model,
             patch(
-                "deepagents_code.offload_middleware.create_summarization_middleware",
+                "niki_agent.offload_middleware.create_summarization_middleware",
                 return_value=selected,
             ) as create_summarization,
         ):
@@ -510,9 +506,9 @@ class TestCLICompactionMiddleware:
         selected = MagicMock()
 
         with (
-            patch("deepagents_code.config.create_model") as create_model,
+            patch("niki_agent.config.create_model") as create_model,
             patch(
-                "deepagents_code.offload_middleware.create_summarization_middleware",
+                "niki_agent.offload_middleware.create_summarization_middleware",
                 return_value=selected,
             ) as create_summarization,
         ):
@@ -528,7 +524,7 @@ class TestCLICompactionMiddleware:
 
     def test_explicit_clear_overrides_startup_summary_model(self) -> None:
         """A runtime clear selects the main model despite a graph-level default."""
-        from deepagents_code._cli_context import INHERIT_SUMMARIZATION_MODEL
+        from niki_agent._cli_context import INHERIT_SUMMARIZATION_MODEL
 
         startup = self._summarization()
         middleware = CLICompactionMiddleware(
@@ -538,7 +534,7 @@ class TestCLICompactionMiddleware:
         runtime.context = {"summarization_model": INHERIT_SUMMARIZATION_MODEL}
 
         with patch(
-            "deepagents_code.offload_middleware.create_summarization_middleware"
+            "niki_agent.offload_middleware.create_summarization_middleware"
         ) as create_summarization:
             actual = middleware._summarization_for_runtime(runtime)
 
@@ -562,18 +558,18 @@ class TestCLICompactionMiddleware:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=[
                     SimpleNamespace(model=main_model),
                     SimpleNamespace(model=summary_model),
                 ],
             ) as create_model,
             patch(
-                "deepagents_code.offload_middleware.create_summarization_middleware",
+                "niki_agent.offload_middleware.create_summarization_middleware",
                 return_value=selected,
             ),
             patch(
-                "deepagents_code.offload_middleware._get_approximate_token_counter",
+                "niki_agent.offload_middleware._get_approximate_token_counter",
                 return_value=counter,
             ) as get_counter,
         ):
@@ -606,10 +602,10 @@ class TestCLICompactionMiddleware:
 
         with (
             patch(
-                "deepagents_code.config.create_model", return_value=result
+                "niki_agent.config.create_model", return_value=result
             ) as create_model,
             patch(
-                "deepagents_code.offload_middleware.create_summarization_middleware",
+                "niki_agent.offload_middleware.create_summarization_middleware",
                 return_value=selected,
             ) as create_summarization,
         ):
@@ -629,7 +625,7 @@ class TestCLICompactionMiddleware:
 
     async def test_operation_read_failure_never_truncates_archive(self) -> None:
         """A transient archive read failure blocks the server operation's write."""
-        from deepagents.middleware.summarization import SummarizationMiddleware
+        from niki_agent.sdk.middleware.summarization import SummarizationMiddleware
 
         summarization = self._summarization()
         backend = MagicMock()
@@ -663,7 +659,7 @@ class TestCLICompactionMiddleware:
 
     def test_factory_builds_cli_middleware_threading_system_prompt(self) -> None:
         """The factory returns a CLI middleware carrying the SDK's config."""
-        from deepagents_code import offload_middleware as om
+        from niki_agent import offload_middleware as om
 
         sdk = MagicMock()
         sdk._summarization = MagicMock()
@@ -853,7 +849,7 @@ class TestLazySummaryModel:
 
     def test_model_is_not_built_until_a_summary_is_requested(self) -> None:
         summarization = self._summarizer()
-        with patch("deepagents_code.config.create_model") as create_model:
+        with patch("niki_agent.config.create_model") as create_model:
             _install_lazy_summary_model(cast("Any", summarization), "p:summary", 0)
             create_model.assert_not_called()
 
@@ -865,7 +861,7 @@ class TestLazySummaryModel:
         _install_lazy_summary_model(cast("Any", summarization), "p:summary", 0)
 
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=summary_model),
         ) as create_model:
             assert summarization._lc_helper._create_summary([]) == "main-model-summary"
@@ -885,7 +881,7 @@ class TestLazySummaryModel:
         _install_lazy_summary_model(cast("Any", summarization), "p:bad", None)
 
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             side_effect=RuntimeError("no such provider"),
         ):
             assert summarization._lc_helper._create_summary([]) == "main-model-summary"
@@ -905,14 +901,14 @@ class TestLazySummaryModel:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=[
                     RuntimeError("transient"),
                     RuntimeError("transient"),
                     SimpleNamespace(model=summary_model),
                 ],
             ),
-            patch("deepagents_code.offload_middleware.logger") as log,
+            patch("niki_agent.offload_middleware.logger") as log,
         ):
             summarization._lc_helper._create_summary([])
             summarization._lc_helper._create_summary([])
@@ -938,7 +934,7 @@ class TestLazySummaryModel:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=BlockingError("blocking call in event loop"),
             ),
             pytest.raises(BlockingError),
@@ -953,7 +949,7 @@ class TestLazySummaryModel:
         _install_lazy_summary_model(cast("Any", summarization), "p:summary", None)
 
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=summary_model),
         ):
             assert (
@@ -1020,7 +1016,7 @@ class TestLazySummaryModel:
         _install_lazy_summary_model(cast("Any", summarization), "p:broken", None)
 
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=self._broken_summary_model()),
         ):
             assert summarization._lc_helper._create_summary([]) == "main-model-summary"
@@ -1060,7 +1056,7 @@ class TestLazySummaryModel:
         )
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 return_value=SimpleNamespace(model=model),
             ),
             ThreadPoolExecutor(max_workers=2) as executor,
@@ -1102,7 +1098,7 @@ class TestLazySummaryModel:
             invoke=_flaky,
         )
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=model),
         ):
             assert summarization._lc_helper._create_summary([]) == "main-model-summary"
@@ -1117,10 +1113,10 @@ class TestLazySummaryModel:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 return_value=SimpleNamespace(model=self._broken_summary_model()),
             ),
-            patch("deepagents_code.offload_middleware.logger") as log,
+            patch("niki_agent.offload_middleware.logger") as log,
         ):
             summarization._lc_helper._create_summary([])
             summarization._lc_helper._create_summary([])
@@ -1145,7 +1141,7 @@ class TestLazySummaryModel:
         )
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 return_value=SimpleNamespace(model=model),
             ),
             pytest.raises(BlockingError),
@@ -1170,7 +1166,7 @@ class TestLazySummaryModel:
 
         with (
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=RuntimeError("no such provider"),
             ),
             pytest.raises(RuntimeError, match="main model down"),
@@ -1192,7 +1188,7 @@ class TestLazySummaryModel:
         _install_lazy_summary_model(cast("Any", summarization), "p:broken", None)
 
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=self._broken_summary_model()),
         ):
             assert (
@@ -1233,7 +1229,7 @@ class TestLazySummaryModel:
             ainvoke=_fail,
         )
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=model),
         ):
             first = asyncio.create_task(summarization._lc_helper._acreate_summary([]))

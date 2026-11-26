@@ -10,12 +10,12 @@ from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 
-from deepagents_code._version import __version__
+from niki_agent._version import __version__
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterator
 
-    from deepagents_code.extras_info import VersionReport
+    from niki_agent.extras_info import VersionReport
 
     # `conftest`'s fixture protocols cannot be imported here: `tool.ty`
     # `extra-paths` puts `libs/deepagents` on the path too, so
@@ -40,14 +40,14 @@ def _block_sdk_pypi_fetch(tmp_path: Path) -> Iterator[None]:
     """
     cache_path = tmp_path / "latest_version.json"
     with (
-        patch("deepagents_code.update_check.CACHE_FILE", cache_path),
-        patch("deepagents_code.update_check.get_sdk_release_time", return_value=None),
+        patch("niki_agent.update_check.CACHE_FILE", cache_path),
+        patch("niki_agent.update_check.get_sdk_release_time", return_value=None),
         patch(
-            "deepagents_code.update_check.is_update_available",
+            "niki_agent.update_check.is_update_available",
             return_value=(False, None),
         ),
         patch(
-            "deepagents_code.update_check.release_requires_prereleases",
+            "niki_agent.update_check.release_requires_prereleases",
             return_value=False,
         ),
         # Pin the post-upgrade shadow check to a clean "no shadow" for the
@@ -58,7 +58,7 @@ def _block_sdk_pypi_fetch(tmp_path: Path) -> Iterator[None]:
         # with the shadow warning. The dedicated shadow-present tests in
         # this file override this patch with their own.
         patch(
-            "deepagents_code.update_check.detect_shadowed_dcode",
+            "niki_agent.update_check.detect_shadowed_dcode",
             return_value=None,
         ),
     ):
@@ -75,25 +75,25 @@ def _isolate_update_log_dir(tmp_path: Path) -> Iterator[None]:
     real cache dir, pruning a user's genuine logs past `UPDATE_LOG_MAX_FILES`.
     Tests that assert on a specific path override this with their own patch.
     """
-    with patch("deepagents_code.update_check.UPDATE_LOG_DIR", tmp_path / "update_logs"):
+    with patch("niki_agent.update_check.UPDATE_LOG_DIR", tmp_path / "update_logs"):
         yield
 
 
 def test_cli_version_flag() -> None:
     """Verify that `--version` flag outputs the correct version and extras."""
     result = subprocess.run(
-        [sys.executable, "-m", "deepagents_code.main", "--version"],
+        [sys.executable, "-m", "niki_agent.main", "--version"],
         capture_output=True,
         text=True,
         check=False,
     )
     # argparse exits with 0 for --version
     assert result.returncode == 0
-    assert f"deepagents-code {__version__}" in result.stdout
-    from deepagents_code.extras_info import collect_version_report
+    assert f"niki-agent {__version__}" in result.stdout
+    from niki_agent.extras_info import collect_version_report
 
     sdk_version = collect_version_report().display_sdk_version
-    assert f"deepagents (SDK) {sdk_version}" in result.stdout
+    assert f"Niki SDK {sdk_version}" in result.stdout
     # Extras block is plain-text (no markdown table or headings).
     assert "Installed optional dependencies:" in result.stdout
     assert "langchain-anthropic" in result.stdout
@@ -103,8 +103,8 @@ def test_cli_version_flag() -> None:
 
 async def test_version_slash_command_update_hint_when_auto_update_disabled() -> None:
     """Verify `/version` points to `/update` when auto-update is disabled."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
@@ -112,11 +112,11 @@ async def test_version_slash_command_update_hint_when_auto_update_disabled() -> 
         app._update_available = (True, "99.99.99")
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=False,
             ),
         ):
@@ -127,7 +127,7 @@ async def test_version_slash_command_update_hint_when_auto_update_disabled() -> 
         content = str(app_msgs[-1]._content)
         assert "Update available: v99.99.99" in content
         assert "/update" in content
-        assert "dcode update" in content
+        assert "niki update" in content
         # The manual hint must not falsely promise an automatic install.
         assert "automatically" not in content
         assert "uv tool install" not in content
@@ -135,8 +135,8 @@ async def test_version_slash_command_update_hint_when_auto_update_disabled() -> 
 
 async def test_version_slash_command_does_not_promise_unsupported_update() -> None:
     """Verify `/version` does not promise auto-update for unknown installers."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
@@ -144,11 +144,11 @@ async def test_version_slash_command_does_not_promise_unsupported_update() -> No
         app._update_available = (True, "99.99.99")
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="other",
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ) as auto_update_enabled,
         ):
@@ -165,8 +165,8 @@ async def test_version_slash_command_does_not_promise_unsupported_update() -> No
 
 async def test_version_slash_command_falls_back_when_preference_lookup_fails() -> None:
     """Verify `/version` survives an unreadable auto-update preference."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
@@ -174,11 +174,11 @@ async def test_version_slash_command_falls_back_when_preference_lookup_fails() -
         app._update_available = (True, "99.99.99")
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 side_effect=AttributeError("malformed update config"),
             ),
         ):
@@ -196,11 +196,11 @@ def _editable_exact_pin_version_report(cli_metadata: str = "0.1.40") -> VersionR
     """Build a report with editable installs, CLI drift, and a newer SDK pin."""
     from packaging.requirements import Requirement
 
-    from deepagents_code.extras_info import DistributionVersion, VersionReport
+    from niki_agent.extras_info import DistributionVersion, VersionReport
 
     return VersionReport(
         cli=DistributionVersion(
-            name="deepagents-code",
+            name="niki-agent",
             source_version=__version__,
             metadata_version=cli_metadata,
             editable=True,
@@ -222,38 +222,35 @@ def _editable_exact_pin_version_report(cli_metadata: str = "0.1.40") -> VersionR
 
 def test_build_version_text_reports_editable_drift_and_newer_sdk_pin() -> None:
     """`--version` surfaces CLI stale metadata and the effective SDK pin."""
-    from deepagents_code.main import build_version_text
+    from niki_agent.main import build_version_text
 
     with patch(
-        "deepagents_code.extras_info.collect_version_report",
+        "niki_agent.extras_info.collect_version_report",
         return_value=_editable_exact_pin_version_report(),
     ):
         text = build_version_text()
 
     # Editable status is shown on its own `Editable install:` line, so the CLI
     # version line carries only the source/metadata drift, not `editable`.
-    assert f"deepagents-code {__version__} (installed metadata: 0.1.40)" in text
-    assert (
-        "deepagents (SDK) 0.7.0a7+editable "
-        "(workspace HEAD; source marker: 0.6.12)" in text
-    )
+    assert f"niki-agent {__version__} (installed metadata: 0.1.40)" in text
+    assert "Niki SDK 0.7.0a7+editable (workspace HEAD; source marker: 0.6.12)" in text
 
 
 async def test_version_slash_command_reports_editable_drift_and_newer_sdk_pin() -> None:
     """`/version` renders the same editable pin facts as `--version`."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.extras_info.collect_version_report",
+                "niki_agent.extras_info.collect_version_report",
                 return_value=_editable_exact_pin_version_report(),
             ),
             patch(
-                "deepagents_code.update_check.get_sdk_release_time",
+                "niki_agent.update_check.get_sdk_release_time",
                 return_value=None,
             ) as get_sdk_release_time,
         ):
@@ -265,11 +262,10 @@ async def test_version_slash_command_reports_editable_drift_and_newer_sdk_pin() 
             [m for m in app.query(AppMessage) if not m._is_markdown][-1]._content
         )
         assert (
-            f"deepagents-code version: {__version__} "
-            "(installed metadata: 0.1.40)" in content
+            f"niki-agent version: {__version__} (installed metadata: 0.1.40)" in content
         )
         assert (
-            "deepagents (SDK) version: 0.7.0a7+editable "
+            "Niki SDK version: 0.7.0a7+editable "
             "(workspace HEAD; source marker: 0.6.12)" in content
         )
 
@@ -277,23 +273,23 @@ async def test_version_slash_command_reports_editable_drift_and_newer_sdk_pin() 
 async def test_update_slash_command_editable_install_short_circuits() -> None:
     """Editable install must not invoke `perform_upgrade` from the TUI.
 
-    A regression here would run `uv tool upgrade deepagents-code` on an
+    A regression here would run `uv tool upgrade niki-agent` on an
     editable dev checkout and clobber the local install with a PyPI copy.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=True,
             ),
-            patch("deepagents_code.update_check.is_update_available") as is_update_mock,
+            patch("niki_agent.update_check.is_update_available") as is_update_mock,
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as perform_upgrade_mock,
         ):
@@ -314,23 +310,23 @@ async def test_update_slash_command_pypi_unreachable_short_circuits() -> None:
     Regression guard: collapsing this branch into the up-to-date message
     would tell users they're current when the check actually failed.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, None),
             ) as is_update_mock,
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as perform_upgrade_mock,
         ):
@@ -349,8 +345,8 @@ async def test_update_slash_command_pypi_unreachable_short_circuits() -> None:
 
 async def test_update_slash_command_links_log_instead_of_listing_dependencies() -> None:
     """A normal app upgrade keeps dependency churn in its exact update log."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
     log_path = Path("/tmp/dcode update.log")
     app = DeepAgentsApp()
@@ -358,25 +354,25 @@ async def test_update_slash_command_links_log_instead_of_listing_dependencies() 
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "99.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=log_path,
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
                     (
-                        " - deepagents-code==1.0.0\n"
-                        " + deepagents-code==99.0.0\n"
+                        " - niki-agent==1.0.0\n"
+                        " + niki-agent==99.0.0\n"
                         " - anthropic==0.120.2\n"
                         " + anthropic==0.122.0\n"
                     ),
@@ -409,8 +405,8 @@ async def test_update_slash_command_links_log_instead_of_listing_dependencies() 
 
 async def test_update_slash_command_uses_powershell_to_follow_logs() -> None:
     """Windows updates show a PowerShell-compatible log-follow command."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     log_path = Path(r"C:\Users\dcode update.log")
     app = DeepAgentsApp()
@@ -418,20 +414,20 @@ async def test_update_slash_command_uses_powershell_to_follow_logs() -> None:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "99.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=log_path,
             ),
-            patch("deepagents_code.update_check.sys.platform", "win32"),
+            patch("niki_agent.update_check.sys.platform", "win32"),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", "99.0.0"),
             ),
@@ -449,30 +445,30 @@ async def test_update_slash_command_uses_powershell_to_follow_logs() -> None:
 
 async def test_update_slash_command_stable_prerelease_deps_keep_intent_none() -> None:
     """Stable releases with pre-release deps let `perform_upgrade` pin the app."""
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "99.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.release_requires_prereleases",
+                "niki_agent.update_check.release_requires_prereleases",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", "99.0.0"),
             ) as perform_upgrade_mock,
@@ -495,9 +491,9 @@ async def test_update_slash_command_reports_success_without_a_banner() -> None:
     would report a completed upgrade as "Update failed" and name an internal
     CSS selector at the user. The repaint is cosmetic; the success line is not.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
-    from deepagents_code.tui.widgets.welcome import WelcomeBanner
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent.tui.widgets.welcome import WelcomeBanner
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
@@ -506,15 +502,15 @@ async def test_update_slash_command_reports_success_without_a_banner() -> None:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "99.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", "99.0.0"),
             ),
@@ -543,10 +539,10 @@ async def test_update_slash_command_replaces_success_with_shadow_warning() -> No
     over a broken upgrade. The splash version carries the same guarantee
     for the same reason, and is asserted here too.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
-    from deepagents_code.tui.widgets.welcome import WelcomeBanner
-    from deepagents_code.update_check import ShadowedDcode
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent.tui.widgets.welcome import WelcomeBanner
+    from niki_agent.update_check import ShadowedDcode
 
     shadow = ShadowedDcode(
         shadowing_bin=Path("/opt/stale/bin/dcode"),
@@ -557,22 +553,22 @@ async def test_update_slash_command_replaces_success_with_shadow_warning() -> No
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "99.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", "99.0.0"),
             ),
             # Override the module-level autouse `None` patch with the
             # positive case. Innermost patch wins.
             patch(
-                "deepagents_code.update_check.detect_shadowed_dcode",
+                "niki_agent.update_check.detect_shadowed_dcode",
                 return_value=shadow,
             ),
         ):
@@ -606,19 +602,19 @@ async def test_update_deps_routes_outdated_dcode_through_regular_update(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """`/update --deps` runs the normal update flow when dcode is outdated."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "1.1.0"),
             ),
             patch.object(
@@ -628,11 +624,11 @@ async def test_update_deps_routes_outdated_dcode_through_regular_update(
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
-                    " - deepagents-code==1.0.0\n + deepagents-code==1.1.0\n",
+                    " - niki-agent==1.0.0\n + niki-agent==1.1.0\n",
                     "1.1.0",
                 ),
             ),
@@ -645,7 +641,7 @@ async def test_update_deps_routes_outdated_dcode_through_regular_update(
         content = str(app_msgs[-1]._content)
         assert "Updated to v1.1.0" in content
         assert "Quit and relaunch dcode to use the new version" in content
-        assert "Updated deepagents-code:" not in content
+        assert "Updated niki-agent:" not in content
         assert "Dependencies are already up to date." not in content
 
 
@@ -653,23 +649,23 @@ async def test_update_deps_skips_refresh_prompt_when_refresh_unsupported(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """Unsupported refresh installs take the normal outdated dcode update path."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "1.1.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(False, "Homebrew install detected — ..."),
             ),
             patch.object(
@@ -678,15 +674,15 @@ async def test_update_deps_skips_refresh_prompt_when_refresh_unsupported(
                 new_callable=AsyncMock,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
             ) as refresh_mock,
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
-                    " - deepagents-code==1.0.0\n + deepagents-code==1.1.0\n",
+                    " - niki-agent==1.0.0\n + niki-agent==1.1.0\n",
                     "1.1.0",
                 ),
             ) as perform_upgrade_mock,
@@ -705,7 +701,7 @@ async def test_update_deps_skips_refresh_prompt_when_refresh_unsupported(
         app_msgs = [m for m in app.query(AppMessage) if not m._is_markdown]
         content = str(app_msgs[-1]._content)
         assert "Updated to v1.1.0" in content
-        assert "Updated deepagents-code:" not in content
+        assert "Updated niki-agent:" not in content
         assert "Dependency refresh failed" not in content
 
 
@@ -713,23 +709,23 @@ async def test_update_deps_decline_app_update_refreshes_current_deps(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """Declining the app update refreshes deps without upgrading dcode."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "1.1.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch.object(
@@ -739,7 +735,7 @@ async def test_update_deps_decline_app_update_refreshes_current_deps(
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -747,7 +743,7 @@ async def test_update_deps_decline_app_update_refreshes_current_deps(
                 ),
             ) as refresh_mock,
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as perform_upgrade_mock,
         ):
@@ -761,7 +757,7 @@ async def test_update_deps_decline_app_update_refreshes_current_deps(
         content = str(app_msgs[-1]._content)
         assert "Refreshed dependencies:" in content
         assert "langchain-openai  1.3.2 -> 1.5.0" in content
-        assert "A deepagents-code update is available: v1.1.0." in content
+        assert "A niki-agent update is available: v1.1.0." in content
         assert "Updated to v1.1.0" not in content
 
 
@@ -769,23 +765,23 @@ async def test_update_deps_decline_app_update_reports_no_new_deps(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """`/update --deps` reports current deps even when dcode has an update."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "1.1.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch.object(
@@ -795,12 +791,12 @@ async def test_update_deps_decline_app_update_reports_no_new_deps(
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
                 return_value=(True, "Resolved 120 packages in 12ms\n"),
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as perform_upgrade_mock,
         ):
@@ -812,7 +808,7 @@ async def test_update_deps_decline_app_update_reports_no_new_deps(
         app_msgs = [m for m in app.query(AppMessage) if not m._is_markdown]
         content = str(app_msgs[-1]._content)
         assert "Dependencies are already up to date." in content
-        assert "A deepagents-code update is available: v1.1.0." in content
+        assert "A niki-agent update is available: v1.1.0." in content
         assert "Updated to v1.1.0" not in content
 
 
@@ -820,27 +816,27 @@ async def test_update_already_current_prompts_and_refreshes_on_confirm(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """Plain `/update` offers a dep refresh when dcode is already current."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -854,7 +850,7 @@ async def test_update_already_current_prompts_and_refreshes_on_confirm(
                 return_value=True,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -884,27 +880,27 @@ async def test_update_refresh_continuation_surfaces_unexpected_error(
     without its own handler the failure would reach only `_log_task_exception`
     and the user would see no outcome at all.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import ErrorMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import ErrorMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -935,27 +931,27 @@ async def test_update_already_current_skips_refresh_on_decline(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """Declining the prompt leaves the install untouched."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -969,7 +965,7 @@ async def test_update_already_current_skips_refresh_on_decline(
                 return_value=False,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
             ) as refresh_mock,
         ):
@@ -1008,12 +1004,12 @@ async def test_update_refresh_prompt_responsive_through_message_pump(
     teardown, and the failure surfaces as a bare pytest-timeout that says
     nothing about the cause.
     """
-    from deepagents_code import app as app_module
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent import app as app_module
+    from niki_agent.app import DeepAgentsApp
 
     monkeypatch.setattr(app_module, "_MODAL_WATCHDOG_TIMEOUT_SECONDS", 2.0)
-    from deepagents_code.tui.widgets.chat_input import ChatInput
-    from deepagents_code.tui.widgets.update_confirm import (
+    from niki_agent.tui.widgets.chat_input import ChatInput
+    from niki_agent.tui.widgets.update_confirm import (
         RefreshDependenciesConfirmScreen,
     )
 
@@ -1026,19 +1022,19 @@ async def test_update_refresh_prompt_responsive_through_message_pump(
         app._startup_sequence_running = False
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -1046,7 +1042,7 @@ async def test_update_refresh_prompt_responsive_through_message_pump(
                 ),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
                 return_value=(
                     True,
@@ -1089,12 +1085,12 @@ async def test_update_deps_prompt_responsive_through_message_pump(
     current version and refresh its dependencies. The watchdog is shortened for
     the same reason as there — so a regression fails legibly instead of hanging.
     """
-    from deepagents_code import app as app_module
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent import app as app_module
+    from niki_agent.app import DeepAgentsApp
 
     monkeypatch.setattr(app_module, "_MODAL_WATCHDOG_TIMEOUT_SECONDS", 2.0)
-    from deepagents_code.tui.widgets.chat_input import ChatInput
-    from deepagents_code.tui.widgets.update_confirm import (
+    from niki_agent.tui.widgets.chat_input import ChatInput
+    from niki_agent.tui.widgets.update_confirm import (
         UpdateBeforeDependenciesConfirmScreen,
     )
 
@@ -1106,23 +1102,23 @@ async def test_update_deps_prompt_responsive_through_message_pump(
         app._startup_sequence_running = False
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "1.1.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as upgrade_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
                 return_value=(True, ""),
             ) as refresh_mock,
@@ -1153,27 +1149,27 @@ async def test_update_already_current_reports_no_dependency_changes(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """Plain `/update` skips the prompt when the dry run finds no changes."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(True, "Resolved 120 packages in 12ms\n"),
             ) as dry_run_mock,
@@ -1183,7 +1179,7 @@ async def test_update_already_current_reports_no_dependency_changes(
                 new_callable=AsyncMock,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
             ) as refresh_mock,
         ):
@@ -1202,27 +1198,27 @@ async def test_update_already_current_reports_dependency_check_failure(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """A failed dry-run check reports the failure without refreshing."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(True, None),
             ),
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh_dry_run",
+                "niki_agent.update_check.perform_dependency_refresh_dry_run",
                 new_callable=AsyncMock,
                 return_value=(False, "No solution found"),
             ),
@@ -1232,7 +1228,7 @@ async def test_update_already_current_reports_dependency_check_failure(
                 new_callable=AsyncMock,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
             ) as refresh_mock,
         ):
@@ -1252,31 +1248,31 @@ async def test_update_already_current_skips_prompt_when_refresh_unsupported(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
     """brew/other installs aren't prompted for a refresh or prerelease support."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(False, "1.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.release_requires_prereleases",
+                "niki_agent.update_check.release_requires_prereleases",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.prerelease_upgrade_supported",
+                "niki_agent.update_check.prerelease_upgrade_supported",
                 return_value=(False, "Pre-release updates aren't supported"),
             ) as prerelease_supported_mock,
             patch(
-                "deepagents_code.update_check.dependency_refresh_supported",
+                "niki_agent.update_check.dependency_refresh_supported",
                 return_value=(False, "Homebrew install detected — ..."),
             ),
             patch.object(
@@ -1285,7 +1281,7 @@ async def test_update_already_current_skips_prompt_when_refresh_unsupported(
                 new_callable=AsyncMock,
             ) as confirm_mock,
             patch(
-                "deepagents_code.update_check.perform_dependency_refresh",
+                "niki_agent.update_check.perform_dependency_refresh",
                 new_callable=AsyncMock,
             ) as refresh_mock,
         ):
@@ -1307,21 +1303,21 @@ async def test_perform_app_upgrade_failure_surfaces_manual_command() -> None:
     `"Auto-update failed"` assertions live in `test_main.py`, which exercises
     `main._run_startup_auto_update` instead.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(False, "resolver: conflict", None),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool install -U 'deepagents-code==1.1.0'",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool install -U 'niki-agent==1.1.0'",
             ),
         ):
             await app._perform_app_upgrade(
@@ -1338,7 +1334,7 @@ async def test_perform_app_upgrade_failure_surfaces_manual_command() -> None:
         )
         assert "Auto-update failed" in content
         assert "resolver: conflict" in content
-        assert "uv tool install -U 'deepagents-code==1.1.0'" in content
+        assert "uv tool install -U 'niki-agent==1.1.0'" in content
 
 
 async def test_perform_app_upgrade_failure_repeats_log_path() -> None:
@@ -1348,8 +1344,8 @@ async def test_perform_app_upgrade_failure_repeats_log_path() -> None:
     complete record — and the hint mounted before the install has scrolled away
     behind the installer's streamed output by the time the failure lands.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     log_path = Path("/tmp/dcode failed-update.log")
     app = DeepAgentsApp()
@@ -1357,17 +1353,17 @@ async def test_perform_app_upgrade_failure_repeats_log_path() -> None:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=log_path,
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(False, "resolver: conflict", None),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool install -U 'deepagents-code==1.1.0'",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool install -U 'niki-agent==1.1.0'",
             ),
         ):
             await app._perform_app_upgrade(
@@ -1395,19 +1391,19 @@ async def test_perform_app_upgrade_omits_log_hint_when_log_uncreatable() -> None
     written. Pointing the user at `tail -f <path>` for a file that will never
     exist is worse than saying nothing, and the upgrade itself must still run.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", "1.1.0"),
             ) as perform_upgrade_mock,
@@ -1442,16 +1438,16 @@ async def test_perform_app_upgrade_defers_to_another_session() -> None:
     in-process here for determinism, which exercises the caller's response to
     a refusal; `TestUpdateInstallLock` covers the cross-process guarantee.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
-    from deepagents_code.update_check import update_install_lock
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
+    from niki_agent.update_check import update_install_lock
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
             ) as upgrade_mock,
             update_install_lock() as holding,
@@ -1479,8 +1475,8 @@ async def test_perform_app_upgrade_holds_the_lock_during_install() -> None:
     not reentrant, so re-entering from inside `perform_upgrade` proves it is
     held for the real work.
     """
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.update_check import update_install_lock
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.update_check import update_install_lock
 
     held_during_install: list[bool] = []
 
@@ -1495,7 +1491,7 @@ async def test_perform_app_upgrade_holds_the_lock_during_install() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         with patch(
-            "deepagents_code.update_check.perform_upgrade",
+            "niki_agent.update_check.perform_upgrade",
             new=_record_lock_state,
         ):
             await app._perform_app_upgrade(
@@ -1516,16 +1512,16 @@ async def test_perform_app_upgrade_skips_install_in_debug_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """`DEBUG_UPDATE` short-circuits the app upgrade before shelling out to uv."""
-    from deepagents_code._env_vars import DEBUG_UPDATE
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent._env_vars import DEBUG_UPDATE
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.tui.widgets.messages import AppMessage
 
     monkeypatch.setenv(DEBUG_UPDATE, "1")
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with patch(
-            "deepagents_code.update_check.perform_upgrade",
+            "niki_agent.update_check.perform_upgrade",
             new_callable=AsyncMock,
         ) as upgrade_mock:
             await app._perform_app_upgrade(
@@ -1545,7 +1541,7 @@ async def test_perform_app_upgrade_skips_install_in_debug_mode(
 def test_help_excludes_interactive_features() -> None:
     """Verify that `--help` does not contain Interactive Features section."""
     result = subprocess.run(
-        [sys.executable, "-m", "deepagents_code.main", "--help"],
+        [sys.executable, "-m", "niki_agent.main", "--help"],
         capture_output=True,
         text=True,
         check=False,

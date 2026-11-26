@@ -1,8 +1,7 @@
 """Reference extension: shared data through a virtual storage route."""
 
-from deepagents.backends import StoreBackend
-
-from deepagents_code.extensions import ExtensionAPI
+from niki_agent.extensions import ExtensionAPI
+from niki_agent.sdk.backends import StoreBackend
 
 
 async def extension(d: ExtensionAPI) -> None:  # noqa: RUF029  # Public extension factories are async by contract.

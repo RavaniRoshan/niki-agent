@@ -9,16 +9,16 @@ import pytest
 from langchain_core.messages import AIMessageChunk
 from langgraph.types import Command
 
-from deepagents_code.adapters.runtime.acp import ACPAgentRuntime
-from deepagents_code.application.run_turn import RunTurnCoordinator
-from deepagents_code.domain.events import (
+from niki_agent.adapters.runtime.acp import ACPAgentRuntime
+from niki_agent.application.run_turn import RunTurnCoordinator
+from niki_agent.domain.events import (
     ResumeRequest,
     RunEvent,
     RunEventKind,
     TurnRequest,
     TurnStatus,
 )
-from deepagents_code.niki.runtime_mode import (
+from niki_agent.niki.runtime_mode import (
     is_niki_runtime_enabled,
     niki_runtime_scope,
 )

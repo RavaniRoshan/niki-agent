@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
-from deepagents.backends.protocol import LsResult
 
-from deepagents_code._repository_bounds import REPOSITORY_PATH_ERROR, RepositoryBounds
+from niki_agent._repository_bounds import REPOSITORY_PATH_ERROR, RepositoryBounds
+from niki_agent.sdk.backends.protocol import LsResult
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,7 +54,7 @@ class TestPreflight:
     """Preflight enforces path safety and backend metadata limits."""
 
     def test_rejects_local_symlink_outside_root(self, tmp_path: Path) -> None:
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         repository = tmp_path / "repository"
         repository.mkdir()
@@ -73,7 +73,7 @@ class TestPreflight:
     async def test_async_rejects_local_symlink_outside_root(
         self, tmp_path: Path
     ) -> None:
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         repository = tmp_path / "repository"
         repository.mkdir()
@@ -90,7 +90,7 @@ class TestPreflight:
         )
 
     def test_allows_local_symlink_within_root(self, tmp_path: Path) -> None:
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         repository = tmp_path / "repository"
         repository.mkdir()

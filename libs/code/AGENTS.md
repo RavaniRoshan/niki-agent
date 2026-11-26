@@ -1,12 +1,12 @@
 # `libs/code` agent guide
 
-`deepagents-code` is the interactive coding agent — the Textual REPL, headless `-x` mode, MCP integration, skills, sandbox bootstrap, and slash-command surface.
+`niki-agent` is the interactive coding agent — the Textual REPL, headless `-x` mode, MCP integration, skills, sandbox bootstrap, and slash-command surface.
 
 For monorepo-wide conventions (commit titles, lint, testing, docs, CI, benchmarks), see the root `AGENTS.md`. For a high-level map of the package (client/server processes, request lifecycle, module map), see `ARCHITECTURE.md`.
 
 ## Textual (terminal UI framework)
 
-`deepagents-code` uses [Textual](https://textual.textualize.io/).
+`niki-agent` uses [Textual](https://textual.textualize.io/).
 
 **Key Textual resources:**
 
@@ -106,60 +106,78 @@ The REPL has **many** text-entry surfaces, so "the input" / "the input box" is a
 
 Rule of thumb: say **chat input** for the main composer and name any other surface by its owner (`<owner> field` / `<owner> filter`). Reserve bare "input box" for the chat input only.
 
-## SDK dependency pin
+## Vendored SDK
 
-`deepagents-code` pins an exact `deepagents==X.Y.Z` version in `pyproject.toml`. When developing features that depend on new SDK functionality, bump this pin as part of the same PR. A CI check verifies the pin is not older than the current SDK version at release time (unless bypassed with `dangerous-skip-sdk-pin-check`); pins ahead of the workspace SDK are allowed for intentional prerelease coordination.
+The Deep Agents SDK lives at `niki_agent/sdk/` and the ACP runtime at
+`niki_agent/acp_sdk/`. They are copies, not dependencies. `PROVENANCE.md` in
+each directory names the upstream version, commit, and the mechanical changes.
 
-For a persistent editable `dcode-dev` install that stays separate from a released install, see [Local dev installs](./DEVELOPMENT.md#local-dev-installs) in the development guide.
+- Do not edit the vendored trees for style or branding. They are excluded from
+  ruff and ty so their diff against `PROVENANCE.md` stays auditable.
+- When a feature needs new SDK behavior, change the copy and record the change
+  in `PROVENANCE.md` under "Changes made".
+- MIT attribution is mandatory: `NOTICE`, `LICENSE`, and the provenance files
+  survive every rename.
+
+For a persistent editable install that stays separate from a released install,
+see [Local dev installs](./DEVELOPMENT.md#local-dev-installs).
 
 ## Startup performance
 
-`deepagents-code` must stay fast to launch. Never import heavy packages (e.g., `deepagents`, LangChain, LangGraph) at module level or in the argument-parsing path. These imports pull in large dependency trees and add seconds to every invocation, including trivial commands like `deepagents-code -v`.
+`niki-agent` must stay fast to launch. Never import heavy packages (e.g., `niki_agent.sdk`, LangChain, LangGraph) at module level or in the argument-parsing path. These imports pull in large dependency trees and add seconds to every invocation, including trivial commands like `niki-agent -v`.
 
 - Keep top-level imports in `main.py` and other entry-point modules minimal.
 - Defer heavy imports to the point where they are actually needed (inside functions/methods).
 - To read another package's version without importing it, use `importlib.metadata.version("package-name")`.
 - Feature-gate checks on the startup hot path (before background workers fire) must be lightweight — env var lookups, small file reads. Never pull in expensive modules just to decide whether to skip a feature.
 - When adding logic that already exists elsewhere (e.g., editable-install detection), import the existing cached implementation rather than duplicating it.
-- Features that run shell commands must never do so *silently* by default. Either gate them behind an explicit env var or config key (opt-in), or — if default-enabled — announce the action before running it and offer a documented opt-out. Auto-update is the sole default-enabled exception: it shows a one-time migration notice and skips the first install when enabled only by the opt-out default, prints the upgrade it is about to perform, is overridable via `DEEPAGENTS_CODE_AUTO_UPDATE` / `[update].auto_update`, and is always disabled for editable installs.
+- Features that run shell commands must never do so *silently* by default. Either gate them behind an explicit env var or config key (opt-in), or — if default-enabled — announce the action before running it and offer a documented opt-out. Auto-update is the sole default-enabled exception: it shows a one-time migration notice and skips the first install when enabled only by the opt-out default, prints the upgrade it is about to perform, is overridable via `NIKI_AUTO_UPDATE` / `[update].auto_update`, and is always disabled for editable installs.
 - Background workers that spawn subprocesses must set a timeout to avoid blocking indefinitely.
 
 ## Logging
 
-Debug logging is configured **once**, on the `deepagents_code` package logger, by the `configure_debug_logging` call in `deepagents_code/__init__.py`. Child module loggers (`logging.getLogger(__name__)`) reach the shared debug file via propagation.
+Debug logging is configured **once**, on the `niki_agent` package logger, by the `configure_debug_logging` call in `niki_agent/__init__.py`. Child module loggers (`logging.getLogger(__name__)`) reach the shared debug file via propagation.
 
 - Do **not** add per-module `configure_debug_logging(logger)` calls. They are redundant now that the package logger is configured at import, and they reintroduce the duplicate-handler problem the single-config approach solves.
-- Every module should create its logger with `logging.getLogger(__name__)` so it stays inside the `deepagents_code.*` hierarchy and inherits the package handler. Don't set `logger.propagate = False` or attach your own handlers.
-- The **file** handler only attaches when `DEEPAGENTS_CODE_DEBUG` is truthy and the active thread is known; that path is a small env-var read and filesystem operation, so it's safe on the startup hot path. See `DEVELOPMENT.md` for the `DEEPAGENTS_CODE_DEBUG` / `DEEPAGENTS_CODE_DEBUG_DIRECTORY` / `DEEPAGENTS_CODE_LOG_LEVEL` env vars.
-- Separately, an **always-on in-memory ring buffer** (`_debug_buffer.install_log_buffer`, called from `__init__.py` right before `configure_debug_logging`) attaches unconditionally at import so the in-app Debug Console (`Ctrl+\`) can tail recent `deepagents_code.*` records without file logging. It captures `INFO` and above by default (or `DEEPAGENTS_CODE_LOG_LEVEL`), and may lower the package logger to `INFO` for the process lifetime. It never spills to the terminal (a handler is always found, so `lastResort` is skipped) and is bounded (a `deque` of 1000 records *per log level*), so it's cheap enough to keep on. Because it installs *before* `configure_debug_logging`, warnings that helper emits at startup are captured and visible in the console.
+- Every module should create its logger with `logging.getLogger(__name__)` so it stays inside the `niki_agent.*` hierarchy and inherits the package handler. Don't set `logger.propagate = False` or attach your own handlers.
+- The **file** handler only attaches when `NIKI_DEBUG` is truthy and the active thread is known; that path is a small env-var read and filesystem operation, so it's safe on the startup hot path. See `DEVELOPMENT.md` for the `NIKI_DEBUG` / `NIKI_DEBUG_DIRECTORY` / `NIKI_LOG_LEVEL` env vars.
+- Separately, an **always-on in-memory ring buffer** (`_debug_buffer.install_log_buffer`, called from `__init__.py` right before `configure_debug_logging`) attaches unconditionally at import so the in-app Debug Console (`Ctrl+\`) can tail recent `niki_agent.*` records without file logging. It captures `INFO` and above by default (or `NIKI_LOG_LEVEL`), and may lower the package logger to `INFO` for the process lifetime. It never spills to the terminal (a handler is always found, so `lastResort` is skipped) and is bounded (a `deque` of 1000 records *per log level*), so it's cheap enough to keep on. Because it installs *before* `configure_debug_logging`, warnings that helper emits at startup are captured and visible in the console.
 
 ## CLI help screen
 
-The `deepagents-code --help` screen is hand-maintained in `ui.show_help()`, separate from the argparse definitions in `main.parse_args()`. When adding a new CLI flag, update **both** files. A drift-detection test (`test_args.TestHelpScreenDrift`) fails if a flag is registered in argparse but missing from the help screen.
+The `niki-agent --help` screen is hand-maintained in `ui.show_help()`, separate from the argparse definitions in `main.parse_args()`. When adding a new CLI flag, update **both** files. A drift-detection test (`test_args.TestHelpScreenDrift`) fails if a flag is registered in argparse but missing from the help screen.
 
 ## Command name in hints
 
-Hints that tell the user to run something (for example the teardown `-r <thread>` resume hint) must render `_invocation.invoked_name()` rather than a literal `dcode`. The package ships two console scripts (`dcode` and `deepagents-code`), and per-checkout shims — a renamed symlink pointing at a worktree's `bin/dcode` — are a common way to run several installs side by side, so a hardcoded name sends those users to a command they do not have. `invoked_name()` resolves from `sys.argv[0]` (an internal env sentinel carries it across the auto-update re-exec, which drops argv[0]) and falls back to `dcode` when the launch name is not a plausible command. The hand-maintained `--help` usage lines still hardcode `dcode`.
+Hints that tell the user to run something (for example the teardown `-r <thread>`
+resume hint) must render `_invocation.invoked_name()` rather than a literal
+command name. The package ships `niki` plus the deprecated `dcode` and
+`deepagents-code` aliases, and per-checkout shims are a common way to run several
+installs side by side, so a hardcoded name sends those users to a command they
+do not have. `invoked_name()` resolves from `sys.argv[0]` (an internal env
+sentinel carries it across the auto-update re-exec, which drops argv[0]) and
+falls back to `niki` when the launch name is not a plausible command. The
+hand-maintained `--help` usage lines use `niki`.
 
 ## Splash screen tips
 
-When adding a user-facing CLI feature (new slash command, keybinding, workflow), add a corresponding entry to the `_TIPS` dict in `deepagents_code/tui/widgets/startup_tip.py`, mapping the tip text to a relative selection weight (higher = shown more often). One tip is chosen at random above the input on startup to help users discover features. Keep tips short and action-oriented (e.g., `"Press ctrl+g to compose prompts in your external editor"`).
+When adding a user-facing CLI feature (new slash command, keybinding, workflow), add a corresponding entry to the `_TIPS` dict in `niki_agent/tui/widgets/startup_tip.py`, mapping the tip text to a relative selection weight (higher = shown more often). One tip is chosen at random above the input on startup to help users discover features. Keep tips short and action-oriented (e.g., `"Press ctrl+g to compose prompts in your external editor"`).
 
 ## Slash commands
 
-Slash commands are defined as `SlashCommand` entries in the `COMMANDS` tuple in `deepagents_code/command_registry.py`. Each entry declares the command name, description, `bypass_tier` (queue-bypass classification), optional `hidden_keywords` for fuzzy matching, and optional `aliases`. Bypass-tier frozensets and the `SLASH_COMMANDS` autocomplete list are derived automatically — no other file should hard-code command metadata.
+Slash commands are defined as `SlashCommand` entries in the `COMMANDS` tuple in `niki_agent/command_registry.py`. Each entry declares the command name, description, `bypass_tier` (queue-bypass classification), optional `hidden_keywords` for fuzzy matching, and optional `aliases`. Bypass-tier frozensets and the `SLASH_COMMANDS` autocomplete list are derived automatically — no other file should hard-code command metadata.
 
 To add a new slash command: (1) add a `SlashCommand` entry to `COMMANDS`, (2) set the appropriate `bypass_tier`, (3) add a handler branch in `_handle_command` in `app.py`, (4) run `make commands-catalog` if you changed command names, aliases, descriptions, visibility, or hidden-command metadata, then (5) run `make lint && make test` — the drift test will catch any mismatch.
 
 ## Adding a new model provider
 
-`deepagents-code` supports LangChain-based chat model providers as optional dependencies. To add a new provider, update these files (all entries alphabetically sorted):
+`niki-agent` supports LangChain-based chat model providers as optional dependencies. To add a new provider, update these files (all entries alphabetically sorted):
 
-1. `deepagents_code/model_config.py` — add `"provider_name": "ENV_VAR_NAME"` to `PROVIDER_API_KEY_ENV`
-2. `deepagents_code/model_config.py` — if the provider reads a *dedicated* endpoint env var, add `"provider_name": ("CANONICAL_BASE_URL", "ALTERNATE", ...)` to `PROVIDER_BASE_URL_ENV` (see guidelines below); omit the provider entirely when it has no provider-specific endpoint variable
-3. `deepagents_code/model_config.py` — add `"provider_name": "max_retries"` (or the provider's actual retry-count constructor kwarg) to `RETRY_PARAM_BY_PROVIDER`. dcode's model-node middleware owns the retry budget, so this entry is the disable-list that forces the provider's own SDK retry loop off; omitting it lets the SDK retries multiply the middleware's attempts. Verify the kwarg name against the integration's constructor — leave the provider out only when it exposes no integer retry-count kwarg. Check what the kwarg counts: retries are disabled with the default zero, but a kwarg counting *total attempts* needs an entry in `RETRY_DISABLE_VALUE_BY_PROVIDER` (see `google_genai`), because zero attempts either restores the SDK default or is coerced back to one
+1. `niki_agent/model_config.py` — add `"provider_name": "ENV_VAR_NAME"` to `PROVIDER_API_KEY_ENV`
+2. `niki_agent/model_config.py` — if the provider reads a *dedicated* endpoint env var, add `"provider_name": ("CANONICAL_BASE_URL", "ALTERNATE", ...)` to `PROVIDER_BASE_URL_ENV` (see guidelines below); omit the provider entirely when it has no provider-specific endpoint variable
+3. `niki_agent/model_config.py` — add `"provider_name": "max_retries"` (or the provider's actual retry-count constructor kwarg) to `RETRY_PARAM_BY_PROVIDER`. dcode's model-node middleware owns the retry budget, so this entry is the disable-list that forces the provider's own SDK retry loop off; omitting it lets the SDK retries multiply the middleware's attempts. Verify the kwarg name against the integration's constructor — leave the provider out only when it exposes no integer retry-count kwarg. Check what the kwarg counts: retries are disabled with the default zero, but a kwarg counting *total attempts* needs an entry in `RETRY_DISABLE_VALUE_BY_PROVIDER` (see `google_genai`), because zero attempts either restores the SDK default or is coerced back to one
 4. `pyproject.toml` — add `provider = ["langchain-provider>=X.Y.Z,<N.0.0"]` to `[project.optional-dependencies]` and include it in the `all-providers` composite extra
-5. `deepagents_code/tui/widgets/auth.py` — add `"provider_name": "Display Name"` to `PROVIDER_DISPLAY_NAMES` so the `/auth` UI shows a branded label instead of the title-cased key, and (if the provider issues API keys from a self-serve page) `"provider_name": "https://…"` to `PROVIDER_API_KEY_URLS` so the prompt links straight to the key page
+5. `niki_agent/tui/widgets/auth.py` — add `"provider_name": "Display Name"` to `PROVIDER_DISPLAY_NAMES` so the `/auth` UI shows a branded label instead of the title-cased key, and (if the provider issues API keys from a self-serve page) `"provider_name": "https://…"` to `PROVIDER_API_KEY_URLS` so the prompt links straight to the key page
 6. `tests/unit_tests/test_model_config.py` — add `assert PROVIDER_API_KEY_ENV["provider_name"] == "ENV_VAR_NAME"` to `TestProviderApiKeyEnv.test_contains_major_providers`, and pin any `PROVIDER_BASE_URL_ENV` entry with a matching assertion
 
 ### `PROVIDER_BASE_URL_ENV` guidelines

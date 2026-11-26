@@ -1,0 +1,10 @@
+"""Workspace adapters."""
+
+from __future__ import annotations
+
+from niki_agent.adapters.workspace.deepagents_backend import (
+    DeepAgentsWorkspaceAdapter,
+    InMemoryWorkspaceAdapter,
+)
+
+__all__ = ["DeepAgentsWorkspaceAdapter", "InMemoryWorkspaceAdapter"]

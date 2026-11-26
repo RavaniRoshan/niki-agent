@@ -16,8 +16,8 @@ from langgraph.types import Command
 from pydantic import ValidationError
 from rich.console import Console
 
-from deepagents_code import config as config_module, file_ops as file_ops_module
-from deepagents_code._ask_user_types import (
+from niki_agent import config as config_module, file_ops as file_ops_module
+from niki_agent._ask_user_types import (
     ASK_USER_ANSWERED_NO_RESULT_SUMMARY,
     ASK_USER_ANSWERED_NOT_DELIVERED_SUMMARY,
     ASK_USER_ANSWERED_SUMMARY,
@@ -26,32 +26,32 @@ from deepagents_code._ask_user_types import (
     AskUserWidgetResult,
     Question,
 )
-from deepagents_code._cli_context import CLIContext
-from deepagents_code._session_stats import SessionStats
-from deepagents_code._tracing import RESUME_TRACE_TAG
-from deepagents_code.approval_mode import (
+from niki_agent._cli_context import CLIContext
+from niki_agent._session_stats import SessionStats
+from niki_agent._tracing import RESUME_TRACE_TAG
+from niki_agent.approval_mode import (
     APPROVAL_MODE_NAMESPACE,
     ApprovalMode,
     approval_mode_key,
 )
-from deepagents_code.auto_mode import USER_PROMPT_METADATA_KEY
-from deepagents_code.client.non_interactive import (
+from niki_agent.auto_mode import USER_PROMPT_METADATA_KEY
+from niki_agent.client.non_interactive import (
     StreamState,
     _process_ai_message,
     _process_message_chunk,
 )
-from deepagents_code.config import ASCII_GLYPHS, UNICODE_GLYPHS, build_stream_config
-from deepagents_code.domain.events import RunEvent, RunEventKind
-from deepagents_code.hooks.client_lifecycle import ClientHookStopError
-from deepagents_code.hooks.manager import HooksManager, PromptOutcome
-from deepagents_code.hooks.models.domain import (
+from niki_agent.config import ASCII_GLYPHS, UNICODE_GLYPHS, build_stream_config
+from niki_agent.domain.events import RunEvent, RunEventKind
+from niki_agent.hooks.client_lifecycle import ClientHookStopError
+from niki_agent.hooks.manager import HooksManager, PromptOutcome
+from niki_agent.hooks.models.domain import (
     HookEvent,
     PermissionEffect,
     PermissionRequestDecision,
 )
-from deepagents_code.hooks.permissions import PermissionPlan, permission_hook_outcome
-from deepagents_code.niki.runtime_mode import niki_runtime_scope
-from deepagents_code.tui.textual_adapter import (
+from niki_agent.hooks.permissions import PermissionPlan, permission_hook_outcome
+from niki_agent.niki.runtime_mode import niki_runtime_scope
+from niki_agent.tui.textual_adapter import (
     RubricEvaluationEnd,
     TextualUIAdapter,
     _AutoModeReviewEvent,
@@ -70,7 +70,7 @@ from deepagents_code.tui.textual_adapter import (
     _tool_call_ids_from_current_turn,
     execute_task_textual,
 )
-from deepagents_code.tui.widgets.messages import (
+from niki_agent.tui.widgets.messages import (
     AppMessage,
     AssistantMessage,
     DiffMessage,
@@ -85,7 +85,7 @@ if TYPE_CHECKING:
 
     from langchain_core.runnables import RunnableConfig
 
-    from deepagents_code.app import TextualSessionState
+    from niki_agent.app import TextualSessionState
 
 
 def _session_state(
@@ -95,7 +95,7 @@ def _session_state(
     auto_approve: bool | None = None,
 ) -> "TextualSessionState":
     """Build real session state so the adapter sees its full contract."""
-    from deepagents_code.app import TextualSessionState
+    from niki_agent.app import TextualSessionState
 
     return TextualSessionState(
         approval_mode=approval_mode,
@@ -182,7 +182,7 @@ class TestInterruptCleanup:
         agent = SimpleNamespace(aupdate_state=_record_update)
 
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
         ) as mock_dispatch:
             await _handle_interrupt_cleanup(
                 adapter=adapter,
@@ -249,7 +249,7 @@ class TestInterruptCleanup:
             order.append(f"dispatch:{event}")
 
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget",
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget",
             side_effect=_record_dispatch,
         ):
             await _handle_interrupt_cleanup(
@@ -605,7 +605,7 @@ class TestInterruptCleanup:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.get_glyphs",
+            "niki_agent.tui.textual_adapter.get_glyphs",
             return_value=UNICODE_GLYPHS,
         ):
             await _handle_interrupt_cleanup(
@@ -937,7 +937,7 @@ class TestInterruptCleanupTokenPersist:
         Locks in the deletion of the old `_persist_context_tokens` `RemoteAgent`
         short-circuit so a future refactor cannot silently re-introduce it.
         """
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         captured: list[dict[str, Any]] = []
 
@@ -1042,12 +1042,12 @@ class TestBuildStreamConfig:
 
     def test_coding_agent_identity_block_present(self) -> None:
         """The coding-agent-v1 identity block is stamped on every config."""
-        from deepagents_code._version import __version__
+        from niki_agent._version import __version__
 
         metadata = build_stream_config("t-id", assistant_id=None)["metadata"]
         assert metadata["ls_agent_purpose"] == "coding"
-        assert metadata["ls_integration"] == "deepagents-code"
-        assert metadata["ls_agent_runtime"] == "Deep Agents Code"
+        assert metadata["ls_integration"] == "niki-agent"
+        assert metadata["ls_agent_runtime"] == "Niki Agent"
         assert metadata["ls_trace_schema_version"] == "coding-agent-v1"
         assert metadata["ls_integration_version"] == __version__
         assert metadata["ls_agent_runtime_version"] == __version__
@@ -1097,28 +1097,28 @@ class TestBuildStreamConfig:
 
     def test_versions_contains_cli_version(self) -> None:
         """CLI version should always be present in metadata.lc_versions."""
-        from deepagents_code._version import __version__
+        from niki_agent._version import __version__
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config._get_deepagents_version", return_value=None),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._get_deepagents_version", return_value=None),
         ):
             config = build_stream_config("t-ver", assistant_id=None)
         assert config["metadata"]["editable"] is False
-        assert config["metadata"]["lc_versions"] == {"deepagents-code": __version__}
+        assert config["metadata"]["lc_versions"] == {"niki-agent": __version__}
 
     def test_versions_marks_editable_cli_version(self) -> None:
         """Editable dcode installs should be visible in metadata.lc_versions."""
-        from deepagents_code._version import __version__
+        from niki_agent._version import __version__
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=True),
-            patch("deepagents_code.config._get_deepagents_version", return_value=None),
+            patch("niki_agent.config._is_editable_install", return_value=True),
+            patch("niki_agent.config._get_deepagents_version", return_value=None),
         ):
             config = build_stream_config("t-editable", assistant_id=None)
         assert config["metadata"]["editable"] is True
         assert config["metadata"]["lc_versions"] == {
-            "deepagents-code": f"{__version__}+editable"
+            "niki-agent": f"{__version__}+editable"
         }
 
     def test_get_deepagents_version_maps_status_to_value(self) -> None:
@@ -1128,40 +1128,40 @@ class TestBuildStreamConfig:
         status must drop even a non-`None` version the resolver flagged as
         untrustworthy.
         """
-        from deepagents_code.config import _get_deepagents_version
+        from niki_agent.config import _get_deepagents_version
 
         with patch(
-            "deepagents_code.extras_info.resolve_sdk_version",
+            "niki_agent.extras_info.resolve_sdk_version",
             return_value=("1.2.3", "error"),
         ):
             assert _get_deepagents_version() is None
 
         with patch(
-            "deepagents_code.extras_info.resolve_sdk_version",
+            "niki_agent.extras_info.resolve_sdk_version",
             return_value=("1.2.3", "resolved"),
         ):
             assert _get_deepagents_version() == "1.2.3"
 
     def test_versions_editable_with_resolved_sdk_version(self) -> None:
         """Editable suffix and SDK diagnostic version are populated independently."""
-        from deepagents_code._version import __version__
+        from niki_agent._version import __version__
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=True),
+            patch("niki_agent.config._is_editable_install", return_value=True),
             patch(
-                "deepagents_code.extras_info.resolve_sdk_version",
+                "niki_agent.extras_info.resolve_sdk_version",
                 return_value=("1.2.3", "resolved"),
             ),
         ):
             config = build_stream_config("t-editable-sdk", assistant_id=None)
         assert config["metadata"]["lc_versions"] == {
-            "deepagents-code": f"{__version__}+editable"
+            "niki-agent": f"{__version__}+editable"
         }
         assert config["metadata"]["dcode_client_deepagents_version"] == "1.2.3"
 
     def test_experimental_included_when_enabled(self) -> None:
         """Experimental runs should be identifiable in trace metadata."""
-        with patch.dict("os.environ", {"DEEPAGENTS_CODE_EXPERIMENTAL": "true"}):
+        with patch.dict("os.environ", {"NIKI_EXPERIMENTAL": "true"}):
             config = build_stream_config("t-experimental", assistant_id=None)
         assert config["metadata"]["dcode_experimental"] is True
 
@@ -1451,7 +1451,7 @@ class TestFormatRubricEvent:
         CI; `test_ascii_mode_degrades_to_ascii_glyphs` covers the ASCII path.
         """
         with patch(
-            "deepagents_code.tui.textual_adapter.get_glyphs",
+            "niki_agent.tui.textual_adapter.get_glyphs",
             return_value=UNICODE_GLYPHS,
         ):
             yield
@@ -1744,7 +1744,7 @@ class TestExecuteTaskTextualStreamCompletion:
         }
 
         with patch(
-            "deepagents_code.tui.textual_adapter.get_glyphs",
+            "niki_agent.tui.textual_adapter.get_glyphs",
             return_value=ASCII_GLYPHS,
         ):
             await execute_task_textual(
@@ -1792,7 +1792,7 @@ class TestExecuteTaskTextualStreamCompletion:
         adapter._on_stream_complete = callback
 
         with patch(
-            "deepagents_code.tui.textual_adapter._handle_interrupt_cleanup",
+            "niki_agent.tui.textual_adapter._handle_interrupt_cleanup",
             new_callable=AsyncMock,
         ):
             await execute_task_textual(
@@ -1817,7 +1817,7 @@ class TestExecuteTaskTextualTurnMarkers:
         a dropped `advance_turn()` call or mis-passed turn tuple would still pass
         those, but not this.
         """
-        from deepagents_code.app import TextualSessionState
+        from niki_agent.app import TextualSessionState
 
         session_state = TextualSessionState(thread_id="thread-1", auto_approve=True)
         agent = _SequencedAgent([[], []])
@@ -1869,7 +1869,7 @@ class TestExecuteTaskTextualTurnMarkers:
         (`bool(session_state.auto_approve)` -> `build_stream_config`) against
         wiring that would stamp `dcode_auto_approve` regardless of the mode.
         """
-        from deepagents_code.app import TextualSessionState
+        from niki_agent.app import TextualSessionState
 
         session_state = TextualSessionState(thread_id="thread-1", auto_approve=False)
         agent = _SequencedAgent([[]])
@@ -1896,7 +1896,7 @@ class TestExecuteTaskTextualTurnMarkers:
 
     async def test_skill_name_reaches_stream_config(self) -> None:
         """The TUI should attribute a skill invocation to the streamed trace."""
-        from deepagents_code.app import TextualSessionState
+        from niki_agent.app import TextualSessionState
 
         session_state = TextualSessionState(thread_id="thread-1", auto_approve=False)
         agent = _SequencedAgent([[]])
@@ -1937,7 +1937,7 @@ class TestExecuteTaskTextualClientLifecycle:
             _handlers_for(HookEvent.USER_PROMPT_SUBMIT),
             patch.object(HooksManager, "on_user_prompt", on_user_prompt),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ) as legacy,
         ):
@@ -2263,8 +2263,8 @@ class TestExecuteTaskTextualUsageStats:
         )
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            patch("deepagents_code.cost_tracking.estimate_cost", return_value=0.42),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            patch("niki_agent.cost_tracking.estimate_cost", return_value=0.42),
         ):
             mock_runtime_state.model_name = "gpt-5.5"
             mock_runtime_state.model_provider = "openai"
@@ -2323,8 +2323,8 @@ class TestExecuteTaskTextualUsageStats:
         turn_stats = SessionStats()
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            patch("deepagents_code.cost_tracking.estimate_cost", return_value=0.1),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            patch("niki_agent.cost_tracking.estimate_cost", return_value=0.1),
         ):
             mock_runtime_state.model_name = "gpt-5.5"
             mock_runtime_state.model_provider = "openai"
@@ -2380,8 +2380,8 @@ class TestExecuteTaskTextualUsageStats:
         turn_stats = SessionStats()
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            patch("deepagents_code.cost_tracking.estimate_cost", return_value=0.1),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            patch("niki_agent.cost_tracking.estimate_cost", return_value=0.1),
         ):
             mock_runtime_state.model_name = "configured-model"
             mock_runtime_state.model_provider = "google_genai"
@@ -2576,8 +2576,8 @@ class TestSessionCostEvents:
         turn_stats = SessionStats()
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            patch("deepagents_code.cost_tracking.estimate_cost", return_value=0.42),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            patch("niki_agent.cost_tracking.estimate_cost", return_value=0.42),
         ):
             mock_runtime_state.model_name = "gpt-5.5"
             mock_runtime_state.model_provider = "openai"
@@ -2665,8 +2665,8 @@ class TestSessionCostEvents:
             return 0.5 if model == "gpt-5.5" else 0.05
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            patch("deepagents_code.cost_tracking.estimate_cost", price),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            patch("niki_agent.cost_tracking.estimate_cost", price),
         ):
             mock_runtime_state.model_name = "gpt-5.5"
             mock_runtime_state.model_provider = "openai"
@@ -2741,7 +2741,7 @@ class TestExecuteTaskTextualAutoModeClassifier:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.AssistantMessage",
+            "niki_agent.tui.textual_adapter.AssistantMessage",
             side_effect=self.FakeAssistantMessage,
         ):
             await execute_task_textual(
@@ -2807,7 +2807,7 @@ class TestExecuteTaskTextualAutoModeClassifier:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.AssistantMessage",
+            "niki_agent.tui.textual_adapter.AssistantMessage",
             side_effect=self.FakeAssistantMessage,
         ):
             await execute_task_textual(
@@ -3008,7 +3008,7 @@ class TestExecuteTaskTextualFileOpDiffs:
         target.write_text("value = 1\n", encoding="utf-8")
 
         read = _PhasedRead(pre_image=lambda _path: (None, "Permission denied"))
-        with patch("deepagents_code.file_ops._read_with_reason", side_effect=read):
+        with patch("niki_agent.file_ops._read_with_reason", side_effect=read):
             mounted = await self._run_write(target, "value = 2\n")
 
         tool = next(m for m in mounted if isinstance(m, ToolCallMessage))
@@ -3028,7 +3028,7 @@ class TestExecuteTaskTextualFileOpDiffs:
         target.write_text("value = 1\n" * 5000, encoding="utf-8")
 
         with patch(
-            "deepagents_code.file_ops._read_with_reason",
+            "niki_agent.file_ops._read_with_reason",
             return_value=(None, "Permission denied"),
         ):
             mounted = await self._run_delete(target)
@@ -3097,7 +3097,7 @@ class TestExecuteTaskTextualFileOpDiffs:
             ),
         ]
         with patch(
-            "deepagents_code.file_ops._read_with_reason",
+            "niki_agent.file_ops._read_with_reason",
             return_value=(None, "Permission denied"),
         ):
             await execute_task_textual(
@@ -3132,7 +3132,7 @@ class TestExecuteTaskTextualFileOpDiffs:
         target.write_text("value = 1\n", encoding="utf-8")
 
         read = _PhasedRead(read_back=lambda _path: (None, "Permission denied"))
-        with patch("deepagents_code.file_ops._read_with_reason", side_effect=read):
+        with patch("niki_agent.file_ops._read_with_reason", side_effect=read):
             mounted = await self._run_edit(target, "value = 2")
         read.assert_both_phases_ran()
 
@@ -3159,7 +3159,7 @@ class TestExecuteTaskTextualFileOpDiffs:
         # Fail only the pre-image read; the read-back must still succeed so
         # this exercises the before-side failure in isolation.
         read = _PhasedRead(pre_image=lambda _path: (None, "Permission denied"))
-        with patch("deepagents_code.file_ops._read_with_reason", side_effect=read):
+        with patch("niki_agent.file_ops._read_with_reason", side_effect=read):
             mounted = await self._run_edit(target, "value = 2")
         read.assert_both_phases_ran()
 
@@ -3184,7 +3184,7 @@ class TestExecuteTaskTextualFileOpDiffs:
         target.write_text("value = 1\n", encoding="utf-8")
 
         read = _PhasedRead(pre_image=lambda _path: (None, "Permission denied"))
-        with patch("deepagents_code.file_ops._read_with_reason", side_effect=read):
+        with patch("niki_agent.file_ops._read_with_reason", side_effect=read):
             mounted = await self._run_edit(target, "value = 2")
 
         tool = next(m for m in mounted if isinstance(m, ToolCallMessage))
@@ -3759,7 +3759,7 @@ class TestExecuteTaskTextualTextThenToolSpinner:
         fake_msg = AsyncMock()
         fake_msg.id = "asst-test"
         with patch(
-            "deepagents_code.tui.textual_adapter.AssistantMessage",
+            "niki_agent.tui.textual_adapter.AssistantMessage",
             return_value=fake_msg,
         ):
             await execute_task_textual(
@@ -3845,11 +3845,11 @@ class TestExecuteTaskTextualRubricRevisionStreaming:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.AssistantMessage",
+                "niki_agent.tui.textual_adapter.AssistantMessage",
                 side_effect=FakeAssistantMessage,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.get_glyphs",
+                "niki_agent.tui.textual_adapter.get_glyphs",
                 return_value=UNICODE_GLYPHS,
             ),
         ):
@@ -5598,7 +5598,7 @@ class TestExecuteTaskTextualAskUser:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
         ) as mock_dispatch:
             await execute_task_textual(
                 user_input="hello",
@@ -5913,7 +5913,7 @@ class TestAskUserHookBodySanitization:
         would break the hook contracts those constants document.
         """
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
         ) as dispatch:
             _dispatch_tool_result_hook("ask_user", "ask-1", {}, "success", body)
 
@@ -6183,7 +6183,7 @@ class TestToolHooksTextual:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
         ) as mock_dispatch:
             await execute_task_textual(
                 user_input="hello",
@@ -6236,7 +6236,7 @@ class TestToolHooksTextual:
         )
 
         with patch(
-            "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+            "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
         ) as mock_dispatch:
             await execute_task_textual(
                 user_input="hello",
@@ -6283,7 +6283,7 @@ class TestToolHooksTextual:
         That the marker reaches this point is covered separately by
         `test_policy_denial_marker_survives_server_round_trip`.
         """
-        from deepagents_code.auto_mode import AUTO_DENIED_METADATA_KEY
+        from niki_agent.auto_mode import AUTO_DENIED_METADATA_KEY
 
         chunks = [
             (
@@ -6308,9 +6308,9 @@ class TestToolHooksTextual:
         )
 
         with (
-            caplog.at_level("WARNING", logger="deepagents_code.tui.textual_adapter"),
+            caplog.at_level("WARNING", logger="niki_agent.tui.textual_adapter"),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch,
         ):
             await execute_task_textual(
@@ -6382,11 +6382,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -6481,11 +6481,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -6635,11 +6635,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -6946,11 +6946,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -7076,11 +7076,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -7230,10 +7230,10 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
-            patch("deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"),
+            patch("niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"),
         ):
             await execute_task_textual(
                 user_input="hello",
@@ -7309,11 +7309,11 @@ class TestToolHooksTextual:
 
         with (
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook",
+                "niki_agent.tui.textual_adapter.dispatch_hook",
                 new_callable=AsyncMock,
             ),
             patch(
-                "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"
+                "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"
             ) as mock_dispatch_background,
         ):
             await execute_task_textual(
@@ -7389,7 +7389,7 @@ def _run_headless_surface(
     ai_msg.content_blocks = tool_call_blocks
 
     with patch(
-        "deepagents_code.client.non_interactive.dispatch_hook_fire_and_forget",
+        "niki_agent.client.non_interactive.dispatch_hook_fire_and_forget",
         side_effect=_capture,
     ):
         _process_ai_message(ai_msg, state, console)
@@ -7417,7 +7417,7 @@ async def _run_textual_surface(
         request_approval=_mock_approval,
     )
     with patch(
-        "deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget",
+        "niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget",
         side_effect=_capture,
     ):
         await execute_task_textual(
@@ -7449,7 +7449,7 @@ class TestCrossSurfaceHookParity:
         repr on either would break this parity (and this scenario is the one the
         four scalar-content cases can't catch).
         """
-        from deepagents_code.tool_display import format_tool_message_content
+        from niki_agent.tool_display import format_tool_message_content
 
         content: list[Any] = [
             {"type": "text", "text": "line one"},
@@ -7583,8 +7583,8 @@ class TestTextualEndOfStreamDiagnostics:
             _tool_chunk(name="g", args='{"b": 2}', chunk_id=None, index=1),
         ]
         with (
-            patch("deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"),
-            caplog.at_level("INFO", logger="deepagents_code.tui.textual_adapter"),
+            patch("niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"),
+            caplog.at_level("INFO", logger="niki_agent.tui.textual_adapter"),
         ):
             await execute_task_textual(
                 user_input="hello",
@@ -7614,8 +7614,8 @@ class TestTextualEndOfStreamDiagnostics:
         # Args never close -> unparsed, no tool.use, buffer retained to the exit.
         chunks = [_tool_chunk(name="f", args='{"a": ', chunk_id="t1", index=0)]
         with (
-            patch("deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"),
-            caplog.at_level("INFO", logger="deepagents_code.tui.textual_adapter"),
+            patch("niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"),
+            caplog.at_level("INFO", logger="niki_agent.tui.textual_adapter"),
             pytest.raises(RuntimeError, match="boom"),
         ):
             await execute_task_textual(
@@ -7643,12 +7643,12 @@ class TestTextualEndOfStreamDiagnostics:
         chunks = [_tool_chunk(name="f", args='{"a": ', chunk_id="t1", index=0)]
         cleanup = AsyncMock()
         with (
-            patch("deepagents_code.tui.textual_adapter.dispatch_hook_fire_and_forget"),
+            patch("niki_agent.tui.textual_adapter.dispatch_hook_fire_and_forget"),
             patch(
-                "deepagents_code.tui.textual_adapter._handle_interrupt_cleanup",
+                "niki_agent.tui.textual_adapter._handle_interrupt_cleanup",
                 cleanup,
             ),
-            caplog.at_level("INFO", logger="deepagents_code.tui.textual_adapter"),
+            caplog.at_level("INFO", logger="niki_agent.tui.textual_adapter"),
         ):
             await execute_task_textual(
                 user_input="hello",
@@ -7680,7 +7680,7 @@ class TestTextualEndOfStreamDiagnostics:
         }
 
         with patch(
-            "deepagents_code.tui.textual_adapter._handle_interrupt_cleanup",
+            "niki_agent.tui.textual_adapter._handle_interrupt_cleanup",
             cleanup,
         ):
             await execute_task_textual(
@@ -8439,7 +8439,7 @@ class TestModelRetryLifecycleReconciliation:
 
         tool_results: list[tuple[str, str]] = []
         with patch(
-            "deepagents_code.tui.textual_adapter._dispatch_tool_result_hook",
+            "niki_agent.tui.textual_adapter._dispatch_tool_result_hook",
             side_effect=lambda name, _id, _args, status, _output: tool_results.append(
                 (name, status)
             ),
@@ -8477,8 +8477,8 @@ class TestModelRetryLifecycleReconciliation:
         result and trips the contradiction check in the ToolMessage handler.
         Every other sweep spares these rows for the same reason.
         """
-        from deepagents_code.tui.textual_adapter import _settle_attempt_for_retry
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.textual_adapter import _settle_attempt_for_retry
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         adapter = TextualUIAdapter(
             mount_message=_collect_mounts()[0],
@@ -8496,8 +8496,8 @@ class TestModelRetryLifecycleReconciliation:
         completed: set[str] = set()
         displayed = {"call-ask", "call-read"}
         with (
-            patch("deepagents_code.tui.textual_adapter._dispatch_tool_result_hook"),
-            patch("deepagents_code.tui.textual_adapter._dispatch_tool_error_hook"),
+            patch("niki_agent.tui.textual_adapter._dispatch_tool_result_hook"),
+            patch("niki_agent.tui.textual_adapter._dispatch_tool_error_hook"),
         ):
             await _settle_attempt_for_retry(
                 adapter,
@@ -8566,7 +8566,7 @@ class TestModelRetryLifecycleReconciliation:
         with (
             patch.object(config_module.runtime_state, "model_name", "gpt-5.5"),
             patch.object(config_module.runtime_state, "model_provider", "openai"),
-            patch("deepagents_code.cost_tracking.estimate_cost", return_value=0.01),
+            patch("niki_agent.cost_tracking.estimate_cost", return_value=0.01),
         ):
             await execute_task_textual(
                 user_input="hello",
@@ -8718,8 +8718,8 @@ def _collect_mounts() -> tuple[Callable[[object], Awaitable[bool]], list[object]
 
 def _retry_lifecycle_session_state(tmp_path: Path, thread_id: str) -> tuple[Any, Any]:
     """Session state whose hooks record into a real transcript store."""
-    from deepagents_code.hooks.manager import HooksManager
-    from deepagents_code.hooks.runtime import HooksRuntime
+    from niki_agent.hooks.manager import HooksManager
+    from niki_agent.hooks.runtime import HooksRuntime
 
     session_state = _session_state(auto_approve=False, thread_id=thread_id)
     runtime = HooksRuntime.create(

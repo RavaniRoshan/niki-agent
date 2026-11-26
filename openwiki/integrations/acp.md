@@ -22,11 +22,11 @@ sources:
   - id: openwiki-source-8134f31fb22085cb0e6b4054
     resource: repo://libs/acp/README.md
   - id: openwiki-source-4d4186e9d62fb4abe495cdd0
-    resource: repo://libs/code/deepagents_code/acp.py
+    resource: repo://libs/code/niki_agent/acp.py
   - id: openwiki-source-b7d66cbdbe9dae9f133a7c5e
-    resource: repo://libs/code/deepagents_code/client/remote_client.py
+    resource: repo://libs/code/niki_agent/client/remote_client.py
   - id: openwiki-source-2e03fee957625ca21a1c21af
-    resource: repo://libs/code/deepagents_code/main.py
+    resource: repo://libs/code/niki_agent/main.py
   - id: openwiki-source-5dc287d30945406e0821cb29
     resource: repo://libs/code/tests/integration_tests/test_acp_mode.py
 generated: { by: "openwiki/0.4.2", at: "2026-10-01T08:06:30.386Z" }

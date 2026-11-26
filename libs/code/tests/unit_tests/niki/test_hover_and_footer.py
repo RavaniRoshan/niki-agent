@@ -32,7 +32,7 @@ SIZES = [(50, 16), (80, 24), (120, 38), (160, 45)]
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-footer")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]

@@ -33,7 +33,7 @@ async def main() -> None:
     output = Path("/tmp/dcode-ui.svg")
     with TemporaryDirectory() as profile:
         os.environ["DEEPAGENTS_HOME"] = profile
-        from deepagents_code.app import DeepAgentsApp
+        from niki_agent.app import DeepAgentsApp
 
         app = DeepAgentsApp(agent=MagicMock())
         with patch.object(app, "_post_paint_init", new=AsyncMock()):
@@ -58,7 +58,7 @@ Adapt only the app constructor and action that opens the target state. For a sta
 
 ## Reliability and safety
 
-- Use trusted local application code only. A headless app can still run startup hooks, subprocesses, or network calls. For `DeepAgentsApp`, set `DEEPAGENTS_HOME` to a temporary directory before importing `deepagents_code`, and mock `_post_paint_init` before mounting; replacing only the agent does not isolate startup side effects.
+- Use trusted local application code only. A headless app can still run startup hooks, subprocesses, or network calls. For `DeepAgentsApp`, set `DEEPAGENTS_HOME` to a temporary directory before importing `niki_agent`, and mock `_post_paint_init` before mounting; replacing only the agent does not isolate startup side effects.
 - Never capture secrets, credentials, private conversation content, or unrelated user data. Seed only synthetic content needed for the preview.
 - Choose a bounded terminal size; start with `(110, 36)` and adjust only when the target clips or wastes substantial space.
 - Wait for workers, animations, and modal transitions to settle. Add another `await pilot.pause()` rather than using arbitrary sleeps.

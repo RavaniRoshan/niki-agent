@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 
-from deepagents_code._constants import LOCAL_CONTEXT_MESSAGE_SOURCE
-from deepagents_code.hooks.runtime import HooksRuntime
-from deepagents_code.hooks.transcript import (
+from niki_agent._constants import LOCAL_CONTEXT_MESSAGE_SOURCE
+from niki_agent.hooks.runtime import HooksRuntime
+from niki_agent.hooks.transcript import (
     SUBAGENT_TRANSCRIPT_ID_METADATA_KEY,
     TranscriptRecorder,
     TranscriptStore,
@@ -231,7 +231,7 @@ def test_runtime_stores_transcripts_outside_workspace(
     global_dir = tmp_path / "global-deepagents"
     workspace.mkdir()
     monkeypatch.setattr(
-        "deepagents_code.hooks.runtime.DEFAULT_CONFIG_DIR",
+        "niki_agent.hooks.runtime.DEFAULT_CONFIG_DIR",
         global_dir,
     )
 

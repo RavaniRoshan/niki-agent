@@ -12,18 +12,18 @@ from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code.agent import create_cli_agent
-from deepagents_code.hooks.interrupt import (
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent.agent import create_cli_agent
+from niki_agent.hooks.interrupt import (
     build_hook_resume_value,
     parse_hook_interrupt_payload,
 )
-from deepagents_code.hooks.models.domain import (
+from niki_agent.hooks.models.domain import (
     HookEvent,
     PostToolUseFailureDecision,
     PostToolUseFailureEvent,
 )
-from deepagents_code.hooks.models.transport import HookInvocationResponse
+from niki_agent.hooks.models.transport import HookInvocationResponse
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -64,13 +64,13 @@ async def test_delegated_mcp_call_times_out(
             cancelled.set()
         return "unreachable"
 
-    stalled_mcp.metadata = {"_deepagents_code_mcp": True}
-    monkeypatch.setenv("DEEPAGENTS_CODE_FORKED_SUBAGENTS", forked)
+    stalled_mcp.metadata = {"_niki_agent_mcp": True}
+    monkeypatch.setenv("NIKI_FORKED_SUBAGENTS", forked)
     monkeypatch.setattr(
-        "deepagents_code.config_manifest.resolve_mcp_tool_timeout", lambda: 0.01
+        "niki_agent.config_manifest.resolve_mcp_tool_timeout", lambda: 0.01
     )
     monkeypatch.setattr(
-        "deepagents_code.agent.list_subagents",
+        "niki_agent.agent.list_subagents",
         lambda **_kwargs: [
             {
                 "name": "researcher",
@@ -142,9 +142,9 @@ async def test_mcp_timeout_triggers_failure_hook(
         await asyncio.Event().wait()
         return "unreachable"
 
-    stalled_mcp.metadata = {"_deepagents_code_mcp": True}
+    stalled_mcp.metadata = {"_niki_agent_mcp": True}
     monkeypatch.setattr(
-        "deepagents_code.config_manifest.resolve_mcp_tool_timeout", lambda: 0.01
+        "niki_agent.config_manifest.resolve_mcp_tool_timeout", lambda: 0.01
     )
     model = _ToolCallingModel(
         messages=iter(

@@ -24,26 +24,26 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.niki.keymap import (
+from niki_agent.niki.keymap import (
     build_keymap,
     render_footer_hint,
     render_help,
     render_markdown,
 )
-from deepagents_code.tui.widgets.chat_input import ChatTextArea
+from niki_agent.tui.widgets.chat_input import ChatTextArea
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.keymap import KeymapEntry
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.keymap import KeymapEntry
 
 
 def _app_classes() -> tuple[type[NikiApp], type[DeepAgentsApp]]:
     """Return `(NikiApp, DeepAgentsApp)` without importing at module scope."""
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.niki.app import NikiApp
 
     return NikiApp, DeepAgentsApp
 
@@ -109,7 +109,7 @@ async def test_registry_is_populated_from_live_bindings() -> None:
 def test_command_palette_binding_is_advertised_from_live_bindings() -> None:
     from textual.binding import Binding
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     entries = [
         binding
@@ -222,8 +222,8 @@ async def test_help_command_renders_the_keymap_registry() -> None:
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.help import render_help_for
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.niki.help import render_help_for
+    from niki_agent.tui.widgets.messages import AppMessage
 
     niki_app_cls, _ = _app_classes()
     app = niki_app_cls(agent=MagicMock(), thread_id="niki-help")
@@ -253,8 +253,8 @@ async def test_k8_question_mark_opens_contextual_help() -> None:
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.help_screen import NikiHelpScreen
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.help_screen import NikiHelpScreen
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-help-key")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -282,7 +282,7 @@ async def test_k8_question_mark_still_types_when_a_draft_exists() -> None:
     """K8: `?` is a character first; help only when the composer is empty."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-help-typing")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]

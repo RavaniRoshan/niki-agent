@@ -1,6 +1,6 @@
 """Unit tests for the `hatch_build.py` release-commit stamping hook.
 
-`hatch_build.py` lives at the package root (not inside `deepagents_code`) and is
+`hatch_build.py` lives at the package root (not inside `niki_agent`) and is
 only on `sys.path` during a build, so it is loaded here directly from its file
 path. The hook subclasses hatchling's `BuildHookInterface`, so these tests
 require `hatchling` (declared in the `test` dependency group).
@@ -41,7 +41,7 @@ def _make_hook(root: Path) -> BuildHookInterface:
 
 
 def _stamp_path(root: Path) -> Path:
-    return root / "deepagents_code" / "_build_info.py"
+    return root / "niki_agent" / "_build_info.py"
 
 
 class TestInitialize:
@@ -50,7 +50,7 @@ class TestInitialize:
     def test_env_unset_writes_nothing(self, tmp_path: Path, monkeypatch) -> None:
         """With the env var unset, no file is written and no artifact is added."""
         monkeypatch.delenv(_COMMIT_ENV, raising=False)
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
         build_data: dict[str, object] = {}
 
         _make_hook(tmp_path).initialize("1.0", build_data)
@@ -63,7 +63,7 @@ class TestInitialize:
     ) -> None:
         """A full uppercase SHA stamps a 7-char lowercase value and an artifact."""
         monkeypatch.setenv(_COMMIT_ENV, "ABCDEF1234567890ABCDEF1234567890ABCDEF12")
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
         build_data: dict[str, object] = {}
 
         _make_hook(tmp_path).initialize("1.0", build_data)
@@ -71,7 +71,7 @@ class TestInitialize:
         assert 'BUILD_COMMIT = "abcdef1"' in _stamp_path(tmp_path).read_text(
             encoding="utf-8"
         )
-        assert build_data["artifacts"] == ["deepagents_code/_build_info.py"]
+        assert build_data["artifacts"] == ["niki_agent/_build_info.py"]
 
     @pytest.mark.parametrize(
         "bad",
@@ -87,7 +87,7 @@ class TestInitialize:
     ) -> None:
         """A set-but-malformed SHA fails the build loudly and writes no file."""
         monkeypatch.setenv(_COMMIT_ENV, bad)
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
 
         with pytest.raises(ValueError, match=_COMMIT_ENV):
             _make_hook(tmp_path).initialize("1.0", {})
@@ -100,7 +100,7 @@ class TestInitialize:
     ) -> None:
         """A blank or whitespace-only env var is treated as unset."""
         monkeypatch.setenv(_COMMIT_ENV, blank)
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
         build_data: dict[str, object] = {}
 
         _make_hook(tmp_path).initialize("1.0", build_data)
@@ -115,7 +115,7 @@ class TestFinalize:
     def test_removes_stamp_when_env_set(self, tmp_path: Path, monkeypatch) -> None:
         """Cleanup deletes the generated file when the env var is set."""
         monkeypatch.setenv(_COMMIT_ENV, "abc1234")
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
         stamp = _stamp_path(tmp_path)
         stamp.write_text("x", encoding="utf-8")
 
@@ -126,7 +126,7 @@ class TestFinalize:
     def test_noop_when_env_unset(self, tmp_path: Path, monkeypatch) -> None:
         """Cleanup is gated on the env var, so an unrelated file is untouched."""
         monkeypatch.delenv(_COMMIT_ENV, raising=False)
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
         stamp = _stamp_path(tmp_path)
         stamp.write_text("x", encoding="utf-8")
 
@@ -137,7 +137,7 @@ class TestFinalize:
     def test_missing_file_does_not_raise(self, tmp_path: Path, monkeypatch) -> None:
         """Cleanup tolerates an already-absent file (`missing_ok=True`)."""
         monkeypatch.setenv(_COMMIT_ENV, "abc1234")
-        (tmp_path / "deepagents_code").mkdir()
+        (tmp_path / "niki_agent").mkdir()
 
         _make_hook(tmp_path).finalize("1.0", {}, "/tmp/wheel")  # not a real path
 
@@ -149,7 +149,7 @@ def test_initialize_then_finalize_leaves_tree_clean(
 ) -> None:
     """A full stamp/cleanup cycle writes the file then removes it."""
     monkeypatch.setenv(_COMMIT_ENV, "deadbeef")
-    (tmp_path / "deepagents_code").mkdir()
+    (tmp_path / "niki_agent").mkdir()
     hook = _make_hook(tmp_path)
 
     hook.initialize("1.0", {})

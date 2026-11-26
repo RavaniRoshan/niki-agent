@@ -15,7 +15,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-from deepagents_code.main import _run_acp_cli_async, cli_main
+from niki_agent.main import _run_acp_cli_async, cli_main
 
 
 def _make_acp_args(**overrides: object) -> argparse.Namespace:
@@ -48,8 +48,8 @@ def test_acp_mode_rejects_auto_classifier_model(
             "argv",
             ["deepagents", "--acp", "--auto-classifier-model", "openai:gpt-5.5-mini"],
         ),
-        patch("deepagents_code.main.parse_args", return_value=args),
-        patch("deepagents_code.main._resolve_agent_arg") as resolve_agent,
+        patch("niki_agent.main.parse_args", return_value=args),
+        patch("niki_agent.main._resolve_agent_arg") as resolve_agent,
         pytest.raises(SystemExit) as exc_info,
     ):
         cli_main()
@@ -95,20 +95,20 @@ async def test_acp_defaults_classifier_after_provider_resolution(tmp_path) -> No
         return object(), object()
 
     with (
-        patch("deepagents_code.config.create_model", return_value=model_result),
-        patch("deepagents_code.config.is_memory_auto_save_enabled", return_value=True),
-        patch("deepagents_code.config.credentials") as credentials,
-        patch("deepagents_code.agent.create_cli_agent", side_effect=create_cli_agent),
-        patch("deepagents_code.agent.load_async_subagents", return_value=None),
-        patch("deepagents_code.model_config.get_available_models", return_value={}),
-        patch("deepagents_code.model_config.save_recent_model"),
-        patch("deepagents_code.model_config.touch_recent_model"),
+        patch("niki_agent.config.create_model", return_value=model_result),
+        patch("niki_agent.config.is_memory_auto_save_enabled", return_value=True),
+        patch("niki_agent.config.credentials") as credentials,
+        patch("niki_agent.agent.create_cli_agent", side_effect=create_cli_agent),
+        patch("niki_agent.agent.load_async_subagents", return_value=None),
+        patch("niki_agent.model_config.get_available_models", return_value={}),
+        patch("niki_agent.model_config.save_recent_model"),
+        patch("niki_agent.model_config.touch_recent_model"),
         patch(
-            "deepagents_code.mcp_tools.resolve_and_load_mcp_tools",
+            "niki_agent.mcp_tools.resolve_and_load_mcp_tools",
             new=AsyncMock(return_value=([], None, None)),
         ),
-        patch("deepagents_code.sessions.get_checkpointer", new=get_checkpointer),
-        patch("deepagents_code.acp.AgentServerACP", new=AgentServer),
+        patch("niki_agent.sessions.get_checkpointer", new=get_checkpointer),
+        patch("niki_agent.acp.AgentServerACP", new=AgentServer),
     ):
         credentials.has_tavily = False
         exit_code = await _run_acp_cli_async(

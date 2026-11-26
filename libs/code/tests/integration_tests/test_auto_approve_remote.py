@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
 
-from deepagents_code._testing_models import (
+from niki_agent._testing_models import (
     DCA_TEST_DELEGATE_WRITE_MARKER,
     DCA_TEST_WRITE_FILE_MARKER,
     SUBAGENT_WRITE_CONTENT,
@@ -37,7 +37,7 @@ def _write_model_config(home_dir: Path) -> None:
     (config_dir / "config.toml").write_text(
         """
 [models.providers.itest]
-class_path = "deepagents_code._testing_models:ToolCallingIntegrationChatModel"
+class_path = "niki_agent._testing_models:ToolCallingIntegrationChatModel"
 models = ["fake"]
 """.strip()
         + "\n"
@@ -71,16 +71,16 @@ async def _run_auto_approve_write(
     home_dir.mkdir()
     project_dir.mkdir()
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     monkeypatch.chdir(project_dir)
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.app import TextualSessionState
-    from deepagents_code.client.launch.server_manager import server_session
-    from deepagents_code.config import create_model
-    from deepagents_code.sessions import generate_thread_id
-    from deepagents_code.tui.textual_adapter import (
+    from niki_agent import model_config
+    from niki_agent.app import TextualSessionState
+    from niki_agent.client.launch.server_manager import server_session
+    from niki_agent.config import create_model
+    from niki_agent.sessions import generate_thread_id
+    from niki_agent.tui.textual_adapter import (
         TextualUIAdapter,
         execute_task_textual,
     )

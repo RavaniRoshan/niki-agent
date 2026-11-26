@@ -5,7 +5,7 @@ from __future__ import annotations
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from deepagents_code.tui.widgets.skill_trust import SkillTrustScreen
+from niki_agent.tui.widgets.skill_trust import SkillTrustScreen
 
 
 class _SkillTrustTestApp(App[None]):

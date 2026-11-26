@@ -14,8 +14,8 @@ from textual.app import App, ComposeResult
 from textual.geometry import Offset
 from textual.widgets import Static
 
-from deepagents_code.domain.events import RunEvent, RunEventKind
-from deepagents_code.tui.widgets.subagent_panel import (
+from niki_agent.domain.events import RunEvent, RunEventKind
+from niki_agent.tui.widgets.subagent_panel import (
     SubagentPanel,
     _Phase,
     _SubagentRecord,
@@ -280,9 +280,7 @@ class TestReplayTiming:
             record = panel._find_record("a")
             assert record is not None
             clock = SimpleNamespace(monotonic=lambda: record.started_monotonic + 12.5)
-            monkeypatch.setattr(
-                "deepagents_code.tui.widgets.subagent_panel.time", clock
-            )
+            monkeypatch.setattr("niki_agent.tui.widgets.subagent_panel.time", clock)
             panel.on_subagent_event(_start("a", "E1"))
             assert "12.5s" in _render(panel.query_one("#subagent-agents", Static))
             clock.monotonic = lambda: record.started_monotonic + 20

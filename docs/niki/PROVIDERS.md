@@ -81,7 +81,7 @@ becomes stale.
 The config.toml blocks above make the providers usable immediately via the model
 selector. Putting them into `/auth`, the API-key display names, and the
 retry-parameter map means editing five dicts in
-`deepagents_code/model_config.py` (`PROVIDER_API_KEY_ENV`,
+`niki_agent/model_config.py` (`PROVIDER_API_KEY_ENV`,
 `PROVIDER_BASE_URL_ENV`, `PROVIDER_API_KEY_URLS`, `PROVIDER_DISPLAY_NAMES`,
 `RETRY_PARAM_BY_PROVIDER`). That is an upstream patch, and it has not been made —
 `config.toml` is the supported extension point and needs none. Say the word and

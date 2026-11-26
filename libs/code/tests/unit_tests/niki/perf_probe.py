@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
     from textual.screen import Screen
 
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
 
 @dataclass
@@ -165,7 +165,7 @@ async def measure_stream(
     streaming. One trailing pause plus a settle window is enough to let the
     coalescing timer flush, which is the behaviour under test.
     """
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     async with app.run_test(size=size) as pilot:
         await pilot.pause()
@@ -282,7 +282,7 @@ async def measure_input_echo(
     assistant message for the duration, which is the condition S2 asks for: a
     tool flood plus a stream, not a quiet screen.
     """
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     samples: list[float] = []
     pauses: list[float] = []
@@ -359,7 +359,7 @@ async def measure_large_tool_output(
         A bounded UI keeps `rendered_lines` small even though `input_chars` is
         in the millions.
     """
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     payload = "x" * (megabytes * 1024 * 1024)
     async with app.run_test(size=size) as pilot:
@@ -423,9 +423,9 @@ async def measure_scroll_with_history(
 
     from textual._compositor import Compositor
 
-    from deepagents_code.niki.message_store import NikiMessageStore
-    from deepagents_code.tui.widgets.message_store import MessageData, MessageType
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.niki.message_store import NikiMessageStore
+    from niki_agent.tui.widgets.message_store import MessageData, MessageType
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     rss_before = rss_megabytes()
     store = NikiMessageStore()

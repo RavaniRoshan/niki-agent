@@ -9,9 +9,6 @@ from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
-from deepagents import create_deep_agent
-from deepagents.middleware import CompiledSubAgent, SubAgent
-from deepagents.middleware._state import private_state_field_names
 from langchain.agents import create_agent
 from langchain.agents.middleware.types import AgentMiddleware, AgentState
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
@@ -23,11 +20,11 @@ from langgraph.graph import START, StateGraph
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code.agent import _should_interrupt_tool_call, create_cli_agent
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.client import fulfill_hook_invocation
-from deepagents_code.hooks.interrupt import (
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent.agent import _should_interrupt_tool_call, create_cli_agent
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.client import fulfill_hook_invocation
+from niki_agent.hooks.interrupt import (
     HOOK_INVOCATION_INTERRUPT_TYPE,
     build_hook_interrupt_payload,
     build_hook_resume_value,
@@ -35,7 +32,7 @@ from deepagents_code.hooks.interrupt import (
     parse_hook_interrupt_payload,
     parse_hook_resume_value,
 )
-from deepagents_code.hooks.models.domain import (
+from niki_agent.hooks.models.domain import (
     HookContext,
     HookDecision,
     HookEvent,
@@ -49,12 +46,12 @@ from deepagents_code.hooks.models.domain import (
     PreToolUseEvent,
     ToolCallData,
 )
-from deepagents_code.hooks.models.transport import (
+from niki_agent.hooks.models.transport import (
     HookInvocationRequest,
     HookInvocationResponse,
 )
-from deepagents_code.hooks.runtime import HooksRuntime
-from deepagents_code.hooks.server_middleware import (
+from niki_agent.hooks.runtime import HooksRuntime
+from niki_agent.hooks.server_middleware import (
     HookTransportInterruptError,
     ServerHooksMiddleware,
     ServerHooksState,
@@ -66,6 +63,9 @@ from deepagents_code.hooks.server_middleware import (
     _tool_result_error,
     operation_hook_responses,
 )
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.middleware import CompiledSubAgent, SubAgent
+from niki_agent.sdk.middleware._state import private_state_field_names
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -339,7 +339,7 @@ def test_pretool_deny_blocks_tool_through_real_graph(
         )
 
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         _deny,
     )
     agent = create_agent(
@@ -590,7 +590,7 @@ def _invoke_pre_tool_hook(
     resume: object,
 ) -> HookDecision:
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware.interrupt", lambda _payload: resume
+        "niki_agent.hooks.server_middleware.interrupt", lambda _payload: resume
     )
     event = request.invocation.event
     assert isinstance(event, PreToolUseEvent)
@@ -783,7 +783,7 @@ def test_failed_execute_routes_to_post_tool_use_failure(
         )
     )
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         invoke,
     )
 
@@ -857,7 +857,7 @@ def test_pre_tool_allow_bypasses_hitl_and_preserves_context(
     runtime = _pre_tool_runtime()
     state = _pre_tool_state()
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         lambda *_args, **_kwargs: PreToolUseDecision(
             event=HookEvent.PRE_TOOL_USE,
             permission=PermissionEffect(behavior="allow"),
@@ -922,11 +922,11 @@ def test_pre_tool_ask_reaches_hitl_before_execution(
         order.append("hitl")
 
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         invoke,
     )
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._ask_permission_via_hitl",
+        "niki_agent.hooks.server_middleware._ask_permission_via_hitl",
         ask,
     )
 
@@ -946,14 +946,14 @@ def test_pre_tool_deny_skips_hitl_and_execution(
     state = _pre_tool_state()
     ask = MagicMock()
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         lambda *_args, **_kwargs: PreToolUseDecision(
             event=HookEvent.PRE_TOOL_USE,
             permission=PermissionEffect(behavior="deny", reason="blocked"),
         ),
     )
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._ask_permission_via_hitl",
+        "niki_agent.hooks.server_middleware._ask_permission_via_hitl",
         ask,
     )
 
@@ -979,7 +979,7 @@ def test_ask_permission_via_hitl_approve(monkeypatch: pytest.MonkeyPatch) -> Non
         return {"decisions": [{"type": "approve"}]}
 
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware.interrupt",
+        "niki_agent.hooks.server_middleware.interrupt",
         _fake_interrupt,
     )
     assert (
@@ -992,7 +992,7 @@ def test_ask_permission_via_hitl_reject(monkeypatch: pytest.MonkeyPatch) -> None
     call = ToolCallData(id="c1", name="execute", args={})
 
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware.interrupt",
+        "niki_agent.hooks.server_middleware.interrupt",
         lambda _payload: {"decisions": [{"type": "reject", "message": "no"}]},
     )
     blocked = _ask_permission_via_hitl(call, PermissionEffect(behavior="ask"))
@@ -1004,7 +1004,7 @@ def test_ask_permission_via_hitl_reject(monkeypatch: pytest.MonkeyPatch) -> None
 def test_subagent_start_deny_returns_error_tool_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks.models.domain import SubagentStartDecision
+    from niki_agent.hooks.models.domain import SubagentStartDecision
 
     middleware = ServerHooksMiddleware(cwd=Path("/tmp"))
     request = MagicMock()
@@ -1024,7 +1024,7 @@ def test_subagent_start_deny_returns_error_tool_message(
     request.runtime.config = {"configurable": {"thread_id": "t1"}}
 
     monkeypatch.setattr(
-        "deepagents_code.hooks.server_middleware._invoke_hook",
+        "niki_agent.hooks.server_middleware._invoke_hook",
         lambda *_args, **_kwargs: SubagentStartDecision(
             event=HookEvent.SUBAGENT_START,
             continue_processing=False,
@@ -1080,7 +1080,7 @@ class TestAskDecisionInServerOperation:
         internal scratchpad config key, which the compaction chain's broad
         handler turns into "Offload hooks failed: KeyError: ...".
         """
-        from deepagents_code.hooks.server_middleware import (
+        from niki_agent.hooks.server_middleware import (
             _ask_permission_via_hitl,
             operation_hook_responses,
         )

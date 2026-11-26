@@ -6,7 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Static
 
-from deepagents_code.tui.widgets.mcp_reconnect import (
+from niki_agent.tui.widgets.mcp_reconnect import (
     MCPDisableReconnectPromptScreen,
     MCPReconnectForceConfirmScreen,
     MCPReconnectPromptScreen,

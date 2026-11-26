@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 from rich.console import Console
 
-from deepagents_code import managed_tools
-from deepagents_code._env_vars import OFFLINE, RIPGREP_INSTALLER
-from deepagents_code.client.commands.tools import run_tools_command
-from deepagents_code.tool_catalog import (
+from niki_agent import managed_tools
+from niki_agent._env_vars import OFFLINE, RIPGREP_INSTALLER
+from niki_agent.client.commands.tools import run_tools_command
+from niki_agent.tool_catalog import (
     ToolCatalog,
     ToolEntry,
     ToolGroup,
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 def _run_text(args: argparse.Namespace, *, width: int = 200) -> tuple[int, str]:
     buf = io.StringIO()
     test_console = Console(file=buf, highlight=False, width=width)
-    with patch("deepagents_code.config.console", test_console):
+    with patch("niki_agent.config.console", test_console):
         code = run_tools_command(args)
     return code, buf.getvalue()
 
@@ -149,7 +149,7 @@ class TestToolsInstall:
 
     def test_no_subcommand_shows_help(self) -> None:
         args = argparse.Namespace(tools_command=None)
-        with patch("deepagents_code.ui.show_tools_help") as show_help:
+        with patch("niki_agent.ui.show_tools_help") as show_help:
             code = run_tools_command(args)
         assert code == 0
         show_help.assert_called_once()
@@ -195,9 +195,7 @@ class TestToolsList:
             ),
             mcp_error="MCP discovery failed; showing built-in tools only.",
         )
-        with patch(
-            "deepagents_code.tool_catalog.collect_catalog", return_value=catalog
-        ):
+        with patch("niki_agent.tool_catalog.collect_catalog", return_value=catalog):
             code = run_tools_command(args)
         # No explicit --mcp-config on this namespace, so degradation is exit 0.
         assert code == 0

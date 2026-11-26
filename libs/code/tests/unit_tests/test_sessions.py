@@ -11,10 +11,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
-from deepagents_code import sessions
-from deepagents_code._constants import DEFAULT_THREAD_LIMIT
-from deepagents_code._env_vars import RECENT_THREADS
-from deepagents_code.app import TextualSessionState
+from niki_agent import sessions
+from niki_agent._constants import DEFAULT_THREAD_LIMIT
+from niki_agent._env_vars import RECENT_THREADS
+from niki_agent.app import TextualSessionState
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 def test_workflows_directory_uses_hardened_profile_state(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code import model_config
+    from niki_agent import model_config
 
     state_dir = tmp_path / "profile" / ".state"
     hardened: list[Path] = []
@@ -325,7 +325,7 @@ class TestThreadFunctions:
     def test_delete_thread(self, temp_db, monkeypatch, tmp_path):
         """Delete thread removes thread."""
         monkeypatch.setattr(
-            "deepagents_code.offload.get_deepagents_home",
+            "niki_agent.offload.get_deepagents_home",
             lambda: tmp_path / ".deepagents",
         )
         with patch.object(sessions, "get_db_path", return_value=temp_db):
@@ -336,7 +336,7 @@ class TestThreadFunctions:
     def test_delete_thread_not_found(self, temp_db, monkeypatch, tmp_path):
         """Delete thread returns False for non-existing thread."""
         monkeypatch.setattr(
-            "deepagents_code.offload.get_deepagents_home",
+            "niki_agent.offload.get_deepagents_home",
             lambda: tmp_path / ".deepagents",
         )
         with patch.object(sessions, "get_db_path", return_value=temp_db):
@@ -348,7 +348,7 @@ class TestThreadFunctions:
     ):
         """Deleting a thread removes its offloaded conversation history."""
         monkeypatch.setattr(
-            "deepagents_code.offload.get_deepagents_home",
+            "niki_agent.offload.get_deepagents_home",
             lambda: tmp_path / ".deepagents",
         )
         archive_dir = tmp_path / ".deepagents" / "conversation_history"
@@ -365,12 +365,12 @@ class TestThreadFunctions:
     ):
         """Checkpoint deletion drives the result; history cleanup is best-effort."""
         monkeypatch.setattr(
-            "deepagents_code.offload.get_deepagents_home",
+            "niki_agent.offload.get_deepagents_home",
             lambda: tmp_path / ".deepagents",
         )
         # `delete_thread` imports the helper from `offload` at call time, so
         # patching it there simulates a failed (but swallowed) cleanup.
-        from deepagents_code import offload
+        from niki_agent import offload
 
         monkeypatch.setattr(
             offload, "delete_offloaded_history", MagicMock(return_value=False)
@@ -384,7 +384,7 @@ class TestThreadFunctions:
     ):
         """A thread with no checkpoints still has its orphaned archive cleaned."""
         monkeypatch.setattr(
-            "deepagents_code.offload.get_deepagents_home",
+            "niki_agent.offload.get_deepagents_home",
             lambda: tmp_path / ".deepagents",
         )
         archive_dir = tmp_path / ".deepagents" / "conversation_history"
@@ -972,7 +972,7 @@ class TestPrewarmThreadMessageCounts:
 
     async def test_prewarm_respects_visible_thread_columns(self) -> None:
         """Prewarm should only fetch checkpoint fields for visible columns."""
-        from deepagents_code.model_config import ThreadConfig
+        from niki_agent.model_config import ThreadConfig
 
         threads: list[sessions.ThreadInfo] = [
             {
@@ -990,7 +990,7 @@ class TestPrewarmThreadMessageCounts:
                 return_value=threads,
             ),
             patch(
-                "deepagents_code.model_config.load_thread_config",
+                "niki_agent.model_config.load_thread_config",
                 return_value=ThreadConfig(
                     columns={
                         "thread_id": False,
@@ -2302,7 +2302,7 @@ class TestInitialPromptFromMessages:
 
     def test_skips_rendered_goal_context_with_objective_and_criteria(self) -> None:
         """Detailed model context must not leak into a thread title."""
-        from deepagents_code.goal_state_notice import build_goal_state_notice
+        from niki_agent.goal_state_notice import build_goal_state_notice
 
         notice = build_goal_state_notice(
             {

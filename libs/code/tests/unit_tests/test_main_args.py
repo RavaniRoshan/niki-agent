@@ -7,13 +7,17 @@ import sys
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.config import parse_shell_allow_list
-from deepagents_code.main import apply_stdin_pipe, parse_args
-from deepagents_code.update_check import ExtraInstallOutcome
+from niki_agent.config import parse_shell_allow_list
+from niki_agent.main import apply_stdin_pipe, parse_args
+from niki_agent.update_check import ExtraInstallOutcome
+
+if TYPE_CHECKING:
+    from niki_agent.sdk import FsToolName
 
 _INSTALL_SUCCEEDED = ExtraInstallOutcome(True, "")
 
@@ -110,9 +114,9 @@ class TestResolveApprovalMode:
 
     def test_blocked_recent_auto_queues_an_explanation(self, tmp_path: Path) -> None:
         """A stale Auto notice fails closed and explains the Manual fallback."""
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_approval_mode
-        from deepagents_code.model_config import (
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_approval_mode
+        from niki_agent.model_config import (
             consume_recent_auto_not_restored_notice,
         )
 
@@ -139,8 +143,8 @@ class TestResolveApprovalMode:
         default instead -- green whether or not the value fell back safely.
         Write the real spelling into `config.toml` so the coercion runs.
         """
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_approval_mode
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_approval_mode
 
         (tmp_path / "config.toml").write_text(
             '[startup]\nmode = "dangerously-auto"\n', encoding="utf-8"
@@ -157,20 +161,20 @@ class TestYoloAcknowledgement:
     """Tests for the versioned local unrestricted-mode acknowledgement."""
 
     def test_new_acknowledgement_must_persist(self) -> None:
-        from deepagents_code.main import _ensure_yolo_acknowledged
+        from niki_agent.main import _ensure_yolo_acknowledged
 
         console = MagicMock()
         with (
             patch(
-                "deepagents_code.approval_mode.has_yolo_acknowledgement",
+                "niki_agent.approval_mode.has_yolo_acknowledgement",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.main._prompt_yolo_acknowledgement",
+                "niki_agent.main._prompt_yolo_acknowledgement",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.approval_mode.save_yolo_acknowledgement",
+                "niki_agent.approval_mode.save_yolo_acknowledgement",
                 return_value=False,
             ),
         ):
@@ -246,10 +250,10 @@ class TestHeadlessApprovalFlagHandling:
         `_apply_managed_runtime_exceptions` revoking it: the warning keys off a
         parse-time capture, so it must still fire.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         if managed_toml is not None:
-            from deepagents_code.configuration import service
+            from niki_agent.configuration import service
             from unit_tests.conftest import redirect_managed_config
 
             managed = tmp_path / "managed.toml"
@@ -268,7 +272,7 @@ class TestHeadlessApprovalFlagHandling:
         )
         # Scoped to `/dev/tty`: a blanket `os.open` failure also disables the
         # fail-closed guard in `_prepare_debug_file`, which then floods the
-        # stderr this test asserts on (reachable whenever DEEPAGENTS_CODE_DEBUG
+        # stderr this test asserts on (reachable whenever NIKI_DEBUG
         # is set, e.g. from a developer's ~/.deepagents/.env).
         real_open = os.open
         no_tty = OSError("No controlling terminal")
@@ -288,17 +292,17 @@ class TestHeadlessApprovalFlagHandling:
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
             patch("os.open", side_effect=_open_no_tty),
-            patch("deepagents_code.main.check_optional_tools", return_value=[]),
+            patch("niki_agent.main.check_optional_tools", return_value=[]),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled",
+                "niki_agent.main._resolve_interpreter_enabled",
                 resolve_interpreter,
             ),
             patch(
-                "deepagents_code.client.non_interactive.run_non_interactive",
+                "niki_agent.client.non_interactive.run_non_interactive",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -334,7 +338,7 @@ class TestHeadlessApprovalFlagHandling:
         for one command line. The classifier guard now runs first, so the exit
         is the only thing the user sees.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -369,7 +373,7 @@ class TestHeadlessApprovalFlagHandling:
         `create_cli_agent` turns Auto off for a sandboxed run, so accepting the
         flag would silently ignore a setting that governs action authorization.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -403,7 +407,7 @@ class TestHeadlessApprovalFlagHandling:
         --auto-classifier-model X` silently accepts a setting that governs action
         authorization and then discards it.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -439,7 +443,7 @@ class TestHeadlessApprovalFlagHandling:
         flag's primary use. Also asserts the resolved value flows through to
         the TUI (`auto_approve=True`).
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -454,17 +458,17 @@ class TestHeadlessApprovalFlagHandling:
         with (
             patch.object(sys, "argv", ["deepagents", "--auto-approve", "-m", "hello"]),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.run_textual_cli_async", run_tui),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=False),
+            patch("niki_agent.main.run_textual_cli_async", run_tui),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=False),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled",
+                "niki_agent.main._resolve_interpreter_enabled",
                 return_value=False,
             ),
-            patch("deepagents_code.main._print_session_stats"),
+            patch("niki_agent.main._print_session_stats"),
             patch(
-                "deepagents_code.main._should_check_teardown_thread",
+                "niki_agent.main._should_check_teardown_thread",
                 return_value=False,
             ),
         ):
@@ -473,7 +477,7 @@ class TestHeadlessApprovalFlagHandling:
         run_tui.assert_awaited_once()
         await_args = run_tui.await_args
         assert await_args is not None
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         assert await_args.kwargs["approval_mode"] is ApprovalMode.AUTO
 
@@ -487,7 +491,7 @@ class TestHeadlessApprovalFlagHandling:
         resolve Manual and surface the reason instead of silently dropping the
         requested mode.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -509,20 +513,20 @@ class TestHeadlessApprovalFlagHandling:
             # Skip the real provider dependency check; it exits before the
             # approval-mode downgrade when `daytona` extras are absent.
             patch(
-                "deepagents_code.integrations.sandbox_factory.verify_sandbox_deps",
+                "niki_agent.integrations.sandbox_factory.verify_sandbox_deps",
                 return_value=None,
             ),
-            patch("deepagents_code.main.run_textual_cli_async", run_tui),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=False),
+            patch("niki_agent.main.run_textual_cli_async", run_tui),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=False),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled",
+                "niki_agent.main._resolve_interpreter_enabled",
                 return_value=False,
             ),
-            patch("deepagents_code.main._print_session_stats"),
+            patch("niki_agent.main._print_session_stats"),
             patch(
-                "deepagents_code.main._should_check_teardown_thread",
+                "niki_agent.main._should_check_teardown_thread",
                 return_value=False,
             ),
         ):
@@ -531,7 +535,7 @@ class TestHeadlessApprovalFlagHandling:
         run_tui.assert_awaited_once()
         await_args = run_tui.await_args
         assert await_args is not None
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         assert await_args.kwargs["approval_mode"] is ApprovalMode.MANUAL
         assert "Auto is unavailable with a sandbox" in capsys.readouterr().out
@@ -619,7 +623,7 @@ class TestSandboxArgument:
         )
         with (
             patch(
-                "deepagents_code.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
+                "niki_agent.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
                 config,
             ),
             mock_argv("-n", "task", "--sandbox", "acme"),
@@ -638,7 +642,7 @@ class TestSandboxArgument:
         )
         with (
             patch(
-                "deepagents_code.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
+                "niki_agent.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
                 config,
             ),
             mock_argv("-n", "task", "--sandbox"),
@@ -652,7 +656,7 @@ class TestSandboxArgument:
         config = tmp_path / "config.toml"
         with (
             patch(
-                "deepagents_code.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
+                "niki_agent.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
                 config,
             ),
             mock_argv("-n", "task", "--sandbox"),
@@ -727,7 +731,7 @@ class TestSandboxArgument:
         config.write_text("this is not = valid = toml", encoding="utf-8")
         with (
             patch(
-                "deepagents_code.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
+                "niki_agent.integrations.sandbox_config.DEFAULT_CONFIG_PATH",
                 config,
             ),
             mock_argv("-n", "task", "--sandbox"),
@@ -757,7 +761,7 @@ class TestSkillFlagValidation:
         `--quiet` guard and reaches `run_non_interactive` with both the piped
         message and `initial_skill`.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = False
@@ -769,16 +773,16 @@ class TestSkillFlagValidation:
                 ["deepagents", "--skill", "code-review", "--stdin", "-q"],
             ),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_optional_tools", return_value=[]),
+            patch("niki_agent.main.check_optional_tools", return_value=[]),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             # Skip the /dev/tty dance — os.open would fail in test sandboxes
             # and the real code path already tolerates that failure.
             patch("os.open", side_effect=OSError("No tty in test sandbox")),
             patch(
-                "deepagents_code.client.non_interactive.run_non_interactive",
+                "niki_agent.client.non_interactive.run_non_interactive",
                 new_callable=AsyncMock,
                 return_value=0,
             ) as mock_run,
@@ -805,7 +809,7 @@ class TestMaxTurnsArgument:
 
     def test_allowed_with_piped_stdin(self) -> None:
         """--max-turns without -n is allowed when stdin is piped."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = False
@@ -813,16 +817,16 @@ class TestMaxTurnsArgument:
         with (
             patch.object(sys, "argv", ["deepagents", "--max-turns", "5"]),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_optional_tools", return_value=[]),
+            patch("niki_agent.main.check_optional_tools", return_value=[]),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             # Skip the /dev/tty dance — os.open would fail in test sandboxes
             # and the real code path already tolerates that failure.
             patch("os.open", side_effect=OSError("No tty in test sandbox")),
             patch(
-                "deepagents_code.client.non_interactive.run_non_interactive",
+                "niki_agent.client.non_interactive.run_non_interactive",
                 new_callable=AsyncMock,
                 return_value=0,
             ) as mock_run,
@@ -846,20 +850,20 @@ class TestMaxRetriesForwarding:
 
     def _run_model_kwargs(self, argv: list[str]) -> dict[str, object]:
         """Drive `cli_main` and return model-related downstream arguments."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
         with (
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_optional_tools", return_value=[]),
+            patch("niki_agent.main.check_optional_tools", return_value=[]),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.client.non_interactive.run_non_interactive",
+                "niki_agent.client.non_interactive.run_non_interactive",
                 new_callable=AsyncMock,
                 return_value=0,
             ) as mock_run,
@@ -912,9 +916,9 @@ class TestApplyStdinPipe:
         with (
             patch.object(sys, "platform", platform),
             patch.object(sys, "stdin", pipe),
-            patch("deepagents_code.main.os.open", return_value=42) as open_terminal,
-            patch("deepagents_code.main.os.dup2") as duplicate,
-            patch("deepagents_code.main.os.close") as close_terminal,
+            patch("niki_agent.main.os.open", return_value=42) as open_terminal,
+            patch("niki_agent.main.os.dup2") as duplicate,
+            patch("niki_agent.main.os.close") as close_terminal,
             patch("builtins.open", return_value=terminal_input) as reopen_stdin,
         ):
             apply_stdin_pipe(args)
@@ -935,8 +939,8 @@ class TestApplyStdinPipe:
         with (
             patch.object(sys, "platform", platform),
             patch.object(sys, "stdin", pipe),
-            patch("deepagents_code.main.os.open", side_effect=OSError("no console")),
-            patch("deepagents_code.main.os.dup2") as duplicate,
+            patch("niki_agent.main.os.open", side_effect=OSError("no console")),
+            patch("niki_agent.main.os.dup2") as duplicate,
         ):
             apply_stdin_pipe(args)
             assert sys.stdin is pipe
@@ -946,16 +950,16 @@ class TestApplyStdinPipe:
 
     def test_failed_terminal_replacement_closes_handle(self) -> None:
         """A failed Windows fd replacement warns and releases the opened handle."""
-        from deepagents_code.config import console
+        from niki_agent.config import console
 
         args = _make_args(initial_prompt="explain")
         pipe = io.StringIO("context")
         with (
             patch.object(sys, "platform", "win32"),
             patch.object(sys, "stdin", pipe),
-            patch("deepagents_code.main.os.open", return_value=42),
-            patch("deepagents_code.main.os.dup2", side_effect=OSError("bad fd")),
-            patch("deepagents_code.main.os.close") as close_terminal,
+            patch("niki_agent.main.os.open", return_value=42),
+            patch("niki_agent.main.os.dup2", side_effect=OSError("bad fd")),
+            patch("niki_agent.main.os.close") as close_terminal,
             patch.object(console, "print") as warning,
         ):
             apply_stdin_pipe(args)
@@ -1030,7 +1034,7 @@ class TestThreadsListCwdFilter:
 
     @staticmethod
     def _run_threads_list(*args: str) -> AsyncMock:
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -1038,9 +1042,9 @@ class TestThreadsListCwdFilter:
         with (
             patch.object(sys, "argv", ["deepagents", "threads", "list", *args]),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
             patch(
-                "deepagents_code.sessions.list_threads_command",
+                "niki_agent.sessions.list_threads_command",
                 new_callable=AsyncMock,
             ) as mock_list,
         ):
@@ -1060,16 +1064,16 @@ class TestResolveAgentArg:
 
     def test_resume_thread_forces_default(self) -> None:
         """With -r present, default lets thread-metadata inference pick the agent."""
-        from deepagents_code._constants import DEFAULT_AGENT_NAME
-        from deepagents_code.main import _resolve_agent_arg
+        from niki_agent._constants import DEFAULT_AGENT_NAME
+        from niki_agent.main import _resolve_agent_arg
 
         with (
             patch(
-                "deepagents_code.model_config.load_default_agent",
+                "niki_agent.model_config.load_default_agent",
                 return_value="coder",
             ) as load_default,
             patch(
-                "deepagents_code.model_config.load_recent_agent",
+                "niki_agent.model_config.load_recent_agent",
                 return_value="researcher",
             ) as load_recent,
         ):
@@ -1084,7 +1088,7 @@ class TestRecentAgentIsValid:
 
     def test_swallows_os_error(self) -> None:
         """A PermissionError or other OSError on is_dir() is logged and False."""
-        from deepagents_code.main import _recent_agent_is_valid
+        from niki_agent.main import _recent_agent_is_valid
 
         with patch("pathlib.Path.is_dir", side_effect=PermissionError("denied")):
             assert _recent_agent_is_valid("coder") is False
@@ -1115,8 +1119,8 @@ class TestUpdateSubcommand:
         upgrade_side_effect: Callable[..., object] | None = None,
     ) -> tuple[int, MagicMock, MagicMock]:
         """Invoke `cli_main()` with `update`; return exit code + mocks."""
-        from deepagents_code._env_vars import DEBUG_UPDATE
-        from deepagents_code.main import cli_main
+        from niki_agent._env_vars import DEBUG_UPDATE
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -1132,29 +1136,29 @@ class TestUpdateSubcommand:
             patch.dict(os.environ, {DEBUG_UPDATE: "1" if debug else ""}),
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
-            patch("deepagents_code.config._is_editable_install", return_value=editable),
+            patch("niki_agent.main.check_cli_dependencies"),
+            patch("niki_agent.config._is_editable_install", return_value=editable),
             # `--prerelease` is only honored on uv installs; pin the detected
             # method so the precheck's outcome is driven by the test rather than
             # the test runner's own environment.
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value=install_method,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=is_update_available_return,
             ) as is_update_mock,
             patch(
-                "deepagents_code.update_check.release_requires_prereleases",
+                "niki_agent.update_check.release_requires_prereleases",
                 return_value=release_requires_prereleases,
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=log_path,
             ),
             patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new_callable=AsyncMock,
                 return_value=(True, "", None),
                 side_effect=upgrade_side_effect,
@@ -1167,7 +1171,7 @@ class TestUpdateSubcommand:
     def test_editable_install_skips_upgrade(self) -> None:
         """Editable install exits 0 without calling `is_update_available`/upgrade.
 
-        A regression here would run `uv tool upgrade deepagents-code` on an
+        A regression here would run `uv tool upgrade niki-agent` on an
         editable checkout and clobber the dev install with a PyPI copy.
         """
         code, is_update_mock, perform_upgrade_mock = self._run_update(
@@ -1182,7 +1186,7 @@ class TestUpdateSubcommand:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Headless updates must not race another process's install."""
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.update_check import update_install_lock
 
         with update_install_lock() as holding:
             assert holding is True
@@ -1203,7 +1207,7 @@ class TestUpdateSubcommand:
         lock is not reentrant, so re-entering from inside `perform_upgrade`
         proves it is held for the real work.
         """
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.update_check import update_install_lock
 
         held_during_install: list[bool] = []
 
@@ -1277,23 +1281,23 @@ class TestUpdateSubcommand:
         pre-release onto the stable channel — the exact silent downgrade this
         flag guards against, via an error side-door.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
         with (
             patch.object(sys, "argv", ["deepagents", "update", "--prerelease"]),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.main.check_cli_dependencies"),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             # Crash after the pre-release support check passes but before the
             # upgrade completes, exercising the catch-all fallback path.
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 side_effect=RuntimeError("boom"),
             ),
             pytest.raises(SystemExit) as exc_info,
@@ -1319,7 +1323,7 @@ class TestInstallExtraSubcommand:
         command_side_effect: BaseException | None = None,
     ) -> tuple[int, MagicMock]:
         """Invoke `cli_main()` with `--install`; return exit code + mock."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         argv = ["deepagents", "--install", extra]
         if yes:
@@ -1334,8 +1338,7 @@ class TestInstallExtraSubcommand:
         mock_stdin.read.return_value = ""
         command_mock = MagicMock(
             return_value=(
-                "curl -LsSf https://langch.in/dcode | "
-                f"DEEPAGENTS_CODE_EXTRAS={extra} bash"
+                f"curl -LsSf https://langch.in/dcode | NIKI_EXTRAS={extra} bash"
             ),
         )
         if command_side_effect is not None:
@@ -1343,9 +1346,9 @@ class TestInstallExtraSubcommand:
         with (
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
             # `cli_main` resolves `console` via a lazy `__getattr__` on
-            # `deepagents_code.config` that caches a single real `Console` in
+            # `niki_agent.config` that caches a single real `Console` in
             # the module globals for the whole worker process. Left unpatched,
             # the `--install` handler's `console.print(...)` calls run against
             # that shared instance, so console/stdout state leaked by an earlier
@@ -1354,22 +1357,22 @@ class TestInstallExtraSubcommand:
             # error into `sys.exit(1)`, which would mask the intended refusal
             # exit code. Patch with `create=True` so the mock is installed
             # before the lazy import line runs.
-            patch("deepagents_code.config.console", MagicMock(), create=True),
-            patch("deepagents_code.config._is_editable_install", return_value=editable),
+            patch("niki_agent.config.console", MagicMock(), create=True),
+            patch("niki_agent.config._is_editable_install", return_value=editable),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 command_mock,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 command_mock,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=perform_return,
             ) as perform_mock,
@@ -1404,10 +1407,10 @@ class TestInstallExtraSubcommand:
 
         Returns:
             `(exit_code, perform_mock, console_mock)` — *console_mock* is a
-                `MagicMock` substituted for `deepagents_code.main.console`,
+                `MagicMock` substituted for `niki_agent.main.console`,
                 so assertions can run against the recorded `.print(...)` calls.
         """
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         argv = ["deepagents", "--install", extra]
         if yes:
@@ -1425,7 +1428,7 @@ class TestInstallExtraSubcommand:
         else:
             perform_mock.return_value = perform_return
         default_script_cmd = (
-            f"curl -LsSf https://langch.in/dcode | DEEPAGENTS_CODE_EXTRAS={extra} bash"
+            f"curl -LsSf https://langch.in/dcode | NIKI_EXTRAS={extra} bash"
         )
         command_mock = MagicMock(return_value=command_return or default_script_cmd)
         if command_side_effect is not None:
@@ -1443,26 +1446,26 @@ class TestInstallExtraSubcommand:
         with (
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
             # `cli_main` resolves `console` via a lazy `__getattr__` on
-            # `deepagents_code.config`, so patch with `create=True` to
+            # `niki_agent.config`, so patch with `create=True` to
             # install the mock before the import line runs.
-            patch("deepagents_code.config.console", console_mock, create=True),
-            patch("deepagents_code.config._is_editable_install", return_value=editable),
+            patch("niki_agent.config.console", console_mock, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=editable),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=Path("/tmp/deepagents-install.log"),
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 command_mock,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 recovery_mock,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 perform_mock,
             ),
             patch("builtins.input", return_value=input_reply),
@@ -1481,7 +1484,7 @@ class TestInstallExtraSubcommand:
 
     def test_failure_escapes_uv_recovery_command_markup(self) -> None:
         """Failed uv recovery commands preserve extras rendered by Rich."""
-        command = "uv tool install -U 'deepagents-code[quickjs]'"
+        command = "uv tool install -U 'niki-agent[quickjs]'"
         code, _perform, console_mock = self._run_install_capture(
             "quickjs",
             perform_return=ExtraInstallOutcome(False, "resolver: conflict"),
@@ -1489,14 +1492,14 @@ class TestInstallExtraSubcommand:
         )
         assert code == 1
         text = self._printed_text(console_mock)
-        assert "deepagents-code\\[quickjs]" in text
+        assert "niki-agent\\[quickjs]" in text
 
     def test_failure_recovery_command_error_keeps_prior_command(self) -> None:
         """A recovery-command error on a failed install keeps the prior command.
 
         The command resolved before the failure is shown instead of crashing.
         """
-        resolved = "uv tool install -U 'deepagents-code[quickjs]'"
+        resolved = "uv tool install -U 'niki-agent[quickjs]'"
         code, _perform, console_mock = self._run_install_capture(
             "quickjs",
             perform_return=ExtraInstallOutcome(False, "resolver: conflict"),
@@ -1508,7 +1511,7 @@ class TestInstallExtraSubcommand:
         assert "Install failed" in text
         # Falls back to the install_extra_command value resolved before the
         # failure, with its bracket escaped for Rich.
-        assert "deepagents-code\\[quickjs]" in text
+        assert "niki-agent\\[quickjs]" in text
 
     def test_keyboard_interrupt_exits_130(self) -> None:
         """Ctrl-C during install exits 130 with an Aborted message."""
@@ -1531,8 +1534,11 @@ class TestInstallExtraSubcommand:
         assert "RuntimeError" in text
         assert "metadata broken" in text
         assert "Run manually: " in text
-        assert "curl -LsSf https://langch.in/dcode" in text
-        assert "DEEPAGENTS_CODE_EXTRAS=quickjs bash" in text
+        assert (
+            "curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent"
+            in text
+        )
+        assert "NIKI_EXTRAS=quickjs bash" in text
 
 
 class TestInstallPackageSubcommand:
@@ -1551,7 +1557,7 @@ class TestInstallPackageSubcommand:
         input_reply: str = "n",
     ) -> tuple[int, MagicMock, MagicMock]:
         """Invoke `cli_main()` with `--package`; return exit code + mocks."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         argv = ["deepagents"]
         if with_install:
@@ -1573,15 +1579,15 @@ class TestInstallPackageSubcommand:
         with (
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
-            patch("deepagents_code.config.console", console_mock, create=True),
-            patch("deepagents_code.config._is_editable_install", return_value=editable),
+            patch("niki_agent.main.check_cli_dependencies"),
+            patch("niki_agent.config.console", console_mock, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=editable),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=Path("/tmp/deepagents-install.log"),
             ),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 perform_mock,
             ),
             patch("builtins.input", return_value=input_reply),
@@ -1626,22 +1632,22 @@ class TestParseInterpreterToolsFlag:
     """Tests for `_parse_interpreter_tools_flag`."""
 
     def test_none_returns_none(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         assert _parse_interpreter_tools_flag(None) is None
 
     def test_safe_sentinel(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         assert _parse_interpreter_tools_flag("safe") == "safe"
 
     def test_all_sentinel(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         assert _parse_interpreter_tools_flag("all") == "all"
 
     def test_explicit_list(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         assert _parse_interpreter_tools_flag("read_file,glob,grep,task") == [
             "read_file",
@@ -1651,19 +1657,19 @@ class TestParseInterpreterToolsFlag:
         ]
 
     def test_safe_inside_list(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         assert _parse_interpreter_tools_flag("safe,task") == ["safe", "task"]
 
     def test_all_inside_list_exits(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         with pytest.raises(SystemExit) as exc_info:
             _parse_interpreter_tools_flag("all,task")
         assert exc_info.value.code == 2
 
     def test_empty_value_exits(self) -> None:
-        from deepagents_code.main import _parse_interpreter_tools_flag
+        from niki_agent.main import _parse_interpreter_tools_flag
 
         with pytest.raises(SystemExit) as exc_info:
             _parse_interpreter_tools_flag("   ")
@@ -1674,12 +1680,50 @@ class TestParseAllowFsToolsFlag:
     """Tests for `_parse_allow_fs_tools_flag`."""
 
 
+class TestPlanModeArgument:
+    """Tests for `--plan` read-only planning mode."""
+
+    def test_plan_flag_parses(self, mock_argv: MockArgvType) -> None:
+        with mock_argv("--plan", "-n", "propose a plan"):
+            args = parse_args()
+        assert args.plan is True
+
+    def test_plan_is_off_by_default(self, mock_argv: MockArgvType) -> None:
+        with mock_argv("-n", "task"):
+            args = parse_args()
+        assert args.plan is False
+
+    def test_plan_narrows_the_default_tool_set(self) -> None:
+        """No explicit allowlist means every tool; plan mode means reads only."""
+        from niki_agent.main import _plan_mode_fs_tools
+
+        assert _plan_mode_fs_tools(None) == ["ls", "read_file", "glob", "grep"]
+
+    def test_plan_intersects_an_explicit_allowlist(self) -> None:
+        """Writes and shell are dropped even when the user asked for them."""
+        from niki_agent.main import _plan_mode_fs_tools
+
+        allow = cast(
+            "list[FsToolName]",
+            ["read_file", "write_file", "edit_file", "delete", "grep", "execute"],
+        )
+
+        assert _plan_mode_fs_tools(allow) == ["read_file", "grep"]
+
+    def test_plan_keeps_the_required_read_tool(self) -> None:
+        from niki_agent.main import _plan_mode_fs_tools
+
+        allow = cast("list[FsToolName]", ["write_file", "execute"])
+
+        assert _plan_mode_fs_tools(allow) == ["read_file"]
+
+
 class TestAllowFsToolsArgument:
     """Tests for --allow-fs-tools argument parsing and forwarding."""
 
     def test_invalid_value_exits_before_startup_side_effects(self) -> None:
         """Malformed allowlists fail before migration, installs, or prompts."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
@@ -1690,10 +1734,10 @@ class TestAllowFsToolsArgument:
                 ["deepagents", "-n", "task", "--allow-fs-tools", "bogus"],
             ),
             patch.object(sys, "stdin", mock_stdin),
-            patch("deepagents_code.state_migration.migrate_legacy_state") as migrate,
-            patch("deepagents_code.main.check_optional_tools") as check_tools,
-            patch("deepagents_code.main._run_startup_auto_update") as update,
-            patch("deepagents_code.main._check_mcp_project_trust") as trust,
+            patch("niki_agent.state_migration.migrate_legacy_state") as migrate,
+            patch("niki_agent.main.check_optional_tools") as check_tools,
+            patch("niki_agent.main._run_startup_auto_update") as update,
+            patch("niki_agent.main._check_mcp_project_trust") as trust,
             pytest.raises(SystemExit) as exc_info,
         ):
             cli_main()
@@ -1723,7 +1767,7 @@ class TestResolveInterpreterEnabled:
         construction, which tells the user nothing about which two flags
         conflict.
         """
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.main import _resolve_interpreter_enabled
 
         with mock_argv("-n", "task", "--sandbox", "daytona", "--interpreter"):
             args = parse_args()
@@ -1751,8 +1795,8 @@ class TestResolveInterpreterEnabled:
         """
         import argparse
 
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_interpreter_enabled
         from unit_tests.conftest import redirect_managed_config
 
         managed = tmp_path / "managed.toml"
@@ -1779,8 +1823,8 @@ class TestResolveInterpreterEnabled:
         """
         import argparse
 
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_interpreter_enabled
         from unit_tests.conftest import redirect_managed_config
 
         managed = tmp_path / "managed.toml"
@@ -1811,8 +1855,8 @@ class TestResolveInterpreterEnabled:
         """
         import argparse
 
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_interpreter_enabled
         from unit_tests.conftest import redirect_managed_config
 
         managed = tmp_path / "managed.toml"
@@ -1839,7 +1883,7 @@ class TestResolveInterpreterEnabled:
         A read-only listing has nothing to abort, and the interpreter would in
         fact be absent, so `strict=False` reports `False`.
         """
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.main import _resolve_interpreter_enabled
 
         with mock_argv("-n", "task", "--sandbox", "daytona", "--interpreter"):
             args = parse_args()
@@ -1868,8 +1912,8 @@ class TestResolveInterpreterEnabled:
         """
         import argparse
 
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_interpreter_enabled
 
         # `_isolate_state_dir` already points `DEFAULT_CONFIG_PATH` here.
         (tmp_path / "config.toml").write_text(toml_text, encoding="utf-8")
@@ -1886,8 +1930,8 @@ class TestResolveInterpreterEnabled:
         """With policy silent on the key, the sandbox default stands."""
         import argparse
 
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _resolve_interpreter_enabled
+        from niki_agent.configuration import service
+        from niki_agent.main import _resolve_interpreter_enabled
         from unit_tests.conftest import redirect_managed_config
 
         managed = tmp_path / "managed.toml"
@@ -1912,7 +1956,7 @@ class TestWarnInterpreterDisabledBySandbox:
         self, mock_argv: MockArgvType, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A `--sandbox` run with the default-on interpreter warns on stderr."""
-        from deepagents_code.main import _warn_if_interpreter_disabled_by_sandbox
+        from niki_agent.main import _warn_if_interpreter_disabled_by_sandbox
 
         with mock_argv("-n", "task", "--sandbox", "daytona"):
             args = parse_args()
@@ -1923,7 +1967,7 @@ class TestWarnInterpreterDisabledBySandbox:
         self, mock_argv: MockArgvType, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Local mode keeps the interpreter, so there is nothing to warn about."""
-        from deepagents_code.main import _warn_if_interpreter_disabled_by_sandbox
+        from niki_agent.main import _warn_if_interpreter_disabled_by_sandbox
 
         with mock_argv("-n", "task"):
             args = parse_args()
@@ -1934,7 +1978,7 @@ class TestWarnInterpreterDisabledBySandbox:
         self, mock_argv: MockArgvType, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An explicit `--no-interpreter` is the user's choice, not a drop."""
-        from deepagents_code.main import _warn_if_interpreter_disabled_by_sandbox
+        from niki_agent.main import _warn_if_interpreter_disabled_by_sandbox
 
         with mock_argv("-n", "task", "--sandbox", "daytona", "--no-interpreter"):
             args = parse_args()
@@ -1948,8 +1992,8 @@ class TestWarnInterpreterDisabledBySandbox:
         tmp_path: Path,
     ) -> None:
         """A user who disabled the interpreter in config is not nagged."""
-        from deepagents_code.configuration import service
-        from deepagents_code.main import _warn_if_interpreter_disabled_by_sandbox
+        from niki_agent.configuration import service
+        from niki_agent.main import _warn_if_interpreter_disabled_by_sandbox
 
         (tmp_path / "config.toml").write_text(
             "[interpreter]\nenable_interpreter = false\n", encoding="utf-8"
@@ -1967,7 +2011,7 @@ class TestModelParamsRetryOverrideWarning:
     @staticmethod
     def _run_headless(argv: list[str]) -> None:
         """Run `cli_main` headlessly so the caller can read captured stderr."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = False
@@ -1991,13 +2035,13 @@ class TestModelParamsRetryOverrideWarning:
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", mock_stdin),
             patch("os.open", side_effect=_open_no_tty),
-            patch("deepagents_code.main.check_optional_tools", return_value=[]),
+            patch("niki_agent.main.check_optional_tools", return_value=[]),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.client.non_interactive.run_non_interactive",
+                "niki_agent.client.non_interactive.run_non_interactive",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
@@ -2036,7 +2080,7 @@ class TestModelParamsRetryOverrideWarning:
         """Malformed config values cannot inject Rich markup or crash startup."""
         warning = "Ignoring [retries].max_retries='[/bold]'; expected an integer."
         with patch(
-            "deepagents_code.config.collect_retry_config_startup",
+            "niki_agent.config.collect_retry_config_startup",
             return_value=([warning], set()),
         ):
             self._run_headless(["dcode", "-n", "hi"])

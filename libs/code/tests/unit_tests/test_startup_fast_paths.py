@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code.main import _show_bare_command_group_help, parse_args
+from niki_agent.main import _show_bare_command_group_help, parse_args
 
 if TYPE_CHECKING:
     import argparse
@@ -28,10 +28,10 @@ if TYPE_CHECKING:
 # pulls in a heavy framework.
 _HEAVY_MODULE_PREFIXES = (
     "deepagents.",
-    "deepagents_code.agent",
-    "deepagents_code.sessions",
-    "deepagents_code.model_config",
-    "deepagents_code.project_utils",
+    "niki_agent.agent",
+    "niki_agent.sessions",
+    "niki_agent.model_config",
+    "niki_agent.project_utils",
     "langchain",
     "langgraph",
     "textual",
@@ -49,7 +49,7 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
         from contextlib import nullcontext
         from unittest.mock import patch
 
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         argv = ["deepagents", *json.loads(sys.argv[1])]
         # An intentional monorepo SDK pin skew can make `doctor` exit unhealthy;
@@ -57,7 +57,7 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
         # Editable installs resolve the pin through `_sdk_requirement_for_cli`.
         requirement_patch = (
             patch(
-                "deepagents_code.extras_info._sdk_requirement_for_cli",
+                "niki_agent.extras_info._sdk_requirement_for_cli",
                 return_value=None,
             )
             if argv[1:] == ["doctor", "--json"]
@@ -66,7 +66,7 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
         try:
             with (
                 patch.object(sys, "argv", argv),
-                patch("deepagents_code.main.check_cli_dependencies"),
+                patch("niki_agent.main.check_cli_dependencies"),
                 requirement_patch,
             ):
                 cli_main()
@@ -75,7 +75,7 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
             loaded = sorted(
                 name for name in sys.modules if name.startswith(prefixes)
             )
-            config_module = sys.modules.get("deepagents_code.config")
+            config_module = sys.modules.get("niki_agent.config")
             bootstrap_state = (
                 getattr(config_module, "_bootstrap_state", None)
                 if config_module is not None
@@ -114,13 +114,13 @@ def _read_marker(stderr: str, prefix: str) -> object:
     ("argv", "expected"),
     [
         (["help"], "Start interactive thread"),
-        (["agents"], "dcode agents <command>"),
-        (["skills"], "dcode skills <command>"),
-        (["threads"], "dcode threads <command>"),
-        (["mcp"], "dcode mcp <command>"),
-        (["config", "-h"], "dcode config [options]"),
-        (["auth"], "dcode auth <command>"),
-        (["tools"], "dcode tools <command>"),
+        (["agents"], "niki agents <command>"),
+        (["skills"], "niki skills <command>"),
+        (["threads"], "niki threads <command>"),
+        (["mcp"], "niki mcp <command>"),
+        (["config", "-h"], "niki config [options]"),
+        (["auth"], "niki auth <command>"),
+        (["tools"], "niki tools <command>"),
     ],
 )
 def test_help_only_commands_skip_runtime_imports(
@@ -136,7 +136,7 @@ def test_help_only_commands_skip_runtime_imports(
     assert loaded == [], f"unexpected heavy modules loaded: {loaded}"
 
     bootstrap_done = _read_marker(result.stderr, "BOOTSTRAP_DONE=")
-    # Either `deepagents_code.config` was never imported (None) or it was
+    # Either `niki_agent.config` was never imported (None) or it was
     # imported transitively but `_ensure_bootstrap()` never ran (False).
     # In neither case may the heavy settings/dotenv path have executed.
     assert bootstrap_done in (None, False), (
@@ -172,23 +172,23 @@ def test_lightweight_commands_skip_settings_bootstrap(
     [
         (
             SimpleNamespace(command="config"),
-            "deepagents_code.client.commands.config.run_config_command",
+            "niki_agent.client.commands.config.run_config_command",
         ),
         (
             SimpleNamespace(command="auth", auth_command="path"),
-            "deepagents_code.client.commands.auth.run_auth_command",
+            "niki_agent.client.commands.auth.run_auth_command",
         ),
         (
             SimpleNamespace(command="doctor"),
-            "deepagents_code.doctor.run_doctor_command",
+            "niki_agent.doctor.run_doctor_command",
         ),
         (
             SimpleNamespace(command="tools", tools_command="list"),
-            "deepagents_code.client.commands.tools.run_tools_command",
+            "niki_agent.client.commands.tools.run_tools_command",
         ),
         (
             SimpleNamespace(command="install"),
-            "deepagents_code.client.commands.extras.run_install_command",
+            "niki_agent.client.commands.extras.run_install_command",
         ),
     ],
 )
@@ -196,16 +196,16 @@ def test_lightweight_commands_check_dependency_floors_before_dispatch(
     args: SimpleNamespace, runner: str
 ) -> None:
     """Every action subcommand warns before an early fast-path exit."""
-    from deepagents_code.main import cli_main
+    from niki_agent.main import cli_main
 
     calls: list[str] = []
     with (
         patch.object(sys, "argv", ["dcode", str(args.command)]),
-        patch("deepagents_code.main.check_cli_dependencies"),
-        patch("deepagents_code.main._install_termination_signal_handlers"),
-        patch("deepagents_code.main.parse_args", return_value=args),
+        patch("niki_agent.main.check_cli_dependencies"),
+        patch("niki_agent.main._install_termination_signal_handlers"),
+        patch("niki_agent.main.parse_args", return_value=args),
         patch(
-            "deepagents_code._dep_floor_check.warn_if_editable_deps_stale",
+            "niki_agent._dep_floor_check.warn_if_editable_deps_stale",
             side_effect=lambda: calls.append("warning"),
         ),
         patch(runner, side_effect=lambda _args: calls.append("dispatch") or 0),

@@ -19,8 +19,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Static
 
-from deepagents_code.app import DeepAgentsApp, _ChatScroll
-from deepagents_code.tui.widgets.messages import UserMessage
+from niki_agent.app import DeepAgentsApp, _ChatScroll
+from niki_agent.tui.widgets.messages import UserMessage
 
 if TYPE_CHECKING:
     import pytest

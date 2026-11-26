@@ -1,4 +1,4 @@
-"""Unit tests for deepagents_code/tool_display.py.
+"""Unit tests for niki_agent/tool_display.py.
 
 All functions under test are pure (no I/O, no async, no TUI). A single
 module-level autouse fixture pins `get_glyphs()` to `ASCII_GLYPHS` so
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 import pytest
 
-from deepagents_code.config import ASCII_GLYPHS
-from deepagents_code.tool_display import (
+from niki_agent.config import ASCII_GLYPHS
+from niki_agent.tool_display import (
     _HIDDEN_CHAR_MARKER,
     _format_content_block,
     _sanitize_display_value,
@@ -31,7 +31,7 @@ _ELLIPSIS = ASCII_GLYPHS.ellipsis
 
 @pytest.fixture(autouse=True)
 def _pin_ascii_glyphs() -> Generator[None, None, None]:
-    with patch("deepagents_code.tool_display.get_glyphs", return_value=ASCII_GLYPHS):
+    with patch("niki_agent.tool_display.get_glyphs", return_value=ASCII_GLYPHS):
         yield
 
 

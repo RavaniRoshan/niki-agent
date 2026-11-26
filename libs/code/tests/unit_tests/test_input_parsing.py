@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code.input import (
+from niki_agent.input import (
     ParsedPastedPathPayload,
     dropped_payload_paths,
     parse_file_mentions,
@@ -144,7 +144,7 @@ def test_dropped_payload_paths_accepts_windows_drive_shape(mocker) -> None:
     """Windows drive-letter drops pass the shape guard and get parsed."""
     resolved = Path(r"C:\Users\Alice\shot.png")
     mocker.patch(
-        "deepagents_code.input.parse_pasted_path_payload",
+        "niki_agent.input.parse_pasted_path_payload",
         return_value=ParsedPastedPathPayload(paths=[resolved]),
     )
 
@@ -155,7 +155,7 @@ def test_dropped_payload_paths_accepts_windows_unc_shape(mocker) -> None:
     """Windows UNC drops pass the shape guard and get parsed."""
     resolved = Path(r"\\server\share\shot.png")
     mocker.patch(
-        "deepagents_code.input.parse_pasted_path_payload",
+        "niki_agent.input.parse_pasted_path_payload",
         return_value=ParsedPastedPathPayload(paths=[resolved]),
     )
 

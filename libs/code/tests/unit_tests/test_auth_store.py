@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code import auth_store
+from niki_agent import auth_store
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake))
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR",
+        "niki_agent.model_config.DEFAULT_STATE_DIR",
         fake / ".deepagents" / ".state",
     )
     return fake
@@ -145,7 +145,7 @@ class TestRoundTrip:
                 }
             )
         )
-        with caplog.at_level("WARNING", logger="deepagents_code.auth_store"):
+        with caplog.at_level("WARNING", logger="niki_agent.auth_store"):
             assert auth_store.get_stored_project("langsmith") is None
             assert auth_store.get_stored_key("langsmith") == "k"
         assert any("malformed project" in r.getMessage() for r in caplog.records)
@@ -176,7 +176,7 @@ class TestRoundTrip:
                 }
             )
         )
-        with caplog.at_level("WARNING", logger="deepagents_code.auth_store"):
+        with caplog.at_level("WARNING", logger="niki_agent.auth_store"):
             assert auth_store.get_stored_base_url("openai") is None
             assert auth_store.get_stored_key("openai") == "k"
         assert any("malformed base_url" in r.getMessage() for r in caplog.records)
@@ -379,7 +379,7 @@ class TestSafety:
     def test_logs_never_contain_key(self, caplog: pytest.LogCaptureFixture) -> None:
         """Storing/deleting a secret does not include the secret in log output."""
         secret = "sk-do-not-log-9b8a7c"
-        with caplog.at_level("DEBUG", logger="deepagents_code.auth_store"):
+        with caplog.at_level("DEBUG", logger="niki_agent.auth_store"):
             auth_store.set_stored_key("anthropic", secret)
             auth_store.delete_stored_key("anthropic")
         for record in caplog.records:
@@ -395,7 +395,7 @@ class TestSafety:
         path.parent.mkdir(parents=True)
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text("stale")
-        with caplog.at_level("WARNING", logger="deepagents_code.auth_store"):
+        with caplog.at_level("WARNING", logger="niki_agent.auth_store"):
             auth_store.set_stored_key("anthropic", "k")
         assert any(
             "stale credential temp file" in r.getMessage() for r in caplog.records

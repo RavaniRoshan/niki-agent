@@ -21,15 +21,15 @@ if TYPE_CHECKING:
 
 import pytest
 
-from deepagents_code.config_manifest import (
+from niki_agent.config_manifest import (
     ConfigOption,
     OptionKind,
     _emit_ranked_diagnostics,
     _ranked_source,
     get_option,
 )
-from deepagents_code.configuration.resolver import resolver_from_snapshots
-from deepagents_code.configuration.types import (
+from niki_agent.configuration.resolver import resolver_from_snapshots
+from niki_agent.configuration.types import (
     ProviderHealth,
     ProviderStatus,
     TomlSnapshot,
@@ -134,9 +134,9 @@ def test_every_enforced_key_exits_78_and_a_rejected_benign_key_falls_through(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pin the enforced-key boundary and tolerant non-enforced behavior."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.service import ENFORCED_MANAGED_KEYS
+    from niki_agent import main
+    from niki_agent.configuration import service
+    from niki_agent.configuration.service import ENFORCED_MANAGED_KEYS
 
     status = ProviderStatus("managed config", _MANAGED_PATH, ProviderHealth.OK)
     for key in ENFORCED_MANAGED_KEYS:
@@ -167,8 +167,8 @@ def test_indeterminate_provider_path_exits_78(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A guessed missing path is unhealthy, never equivalent to no policy."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     status = ProviderStatus(
         "managed config",
@@ -188,13 +188,13 @@ def test_diagnostic_surfaces_pair_status_and_violations_from_one_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Doctor and config must not pair a refreshed status with cached policy."""
-    from deepagents_code.client.commands.config import (
+    from niki_agent.client.commands.config import (
         _MANAGED_PATH_LABEL,
         _config_path_status,
         _managed_health_warning,
     )
-    from deepagents_code.configuration import service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     status = ProviderStatus("managed config", _MANAGED_PATH, ProviderHealth.OK)
     cached = _snapshot({"startup": {"mode": "manual"}}, status)
@@ -231,8 +231,8 @@ def test_comma_string_denies_agree_across_scalar_merge_and_runtime_readers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The documented string spelling cannot diverge between read paths."""
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
     from unit_tests.conftest import redirect_managed_config
 
     cases = (
@@ -282,7 +282,7 @@ def test_comma_string_denies_agree_across_scalar_merge_and_runtime_readers(
 
 def test_quoted_dotted_keys_keep_sibling_provenance() -> None:
     """Tuple paths prevent a quoted dotted key from aliasing a nested path."""
-    from deepagents_code.configuration.service import merge_managed_over_user
+    from niki_agent.configuration.service import merge_managed_over_user
 
     _, provenance = merge_managed_over_user(
         {"a": "user", "sibling": 1}, {"a.b": "managed"}
@@ -299,9 +299,9 @@ def test_user_write_to_managed_key_succeeds_but_stays_masked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The writer stores shadowed preferences and the resolver reports policy."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.writer import update_user_config
+    from niki_agent import model_config
+    from niki_agent.configuration import service
+    from niki_agent.configuration.writer import update_user_config
     from unit_tests.conftest import redirect_managed_config
 
     user = tmp_path / "config.toml"
@@ -337,8 +337,8 @@ def test_wrong_typed_update_policy_matches_an_unreadable_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Both managed-policy failures force network/update behavior off."""
-    from deepagents_code.configuration import service
-    from deepagents_code.update_check import _managed_update_value
+    from niki_agent.configuration import service
+    from niki_agent.update_check import _managed_update_value
 
     ok_status = ProviderStatus("managed config", _MANAGED_PATH, ProviderHealth.OK)
     corrupt_status = ProviderStatus(
@@ -364,8 +364,8 @@ def test_rejected_non_enforced_reload_purges_stale_provenance(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A newly rejected value cannot retain the prior managed attribution."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
     from unit_tests.conftest import redirect_managed_config
 
     user = tmp_path / "config.toml"
@@ -392,9 +392,9 @@ def test_preview_reload_does_not_swap_the_process_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A dry run observes the cached policy without accepting a disk edit."""
-    from deepagents_code import model_config
-    from deepagents_code.config import Credentials
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.config import Credentials
+    from niki_agent.configuration import service
     from unit_tests.conftest import redirect_managed_config
 
     user = tmp_path / "config.toml"
@@ -418,9 +418,9 @@ def test_preview_reload_does_not_swap_the_process_snapshot(
 # that intentionally read only a subset of tiers (log level is env-only,
 # themes read the user file) are covered by their own targeted tests instead.
 _MATRIX_ENV_VARS = {
-    "display.show_scrollbar": "DEEPAGENTS_CODE_SHOW_SCROLLBAR",
-    "runtime.recursion_limit": "DEEPAGENTS_CODE_RECURSION_LIMIT",
-    "shell.allow_list": "DEEPAGENTS_CODE_SHELL_ALLOW_LIST",
+    "display.show_scrollbar": "NIKI_SHOW_SCROLLBAR",
+    "runtime.recursion_limit": "NIKI_RECURSION_LIMIT",
+    "shell.allow_list": "NIKI_SHELL_ALLOW_LIST",
 }
 
 _MATRIX_MANAGED_VALUES = {

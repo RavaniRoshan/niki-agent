@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
-from deepagents_code._env_vars import LANGSMITH_REPLICA_PROJECTS
-from deepagents_code.client.remote_client import (
+from niki_agent._env_vars import LANGSMITH_REPLICA_PROJECTS
+from niki_agent.client.remote_client import (
     RemoteAgent,
     _cancelled_tool_messages,
     _convert_interrupts,
@@ -103,7 +103,7 @@ class TestConvertMessageData:
         The TUI always runs against a server, so a marker dropped here never
         reaches the adapter. `AUTO_DENIED_METADATA_KEY` is the live consumer.
         """
-        from deepagents_code.auto_mode import AUTO_DENIED_METADATA_KEY
+        from niki_agent.auto_mode import AUTO_DENIED_METADATA_KEY
 
         msg = _convert_message_data(
             {
@@ -316,7 +316,7 @@ async def test_invalid_side_cost_does_not_hide_answer(
 
 
 async def test_accounting_failure_preserves_main_stream_and_state() -> None:
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     side = _empty_cost_breakdown()
     side.update(total_cost_usd=0.5, request_count=1)
@@ -359,7 +359,7 @@ async def test_accounting_failure_preserves_main_stream_and_state() -> None:
 async def test_accounting_read_merges_concurrent_graph_and_side_updates(
     concurrent_graph_total: float, response_side_total: float | None
 ) -> None:
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     main = _empty_cost_breakdown()
     main.update(total_cost_usd=2.0, request_count=2)
@@ -418,7 +418,7 @@ async def test_accounting_read_merges_concurrent_graph_and_side_updates(
 
 @pytest.mark.parametrize("graph_total", [2.0, 3.0])
 async def test_delayed_stream_preserves_refreshed_side_cost(graph_total: float) -> None:
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     main = _empty_cost_breakdown()
     main.update(total_cost_usd=graph_total, request_count=2)
@@ -466,7 +466,7 @@ async def test_equal_dollar_snapshots_keep_latest_side_usage(
     priced: bool,
 ) -> None:
     """Free and unpriced requests advance usage even when spend is unchanged."""
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     main = _empty_cost_breakdown()
     main.update(total_cost_usd=2.0, request_count=1, priced_request_count=1)
@@ -532,7 +532,7 @@ async def test_equal_dollar_snapshots_keep_latest_side_usage(
 async def test_btw_refreshes_missing_accounting_without_losing_answer(
     missing: str, monkeypatch: pytest.MonkeyPatch, *, refresh_fails: bool
 ) -> None:
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     agent = _make_agent([])
     monkeypatch.setattr(agent, "aensure_thread", AsyncMock())
@@ -745,9 +745,7 @@ class TestRemoteAgentUpdateStateConflictRecovery:
             update_side_effect=[_conflict_error(), None],
         )
 
-        with patch(
-            "deepagents_code.client.remote_client._RUN_CANCEL_WAIT_SECONDS", 0.01
-        ):
+        with patch("niki_agent.client.remote_client._RUN_CANCEL_WAIT_SECONDS", 0.01):
             await agent.aupdate_state(_config(), {"messages": []})
 
         assert mock_graph.aupdate_state.await_count == 2
@@ -1020,7 +1018,7 @@ class TestRemoteAgentStore:
         agent._graph = graph
 
         with (
-            caplog.at_level("DEBUG", logger="deepagents_code.client.remote_client"),
+            caplog.at_level("DEBUG", logger="niki_agent.client.remote_client"),
             pytest.raises(RuntimeError, match="boom"),
         ):
             await agent.aput_store_item(("ns",), "key", {"auto_approve": True})
@@ -1434,15 +1432,15 @@ class TestServerOffload:
         from pathlib import Path
         from uuid import uuid4
 
-        from deepagents_code.hooks.interrupt import build_hook_interrupt_payload
-        from deepagents_code.hooks.models.domain import (
+        from niki_agent.hooks.interrupt import build_hook_interrupt_payload
+        from niki_agent.hooks.models.domain import (
             ApprovalMode,
             HookContext,
             HookEvent,
             HookInvocation,
             PreCompactEvent,
         )
-        from deepagents_code.hooks.models.transport import HookInvocationRequest
+        from niki_agent.hooks.models.transport import HookInvocationRequest
 
         invocation_id = uuid4()
         request = HookInvocationRequest(
@@ -1577,7 +1575,7 @@ class TestServerOffload:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Exhaustion must be diagnosable and must not assert a cause."""
-        from deepagents_code.client.remote_client import _OFFLOAD_MAX_RESUME_ROUNDS
+        from niki_agent.client.remote_client import _OFFLOAD_MAX_RESUME_ROUNDS
 
         agent = RemoteAgent("http://localhost:1234")
         counter = itertools.count()
@@ -1620,7 +1618,7 @@ class TestServerOffload:
         the guarding `break` and it fulfills one hook too many while still
         reporting the lower number, so assert the count, not just the message.
         """
-        from deepagents_code.client.remote_client import _OFFLOAD_MAX_RESUME_ROUNDS
+        from niki_agent.client.remote_client import _OFFLOAD_MAX_RESUME_ROUNDS
 
         agent = RemoteAgent("http://localhost:1234")
         counter = itertools.count()
@@ -1663,7 +1661,7 @@ async def test_btw_stream_delivers_fragments_and_closes_transport(
     from httpx import AsyncByteStream, AsyncClient, MockTransport, Request, Response
     from langgraph_sdk.client import HttpClient
 
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     release = asyncio.Event()
     received = asyncio.Event()

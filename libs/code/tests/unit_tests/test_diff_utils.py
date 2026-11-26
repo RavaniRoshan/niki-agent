@@ -1,8 +1,8 @@
-"""Tests for `deepagents_code.diff_utils`."""
+"""Tests for `niki_agent.diff_utils`."""
 
 from __future__ import annotations
 
-from deepagents_code.diff_utils import file_header_indexes
+from niki_agent.diff_utils import file_header_indexes
 
 
 def _diff(*lines: str) -> str:

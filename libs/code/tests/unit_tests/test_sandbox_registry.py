@@ -8,17 +8,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from deepagents_code.integrations.sandbox_config import SandboxConfig
-from deepagents_code.integrations.sandbox_provider import (
+from niki_agent.integrations.sandbox_config import SandboxConfig
+from niki_agent.integrations.sandbox_provider import (
     SandboxProvider,
     SandboxProviderMetadata,
 )
-from deepagents_code.integrations.sandbox_registry import SandboxRegistry
+from niki_agent.integrations.sandbox_registry import SandboxRegistry
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from deepagents.backends.protocol import SandboxBackendProtocol
+    from niki_agent.sdk.backends.protocol import SandboxBackendProtocol
 
 
 class FakeProvider(SandboxProvider):
@@ -136,11 +136,11 @@ def test_entry_point_provider_is_discovered(
     entry = importlib.metadata.EntryPoint(
         name="acme",
         value=_FAKE_CLASS_PATH.replace(":", ":"),
-        group="deepagents_code.sandbox_providers",
+        group="niki_agent.sandbox_providers",
     )
 
     def fake_entry_points(*, group: str) -> list[importlib.metadata.EntryPoint]:
-        assert group == "deepagents_code.sandbox_providers"
+        assert group == "niki_agent.sandbox_providers"
         return [entry]
 
     monkeypatch.setattr(importlib.metadata, "entry_points", fake_entry_points)
@@ -160,7 +160,7 @@ def test_entry_point_metadata_overrides_builtin_collision(
     entry = importlib.metadata.EntryPoint(
         name="modal",
         value=_MODAL_ENTRY_POINT_CLASS_PATH,
-        group="deepagents_code.sandbox_providers",
+        group="niki_agent.sandbox_providers",
     )
 
     monkeypatch.setattr(
@@ -179,7 +179,7 @@ def test_config_overrides_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     entry = importlib.metadata.EntryPoint(
         name="acme",
         value="some.other:Provider",
-        group="deepagents_code.sandbox_providers",
+        group="niki_agent.sandbox_providers",
     )
     monkeypatch.setattr(
         importlib.metadata,
@@ -237,7 +237,7 @@ def test_provider_metadata_falls_back_when_instantiation_fails(
     entry = importlib.metadata.EntryPoint(
         name="acme",
         value=_RAISING_CLASS_PATH,
-        group="deepagents_code.sandbox_providers",
+        group="niki_agent.sandbox_providers",
     )
     monkeypatch.setattr(
         importlib.metadata,

@@ -11,7 +11,7 @@
     Install location. Defaults to $env:LOCALAPPDATA\niki.
 
 .EXAMPLE
-    irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/main/install/install.ps1 | iex
+    irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 
 .EXAMPLE
     .\install.ps1 -Prefix C:\Tools\niki

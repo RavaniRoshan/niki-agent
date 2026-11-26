@@ -5,7 +5,7 @@
 # beside this script. Nothing is written outside the chosen prefix, and nothing
 # from the user's shell profile is sourced.
 #
-#   curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/main/install/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
 #
 # Override the destination with NIKI_PREFIX (default ~/.local/niki).
 
@@ -27,7 +27,7 @@ find_wheel() {
   fi
   local dir candidate
   dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  candidate="$(ls -1 "$dir"/deepagents_code-*.whl 2>/dev/null | head -1 || true)"
+  candidate="$(ls -1 "$dir"/niki_agent-*.whl 2>/dev/null | head -1 || true)"
   if [ -n "$candidate" ]; then printf '%s' "$candidate"; return 0; fi
 
   log "no wheel alongside the installer; downloading the latest release"
@@ -48,7 +48,7 @@ find_wheel() {
   local tmp; tmp="$(mktemp -d)"
   curl -fsSL "$asset" -o "$tmp/pkg.tar.gz"
   tar -xzf "$tmp/pkg.tar.gz" -C "$tmp"
-  candidate="$(ls -1 "$tmp"/niki-*/deepagents_code-*.whl 2>/dev/null | head -1 || true)"
+  candidate="$(ls -1 "$tmp"/niki-*/niki_agent-*.whl 2>/dev/null | head -1 || true)"
   [ -n "$candidate" ] || die "release asset contained no wheel"
   printf '%s' "$candidate"
 }

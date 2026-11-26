@@ -7,16 +7,16 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from deepagents_code.application.orchestration.team import (
+from niki_agent.application.orchestration.team import (
     InMemoryTeamChannel,
     InMemoryTeamCheckpointStore,
     TeamCoordinator,
     TeamProtocolError,
 )
-from deepagents_code.domain.team import TeamMessage, TeamPlan, TeamTask, TeamTaskResult
+from niki_agent.domain.team import TeamMessage, TeamPlan, TeamTask, TeamTaskResult
 
 if TYPE_CHECKING:
-    from deepagents_code.application.ports.agents import AgentTaskPort
+    from niki_agent.application.ports.agents import AgentTaskPort
 
 
 class FakeAgentPort:

@@ -9,17 +9,17 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.hooks import migration
-from deepagents_code.hooks.env import HOOK_SUBPROCESS_TIMEOUT
-from deepagents_code.hooks.loading import (
+from niki_agent.hooks import migration
+from niki_agent.hooks.env import HOOK_SUBPROCESS_TIMEOUT
+from niki_agent.hooks.loading import (
     canonical_hooks_bytes,
     compute_snapshot_id,
     load_hooks_config,
 )
-from deepagents_code.hooks.migration import migrate_legacy_hooks
-from deepagents_code.hooks.models.config import HooksConfig
-from deepagents_code.hooks.models.domain import HookEvent
-from deepagents_code.hooks.snapshot import HooksSnapshot
+from niki_agent.hooks.migration import migrate_legacy_hooks
+from niki_agent.hooks.models.config import HooksConfig
+from niki_agent.hooks.models.domain import HookEvent
+from niki_agent.hooks.snapshot import HooksSnapshot
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -156,8 +156,8 @@ def test_legacy_migration_maps_equivalent_lifecycle_events(
             handler = group.hooks[0]
             assert handler.timeout == pytest.approx(HOOK_SUBPROCESS_TIMEOUT + 1.0)
             assert handler.argv is not None
-            assert handler.argv[1:3] == ["-m", "deepagents_code.hooks.migration"]
-            assert "deepagents_code.hooks.migration" in handler.command
+            assert handler.argv[1:3] == ["-m", "niki_agent.hooks.migration"]
+            assert "niki_agent.hooks.migration" in handler.command
             assert "/dev/null" not in handler.command
 
     catch_all = migrate_legacy_hooks([{"command": ["echo", "all"]}])

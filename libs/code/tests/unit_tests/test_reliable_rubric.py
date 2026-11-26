@@ -8,8 +8,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-from deepagents.graph import create_deep_agent
-from deepagents.middleware.rubric import GraderResponse, RubricState
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.agents.middleware.human_in_the_loop import ApproveDecision
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -24,18 +22,20 @@ from langgraph.errors import GraphInterrupt
 from langgraph.types import Command
 from pydantic import Field
 
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code._constants import SDK_DEFAULT_RUBRIC_MAX_ITERATIONS
-from deepagents_code.goal_rubric import (
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent._constants import SDK_DEFAULT_RUBRIC_MAX_ITERATIONS
+from niki_agent.goal_rubric import (
     RubricGraderState,
     _rubric_grader_messages,
     _rubric_grader_state,
 )
-from deepagents_code.reliable_rubric import (
+from niki_agent.reliable_rubric import (
     ReliableRubricMiddleware,
     ReliableRubricState,
 )
-from deepagents_code.resume_state import INHERIT_RUBRIC_MODEL
+from niki_agent.resume_state import INHERIT_RUBRIC_MODEL
+from niki_agent.sdk.graph import create_deep_agent
+from niki_agent.sdk.middleware.rubric import GraderResponse, RubricState
 
 if TYPE_CHECKING:
     from langgraph.runtime import Runtime
@@ -296,7 +296,7 @@ class TestReliableRubricMiddleware:
             recorded.append,
         )
         monkeypatch.setattr(
-            "deepagents.middleware.rubric.ensure_config",
+            "niki_agent.sdk.middleware.rubric.ensure_config",
             lambda: {"metadata": {"tenant_id": "tenant-123"}},
         )
         context = {"approval_mode": "yolo"}
@@ -342,7 +342,7 @@ class TestReliableRubricMiddleware:
             recorded.append,
         )
         monkeypatch.setattr(
-            "deepagents.middleware.rubric.ensure_config",
+            "niki_agent.sdk.middleware.rubric.ensure_config",
             lambda: {"metadata": {"experiment_id": "experiment-123"}},
         )
         context = {"approval_mode": "yolo"}
@@ -720,7 +720,7 @@ class TestReliableRubricMiddleware:
         """Defaults drop `approval_mode`, so a wiring bug must not be silent."""
         middleware = _rubric(model="startup:model", inherit_main_model=True)
 
-        with caplog.at_level("WARNING", logger="deepagents_code.reliable_rubric"):
+        with caplog.at_level("WARNING", logger="niki_agent.reliable_rubric"):
             selected = middleware._grader_context(cast("Any", {}), object())
 
         assert selected.approval_mode == "manual"

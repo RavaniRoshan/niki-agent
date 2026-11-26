@@ -1,4 +1,4 @@
-"""Tests for deepagents_code.theme module."""
+"""Tests for niki_agent.theme module."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from deepagents_code._env_vars import THEME
+from niki_agent._env_vars import THEME
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from _typeshed import SupportsRead
 
-from deepagents_code import theme
-from deepagents_code.theme import (
+from niki_agent import theme
+from niki_agent.theme import (
     DARK_COLORS,
     DEFAULT_THEME,
     LIGHT_COLORS,
@@ -140,14 +140,14 @@ class TestLoadTerminalDefault:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Corrupt config returns `None` and logs a warning so the user can debug."""
-        from deepagents_code.app import _load_terminal_default
+        from niki_agent.app import _load_terminal_default
 
         config = tmp_path / "config.toml"
         config.write_text("this is not valid toml [[[")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
-        with caplog.at_level("WARNING", logger="deepagents_code.app"):
+        with caplog.at_level("WARNING", logger="niki_agent.app"):
             assert _load_terminal_default() is None
         assert any(
             "terminal theme default" in record.getMessage() for record in caplog.records
@@ -160,11 +160,11 @@ class TestLoadThemePreference:
     def test_returns_default_for_corrupt_toml(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code.app import _load_theme_preference
+        from niki_agent.app import _load_theme_preference
 
         config = tmp_path / "config.toml"
         config.write_text("this is not valid toml [[[")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _load_theme_preference() == DEFAULT_THEME
 
 
@@ -178,11 +178,11 @@ class TestTerminalThemeMapping:
 
         Mirrors the migration in the saved-theme branch (pre-Textual 8.2.5).
         """
-        from deepagents_code.app import _load_theme_preference
+        from niki_agent.app import _load_theme_preference
 
         config = tmp_path / "config.toml"
         config.write_text('[ui.terminal_themes]\n"Apple_Terminal" = "textual-ansi"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
         monkeypatch.delenv(THEME, raising=False)
 
@@ -195,11 +195,11 @@ class TestSaveThemePreference:
     def test_returns_false_on_write_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code.app import save_theme_preference
+        from niki_agent.app import save_theme_preference
 
         # Point to a directory that doesn't exist and can't be created
         config = tmp_path / "readonly" / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         # Make parent read-only so mkdir fails
         (tmp_path / "readonly").mkdir()
         (tmp_path / "readonly").chmod(0o444)
@@ -244,7 +244,7 @@ class TestLoadUserThemes:
     ) -> None:
         config = tmp_path / "config.toml"
         _write_config(config, "[ui]\ncursor_blink = true\n")
-        with caplog.at_level("WARNING", logger="deepagents_code.theme"):
+        with caplog.at_level("WARNING", logger="niki_agent.theme"):
             _load_user_themes({}, config_path=config)
         assert not caplog.records
 
@@ -311,12 +311,12 @@ class TestSaveTerminalThemeMapping:
         """
         import tomllib
 
-        from deepagents_code.app import save_terminal_theme_mapping
+        from niki_agent.app import save_terminal_theme_mapping
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\nterminal_themes = "junk"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        with caplog.at_level("WARNING", logger="deepagents_code.app"):
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        with caplog.at_level("WARNING", logger="niki_agent.app"):
             assert save_terminal_theme_mapping("Apple_Terminal", "langchain") is True
         data = tomllib.loads(config.read_text())
         assert isinstance(data["ui"]["terminal_themes"], dict)
@@ -334,14 +334,14 @@ class TestSaveTerminalThemeMapping:
         import threading
         import tomllib
 
-        from deepagents_code.app import (
+        from niki_agent.app import (
             save_terminal_theme_mapping,
             save_theme_preference,
         )
 
         config = tmp_path / "config.toml"
         config.write_text('[model]\nname = "existing"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
 
         original_load = tomllib.load
         barrier = threading.Barrier(2)
@@ -385,10 +385,10 @@ class TestSaveTerminalThemeMapping:
         `.tmp` file in `~/.deepagents/` after a crash would be hard to
         diagnose.
         """
-        from deepagents_code.app import save_terminal_theme_mapping
+        from niki_agent.app import save_terminal_theme_mapping
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
 
         def _boom(*_args: object, **_kwargs: object) -> None:
             msg = "simulated dump failure"
@@ -459,7 +459,7 @@ class TestThemeSelectorScreen:
     async def test_escape_restores_original_theme(self) -> None:
         from textual.app import App
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         results: list[str | None] = []
 
@@ -482,7 +482,7 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.theme import Theme as TextualTheme
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         class SyncApp(App[None]):
             def __init__(self) -> None:
@@ -530,7 +530,7 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.theme import Theme as TextualTheme
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         class SyncApp(App[None]):
             def __init__(self) -> None:
@@ -568,7 +568,7 @@ class TestThemeSelectorScreen:
             await pilot.pause()
 
             with caplog.at_level(
-                logging.WARNING, logger="deepagents_code.tui.widgets.theme_selector"
+                logging.WARNING, logger="niki_agent.tui.widgets.theme_selector"
             ):
                 await pilot.press("down")
                 await pilot.pause()
@@ -594,10 +594,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         results: list[str | None] = []
@@ -636,10 +636,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         app = App()
@@ -674,16 +674,16 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.app import _ConfigWriteResult
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.app import _ConfigWriteResult
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
         # Force the writer to report failure without actually raising —
         # exercises the `if ok:` else-branch in `_persist`.
         monkeypatch.setattr(
-            "deepagents_code.app._save_terminal_theme_mapping_result",
+            "niki_agent.app._save_terminal_theme_mapping_result",
             lambda *_args, **_kwargs: _ConfigWriteResult(
                 False, "Could not save terminal mapping.", "error"
             ),
@@ -735,19 +735,17 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         def _boom(*_args: object, **_kwargs: object) -> None:
             msg = "simulated"
             raise OSError(msg)
 
-        monkeypatch.setattr(
-            "deepagents_code.app._save_terminal_theme_mapping_result", _boom
-        )
+        monkeypatch.setattr("niki_agent.app._save_terminal_theme_mapping_result", _boom)
 
         notifications: list[tuple[str, str]] = []
 
@@ -794,10 +792,10 @@ class TestThemeSelectorScreen:
         from textual.theme import Theme as TextualTheme
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         results: list[str | None] = []
@@ -852,10 +850,10 @@ class TestThemeSelectorScreen:
         """Without a `t` press, Esc still reverts the previewed theme."""
         from textual.app import App
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         app = App()
@@ -884,10 +882,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         app = App()
@@ -937,10 +935,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         app = App()
@@ -982,10 +980,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.delenv("TERM_PROGRAM", raising=False)
 
         app = App()
@@ -1022,10 +1020,10 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         results: list[str | None] = []
@@ -1077,11 +1075,11 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.app import _ConfigWriteResult
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.app import _ConfigWriteResult
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         started = threading.Event()
@@ -1095,7 +1093,7 @@ class TestThemeSelectorScreen:
             return _ConfigWriteResult(True)
 
         monkeypatch.setattr(
-            "deepagents_code.app._save_terminal_theme_mapping_result", _slow_save
+            "niki_agent.app._save_terminal_theme_mapping_result", _slow_save
         )
 
         app = App()
@@ -1141,11 +1139,11 @@ class TestThemeSelectorScreen:
         from textual.app import App
         from textual.widgets import OptionList
 
-        from deepagents_code.app import _ConfigWriteResult
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.app import _ConfigWriteResult
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
 
         started = threading.Event()
@@ -1164,7 +1162,7 @@ class TestThemeSelectorScreen:
             )
 
         monkeypatch.setattr(
-            "deepagents_code.app._save_terminal_theme_mapping_result",
+            "niki_agent.app._save_terminal_theme_mapping_result",
             _slow_failing_save,
         )
 

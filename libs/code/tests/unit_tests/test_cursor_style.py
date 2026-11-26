@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from deepagents_code._env_vars import CURSOR_STYLE
-from deepagents_code.app import _load_cursor_style_preference
+from niki_agent._env_vars import CURSOR_STYLE
+from niki_agent.app import _load_cursor_style_preference
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +19,7 @@ def test_cursor_style_defaults_to_block(
     """An absent config preserves the existing block cursor."""
     monkeypatch.delenv(CURSOR_STYLE, raising=False)
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+        "niki_agent.model_config.DEFAULT_CONFIG_PATH",
         tmp_path / "config.toml",
     )
 

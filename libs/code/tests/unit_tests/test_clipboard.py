@@ -1,4 +1,4 @@
-"""Unit tests for `deepagents_code.clipboard`.
+"""Unit tests for `niki_agent.clipboard`.
 
 Covers the clipboard-backend fallback chain (`copy_text_to_clipboard`),
 selection-driven copy with notification UX (`copy_selection_to_clipboard`),
@@ -17,7 +17,7 @@ from textual.app import App, ComposeResult
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
-from deepagents_code.clipboard import _copy_osc52, copy_selection_to_clipboard
+from niki_agent.clipboard import _copy_osc52, copy_selection_to_clipboard
 
 if TYPE_CHECKING:
     from textual.pilot import Pilot
@@ -115,7 +115,7 @@ class TestCopySelectionToClipboard:
         mock_app.screen.query.return_value = [detached]
 
         with patch(
-            "deepagents_code.clipboard.copy_text_to_clipboard",
+            "niki_agent.clipboard.copy_text_to_clipboard",
             return_value=(True, None),
         ) as copy:
             copy_selection_to_clipboard(mock_app, screen=mock_app.screen)
@@ -144,9 +144,9 @@ class TestCopySelectionToClipboard:
         mock_app.screen.query.return_value = [racy, sibling]
 
         with (
-            caplog.at_level(logging.DEBUG, logger="deepagents_code"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent"),
             patch(
-                "deepagents_code.clipboard.copy_text_to_clipboard",
+                "niki_agent.clipboard.copy_text_to_clipboard",
                 return_value=(True, None),
             ) as copy,
         ):
@@ -175,7 +175,7 @@ class TestSelectionCopyScreenScope:
             await pilot.pause()
 
             with patch(
-                "deepagents_code.clipboard.copy_text_to_clipboard",
+                "niki_agent.clipboard.copy_text_to_clipboard",
                 return_value=(True, None),
             ) as copy:
                 copy_selection_to_clipboard(app, screen=app.screen)
@@ -201,7 +201,7 @@ class TestSelectionCopyScreenScope:
             await pilot.pause()
 
             with patch(
-                "deepagents_code.clipboard.copy_text_to_clipboard",
+                "niki_agent.clipboard.copy_text_to_clipboard",
                 return_value=(True, None),
             ) as copy:
                 copy_selection_to_clipboard(app, screen=app.screen)
@@ -225,7 +225,7 @@ class TestSelectionCopyScreenScope:
             await pilot.pause()
 
             with patch(
-                "deepagents_code.clipboard.copy_text_to_clipboard",
+                "niki_agent.clipboard.copy_text_to_clipboard",
                 return_value=(True, None),
             ) as copy:
                 copy_selection_to_clipboard(app, screen=base_screen)

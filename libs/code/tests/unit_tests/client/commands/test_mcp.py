@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
-from deepagents_code.mcp_tools import DiscoveredMCPConfig, MCPConfigScope
+from niki_agent.mcp_tools import DiscoveredMCPConfig, MCPConfigScope
 
 if TYPE_CHECKING:
     import pytest
@@ -23,7 +23,7 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Only OAuth servers lacking a stored token are listed."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
+        from niki_agent.client.commands.mcp import run_mcp_login_list
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -53,15 +53,15 @@ class TestRunMCPLoginList:
         """A server with a stored token is not reported as needing login."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
             '{"mcpServers":{"notion":{"transport":"http",'
             '"url":"https://notion.test/mcp","auth":"oauth"}}}'
         )
-        with patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path):
+        with patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path):
             storage = FileTokenStorage("notion", server_url="https://notion.test/mcp")
             await storage.set_tokens(
                 OAuthToken(access_token="secret", token_type="Bearer")
@@ -80,8 +80,8 @@ class TestRunMCPLoginList:
         """Token identity uses the interpolated URL, matching login and runtime."""
         from mcp.shared.auth import OAuthToken
 
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -91,7 +91,7 @@ class TestRunMCPLoginList:
         resolved_url = "https://notion.test/mcp"
         monkeypatch.setenv("MCP_TEST_URL", resolved_url)
 
-        with patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path):
+        with patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path):
             storage = FileTokenStorage("notion", server_url=resolved_url)
             await storage.set_tokens(
                 OAuthToken(access_token="secret", token_type="Bearer")
@@ -105,7 +105,7 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A non-string OAuth URL is a config error, not a storage crash."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
+        from niki_agent.client.commands.mcp import run_mcp_login_list
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -124,8 +124,8 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A server whose token file cannot be read must not get an all-clear."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -133,7 +133,7 @@ class TestRunMCPLoginList:
             '"url":"https://notion.test/mcp","auth":"oauth"}}}'
         )
         with (
-            patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path),
+            patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path),
             patch.object(
                 FileTokenStorage, "get_tokens", side_effect=ValueError("corrupt")
             ),
@@ -149,8 +149,8 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An unreadable server taints a non-empty list too, not just an empty one."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -168,7 +168,7 @@ class TestRunMCPLoginList:
                 raise ValueError(msg)
 
         with (
-            patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path),
+            patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path),
             patch.object(FileTokenStorage, "get_tokens", _get_tokens),
         ):
             exit_code = await run_mcp_login_list(config_path=str(config_path))
@@ -184,15 +184,15 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A corrupt token file reports its path and how to fix it."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
             '{"mcpServers":{"notion":{"transport":"http",'
             '"url":"https://notion.test/mcp","auth":"oauth"}}}'
         )
-        with patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path):
+        with patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path):
             token_path = FileTokenStorage(
                 "notion", server_url="https://notion.test/mcp"
             ).path
@@ -209,15 +209,15 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Valid JSON that is not an object must not escape as `AttributeError`."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
-        from deepagents_code.mcp_auth import FileTokenStorage
+        from niki_agent.client.commands.mcp import run_mcp_login_list
+        from niki_agent.mcp_auth import FileTokenStorage
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
             '{"mcpServers":{"notion":{"transport":"http",'
             '"url":"https://notion.test/mcp","auth":"oauth"}}}'
         )
-        with patch("deepagents_code.mcp_auth.token_store_dir", return_value=tmp_path):
+        with patch("niki_agent.mcp_auth.token_store_dir", return_value=tmp_path):
             token_path = FileTokenStorage(
                 "notion", server_url="https://notion.test/mcp"
             ).path
@@ -234,7 +234,7 @@ class TestRunMCPLoginList:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Trust-gated servers are explained, not silently absent from the list."""
-        from deepagents_code.client.commands.mcp import run_mcp_login_list
+        from niki_agent.client.commands.mcp import run_mcp_login_list
 
         project_cfg = tmp_path / "project.json"
         project_cfg.write_text(
@@ -243,7 +243,7 @@ class TestRunMCPLoginList:
         )
 
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[
                 DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path)
             ],
@@ -260,7 +260,7 @@ class TestRunMCPLogin:
 
     async def test_happy_path(self, tmp_path: Path) -> None:
         """Explicit config loads and forwards the target server config."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -268,7 +268,7 @@ class TestRunMCPLogin:
             '"url":"https://mcp.notion.com/mcp","auth":"oauth"}}}'
         )
 
-        with patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login:
+        with patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login:
             exit_code = await run_mcp_login(
                 server="notion",
                 config_path=str(config_path),
@@ -282,7 +282,7 @@ class TestRunMCPLogin:
 
     async def test_server_not_in_config(self, tmp_path: Path) -> None:
         """Unknown server names return exit code 1."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -297,7 +297,7 @@ class TestRunMCPLogin:
         self, tmp_path: Path, monkeypatch
     ) -> None:
         """Auto-discovery merges all discovered configs before lookup."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         # User-level configs (under ~/.deepagents) are always loaded — the
         # merge/precedence path no longer depends on a fingerprint trust gate.
@@ -317,13 +317,13 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(lower, MCPConfigScope.USER),
                     DiscoveredMCPConfig(higher, MCPConfigScope.USER),
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -337,7 +337,7 @@ class TestRunMCPLogin:
         self, tmp_path: Path, monkeypatch
     ) -> None:
         """When two configs define the same server, the later one wins."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         user_dir = tmp_path / ".deepagents"
         user_dir.mkdir()
@@ -355,13 +355,13 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(lower, MCPConfigScope.USER),
                     DiscoveredMCPConfig(higher, MCPConfigScope.USER),
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -376,7 +376,7 @@ class TestRunMCPLogin:
         tmp_path: Path,
     ) -> None:
         """Untrusted project configs must not be used for login."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         project_cfg = tmp_path / "project.json"
         project_cfg.write_text(
@@ -388,12 +388,12 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path)
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="evil", config_path=None)
 
@@ -406,7 +406,7 @@ class TestRunMCPLogin:
         capsys,
     ) -> None:
         """Skipping an untrusted project config tells the user how to proceed."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         project_cfg = tmp_path / "project.json"
         project_cfg.write_text(
@@ -416,12 +416,12 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path)
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -442,14 +442,12 @@ class TestRunMCPLogin:
         Login is non-interactive, so the removed flat allowlist would otherwise
         drop the server with no explanation.
         """
-        from deepagents_code import _env_vars
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent import _env_vars
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         user_config = tmp_path / "config.toml"
         user_config.write_text('[mcp]\nenabled_project_servers = ["notion"]\n')
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         monkeypatch.delenv(
             _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, raising=False
         )
@@ -462,12 +460,12 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path)
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -490,7 +488,7 @@ class TestRunMCPLogin:
         gave no hint that the project file failed to parse. The runtime loader
         reports the same failures as error rows, so this surface must too.
         """
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         fake_home = tmp_path / "home"
         user_dir = fake_home / ".deepagents"
@@ -498,7 +496,7 @@ class TestRunMCPLogin:
         # Point the trust-policy loader at an absent config so discovery is
         # hermetic (no real ~/.deepagents/config.toml read).
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             user_dir / "config.toml",
         )
         user_cfg = user_dir / ".mcp.json"
@@ -512,7 +510,7 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER),
                     DiscoveredMCPConfig(
@@ -520,7 +518,7 @@ class TestRunMCPLogin:
                     ),
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -536,8 +534,8 @@ class TestRunMCPLogin:
         capsys,
     ) -> None:
         """A corrupt saved approval is surfaced on the non-interactive surface."""
-        from deepagents_code import _env_vars
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent import _env_vars
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         fake_home = tmp_path / "home"
         user_dir = fake_home / ".deepagents"
@@ -545,9 +543,7 @@ class TestRunMCPLogin:
         user_config = user_dir / "config.toml"
         # A non-list value is one malformed whole-key entry.
         user_config.write_text('[mcp]\nenabled_project_server_approvals = "oops"\n')
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         monkeypatch.delenv(
             _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, raising=False
         )
@@ -568,13 +564,13 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER),
                     DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path),
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -590,16 +586,14 @@ class TestRunMCPLogin:
         capsys,
     ) -> None:
         """An unreadable trust policy is surfaced instead of the untrusted hint."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         fake_home = tmp_path / "home"
         user_dir = fake_home / ".deepagents"
         user_dir.mkdir(parents=True)
         user_config = user_dir / "config.toml"
         user_config.write_text("this is not = valid toml [[[")
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         user_cfg = user_dir / ".mcp.json"
         user_cfg.write_text(
             '{"mcpServers":{"notion":{"transport":"http",'
@@ -614,13 +608,13 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER),
                     DiscoveredMCPConfig(project_cfg, MCPConfigScope.PROJECT, tmp_path),
                 ],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -637,7 +631,7 @@ class TestRunMCPLogin:
         monkeypatch,
     ) -> None:
         """Configs under `~/.deepagents` are always trusted."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         fake_home = tmp_path / "home"
         user_dir = fake_home / ".deepagents"
@@ -651,10 +645,10 @@ class TestRunMCPLogin:
 
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER)],
             ),
-            patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as mock_login,
+            patch("niki_agent.mcp_auth.login", new=AsyncMock()) as mock_login,
         ):
             exit_code = await run_mcp_login(server="notion", config_path=None)
 
@@ -672,7 +666,7 @@ class TestRunMCPLogin:
         types to a class-name chain, so the user sees the failure class
         but not its (potentially-token-bearing) message.
         """
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -684,7 +678,7 @@ class TestRunMCPLogin:
             msg = "provider offline"
             raise RuntimeError(msg)
 
-        with patch("deepagents_code.mcp_auth.login", _boom):
+        with patch("niki_agent.mcp_auth.login", _boom):
             exit_code = await run_mcp_login(
                 server="notion",
                 config_path=str(config_path),
@@ -704,7 +698,7 @@ class TestRunMCPLogin:
         """Login raising `httpx.HTTPError` is caught (not propagated as a crash)."""
         import httpx
 
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -716,7 +710,7 @@ class TestRunMCPLogin:
             msg = "tls handshake failed"
             raise httpx.ConnectError(msg)
 
-        with patch("deepagents_code.mcp_auth.login", _boom):
+        with patch("niki_agent.mcp_auth.login", _boom):
             exit_code = await run_mcp_login(
                 server="notion",
                 config_path=str(config_path),
@@ -729,7 +723,7 @@ class TestRunMCPLogin:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Permission remediation uses the same directory as `mcp_auth`."""
-        from deepagents_code.client.commands.mcp import run_mcp_login
+        from niki_agent.client.commands.mcp import run_mcp_login
 
         config_path = tmp_path / "mcp.json"
         config_path.write_text(
@@ -743,9 +737,9 @@ class TestRunMCPLogin:
             raise PermissionError(msg)
 
         with (
-            patch("deepagents_code.mcp_auth.login", _denied),
+            patch("niki_agent.mcp_auth.login", _denied),
             patch(
-                "deepagents_code.mcp_auth.token_store_dir",
+                "niki_agent.mcp_auth.token_store_dir",
                 return_value=actual_store,
             ) as store_dir,
         ):

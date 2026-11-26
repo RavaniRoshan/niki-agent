@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Literal
 
 import pytest
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.client_lifecycle import (
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.client_lifecycle import (
     ClientHookContext,
     ClientHookService,
     ClientHookStopError,
 )
-from deepagents_code.hooks.models.domain import (
+from niki_agent.hooks.models.domain import (
     DcodeNotificationKind,
     HookDecision,
     HookEvent,
@@ -27,8 +27,8 @@ from deepagents_code.hooks.models.domain import (
     SessionStartCause,
     SessionStartDecision,
 )
-from deepagents_code.hooks.permissions import permission_hook_outcome
-from deepagents_code.hooks.presenter import HookPresenter
+from niki_agent.hooks.permissions import permission_hook_outcome
+from niki_agent.hooks.presenter import HookPresenter
 
 if TYPE_CHECKING:
     from pathlib import Path

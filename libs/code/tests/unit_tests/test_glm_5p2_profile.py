@@ -12,7 +12,7 @@ from langchain.agents.middleware.types import ModelRequest, ModelResponse
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from deepagents_code._glm_5p2_profile import _GlmTerminalStallRecovery
+from niki_agent._glm_5p2_profile import _GlmTerminalStallRecovery
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool

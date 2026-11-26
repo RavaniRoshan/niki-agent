@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from textual.widget import MountError
 
-from deepagents_code.app import (
+from niki_agent.app import (
     DeepAgentsApp,
     TextualSessionState,
     _ThreadsResumeTarget,
@@ -64,11 +64,11 @@ class TestResolveResumeTarget:
         app._assistant_id = "coder"
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.sessions.get_thread_agent",
+                "niki_agent.sessions.get_thread_agent",
                 AsyncMock(return_value="researcher"),
             ),
         ):
@@ -80,11 +80,11 @@ class TestResolveResumeTarget:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.find_similar_threads",
+                "niki_agent.sessions.find_similar_threads",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -98,11 +98,11 @@ class TestResolveResumeTarget:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.find_similar_threads",
+                "niki_agent.sessions.find_similar_threads",
                 AsyncMock(return_value=["abc123", "abc456"]),
             ),
         ):
@@ -118,11 +118,11 @@ class TestResolveResumeTarget:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.find_similar_threads",
+                "niki_agent.sessions.find_similar_threads",
                 AsyncMock(side_effect=sqlite3.OperationalError("db locked")),
             ),
         ):
@@ -136,11 +136,11 @@ class TestResolveResumeTarget:
         app = _make_app()
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.find_similar_threads",
+                "niki_agent.sessions.find_similar_threads",
                 AsyncMock(side_effect=RuntimeError("boom")),
             ),
         ):
@@ -156,11 +156,11 @@ class TestResolveResumeTarget:
         app._session_state = state
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.sessions.get_thread_agent",
+                "niki_agent.sessions.get_thread_agent",
                 AsyncMock(return_value="agent"),
             ),
         ):
@@ -172,11 +172,11 @@ class TestResolveResumeTarget:
         app._session_state = TextualSessionState(thread_id="cur")
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ),
         ):
@@ -190,11 +190,11 @@ class TestResolveResumeTarget:
         app._session_state = TextualSessionState(thread_id="cur")
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=False),
             ),
             patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(side_effect=RuntimeError("db unavailable")),
             ),
         ):
@@ -217,13 +217,13 @@ class TestCrossAgentResume:
         app._fetch_thread_history_data = fetch  # ty: ignore
 
         with (
-            patch("deepagents_code.config.credentials") as settings,
+            patch("niki_agent.config.credentials") as settings,
             patch(
-                "deepagents_code.app.user_deepagents_dir",
+                "niki_agent.app.user_niki_dir",
                 return_value=tmp_path,
             ),
         ):
-            settings.user_deepagents_dir = tmp_path
+            settings.user_niki_dir = tmp_path
             await app._confirm_then_resume_cross_agent_thread(
                 _ThreadsResumeTarget("research-thread", "researcher")
             )
@@ -245,7 +245,7 @@ class TestCrossAgentResume:
         message = app._mount_message.await_args.args[0]  # ty: ignore
         content = str(message._content)
         assert "cannot switch its remote server" in content
-        assert "dcode -r research-thread" in content
+        assert "niki -r research-thread" in content
 
 
 class TestPreviousThreadHintOwnership:
@@ -266,11 +266,11 @@ class TestPreviousThreadHintOwnership:
 
         with (
             patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.sessions.get_thread_agent",
+                "niki_agent.sessions.get_thread_agent",
                 AsyncMock(return_value="coder"),
             ),
             patch.object(app, "_schedule_thread_message_link"),

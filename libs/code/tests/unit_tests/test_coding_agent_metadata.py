@@ -1,7 +1,7 @@
 """Contract tests for the coding-agent-v1 trace-metadata standard.
 
 These load the machine-readable contract (`validator.json`, vendored under
-`data/`) and assert that the metadata Deep Agents Code stamps onto its
+`data/`) and assert that the metadata Niki Agent stamps onto its
 LangGraph stream config satisfies the contract — required keys, types,
 allowed values, and the run-type `appliesTo` rules — for every run type the
 trace-wide metadata block lands on.
@@ -9,7 +9,7 @@ trace-wide metadata block lands on.
 The vendored validator is a copy of the shared
 `coding-agent-v1/validator.json`; keep it in sync when the contract changes.
 End-to-end acceptance is a live trace validated with `validate-thread.mjs`
-(the `deepagents-code` profile), not these hermetic unit tests.
+(the `niki-agent` profile), not these hermetic unit tests.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code import config as config_module
-from deepagents_code._version import __version__
-from deepagents_code.config import build_coding_agent_metadata, build_stream_config
+from niki_agent import config as config_module
+from niki_agent._version import __version__
+from niki_agent.config import build_coding_agent_metadata, build_stream_config
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,12 +58,12 @@ def _validate(
 ) -> tuple[list[str], list[str]]:
     """Mirror validate-thread.mjs's per-run rules for one metadata dict.
 
-    This re-implements the external `validate-thread.mjs` (`deepagents-code`
+    This re-implements the external `validate-thread.mjs` (`niki-agent`
     profile) rules in Python because that validator lives in another toolchain
     and can't be imported here; keep this in lock-step with it when the contract
     changes. It is intentionally a slight over-approximation: it treats each of
     `turn_id` / `turn_number` as independently `requiredWhereKnown` rather than
-    enforcing the contract's "at least one of" OR-semantics. Deep Agents Code
+    enforcing the contract's "at least one of" OR-semantics. Niki Agent
     always emits both, so the simplification is sound today; revisit if a run
     type ever emits only one. End-to-end acceptance is the live `.mjs` run, not
     this hermetic approximation.
@@ -108,7 +108,7 @@ def _validate(
 @pytest.fixture
 def known_env() -> Iterator[None]:
     """Patch git/user lookups so every where-known contract key is resolvable."""
-    from deepagents_code._git import RepositoryMetadata
+    from niki_agent._git import RepositoryMetadata
 
     repo = RepositoryMetadata(
         "https://github.com/langchain-ai/deepagents",
@@ -120,7 +120,7 @@ def known_env() -> Iterator[None]:
         patch.object(config_module, "_get_git_branch", return_value="main"),
         patch.object(config_module, "_get_git_commit_sha", return_value=sha),
         patch.object(config_module, "_get_repository_metadata", return_value=repo),
-        patch.dict("os.environ", {"DEEPAGENTS_CODE_USER_ID": "u_test"}),
+        patch.dict("os.environ", {"NIKI_USER_ID": "u_test"}),
     ):
         yield
 
@@ -174,8 +174,8 @@ class TestContractValueSemantics:
             user_id=None,
         )
         assert metadata["ls_agent_purpose"] == "coding"
-        assert metadata["ls_integration"] == "deepagents-code"
-        assert metadata["ls_agent_runtime"] == "Deep Agents Code"
+        assert metadata["ls_integration"] == "niki-agent"
+        assert metadata["ls_agent_runtime"] == "Niki Agent"
         assert metadata["ls_trace_schema_version"] == "coding-agent-v1"
         assert metadata["thread_id"] == "t1"
 

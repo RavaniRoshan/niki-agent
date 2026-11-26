@@ -6,7 +6,7 @@ import contextlib
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-from deepagents_code import terminal_capabilities
+from niki_agent import terminal_capabilities
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

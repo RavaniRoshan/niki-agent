@@ -14,7 +14,7 @@ from fastmcp import FastMCP
 from fastmcp.client.transports import FastMCPTransport
 from fastmcp.server.middleware import Middleware
 
-from deepagents_code import mcp_tools
+from niki_agent import mcp_tools
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence

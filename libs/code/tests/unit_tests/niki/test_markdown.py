@@ -53,7 +53,7 @@ A [link](https://example.com) inline.
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-md")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -71,7 +71,7 @@ async def test_v11_the_markdown_renderer_is_wired_into_the_message() -> None:
     """
     from textual.widgets import Markdown
 
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 40)) as pilot:
@@ -97,7 +97,7 @@ async def test_v11_a_streams_into_the_same_markdown_widget() -> None:
 
     from textual.widgets import Markdown
 
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 40)) as pilot:
@@ -126,7 +126,7 @@ async def test_v11_markdown_widget_is_present_but_unmeasured_in_isolation() -> N
     If a future change makes synthetic mounts lay out, this test fails and the
     OWNER-VERIFY note in the checklist can be retired.
     """
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 40)) as pilot:

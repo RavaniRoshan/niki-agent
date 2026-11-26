@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from deepagents_code.domain.events import (
+from niki_agent.domain.events import (
     RunEvent,
     RunEventKind,
     TurnStatus,
@@ -16,7 +16,7 @@ from deepagents_code.domain.events import (
 )
 
 if TYPE_CHECKING:
-    from deepagents_code.domain.events import JsonObject
+    from niki_agent.domain.events import JsonObject
 
 
 def test_run_event_json_round_trip():

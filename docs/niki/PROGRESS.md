@@ -1,11 +1,20 @@
 # Niki Agent — Progress Log
 
 ## Ground rules
-- SDK package `libs/deepagents` is **never** modified. Final `git diff BASE_SHA -- libs/deepagents` must be empty.
-- Local commits only unless the owner asks otherwise. No push without instruction.
-- Rebrand user-visible surfaces only. `dcode` untouched; new `niki` entry point.
-- Every touched upstream file logged in `docs/niki/UPSTREAM_DIFF.md`.
-- A row is WORKS only with a passing test or measured probe. Unverified is never reported as done.
+
+These rules changed at 1.0.0. The earlier log below records the fork-era rules;
+this block is the current contract.
+
+- The Deep Agents SDK is **vendored** at `niki_agent/sdk`; there is no separate
+  `libs/deepagents` package. Vendored code is not edited for style or branding.
+- The product owns its names: module `niki_agent`, distribution `niki-agent`,
+  command `niki`, state `~/.niki`, env prefix `NIKI_*`.
+- `dcode` and `deepagents-code` stay as deprecated aliases for two minor
+  versions. They are the only place the old command name may appear.
+- MIT attribution is mandatory. `NOTICE`, `LICENSE`, and every `PROVENANCE.md`
+  survive.
+- A row is WORKS only with a passing test or measured probe. Unverified is never
+  reported as done.
 
 ## BASE_SHA
 `f57c6f383b7018024ca5cde2dc565048ea83202a`
@@ -14,7 +23,7 @@ Clone: `https://github.com/RavaniRoshan/deepagents.git` → `/home/shiva/project
 
 ## Phase 0 — design note (COMPLETE)
 Bootstrap, contributor docs read, subsystems mapped, baselines measured, `docs/niki/DESIGN.md` written (35 lines).
-Confirmed the current terminal agent is `libs/code` (`deepagents-code` 0.1.80, module `deepagents_code`); `deepagents-cli` no longer exists.
+Confirmed the current terminal agent is `libs/code` (`deepagents-code` 0.1.80, module `niki_agent`); `deepagents-cli` no longer exists.
 
 ## Phase 1 — harness (COMPLETE)
 Fixture model, Pilot driver, snapshots at four tiers, PTY lifecycle, perf probes, lint rules. 179 tests at that point.
@@ -388,3 +397,77 @@ before the fix, and the merged tree is verified again below.
 - Two checks can never go green on this fork and are documented, not worked
   around: `curated release notes` checks out a `main` branch this fork does not
   have, and `PR Labeler` needs a GitHub App `client-id` secret.
+
+## Session 3 — independence landed, then accessibility and parity
+
+### Independence (Phase 1)
+
+- **Package and distribution.** `niki_agent`, `niki-agent` 1.0.0. `dcode` and
+  `deepagents-code` remain console scripts that print one deprecation line.
+- **Environment namespace.** `_env_vars.py` owns every name; each
+  `DEEPAGENTS_CODE_*` value is copied to its `NIKI_*` name once at import and
+  removed from `os.environ`, with a single `DeprecationWarning`.
+  `tests/unit_tests/test_env_vars.py` fails on a bare string literal, so a new
+  variable cannot skip the table.
+- **Profile directory.** `~/.niki` replaces `~/.deepagents`; `_paths` moves the
+  old directory once, only when both `NIKI_HOME` and `DEEPAGENTS_HOME` are unset
+  and `~/.niki` does not exist, then writes `.migrated-from-deepagents`.
+  `docs/niki/INDEPENDENCE.md` is the reference.
+- **Vendored runtime.** `niki_agent/sdk` and `niki_agent/acp_sdk` are copies with
+  `PROVENANCE.md`; no runtime import of an upstream distribution. They are
+  excluded from ruff and ty so their diff against provenance stays auditable.
+- **Workspace trimmed.** The former packages live under `archive/`; `libs/code`
+  is the only tested package, and `ci.yml` is one job that runs `make check`
+  plus a `CI Success` aggregate.
+- **Brand gate.** `tests/unit_tests/niki/test_brand_gate.py` (6 rows) scans help
+  output, version output, and the package for retired names and allows them only
+  in the legacy-env table and the migration path.
+
+### Accessibility (Phase 2)
+
+- **Contrast.** `test_theme_contrast.py` measures every token pair in all four
+  themes at truecolor, after quantizing the same palette to xterm-256, and
+  against the 16-colour fallbacks. `NIKI_DIM["muted"]` moved to `#8C929D` so the
+  256-colour quantization keeps 4.5:1 on the surface; the light ANSI mapping
+  spends hue distinctness to stay legible on white.
+- **Motion and glyphs.** `NIKI_MOTION=off|0|false|no|none|disabled` forces the
+  reduced-motion path; `NIKI_GLYPHS=ascii` forces the ASCII registry. Both are
+  covered by `test_motion.py`.
+- **Screen readers.** `NIKI_SCREEN_READER=1` selects a linear, append-only
+  renderer: no spinner, no cursor movement, one turn per invocation. A bare
+  interactive launch explains how to pass a prompt and exits 2 rather than
+  mounting a TUI the reader cannot follow. `test_screen_reader.py` asserts both
+  halves — in-process plain text with no `ESC`, and a real PTY run.
+- **Layout at 40 columns.** The snapshot matrix now covers 40×20 as well as
+  50/80/120/160, with the slash menu and help open at 40/50/120. That exposed a
+  clipped composer placeholder; `composer_hint()` picks the widest sentence that
+  fits the measured text area, and `test_v5_the_placeholder_shrinks_before_it_clips`
+  pins the breakpoints.
+- **Plan mode.** `--plan` narrows the filesystem tool allowlist to `ls`,
+  `read_file`, `glob`, and `grep`, so writes and shell execution are unavailable
+  (`TestPlanModeArgument`).
+- **Parity rows.** `docs/niki/UI_PARITY.md` records every row against its test.
+  The audit found one P0 gap — `#` memory — now implemented: a leading `#`
+  appends bullets under `## Notes` in the active agent profile's `AGENTS.md`
+  instead of sending a turn (`niki_agent/memory_note.py`, 8 tests). The startup
+  tip advertises it.
+
+### Verification
+
+- `make check` in `libs/code` with `PYTEST_EXTRA="-n 4"`: **9490 passed, 1
+  skipped** in 508 s, exit 0 — ruff, ruff format, `ty`, import graph, command
+  catalogue, process-cwd check, tests, extras sync, version equality, and the
+  lockfile check.
+- `scripts/niki_workflow.py readiness --phase python` exits 0.
+- `tests/unit_tests/niki/test_snapshots.py`: 16 snapshots, including the four new
+  40-column frames.
+- `tests/unit_tests/niki/`: 359 passed in 246 s before the Phase 2 additions;
+  this session added `test_screen_reader.py` (16) and four 40-column snapshots.
+
+### Known debt
+
+- `.github/scripts/tests` still contains suites for workflows removed with the
+  upstream release automation (`release_please*`, `check_sdk_pin`, `_test`,
+  `auto-label-by-package`, `pr_labeler_backfill`). They fail on missing files and
+  are the next cleanup slice; `libs/code`'s own gate is unaffected.
+- `openwiki/` describes the pre-trim monorepo and has not been regenerated.

@@ -78,10 +78,10 @@ kind = "workspace_file"
 target = "libs/deepagents/deepagents/agent_setup.py"
 filename = "agent_setup.py"
 base_value = """
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 
-from deepagents.custom_middleware import log_tool_calls
-from deepagents.custom_tools import send_report
+from niki_agent.sdk.custom_middleware import log_tool_calls
+from niki_agent.sdk.custom_tools import send_report
 
 
 def build_agent(model: str):

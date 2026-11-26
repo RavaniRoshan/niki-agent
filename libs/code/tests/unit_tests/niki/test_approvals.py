@@ -26,8 +26,8 @@ import pytest
 if TYPE_CHECKING:
     from textual.app import App
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.tui.widgets.approval import ApprovalMenu
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.tui.widgets.approval import ApprovalMenu
 
 REQUEST: dict[str, object] = {"name": "bash", "args": {"cmd": "rm -rf /tmp/thing"}}
 NARROW = (50, 20)
@@ -37,7 +37,7 @@ STANDARD = (80, 24)
 def _app() -> NikiApp:
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-approval")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -52,7 +52,7 @@ def _menu() -> ApprovalMenu:
     `install_niki_app_class` rebinds. Importing the class directly here would
     bypass the rebind and silently test upstream's behaviour.
     """
-    from deepagents_code.tui.widgets.approval import ApprovalMenu
+    from niki_agent.tui.widgets.approval import ApprovalMenu
 
     return ApprovalMenu(REQUEST)
 
@@ -174,7 +174,7 @@ async def test_v9_arrow_keys_move_the_selection(key: str) -> None:
 
 async def test_v9_number_shortcuts_are_bound() -> None:
     """V9: number shortcuts are advertised, so they must be in the registry."""
-    from deepagents_code.niki.keymap import build_keymap
+    from niki_agent.niki.keymap import build_keymap
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:

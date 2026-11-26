@@ -5,15 +5,15 @@ description: How dcode resolves ranked configuration, safely writes and reloads 
 tags: [configuration, config-layering, resolver, precedence, reload, workspace-binding, mcp, deepagents-code, dcode]
 sources:
   - id: openwiki-source-216ca680d81dc35eb4d3e76e
-    resource: repo://libs/code/deepagents_code/mcp_config.py
+    resource: repo://libs/code/niki_agent/mcp_config.py
   - id: openwiki-source-20b5bbd05beabea1df7e2b53
-    resource: repo://libs/code/deepagents_code/mcp_disabled.py
+    resource: repo://libs/code/niki_agent/mcp_disabled.py
   - id: openwiki-source-f6d553e7afdf54acac36e7d3
-    resource: repo://libs/code/deepagents_code/mcp_tools.py
+    resource: repo://libs/code/niki_agent/mcp_tools.py
   - id: openwiki-source-17253964e859bb0abf2094e8
-    resource: repo://libs/code/deepagents_code/workspace_diagnostics.py
+    resource: repo://libs/code/niki_agent/workspace_diagnostics.py
   - id: openwiki-source-030d8bd153a9c3ea2a99cb7d
-    resource: repo://libs/code/deepagents_code/workspace.py
+    resource: repo://libs/code/niki_agent/workspace.py
   - id: openwiki-source-5a5147d4654f226b03e92ab9
     resource: repo://libs/code/tests/unit_tests/test_workspace_diagnostics.py
 verified:

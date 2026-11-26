@@ -8,17 +8,17 @@ verified:
     at: 2026-09-30T08:06:28.871Z
 sources:
   - id: openwiki-source-05106e66a949150d557266a2
-    resource: repo://libs/code/deepagents_code/agent.py
+    resource: repo://libs/code/niki_agent/agent.py
   - id: openwiki-source-fdf5afeb1dd1d11652374e88
-    resource: repo://libs/code/deepagents_code/app.py
+    resource: repo://libs/code/niki_agent/app.py
   - id: openwiki-source-7f6b98925b5f1ba065df3a04
-    resource: repo://libs/code/deepagents_code/config.py
+    resource: repo://libs/code/niki_agent/config.py
   - id: openwiki-source-55d5c39401ac52584ce1f973
-    resource: repo://libs/code/deepagents_code/configurable_model.py
+    resource: repo://libs/code/niki_agent/configurable_model.py
   - id: openwiki-source-4a7b6def251b42596a410ebc
-    resource: repo://libs/code/deepagents_code/model_config.py
+    resource: repo://libs/code/niki_agent/model_config.py
   - id: openwiki-source-bdf7871023d068e30942c1ba
-    resource: repo://libs/code/deepagents_code/reasoning_effort.py
+    resource: repo://libs/code/niki_agent/reasoning_effort.py
   - id: openwiki-source-7244429aa76e42d665eb72eb
     resource: repo://libs/code/tests/unit_tests/test_reasoning_effort.py
   - id: openwiki-source-50173942904153d619b9ae0d

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from deepagents_code.hooks.models.domain import HookEvent, PermissionEffect
-from deepagents_code.hooks.presenter import (
+from niki_agent.hooks.models.domain import HookEvent, PermissionEffect
+from niki_agent.hooks.presenter import (
     HookNoticeSeverity,
     HookPresenter,
     HookProgress,

@@ -7,8 +7,8 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 
-from deepagents_code._fake_models import _ToolBindingFakeModel
-from deepagents_code._js_cost import CostAwareCodeInterpreterMiddleware
+from niki_agent._fake_models import _ToolBindingFakeModel
+from niki_agent._js_cost import CostAwareCodeInterpreterMiddleware
 
 
 @tool

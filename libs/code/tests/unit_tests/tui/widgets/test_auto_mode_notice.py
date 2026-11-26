@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepagents_code.tui.widgets.auto_mode_notice import build_auto_mode_notice_body
+from niki_agent.tui.widgets.auto_mode_notice import build_auto_mode_notice_body
 
 
 def test_escapes_markdown_in_the_model_label() -> None:

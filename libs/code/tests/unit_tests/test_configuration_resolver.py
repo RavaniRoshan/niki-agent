@@ -5,14 +5,14 @@ from typing import Any, Self, cast
 
 import pytest
 
-from deepagents_code.config_manifest import (
+from niki_agent.config_manifest import (
     ConfigOption,
     MergeStrategy,
     OptionKind,
     get_option,
 )
-from deepagents_code.configuration.providers import DefaultProvider, TomlFileProvider
-from deepagents_code.configuration.resolver import (
+from niki_agent.configuration.providers import DefaultProvider, TomlFileProvider
+from niki_agent.configuration.resolver import (
     CLI_RANK,
     DEFAULT_RANK,
     ENVIRONMENT_RANK,
@@ -23,7 +23,7 @@ from deepagents_code.configuration.resolver import (
     resolve_ranked,
     resolver_from_snapshots,
 )
-from deepagents_code.configuration.types import (
+from niki_agent.configuration.types import (
     Found,
     Invalid,
     ProviderHealth,
@@ -360,7 +360,7 @@ def test_healthy_managed_snapshot_refuses_unenforceable_policy(
     Covered only through `_reload_values` before this; the function is the
     startup gate, so its own contract deserves a direct test.
     """
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
     from unit_tests.conftest import redirect_managed_config
 
     managed_path = tmp_path / "managed.toml"
@@ -400,8 +400,8 @@ def test_an_ignored_managed_snapshot_is_rejected(
     is already enforcing -- and silently wrong for anyone who passes a newer
     one and expects it to take effect.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import resolver as resolver_module, service
+    from niki_agent import model_config
+    from niki_agent.configuration import resolver as resolver_module, service
     from unit_tests.conftest import redirect_managed_config
 
     managed_path = tmp_path / "managed.toml"
@@ -440,8 +440,8 @@ def test_stale_managed_refresh_cannot_replace_a_newer_resolver_generation(
     """A delayed resolver refresh must not restore superseded policy."""
     from threading import Event, Thread, current_thread
 
-    from deepagents_code import model_config
-    from deepagents_code.configuration import resolver as resolver_module, service
+    from niki_agent import model_config
+    from niki_agent.configuration import resolver as resolver_module, service
     from unit_tests.conftest import redirect_managed_config
 
     managed_path = tmp_path / "managed.toml"
@@ -593,7 +593,7 @@ def test_corrupt_user_toml_warns_instead_of_defaulting_silently(
     reads as "declares nothing". Without a diagnostic the user's typo silently
     replaces their `shell.allow_list` with the manifest default.
     """
-    from deepagents_code.config_manifest import _emit_ranked_diagnostics
+    from niki_agent.config_manifest import _emit_ranked_diagnostics
 
     config_path = tmp_path / "config.toml"
     config_path.write_text("[shell\nallow_list = []\n", encoding="utf-8")
@@ -617,7 +617,7 @@ def test_healthy_source_emits_no_rejection_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A file that parses must stay quiet."""
-    from deepagents_code.config_manifest import _emit_ranked_diagnostics
+    from niki_agent.config_manifest import _emit_ranked_diagnostics
 
     config_path = tmp_path / "config.toml"
     config_path.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -642,8 +642,8 @@ def test_default_path_write_is_visible_to_the_shared_resolver(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A committed settings write must not leave the process serving stale values."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import (
+    from niki_agent import model_config
+    from niki_agent.configuration import (
         resolver as resolver_module,
         service,
         writer,
@@ -681,8 +681,8 @@ def test_default_path_write_retains_the_last_enforceable_managed_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A preference write must not install parseable but invalid policy."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import (
+    from niki_agent import model_config
+    from niki_agent.configuration import (
         resolver as resolver_module,
         service,
         writer,
@@ -722,8 +722,8 @@ def test_a_failed_resolver_refresh_does_not_fail_a_landed_write(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """The bytes are already on disk; reporting failure sends the user to retry."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import resolver as resolver_module, writer
+    from niki_agent import model_config
+    from niki_agent.configuration import resolver as resolver_module, writer
 
     config_path = tmp_path / "config.toml"
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
@@ -757,7 +757,7 @@ def test_a_failed_reload_warns_that_the_edit_did_not_take_effect(
     while the edit the user just saved is not in effect and the file on disk no
     longer describes what the process enforces.
     """
-    from deepagents_code.config_manifest import _emit_ranked_diagnostics
+    from niki_agent.config_manifest import _emit_ranked_diagnostics
 
     config_path = tmp_path / "config.toml"
     config_path.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -784,7 +784,7 @@ def test_doctor_reports_a_corrupt_user_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The command a user runs when settings do not apply must say the file broke."""
-    from deepagents_code import doctor, model_config
+    from niki_agent import doctor, model_config
 
     config_path = tmp_path / "config.toml"
     config_path.write_text("[shell\n", encoding="utf-8")
@@ -806,8 +806,8 @@ def test_invalidate_config_sources_also_drops_the_resolver(
     incidentally monkeypatching `DEFAULT_CONFIG_PATH`; one that exercises the
     resolver at an unchanged path would inherit the previous test's generation.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import resolver as resolver_module, service
+    from niki_agent import model_config
+    from niki_agent.configuration import resolver as resolver_module, service
 
     config_path = tmp_path / "config.toml"
     config_path.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -897,8 +897,8 @@ def test_failed_remote_refresh_keeps_policy_resolving_in_the_resolver(
     installed the failed generation would resolve as "this source declares
     nothing" and let the user tier win.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import (
+    from niki_agent import model_config
+    from niki_agent.configuration import (
         providers as providers_module,
         resolver as resolver_module,
         service,
@@ -956,8 +956,8 @@ def test_unenforceable_remote_policy_cannot_escalate_through_a_refresh(
     own value. `startup.mode` is exactly the privilege that must never do that,
     so an in-app preference toggle cannot be a way to reach it.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import (
+    from niki_agent import model_config
+    from niki_agent.configuration import (
         providers as providers_module,
         resolver as resolver_module,
         service,

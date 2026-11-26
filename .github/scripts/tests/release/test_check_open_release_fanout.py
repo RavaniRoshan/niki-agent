@@ -96,7 +96,7 @@ def test_find_lockfile_only_components_resolves_version_to_tag(
         if path.startswith("libs/acp") and baseline == "deepagents-acp==0.2.2":
             return ["libs/acp/uv.lock"]
         if path.startswith("libs/code") and baseline == "deepagents-code==0.1.47":
-            return ["libs/code/deepagents_code/x.py", "libs/code/uv.lock"]
+            return ["libs/code/niki_agent/x.py", "libs/code/uv.lock"]
         return []
 
     monkeypatch.setattr(

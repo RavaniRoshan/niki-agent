@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from dataclasses import fields
 
-from deepagents_code.config import (
+from niki_agent.config import (
     _ASCII_BANNER,
     _UNICODE_BANNER,
     ASCII_GLYPHS,
@@ -131,16 +131,16 @@ class TestGlyphs:
 class TestDetectCharsetMode:
     """Tests for _detect_charset_mode function."""
 
-    @patch.dict("os.environ", {"DEEPAGENTS_CODE_UI_CHARSET_MODE": "ascii"}, clear=False)
+    @patch.dict("os.environ", {"NIKI_UI_CHARSET_MODE": "ascii"}, clear=False)
     def test_prefixed_env_var_is_honored(self) -> None:
-        """The `DEEPAGENTS_CODE_` prefixed variant resolves the mode."""
+        """The `NIKI_` prefixed variant resolves the mode."""
         with patch.dict("os.environ", {}, clear=False):
             os.environ.pop("UI_CHARSET_MODE", None)
             assert _detect_charset_mode() == CharsetMode.ASCII
 
     @patch.dict(
         "os.environ",
-        {"UI_CHARSET_MODE": "ascii", "DEEPAGENTS_CODE_UI_CHARSET_MODE": "unicode"},
+        {"UI_CHARSET_MODE": "ascii", "NIKI_UI_CHARSET_MODE": "unicode"},
         clear=False,
     )
     def test_prefixed_env_var_overrides_canonical(self) -> None:

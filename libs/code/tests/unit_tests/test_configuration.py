@@ -18,33 +18,33 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 
-from deepagents_code.config_manifest import (
+from niki_agent.config_manifest import (
     ConfigOption,
     OptionKind,
     _emit_ranked_diagnostics,
 )
-from deepagents_code.configuration.paths import managed_config_path
-from deepagents_code.configuration.providers import (
+from niki_agent.configuration.paths import managed_config_path
+from niki_agent.configuration.providers import (
     REMOTE_MANAGED_CONFIG_MAX_BYTES,
     RemoteTomlProvider,
     TomlFileProvider,
 )
-from deepagents_code.configuration.resolver import merge_toml_tables
-from deepagents_code.configuration.service import (
+from niki_agent.configuration.resolver import merge_toml_tables
+from niki_agent.configuration.service import (
     ConfigSources,
     ManagedConfigError,
     invalidate_config_sources,
     require_healthy_managed_config,
 )
-from deepagents_code.configuration.types import ProviderHealth
-from deepagents_code.configuration.writer import update_user_config
+from niki_agent.configuration.types import ProviderHealth
+from niki_agent.configuration.writer import update_user_config
 from unit_tests.conftest import redirect_managed_config, resolve_option_for_test
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
     from urllib.request import Request
 
-    from deepagents_code.configuration.types import TomlSnapshot
+    from niki_agent.configuration.types import TomlSnapshot
 
 
 def _resolve(
@@ -73,7 +73,7 @@ def test_managed_config_path_windows_ignores_process_env(
     Production (no injected environ) resolves via the registry or the
     hardcoded default — never the process environment.
     """
-    from deepagents_code.configuration import paths
+    from niki_agent.configuration import paths
 
     monkeypatch.setattr(
         paths, "_program_data_from_registry", lambda: (None, "registry unreadable")
@@ -92,8 +92,8 @@ def test_user_config_writers_share_one_lock_object() -> None:
     `model_config` and a `[ui]` write through the shared writer must contend on
     the same object. This is the invariant those docstrings rest on.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration.writer import USER_CONFIG_WRITE_LOCK
+    from niki_agent import model_config
+    from niki_agent.configuration.writer import USER_CONFIG_WRITE_LOCK
 
     assert model_config._config_write_lock is USER_CONFIG_WRITE_LOCK
 
@@ -305,7 +305,7 @@ def test_remote_toml_provider_reports_safe_fetch_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Network failures become safe unreadable provider states."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: int) -> _RemoteResponse:
@@ -329,7 +329,7 @@ def test_remote_toml_provider_closes_http_error_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An HTTP status failure releases its response and connection promptly."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     response = _TrackedErrorBody(b"untrusted error body")
     failure = HTTPError(
@@ -361,7 +361,7 @@ def test_remote_toml_provider_bounds_a_stalled_open(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """DNS, TLS, and response headers share the end-to-end deadline."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     entered = Event()
     release = Event()
@@ -398,7 +398,7 @@ def test_remote_toml_provider_does_not_accumulate_stalled_open_threads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Repeated reloads of the same URL fail closed behind its stuck open."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     entered = Event()
     release = Event()
@@ -451,7 +451,7 @@ def test_remote_toml_provider_recovers_on_new_source_after_stalled_open(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A descriptor change to a healthy URL succeeds behind a stuck open."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     stall_started = Event()
     release = Event()
@@ -499,7 +499,7 @@ def test_remote_toml_provider_closes_late_http_error_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A status failure arriving after timeout still releases its response."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     entered = Event()
     release = Event()
@@ -541,7 +541,7 @@ def test_remote_toml_provider_bounds_a_stalled_chunked_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A drip-fed chunk line cannot reset socket timeouts indefinitely."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     entered = Event()
 
@@ -569,7 +569,7 @@ def test_remote_toml_provider_bounds_reads_by_remaining_deadline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Header time reduces every subsequent socket-read timeout."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     response = _RemoteResponse(b'[startup]\nmode = "manual"\n')
 
@@ -596,7 +596,7 @@ def test_remote_toml_provider_rejects_late_empty_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An EOF received after the deadline is not accepted as empty policy."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: int) -> _RemoteResponse:
@@ -657,7 +657,7 @@ def test_remote_toml_provider_rejects_incomplete_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A truncated body cannot replace the last complete policy generation."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: int) -> _RemoteResponse:
@@ -728,7 +728,7 @@ def test_remote_toml_provider_rejects_invalid_response(
     stateful `BytesIO`, and a reused instance would read as exhausted and
     report the wrong rejection.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     response = build_response()
 
@@ -753,7 +753,7 @@ def test_remote_toml_provider_reports_parser_recursion_as_corrupt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Pathologically nested TOML cannot escape the managed-config status."""
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: float) -> _RemoteResponse:
@@ -780,7 +780,7 @@ def test_managed_provider_failure_is_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Present corrupt managed policy produces a real startup-gate error."""
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text("[broken", encoding="utf-8")
@@ -827,8 +827,8 @@ def test_remote_managed_descriptor_must_be_exclusive(
     Each shape has its own diagnostic: asserting only the health enum would let
     them collapse into one message that names none of them.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.providers import RemoteTomlProvider
+    from niki_agent.configuration import service
+    from niki_agent.configuration.providers import RemoteTomlProvider
 
     managed = tmp_path / "managed.toml"
     managed.write_text(managed_toml, encoding="utf-8")
@@ -854,10 +854,10 @@ def test_remote_managed_policy_outranks_lower_sources(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A valid remote response participates as the ordinary managed tier."""
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.providers import RemoteTomlProvider
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
+    from niki_agent.configuration.providers import RemoteTomlProvider
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -896,7 +896,7 @@ def test_remote_descriptor_source_is_the_url_fetched(
     wholesale, so nothing ties `[managed_config].source` in the local trust
     anchor to the host actually contacted. This walks descriptor to request.
     """
-    from deepagents_code.configuration import providers, service
+    from niki_agent.configuration import providers, service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -931,7 +931,7 @@ def test_remote_failure_names_the_url_not_the_trust_anchor(
     would drop all policy. The URL is safe to print: validation has already
     rejected credentials, query strings, and fragments.
     """
-    from deepagents_code.configuration import providers, service
+    from niki_agent.configuration import providers, service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -965,8 +965,8 @@ def test_doctor_remote_failure_names_the_url_not_the_trust_anchor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Doctor directs remote-policy repair at the source, not its descriptor."""
-    from deepagents_code.configuration import providers, service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import providers, service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -999,7 +999,7 @@ def test_corrupt_remote_policy_directs_admin_to_repair_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A reachable source with invalid TOML needs document repair."""
-    from deepagents_code.configuration import providers, service
+    from niki_agent.configuration import providers, service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -1030,8 +1030,8 @@ def test_doctor_corrupt_remote_policy_directs_admin_to_repair_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Doctor distinguishes corrupt remote content from an unreachable host."""
-    from deepagents_code.configuration import providers, service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import providers, service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -1086,9 +1086,9 @@ def test_failed_remote_reload_keeps_previous_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A remote outage never evicts the last enforceable in-process snapshot."""
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.providers import RemoteTomlProvider
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.providers import RemoteTomlProvider
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -1124,7 +1124,7 @@ def test_failed_remote_reload_keeps_previous_policy(
 
 def test_managed_model_allowlist_replaces_user_list() -> None:
     """Managed allowlists replace rather than union with user grants."""
-    from deepagents_code.config_manifest import get_option
+    from niki_agent.config_manifest import get_option
 
     option = get_option("models.allowed")
     assert option is not None
@@ -1143,8 +1143,8 @@ def test_explicit_model_config_path_excludes_managed_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Explicit-path tooling reads remain isolated from machine policy."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     explicit = tmp_path / "isolated.toml"
     explicit.write_text(
@@ -1171,7 +1171,7 @@ def test_malformed_managed_model_allowlist_is_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A malformed administrator list blocks startup."""
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[models]\nallowed = ["openai:gpt", "broken"]\n')
@@ -1189,8 +1189,8 @@ def test_rejected_model_allowlist_reload_keeps_previous_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A malformed reload cannot replace the last enforceable model ceiling."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1380,8 +1380,8 @@ def test_managed_mcp_lockdown_replaces_grants_and_unions_denies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Managed empty grants lock down approvals while every deny source accumulates."""
-    from deepagents_code import _env_vars, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import _env_vars, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text(
@@ -1426,8 +1426,8 @@ def test_wrong_typed_managed_mcp_allow_list_fails_closed(
     so this is a visible failure, not a silent lockdown, and it matches
     `disabled_project_servers`, which already fails closed here.
     """
-    from deepagents_code import _env_vars, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import _env_vars, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     managed = tmp_path / "managed.toml"
@@ -1464,8 +1464,8 @@ def test_unusable_managed_policy_denies_env_granted_project_servers(
     grants in force — corrupting the file converted a managed suppression into a
     permit. A deny list that cannot be read denies everything.
     """
-    from deepagents_code import _env_vars, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import _env_vars, model_config
+    from niki_agent.configuration import service
 
     monkeypatch.setenv(
         _env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
@@ -1486,8 +1486,8 @@ def test_custom_mcp_config_path_is_isolated_from_managed_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Explicit custom config paths retain their test and embedding isolation seam."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "custom.toml"
     user.write_text(
@@ -1514,11 +1514,11 @@ def test_managed_skill_dirs_outrank_environment_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Managed skill containment roots cannot be replaced through the environment."""
-    from deepagents_code import model_config
-    from deepagents_code._env_vars import EXTRA_SKILLS_DIRS
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.resolver import get_config_resolver
+    from niki_agent import model_config
+    from niki_agent._env_vars import EXTRA_SKILLS_DIRS
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
+    from niki_agent.configuration.resolver import get_config_resolver
 
     user = tmp_path / "config.toml"
     managed = tmp_path / "managed.toml"
@@ -1554,8 +1554,8 @@ def test_non_table_known_managed_section_stops_startup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A scalar cannot replace a known managed section and erase user settings."""
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.service import ManagedPolicyError
+    from niki_agent.configuration import service
+    from niki_agent.configuration.service import ManagedPolicyError
 
     managed = tmp_path / "managed.toml"
     managed.write_text(managed_toml, encoding="utf-8")
@@ -1570,7 +1570,7 @@ def test_non_table_known_managed_section_stops_startup(
 
 def _sources(managed: dict[str, object], user: dict[str, object]) -> ConfigSources:
     """Build `ConfigSources` from two literal tables, both reported healthy."""
-    from deepagents_code.configuration.types import (
+    from niki_agent.configuration.types import (
         ProviderHealth,
         ProviderStatus,
         TomlSnapshot,
@@ -1632,8 +1632,8 @@ def test_managed_policy_survives_a_corrupt_default_user_config(
     defaults. The user owns that file, which made one invalid byte an
     unprivileged way to switch administrator policy off.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("this is not [valid toml\n", encoding="utf-8")
@@ -1666,8 +1666,8 @@ def test_malformed_managed_deny_list_fails_closed(
     administrator typo produced an empty deny set with no signal, while the
     same typo in the user file failed closed.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1692,8 +1692,8 @@ def test_non_table_managed_mcp_section_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A scalar managed `[mcp]` cannot silently void the deny list."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1714,8 +1714,8 @@ def test_non_table_managed_mcp_section_revokes_the_env_escape_hatch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Corrupting managed policy must not convert a suppression into a permit."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1754,7 +1754,7 @@ def test_shell_allow_list_sentinels_agree_across_spellings(
     `allow_list = ["all"]` permitted one literal command named `all` instead
     of every command, silently inverting the administrator's intent.
     """
-    from deepagents_code.config_manifest import _coerce_toml, get_option
+    from niki_agent.config_manifest import _coerce_toml, get_option
 
     option = get_option("shell.allow_list")
     assert option is not None
@@ -1763,7 +1763,7 @@ def test_shell_allow_list_sentinels_agree_across_spellings(
 
 def test_shell_allow_list_rejects_all_combined_with_commands() -> None:
     """`all` stays exclusive in the array form, matching the string form."""
-    from deepagents_code.config_manifest import _INVALID, _coerce_toml, get_option
+    from niki_agent.config_manifest import _INVALID, _coerce_toml, get_option
 
     option = get_option("shell.allow_list")
     assert option is not None
@@ -1772,8 +1772,8 @@ def test_shell_allow_list_rejects_all_combined_with_commands() -> None:
 
 def test_shell_allow_list_array_expands_recommended() -> None:
     """A `recommended` element expands to the curated safe set."""
-    from deepagents_code.config import RECOMMENDED_SAFE_SHELL_COMMANDS
-    from deepagents_code.config_manifest import _coerce_toml, get_option
+    from niki_agent.config import RECOMMENDED_SAFE_SHELL_COMMANDS
+    from niki_agent.config_manifest import _coerce_toml, get_option
 
     option = get_option("shell.allow_list")
     assert option is not None
@@ -1790,7 +1790,7 @@ def test_shell_allow_list_array_preserves_comma_in_entry() -> None:
     string form, so `["my,tool"]` resolved to `["my", "tool"]` — auto-approving
     two executables the administrator never listed.
     """
-    from deepagents_code.config_manifest import _coerce_toml, get_option
+    from niki_agent.config_manifest import _coerce_toml, get_option
 
     option = get_option("shell.allow_list")
     assert option is not None
@@ -1809,8 +1809,8 @@ def test_corrupt_managed_config_does_not_empty_the_mcp_deny_set(
     An unusable snapshot carries an empty table, so returning it would read as
     "nothing is denied" and silently undo every managed deny.
     """
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1845,8 +1845,8 @@ def test_unusable_managed_deny_list_fails_closed(
     the lookup fell through to an empty set with no log at all and every
     administrator-denied server started.
     """
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1876,8 +1876,8 @@ def test_managed_deny_list_string_splits_on_commas(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """`disabled_servers = "a, b"` denies two servers, not one bogus name."""
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1901,8 +1901,8 @@ def test_non_table_managed_mcp_section_cannot_void_the_deny_list(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A scalar managed `[mcp]` shadows the deny list, so it must fail closed."""
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1933,8 +1933,8 @@ def test_rejected_reload_keeps_the_last_enforceable_managed_snapshot(
     file, so a later non-refresh reader observed it and re-enabled a managed
     MCP deny the edit had removed.
     """
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -1963,7 +1963,7 @@ def test_rejected_reload_keeps_the_last_enforceable_managed_snapshot(
 
 def test_union_paths_rebase_onto_an_option_subtree() -> None:
     """Deny-list paths must still match when a merge starts below the root."""
-    from deepagents_code.configuration.service import UNION_PATHS, union_paths_under
+    from niki_agent.configuration.service import UNION_PATHS, union_paths_under
 
     assert ("disabled_servers",) in union_paths_under(("mcp",))
     # Rebasing strips exactly the prefix, so an absolute path never survives
@@ -2042,7 +2042,7 @@ def test_managed_snapshot_rejects_data_it_could_not_have_read() -> None:
     snapshot that reports a failure while carrying values would have both
     meanings at once.
     """
-    from deepagents_code.configuration.types import (
+    from niki_agent.configuration.types import (
         ProviderHealth,
         ProviderStatus,
         TomlSnapshot,
@@ -2064,7 +2064,7 @@ def test_writer_reports_a_mis_encoded_config_instead_of_raising(
     `UnicodeDecodeError`, which the read guard did not catch. It escaped past
     every caller's error handling and lost the real reason.
     """
-    from deepagents_code.configuration.writer import update_user_config
+    from niki_agent.configuration.writer import update_user_config
 
     target = tmp_path / "config.toml"
     target.write_bytes('[ui]\ntheme = "dark"\n'.encode("utf-16"))
@@ -2104,11 +2104,11 @@ def test_reload_keeps_a_user_shell_allow_list(
     never happened. `skills.extra_allowed_dirs` in the same function already
     read its user layer, which is what made the omission clearly unintentional.
     """
-    from deepagents_code import model_config
-    from deepagents_code.config import Credentials
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.resolver import get_config_resolver
+    from niki_agent import model_config
+    from niki_agent.config import Credentials
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
+    from niki_agent.configuration.resolver import get_config_resolver
 
     user = tmp_path / "config.toml"
     user.write_text('[shell]\nallow_list = ["git status"]\n', encoding="utf-8")
@@ -2135,11 +2135,11 @@ def test_managed_shell_allow_list_still_wins_a_reload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Reading the user layer on reload must not cost managed precedence."""
-    from deepagents_code import model_config
-    from deepagents_code.config import Credentials
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.resolver import get_config_resolver
+    from niki_agent import model_config
+    from niki_agent.config import Credentials
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
+    from niki_agent.configuration.resolver import get_config_resolver
 
     user = tmp_path / "config.toml"
     user.write_text('[shell]\nallow_list = ["git status"]\n', encoding="utf-8")
@@ -2168,8 +2168,8 @@ def test_every_enforced_managed_key_resolves_to_a_manifest_option() -> None:
     privilege-granting setting while every other test stayed green. Nothing
     pinned the tuple before this test.
     """
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration.service import ENFORCED_MANAGED_KEYS
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration.service import ENFORCED_MANAGED_KEYS
 
     unresolved = [key for key in ENFORCED_MANAGED_KEYS if get_option(key) is None]
     assert unresolved == []
@@ -2217,8 +2217,8 @@ def test_enforced_managed_keys_actually_produce_violations() -> None:
     here would imply enforcement that never fires. This asserts each key can
     really produce a violation.
     """
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration.service import (
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration.service import (
         ENFORCED_MANAGED_KEYS,
         managed_policy_violations,
     )
@@ -2297,8 +2297,8 @@ def test_rejected_managed_privilege_value_stops_the_launch(
     plus `mode`) read as "the administrator wrote nothing", so the same typo
     one level up still granted the escalation, silently.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(managed_toml, encoding="utf-8")
@@ -2331,8 +2331,8 @@ def test_managed_auto_mode_does_not_set_the_interactive_only_flag(
     `coerce_approval_mode(load_startup_mode())`, which reads merged managed
     policy, so the positive value needs no flag.
     """
-    from deepagents_code import main, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import main, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -2365,9 +2365,9 @@ def test_managed_startup_mode_masks_a_cli_approval_flag(
     branch now resolves the mode instead, so the managed tier masks the
     non-durable CLI value.
     """
-    from deepagents_code import main, model_config
-    from deepagents_code.approval_mode import ApprovalMode
-    from deepagents_code.configuration import service
+    from niki_agent import main, model_config
+    from niki_agent.approval_mode import ApprovalMode
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -2395,9 +2395,9 @@ def test_cli_approval_flag_outranks_user_startup_mode(
     only a managed tier masks it. An administrator's empty `managed.toml`
     installs the tier but declares no mode, so it changes nothing.
     """
-    from deepagents_code import main, model_config
-    from deepagents_code.approval_mode import ApprovalMode
-    from deepagents_code.configuration import service
+    from niki_agent import main, model_config
+    from niki_agent.approval_mode import ApprovalMode
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -2426,8 +2426,8 @@ def test_managed_sandbox_default_does_not_force_a_sandbox(
     be left alone: an omitted `--sandbox` arrives as `"none"` from argparse, and
     an explicit `--sandbox none` arrives the same way.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[sandboxes]\ndefault = "modal"\n', encoding="utf-8")
@@ -2452,8 +2452,8 @@ def test_unavailable_managed_sandbox_leaves_an_unsandboxed_launch_alone(
     Regression: the guard checked only `None`, so a bare `dcode` reached the
     availability check and exited 78 over a backend it was never going to use.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -2479,8 +2479,8 @@ def test_unavailable_managed_sandbox_stops_a_sandboxed_launch(
     `parse_args` validates `--sandbox`, but it runs before managed policy is
     applied, so the managed value skipped `is_available` entirely.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -2507,8 +2507,8 @@ def _managed_only(
     Returns:
         The managed file path.
     """
-    from deepagents_code import mcp_disabled, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -2543,8 +2543,8 @@ def test_diagnostic_commands_run_with_unusable_managed_policy(
     report the managed path and its parse health would be the ones the broken
     file blocks.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     monkeypatch.setattr(sys, "argv", argv)
@@ -2565,8 +2565,8 @@ def test_agent_launch_commands_stop_on_unusable_managed_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A command that runs the agent must not start without enforceable policy."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     monkeypatch.setattr(sys, "argv", ["dcode", "tools", "list"])
@@ -2604,8 +2604,8 @@ def test_update_settings_fail_closed_on_any_managed_policy_error(
     A user layer is written underneath so this proves the managed error wins,
     rather than agreeing with the built-in default by coincidence.
     """
-    from deepagents_code import model_config, update_check
-    from deepagents_code.configuration import service
+    from niki_agent import model_config, update_check
+    from niki_agent.configuration import service
 
     managed = _managed_only(tmp_path, monkeypatch, managed_toml)
     assert managed.exists()
@@ -2626,8 +2626,8 @@ def test_managed_update_policy_outranks_the_user_preference(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A managed `[update].check = false` cannot be re-enabled locally."""
-    from deepagents_code import update_check
-    from deepagents_code.configuration import service
+    from niki_agent import update_check
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[update]\ncheck = false\n")
     try:
@@ -2641,8 +2641,8 @@ def test_reenabling_a_managed_denied_server_reports_the_shadow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The save succeeds, and the user is told policy keeps the server off."""
-    from deepagents_code import mcp_disabled
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, '[mcp]\ndisabled_servers = ["github"]\n')
     try:
@@ -2659,8 +2659,8 @@ def test_reenabling_a_server_fails_closed_when_policy_is_unreadable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Re-enabling must not proceed while the deny list cannot be read."""
-    from deepagents_code import mcp_disabled
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_disabled
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     try:
@@ -2676,10 +2676,10 @@ def test_managed_sandbox_settings_survive_an_unusable_user_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sandbox selection is a containment boundary, so policy outlives a typo."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
-    from deepagents_code.integrations import sandbox_config
-    from deepagents_code.integrations.sandbox_config import SandboxConfig
+    from niki_agent import model_config
+    from niki_agent.configuration import service
+    from niki_agent.integrations import sandbox_config
+    from niki_agent.integrations.sandbox_config import SandboxConfig
 
     user = tmp_path / "config.toml"
     user.write_text("[broken", encoding="utf-8")
@@ -2712,8 +2712,8 @@ def test_a_failed_ui_write_reports_its_cause(
     logger that has no handler in the TUI outside debug mode, so a read-only home
     directory and a full disk produced the same message.
     """
-    from deepagents_code import app, model_config
-    from deepagents_code.configuration import service, writer
+    from niki_agent import app, model_config
+    from niki_agent.configuration import service, writer
 
     target = tmp_path / "config.toml"
     target.write_text("", encoding="utf-8")
@@ -2753,8 +2753,8 @@ def test_a_failed_mcp_toggle_reports_its_cause(
     reported "could not write <path>" and dropped "Permission denied", "No space
     left on device", and the missing-`tomli_w` case the writer catches.
     """
-    from deepagents_code import mcp_disabled
-    from deepagents_code.configuration import writer
+    from niki_agent import mcp_disabled
+    from niki_agent.configuration import writer
 
     target = tmp_path / "config.toml"
     target.write_text("", encoding="utf-8")
@@ -2785,8 +2785,8 @@ def test_both_layer_read_errors_are_reported(
     managed message overwrote the user one and a user with both problems was
     told about the managed file only.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("[broken", encoding="utf-8")
@@ -2819,8 +2819,8 @@ def test_thread_config_is_not_cached_while_the_user_config_is_broken(
     survived the user fixing `config.toml`, because nothing on the read path
     calls `invalidate_thread_config_cache`.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("[broken", encoding="utf-8")
@@ -2857,11 +2857,11 @@ def test_managed_auto_classifier_does_not_set_the_acp_incompatible_flag(
     already reads managed policy at top precedence, so the positive value needs
     no flag — the same reasoning the `startup.mode` block uses.
     """
-    from deepagents_code import main, model_config
-    from deepagents_code.config_manifest import (
+    from niki_agent import main, model_config
+    from niki_agent.config_manifest import (
         resolve_auto_classifier_model_with_source,
     )
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -2895,8 +2895,8 @@ def test_managed_default_model_replaces_the_cli_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A managed launch model must displace an explicit `--model`."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[models]\ndefault = "managed:model"\n', encoding="utf-8")
@@ -2916,8 +2916,8 @@ def test_managed_interpreter_ptc_clears_the_cli_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Managed PTC policy must prevent raw CLI forwarding to the server."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[interpreter]\nptc = ["read_file"]\n', encoding="utf-8")
@@ -2942,7 +2942,7 @@ def test_merge_provenance_reports_only_real_leaves() -> None:
     itself, claiming a table was a user-controlled leaf next to the managed
     leaves inside it.
     """
-    from deepagents_code.configuration.resolver import merge_toml_tables
+    from niki_agent.configuration.resolver import merge_toml_tables
 
     _, empty = merge_toml_tables(
         {},
@@ -2993,9 +2993,9 @@ def test_structured_resolution_matches_the_effective_merge(
     the resolver and `provenance` from the validated merge — a row could show
     the user's table as effective while claiming managed policy owned that leaf.
     """
-    from deepagents_code import model_config
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text(
@@ -3037,13 +3037,13 @@ def test_diagnostics_report_an_unenforceable_managed_policy(
     just refused that managed config was fine. `config` and `doctor` are exempt
     from the startup gate precisely so they can explain this.
     """
-    from deepagents_code.client.commands.config import (
+    from niki_agent.client.commands.config import (
         _MANAGED_PATH_LABEL,
         _config_path_status,
         _managed_health_warning,
     )
-    from deepagents_code.configuration import service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     managed = _managed_only(tmp_path, monkeypatch, '[startup]\nmode = "YOLO"\n')
     try:
@@ -3075,8 +3075,8 @@ def test_a_guessed_managed_path_is_not_a_clean_missing_file(
     table. The reason has to reach the status, and the status has to be
     unusable.
     """
-    from deepagents_code.configuration import paths, service
-    from deepagents_code.configuration.paths import ResolvedManagedPath
+    from niki_agent.configuration import paths, service
+    from niki_agent.configuration.paths import ResolvedManagedPath
 
     guessed = ResolvedManagedPath(
         Path("/nonexistent/managed.toml"), "registry unreadable"
@@ -3107,8 +3107,8 @@ def test_default_read_includes_policy_and_an_explicit_path_does_not(
     indistinguishable from a machine with no policy installed. Deriving it from
     `user_path` keeps that state out of reach of a keyword argument.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -3141,8 +3141,8 @@ async def test_unreadable_managed_policy_disables_every_mcp_server(
     import json
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code import mcp_tools
-    from deepagents_code.configuration import service
+    from niki_agent import mcp_tools
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     explicit = tmp_path / "mcp.json"
@@ -3176,8 +3176,8 @@ async def test_server_mode_refuses_to_build_a_graph_without_enforceable_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The server gate is a second entry point with the same duty as the CLI."""
-    from deepagents_code import server_graph
-    from deepagents_code.configuration import service
+    from niki_agent import server_graph
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     failures: list[BaseException] = []
@@ -3197,8 +3197,8 @@ def test_corrupt_managed_policy_fails_the_mcp_trust_lists_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An unreadable managed file must set `read_error`, keyed on its health."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[broken")
     try:
@@ -3217,8 +3217,8 @@ def test_loaded_config_cannot_mutate_the_shared_managed_snapshot(
     The managed snapshot is cached process-wide, so handing out a live sub-dict
     would let one caller's edit outlive its own read.
     """
-    from deepagents_code import model_config
-    from deepagents_code.configuration import service
+    from niki_agent import model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("[broken", encoding="utf-8")
@@ -3254,9 +3254,9 @@ def test_managed_yolo_switcher_removes_yolo_from_the_approval_cycle(
     `managed_toml_data={}` — as two auto-classifier readers deliberately are —
     would make enforcement a silent no-op with the fail-closed test still green.
     """
-    from deepagents_code import config, model_config
-    from deepagents_code.approval_mode import ApprovalMode, next_approval_mode
-    from deepagents_code.configuration import service
+    from niki_agent import config, model_config
+    from niki_agent.approval_mode import ApprovalMode, next_approval_mode
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[startup]\nyolo_switcher = false\n")
     model_config.DEFAULT_CONFIG_PATH.write_text(
@@ -3282,8 +3282,8 @@ def test_managed_langsmith_redaction_outranks_a_user_opt_out(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A managed `langsmith_redact = true` cannot be turned off locally."""
-    from deepagents_code import config, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import config, model_config
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[tracing]\nlangsmith_redact = true\n")
     model_config.DEFAULT_CONFIG_PATH.write_text(
@@ -3305,12 +3305,12 @@ def test_managed_ptc_acknowledgement_outranks_a_user_grant(
     This key decides whether the interpreter may call every tool
     programmatically, so a user value must never outrank policy.
     """
-    from deepagents_code import model_config
-    from deepagents_code.config_manifest import (
+    from niki_agent import model_config
+    from niki_agent.config_manifest import (
         get_option,
         load_config_toml,
     )
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     _managed_only(
         tmp_path,
@@ -3355,7 +3355,7 @@ def test_a_benign_managed_typo_still_launches(
 
     The value is still *reported*, so the administrator can find it.
     """
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, managed_toml)
     try:
@@ -3385,7 +3385,7 @@ def test_a_managed_scalar_cannot_replace_the_user_effort_by_model_table(
     `load_effort_for_model` then rejected the scalar and returned `None`,
     dropping the user's stored preference instead of leaving it effective.
     """
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, '[effort]\nby_model = "bad"\n')
     try:
@@ -3407,7 +3407,7 @@ def test_a_managed_scalar_cannot_replace_the_user_effort_table(
     read and written by `model_config` without one. A managed `effort = "bad"`
     was therefore accepted and replaced the user's entire table.
     """
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, 'effort = "bad"\n')
     try:
@@ -3427,7 +3427,7 @@ def test_every_managed_table_path_is_enforced() -> None:
     would silently stop being guarded — and a managed scalar would then replace
     the user's whole section instead of being rejected.
     """
-    from deepagents_code.configuration.service import (
+    from niki_agent.configuration.service import (
         MANAGED_TABLE_PATHS,
         managed_section_shape_violations,
     )
@@ -3457,7 +3457,7 @@ def test_the_writer_refuses_the_managed_path(
     held because no caller passed the path, which is not the same as being
     unable to.
     """
-    from deepagents_code.configuration import writer
+    from niki_agent.configuration import writer
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -3485,7 +3485,7 @@ def test_no_credential_option_reads_managed_policy() -> None:
     option ever gains `toml_keys`, that decision should be deliberate — the
     managed file is world-readable by design.
     """
-    from deepagents_code.config_manifest import get_config_options
+    from niki_agent.config_manifest import get_config_options
 
     with_toml_keys = [
         option.key
@@ -3508,7 +3508,7 @@ def test_a_missing_writer_dependency_leaks_no_descriptor(
     """
     import builtins
 
-    from deepagents_code.configuration import writer
+    from niki_agent.configuration import writer
 
     target = tmp_path / "config.toml"
     target.write_text("", encoding="utf-8")
@@ -3564,8 +3564,8 @@ def test_shell_allow_list_reads_the_user_toml_below_the_environment(
     It was env-only before this feature, and it grants shell auto-approval, so
     the new tier is a user-writable permission surface.
     """
-    from deepagents_code._env_vars import SHELL_ALLOW_LIST
-    from deepagents_code.config_manifest import get_option
+    from niki_agent._env_vars import SHELL_ALLOW_LIST
+    from niki_agent.config_manifest import get_option
 
     user = tmp_path / "config.toml"
     user.write_text(user_toml, encoding="utf-8")
@@ -3588,9 +3588,9 @@ def test_managed_shell_allow_list_outranks_a_shell_export(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An exported allow list cannot defeat the managed one."""
-    from deepagents_code._env_vars import SHELL_ALLOW_LIST
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
+    from niki_agent._env_vars import SHELL_ALLOW_LIST
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, '[shell]\nallow_list = ["ls"]\n')
     monkeypatch.setenv(SHELL_ALLOW_LIST, "all")
@@ -3609,9 +3609,9 @@ def test_empty_managed_shell_allow_list_is_a_lockdown(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """`allow_list = []` must remove every grant, not fall through to one."""
-    from deepagents_code._env_vars import SHELL_ALLOW_LIST
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
+    from niki_agent._env_vars import SHELL_ALLOW_LIST
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
 
     _managed_only(tmp_path, monkeypatch, "[shell]\nallow_list = []\n")
     monkeypatch.setenv(SHELL_ALLOW_LIST, "all")
@@ -3627,7 +3627,7 @@ def test_empty_managed_shell_allow_list_is_a_lockdown(
 
 def _reload_previous() -> dict[str, object]:
     """Return a `previous` mapping shaped like the reloadable settings."""
-    from deepagents_code.config import _RELOADABLE_FIELDS
+    from niki_agent.config import _RELOADABLE_FIELDS
 
     previous: dict[str, object] = dict.fromkeys(_RELOADABLE_FIELDS)
     previous["shell_allow_list"] = ["ls"]
@@ -3652,9 +3652,9 @@ def test_blocked_reload_keeps_policy_and_says_so(
     list to the user's env value. The empty change list also told the user
     nothing had happened.
     """
-    from deepagents_code._env_vars import SHELL_ALLOW_LIST
-    from deepagents_code.config import Credentials
-    from deepagents_code.configuration import service
+    from niki_agent._env_vars import SHELL_ALLOW_LIST
+    from niki_agent.config import Credentials
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(managed_toml, encoding="utf-8")
@@ -3679,8 +3679,8 @@ def test_managed_startup_mode_revokes_a_user_yolo_flag(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Managed policy outranks the `--yolo` flag it was written to forbid."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -3710,8 +3710,8 @@ def test_managed_auto_classifier_clears_the_cli_flag(
     without `--auto-approve`, and the fall-through resolver applies the managed
     value instead.
     """
-    from deepagents_code import config as config_module, main, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import config as config_module, main, model_config
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("", encoding="utf-8")
@@ -3722,7 +3722,7 @@ def test_managed_auto_classifier_clears_the_cli_flag(
     )
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", user)
     redirect_managed_config(monkeypatch, managed)
-    monkeypatch.delenv("DEEPAGENTS_CODE_AUTO_CLASSIFIER_MODEL", raising=False)
+    monkeypatch.delenv("NIKI_AUTO_CLASSIFIER_MODEL", raising=False)
     service.invalidate_config_sources()
     model_config.clear_caches()
     args = _managed_policy_args()
@@ -3746,9 +3746,9 @@ def test_managed_shell_allow_list_masks_the_cli_grant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A managed allow list must displace `--shell-allow-list all`."""
-    from deepagents_code import main
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[shell]\nallow_list = ["ls"]\n', encoding="utf-8")
@@ -3777,8 +3777,8 @@ def test_masked_cli_flag_warns_the_user(
     resolution loop cannot report it -- for a REPLACE option it breaks at the
     winning tier and never reaches the masked CLI entry.
     """
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -3808,10 +3808,10 @@ def test_config_command_reports_the_cli_tier() -> None:
     not see the CLI tier. It reported `default` for an option the current
     argv was setting.
     """
-    from deepagents_code.client.commands.config import _resolve
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration.provider import CliProvider
-    from deepagents_code.configuration.resolver import (
+    from niki_agent.client.commands.config import _resolve
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration.provider import CliProvider
+    from niki_agent.configuration.resolver import (
         install_cli_provider,
         reset_config_resolver,
     )
@@ -3842,10 +3842,10 @@ def test_rejected_cli_value_warns_the_user(
     bracket-shaped input must also stay literal instead of being parsed as
     Rich markup.
     """
-    from deepagents_code.config_manifest import get_option
-    from deepagents_code.configuration.provider import CliProvider
-    from deepagents_code.configuration.providers import TomlSnapshot
-    from deepagents_code.configuration.resolver import resolver_from_snapshots
+    from niki_agent.config_manifest import get_option
+    from niki_agent.configuration.provider import CliProvider
+    from niki_agent.configuration.providers import TomlSnapshot
+    from niki_agent.configuration.resolver import resolver_from_snapshots
 
     option = get_option("interpreter.ptc")
     assert option is not None
@@ -3872,9 +3872,9 @@ def test_managed_recursion_limit_masks_the_cli_flag(
     The parent resolves the full managed → CLI → env → TOML → default chain
     before serializing an explicit flag to the child server process.
     """
-    from deepagents_code import main
-    from deepagents_code.config_manifest import resolve_recursion_limit
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.config_manifest import resolve_recursion_limit
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text("[runtime]\nrecursion_limit = 500\n", encoding="utf-8")
@@ -3908,9 +3908,9 @@ def test_rejected_managed_limit_does_not_warn_about_the_honoured_flag(
     value. A false warning is worse than silence: it sends the user to their
     administrator about a non-problem.
     """
-    from deepagents_code import main
-    from deepagents_code.config_manifest import resolve_recursion_limit
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.config_manifest import resolve_recursion_limit
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     # Below `RECURSION_LIMIT_FLOOR`, so the managed tier is rejected and the
@@ -3938,9 +3938,9 @@ def test_cli_recursion_limit_outranks_user_toml(
     The launcher resolves and forwards an explicit flag so it survives the
     server subprocess boundary; only the managed tier masks it.
     """
-    from deepagents_code import main, model_config
-    from deepagents_code.config_manifest import resolve_recursion_limit
-    from deepagents_code.configuration import service
+    from niki_agent import main, model_config
+    from niki_agent.config_manifest import resolve_recursion_limit
+    from niki_agent.configuration import service
 
     user = tmp_path / "config.toml"
     user.write_text("[runtime]\nrecursion_limit = 42\n", encoding="utf-8")
@@ -3967,9 +3967,9 @@ def test_masked_recursion_limit_still_warns(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Deferring the warning must not silence a flag that genuinely lost."""
-    from deepagents_code import main
-    from deepagents_code.config_manifest import resolve_recursion_limit
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.config_manifest import resolve_recursion_limit
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text("[runtime]\nrecursion_limit = 500\n", encoding="utf-8")
@@ -3997,7 +3997,7 @@ def test_disabled_server_write_recomputes_inside_the_lock(
     The writer recomputes the deny set from the table it parses inside the
     lock, so a disable that landed after the caller's read still survives.
     """
-    from deepagents_code import mcp_disabled
+    from niki_agent import mcp_disabled
 
     config_path = tmp_path / "config.toml"
     config_path.write_text('[mcp]\ndisabled_servers = ["a"]\n', encoding="utf-8")
@@ -4021,8 +4021,8 @@ def test_startup_gate_exits_78_on_unusable_managed_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Every gated command must stop rather than run with policy unenforced."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     managed = tmp_path / "managed.toml"
     managed.write_text("[broken", encoding="utf-8")
@@ -4041,8 +4041,8 @@ def test_startup_gate_accepts_a_missing_managed_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A missing file applies no policy and must not block any command."""
-    from deepagents_code import main
-    from deepagents_code.configuration import service
+    from niki_agent import main
+    from niki_agent.configuration import service
 
     redirect_managed_config(monkeypatch, tmp_path / "absent.toml")
     service.invalidate_config_sources()
@@ -4062,7 +4062,7 @@ def _remote_snapshot(
     Returns:
         The snapshot the remote provider produced.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: int) -> _RemoteResponse:
@@ -4239,7 +4239,7 @@ def test_remote_toml_provider_bounds_a_real_http_response(
     import socket as socket_module
     from http.client import HTTPResponse
 
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     body = b'[startup]\nmode = "manual"\n'
     server, client = socket_module.socketpair()
@@ -4279,7 +4279,7 @@ def test_remote_toml_provider_rejects_transfer_encoding_http_client_does_not_dec
     import socket as socket_module
     from http.client import HTTPResponse
 
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     body = b'[startup]\nmode = "manual"\n'
     server, client = socket_module.socketpair()
@@ -4357,7 +4357,7 @@ def test_remote_policy_violation_names_the_url_not_the_trust_anchor(
     be applied. The local anchor holds only a URL, so telling the administrator
     to correct the value there names a file with no such key.
     """
-    from deepagents_code.configuration import providers, service
+    from niki_agent.configuration import providers, service
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -4393,8 +4393,8 @@ def test_managed_refresh_does_not_hold_the_snapshot_lock(
     Textual event loop. Offloading the fetch to a worker thread is pointless if
     the loop then waits on `_snapshot_lock` for the same five seconds.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -4449,8 +4449,8 @@ def test_config_write_refresh_does_not_hold_the_resolver_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A remote refresh after a user write cannot block resolver reads."""
-    from deepagents_code import model_config
-    from deepagents_code.configuration import (
+    from niki_agent import model_config
+    from niki_agent.configuration import (
         resolver as resolver_module,
         service,
         writer,
@@ -4516,8 +4516,8 @@ def test_invalidation_bars_an_in_flight_load_from_republishing(
     with the generation the caller deliberately discarded, and the process
     would silently resume enforcing it.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -4567,8 +4567,8 @@ def test_earlier_load_publishes_when_a_later_one_fails(
     re-fetching, and two readers moments apart disagreeing about whether
     policy is enforced at all.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -4637,8 +4637,8 @@ def test_stale_refresh_cannot_overwrite_a_newer_published_snapshot(
     publishing it would resume enforcing policy the administrator already
     replaced — including permissions the newer generation revoked.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -4694,8 +4694,8 @@ def test_newer_refresh_publishes_after_older_refresh_finishes_first(
     newer result must remain eligible to replace it when that fetch finishes;
     otherwise revoked permissions stay active until another reload.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -4765,8 +4765,8 @@ def test_stale_refresh_failure_cannot_overwrite_newer_health(
     policy as a stale refresh. Failure publication follows the same ticket
     ordering as snapshot publication.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import ProviderStatus, TomlSnapshot
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import ProviderStatus, TomlSnapshot
 
     managed = tmp_path / "managed.toml"
     managed.write_text('[startup]\nmode = "manual"\n', encoding="utf-8")
@@ -4852,7 +4852,7 @@ def test_remote_read_failure_names_its_cause(
     able to tell it apart from the network being down. The class name is a
     type, not server output, so it carries no untrusted text.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     class Opener:
         def open(self, _request: object, *, timeout: int) -> _RemoteResponse:
@@ -4916,7 +4916,7 @@ def test_remote_toml_provider_stops_a_body_dripped_past_the_deadline(
     reads to completion well past five seconds, and the partial policy it
     delivers parses.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     clock = _FakeClock()
 
@@ -4961,7 +4961,7 @@ def test_remote_toml_provider_closes_a_response_that_lands_at_the_deadline(
     fails earlier while computing the connect timeout. Here the response
     exists, so it must also be released rather than leaked.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     clock = _FakeClock()
     response = _RemoteResponse(b'[startup]\nmode = "manual"\n')
@@ -5010,7 +5010,7 @@ def test_remote_toml_provider_sanitizes_a_hostile_media_type(
     sequence could rewrite the surrounding report and an unbounded value could
     bury it.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     response = _RemoteResponse(b'[startup]\nmode = "manual"\n')
     response.headers["Content-Type"] = media_type
@@ -5045,7 +5045,7 @@ def test_remote_toml_provider_releases_its_slot_when_no_worker_can_start(
     the process: every later fetch would be refused even after threads freed
     up.
     """
-    from deepagents_code.configuration import providers
+    from niki_agent.configuration import providers
 
     real_start = Thread.start
     fail_start = True
@@ -5093,8 +5093,8 @@ def test_doctor_keeps_a_rejected_remote_url_out_of_its_row(
     tickets. `remote_source` stays unset for a rejected URL, so the row falls
     back to naming the descriptor file.
     """
-    from deepagents_code.configuration import service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -5126,8 +5126,8 @@ def test_doctor_reports_a_failed_refresh_behind_a_served_generation(
     failed refresh needs its own clause: `logger.warning` cannot reach a
     terminal here, because the package installs its own handler at import time.
     """
-    from deepagents_code.configuration import providers, service
-    from deepagents_code.doctor import _managed_config_diagnostic
+    from niki_agent.configuration import providers, service
+    from niki_agent.doctor import _managed_config_diagnostic
 
     managed = tmp_path / "managed.toml"
     managed.write_text(
@@ -5176,7 +5176,7 @@ def test_provider_status_rejects_an_unvalidated_remote_source() -> None:
     construction site that skipped `_validate_remote_url` would put a rejected
     source -- credentials and all -- into a `doctor` row.
     """
-    from deepagents_code.configuration.types import (
+    from niki_agent.configuration.types import (
         REMOTE_SOURCE_MAX_CHARS,
         ProviderStatus,
     )
@@ -5221,7 +5221,7 @@ def test_provider_status_accepts_at_sign_in_the_url_path() -> None:
     raise here for a descriptor that validated and fetched, turning startup
     into a traceback instead of a health report.
     """
-    from deepagents_code.configuration.types import ProviderStatus
+    from niki_agent.configuration.types import ProviderStatus
 
     source = "https://config.example.com/policy@v1.toml"
     status = ProviderStatus(
@@ -5238,7 +5238,7 @@ def test_remote_source_longer_than_the_bound_is_rejected(
     tmp_path: Path,
 ) -> None:
     """An unbounded source would be the one unbounded string on this path."""
-    from deepagents_code.configuration.types import REMOTE_SOURCE_MAX_CHARS
+    from niki_agent.configuration.types import REMOTE_SOURCE_MAX_CHARS
 
     source = "https://config.example.com/" + "a" * REMOTE_SOURCE_MAX_CHARS
     snapshot = RemoteTomlProvider(

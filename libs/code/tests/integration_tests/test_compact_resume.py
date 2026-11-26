@@ -17,7 +17,7 @@ def _write_model_config(home_dir: Path) -> None:
     (config_dir / "config.toml").write_text(
         """
 [models.providers.itest]
-class_path = "deepagents_code._testing_models:DeterministicIntegrationChatModel"
+class_path = "niki_agent._testing_models:DeterministicIntegrationChatModel"
 models = ["fake"]
 """.strip()
         + "\n"
@@ -35,7 +35,7 @@ def _build_long_prompt(turn: int) -> str:
 
 async def _run_turn(agent, *, thread_id: str, assistant_id: str, prompt: str) -> None:
     """Execute one real remote agent turn and drain the stream to completion."""
-    from deepagents_code.config import build_stream_config
+    from niki_agent.config import build_stream_config
 
     config = build_stream_config(thread_id, assistant_id)
     stream_input = {"messages": [{"role": "user", "content": prompt}]}
@@ -136,17 +136,17 @@ async def test_compact_resumed_thread_uses_persisted_history(
 
     # Keep config and the global sessions DB fully test-local.
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     monkeypatch.chdir(project_dir)
 
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.client.launch.server_manager import server_session
-    from deepagents_code.config import create_model
-    from deepagents_code.sessions import generate_thread_id
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent import model_config
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.client.launch.server_manager import server_session
+    from niki_agent.config import create_model
+    from niki_agent.sessions import generate_thread_id
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
     config_path = home_dir / ".deepagents" / "config.toml"
     # Some tests import `model_config` earlier in the session, so override the

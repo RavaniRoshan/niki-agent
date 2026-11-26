@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from deepagents_code import model_config
-from deepagents_code._paths import _capture_paths
+from niki_agent import model_config
+from niki_agent._paths import _capture_paths
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Generator, Sequence
@@ -31,11 +31,11 @@ if TYPE_CHECKING:
     from mcp.types import Tool
 
 
-from deepagents_code.mcp_auth import FileTokenStorage, MCPReauthRequiredError
-from deepagents_code.mcp_middleware import (
+from niki_agent.mcp_auth import FileTokenStorage, MCPReauthRequiredError
+from niki_agent.mcp_middleware import (
     normalize_mcp_arguments as _normalize_mcp_arguments,
 )
-from deepagents_code.mcp_tools import (
+from niki_agent.mcp_tools import (
     _MCP_TOOL_NAME_MAX_LENGTH,
     DiscoveredMCPConfig,
     MCPConfigError,
@@ -63,7 +63,7 @@ from deepagents_code.mcp_tools import (
     load_merged_mcp_configs_lenient,
     resolve_and_load_mcp_tools,
 )
-from deepagents_code.project_utils import ProjectContext
+from niki_agent.project_utils import ProjectContext
 
 
 def _set_profile_root(
@@ -77,8 +77,8 @@ def _set_profile_root(
     general-purpose version.
     """
     snapshot = _capture_paths(str(root), launch_home=launch_home)
-    monkeypatch.setattr("deepagents_code._paths.PATHS", snapshot)
-    monkeypatch.setattr("deepagents_code.mcp_tools.PATHS", snapshot)
+    monkeypatch.setattr("niki_agent._paths.PATHS", snapshot)
+    monkeypatch.setattr("niki_agent.mcp_tools.PATHS", snapshot)
 
 
 def _raise_oserror() -> Path:
@@ -119,7 +119,7 @@ def _sole_mcp_failure_warning(
     records = [
         record
         for record in caplog.records
-        if record.name == "deepagents_code.mcp_tools"
+        if record.name == "niki_agent.mcp_tools"
         and record.levelno == logging.WARNING
         and detail in record.getMessage()
     ]
@@ -169,7 +169,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake))
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR",
+        "niki_agent.model_config.DEFAULT_STATE_DIR",
         fake / ".deepagents" / ".state",
     )
     return fake
@@ -258,7 +258,7 @@ def mcp_servers() -> Generator[MCPServerRegistry]:
     """Route every transport the loader builds at an in-memory server."""
     from fastmcp.client.transports import FastMCPTransport
 
-    from deepagents_code import mcp_tools as module
+    from niki_agent import mcp_tools as module
 
     registry = MCPServerRegistry()
     real_build = module._build_transport
@@ -566,7 +566,7 @@ async def test_remote_transport_loading(
     """Aliases, precedence, and URL inference survive real transport validation."""
     from fastmcp.client.transports import SSETransport, StreamableHttpTransport
 
-    from deepagents_code.mcp_tools import _resolve_server_type
+    from niki_agent.mcp_tools import _resolve_server_type
 
     config = {**declaration, "url": f"https://example.com/{endpoint}"}
     original = config.copy()
@@ -575,7 +575,7 @@ async def test_remote_transport_loading(
     )
     assert config == original
     mcp_servers.register("api", "search")
-    with patch("deepagents_code.mcp_tools._check_remote_server"):
+    with patch("niki_agent.mcp_tools._check_remote_server"):
         tools, manager, _ = await get_mcp_tools(
             write_config({"mcpServers": {"api": config}})
         )
@@ -836,7 +836,7 @@ class TestLoadMCPConfig:
         self, write_config: Callable[..., str]
     ) -> None:
         """`streamable_http` and `streamable-http` normalize to `http`."""
-        from deepagents_code.mcp_tools import _resolve_server_type
+        from niki_agent.mcp_tools import _resolve_server_type
 
         assert (
             _resolve_server_type({"transport": "streamable_http", "url": "https://x"})
@@ -897,8 +897,8 @@ class TestLoadMcpConfigLenient:
         this pins that both pick the same winning definition — otherwise a saved
         approval would silently re-prompt forever.
         """
-        from deepagents_code import model_config
-        from deepagents_code.mcp_tools import (
+        from niki_agent import model_config
+        from niki_agent.mcp_tools import (
             _load_mcp_config_top_level_with_error,
             _merge_mcp_configs_with_sources,
         )
@@ -960,9 +960,9 @@ class TestGetMCPTools:
     def _bypass_health_checks(self) -> Generator[None]:
         """Bypass pre-flight health checks for tests in this class."""
         with (
-            patch("deepagents_code.mcp_tools._check_stdio_server"),
+            patch("niki_agent.mcp_tools._check_stdio_server"),
             patch(
-                "deepagents_code.mcp_tools._check_remote_server",
+                "niki_agent.mcp_tools._check_remote_server",
                 new_callable=AsyncMock,
             ),
         ):
@@ -1059,8 +1059,8 @@ class TestGetMCPTools:
         assert len(tools[0].name) == _MCP_TOOL_NAME_MAX_LENGTH
         metadata = tools[0].metadata
         assert metadata is not None
-        assert metadata["_deepagents_code_mcp_server"] == server_name
-        assert metadata["_deepagents_code_mcp_tool"] == original_name
+        assert metadata["_niki_agent_mcp_server"] == server_name
+        assert metadata["_niki_agent_mcp_tool"] == original_name
 
     @pytest.mark.parametrize("reverse", [False, True])
     @pytest.mark.parametrize(
@@ -1090,9 +1090,9 @@ class TestGetMCPTools:
             surviving = next(
                 tool
                 for tool in tools
-                if (tool.metadata or {}).get("_deepagents_code_mcp_server") == "a_b"
+                if (tool.metadata or {}).get("_niki_agent_mcp_server") == "a_b"
             )
-            assert (surviving.metadata or {})["_deepagents_code_mcp_tool"] == "read"
+            assert (surviving.metadata or {})["_niki_agent_mcp_tool"] == "read"
             await surviving.ainvoke({})
             assert allowed.calls == ["read"]
             assert blocked.calls == []
@@ -1119,8 +1119,8 @@ class TestGetMCPTools:
             for tool in tools:
                 assert len(tool.name) <= _MCP_TOOL_NAME_MAX_LENGTH
                 metadata = tool.metadata or {}
-                owner = metadata["_deepagents_code_mcp_server"]
-                original = metadata["_deepagents_code_mcp_tool"]
+                owner = metadata["_niki_agent_mcp_server"]
+                original = metadata["_niki_agent_mcp_tool"]
                 first.calls.clear()
                 second.calls.clear()
                 await tool.ainvoke({})
@@ -1146,7 +1146,7 @@ class TestGetMCPTools:
             exported_name = next(
                 tool.name
                 for tool in tools
-                if (tool.metadata or {}).get("_deepagents_code_mcp_tool") == "read"
+                if (tool.metadata or {}).get("_niki_agent_mcp_tool") == "read"
             )
         finally:
             await manager.cleanup()
@@ -1154,9 +1154,9 @@ class TestGetMCPTools:
         tools, manager, _ = await _load_tools_from_config(config, stateless=stateless)
         try:
             originals = {
-                (tool.metadata or {})["_deepagents_code_mcp_tool"]
+                (tool.metadata or {})["_niki_agent_mcp_tool"]
                 for tool in tools
-                if (tool.metadata or {}).get("_deepagents_code_mcp_server") == "a_b"
+                if (tool.metadata or {}).get("_niki_agent_mcp_server") == "a_b"
             }
             assert originals == (
                 {"read"} if filter_field == "allowedTools" else {"read_1"}
@@ -1221,7 +1221,7 @@ class TestGetMCPTools:
         # `srv` is configured but deliberately left unregistered, so reaching it
         # fails the way an unreachable server does.
         assert "srv" not in mcp_servers.servers
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.mcp_tools")
 
         tools, manager, server_infos = await get_mcp_tools(path)
 
@@ -1235,7 +1235,7 @@ class TestGetMCPTools:
         assert any(
             record.exc_info is not None
             for record in caplog.records
-            if record.name == "deepagents_code.mcp_tools"
+            if record.name == "niki_agent.mcp_tools"
         )
         await manager.cleanup()
 
@@ -1247,7 +1247,7 @@ class TestGetMCPTools:
         path = write_config({"mcpServers": {"srv": {"command": "missing", "args": []}}})
 
         with patch(
-            "deepagents_code.mcp_tools._check_stdio_server",
+            "niki_agent.mcp_tools._check_stdio_server",
             side_effect=RuntimeError("command missing"),
         ):
             tools, manager, server_infos = await get_mcp_tools(path)
@@ -1306,7 +1306,7 @@ class TestGetMCPTools:
         mcp_servers.register("srv", "read_file")
 
         with patch(
-            "deepagents_code.mcp_tools._check_stdio_server",
+            "niki_agent.mcp_tools._check_stdio_server",
             side_effect=lambda _name, server: checked.append(server),
         ):
             _tools, manager, _infos = await _load_tools_from_config(config)
@@ -1552,7 +1552,7 @@ def _failing_backend(error: BaseException) -> Any:  # noqa: ANN401
     def _build(*_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
         return _FailingTransport()
 
-    return patch("deepagents_code.mcp_tools._build_transport", _build)
+    return patch("niki_agent.mcp_tools._build_transport", _build)
 
 
 class TestLoadToolsFromConfigOAuth:
@@ -1562,7 +1562,7 @@ class TestLoadToolsFromConfigOAuth:
     def _bypass_health_checks(self) -> Generator[None]:
         """Bypass remote health checks for tests in this class."""
         with patch(
-            "deepagents_code.mcp_tools._check_remote_server",
+            "niki_agent.mcp_tools._check_remote_server",
             new_callable=AsyncMock,
         ):
             yield
@@ -1638,7 +1638,7 @@ class TestLoadToolsFromConfigOAuth:
         msg = "discovery failed"
         failure = ExceptionGroup(msg, [MCPReauthRequiredError("notion")])
 
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.mcp_tools")
 
         with _failing_backend(failure):
             config = {
@@ -1664,9 +1664,7 @@ class TestLoadToolsFromConfigOAuth:
         assert "debug logs" not in error
         assert "redacted" not in error
         mcp_records = [
-            record
-            for record in caplog.records
-            if record.name == "deepagents_code.mcp_tools"
+            record for record in caplog.records if record.name == "niki_agent.mcp_tools"
         ]
         warning_records = [
             record for record in mcp_records if record.levelno == logging.WARNING
@@ -1779,7 +1777,7 @@ class TestLoadToolsFromConfigOAuth:
         )
         challenge = httpx.HTTPStatusError("boom", request=request, response=response)
 
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.mcp_tools")
 
         with _failing_backend(challenge):
             config = {
@@ -1799,9 +1797,7 @@ class TestLoadToolsFromConfigOAuth:
         # A recognized 401 challenge is expected: no branch should dump the full
         # challenge traceback (at DEBUG or WARNING), only concise lines.
         mcp_records = [
-            record
-            for record in caplog.records
-            if record.name == "deepagents_code.mcp_tools"
+            record for record in caplog.records if record.name == "niki_agent.mcp_tools"
         ]
         # The breadcrumb must be present AND carry its diagnostic payload — the
         # classified exception's type name (via `format_login_failure`) — so
@@ -1905,8 +1901,8 @@ class TestLoadToolsFromConfigOAuth:
 class TestResolveAndLoadMcpTools:
     """Test the unified resolve-and-load entrypoint."""
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_explicit_path_merges_with_discovery(
         self,
         mock_discover: MagicMock,
@@ -1936,8 +1932,8 @@ class TestResolveAndLoadMcpTools:
         assert "fs" in merged["mcpServers"]
         assert "search" in merged["mcpServers"]
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_malformed_project_config_without_summaries_is_nonfatal(
         self,
         mock_discover: MagicMock,
@@ -1966,8 +1962,8 @@ class TestResolveAndLoadMcpTools:
         assert infos[0].status == "error"
         assert "must be a dictionary" in (infos[0].error or "")
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_untrusted_project_remote_dropped_when_flag_false(
         self,
         mock_discover: MagicMock,
@@ -2004,17 +2000,15 @@ class TestResolveAndLoadMcpTools:
         ]
         mock_load.return_value = ([], None, [])
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         monkeypatch.delenv(
             model_config._env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
             raising=False,
         )
-        monkeypatch.delenv(
-            "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS", raising=False
-        )
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_tools")
+        monkeypatch.delenv("NIKI_DISABLED_PROJECT_MCP_SERVERS", raising=False)
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_tools")
 
         tools, _manager, _infos = await resolve_and_load_mcp_tools(
             trust_project_mcp=False,
@@ -2027,8 +2021,8 @@ class TestResolveAndLoadMcpTools:
         assert "- docs-langchain [http]: https://docs.langchain.com/mcp" in caplog.text
         assert "; docs-langchain" not in caplog.text
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_untrusted_project_remote_dropped_without_trust_flag(
         self,
         mock_discover: MagicMock,
@@ -2058,8 +2052,8 @@ class TestResolveAndLoadMcpTools:
 
         assert mock_load.call_count == 0
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_trusted_project_remote_passes_through(
         self,
         mock_discover: MagicMock,
@@ -2090,8 +2084,8 @@ class TestResolveAndLoadMcpTools:
         merged = mock_load.call_args.args[0]
         assert "remote" in merged["mcpServers"]
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_disabled_server_is_split_off(
         self,
         mock_discover: MagicMock,
@@ -2116,7 +2110,7 @@ class TestResolveAndLoadMcpTools:
         ]
         mock_load.return_value = ([], None, [])
         monkeypatch.setattr(
-            "deepagents_code.mcp_disabled.get_disabled_servers",
+            "niki_agent.mcp_disabled.get_disabled_servers",
             lambda *_a, **_k: {"off"},
         )
 
@@ -2132,8 +2126,8 @@ class TestResolveAndLoadMcpTools:
         assert disabled[0].name == "off"
         assert disabled[0].transport == "stdio"
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_all_servers_disabled_short_circuits_loader(
         self,
         mock_discover: MagicMock,
@@ -2153,7 +2147,7 @@ class TestResolveAndLoadMcpTools:
         ]
         mock_load.return_value = ([], None, [])
         monkeypatch.setattr(
-            "deepagents_code.mcp_disabled.get_disabled_servers",
+            "niki_agent.mcp_disabled.get_disabled_servers",
             lambda *_a, **_k: {"fs"},
         )
 
@@ -2166,8 +2160,8 @@ class TestResolveAndLoadMcpTools:
         assert mock_load.call_count == 0
         assert [i.name for i in infos if i.status == "disabled"] == ["fs"]
 
-    @patch("deepagents_code.mcp_tools._load_tools_from_config")
-    @patch("deepagents_code.mcp_tools.discover_mcp_config_sources")
+    @patch("niki_agent.mcp_tools._load_tools_from_config")
+    @patch("niki_agent.mcp_tools.discover_mcp_config_sources")
     async def test_disabled_non_dict_config_gets_unknown_transport(
         self,
         mock_discover: MagicMock,
@@ -2188,11 +2182,11 @@ class TestResolveAndLoadMcpTools:
         ]
         mock_load.return_value = ([], None, [])
         monkeypatch.setattr(
-            "deepagents_code.mcp_disabled.get_disabled_servers",
+            "niki_agent.mcp_disabled.get_disabled_servers",
             lambda *_a, **_k: {"weird"},
         )
         monkeypatch.setattr(
-            "deepagents_code.mcp_tools.merge_mcp_configs",
+            "niki_agent.mcp_tools.merge_mcp_configs",
             lambda _configs: {"mcpServers": {"weird": "not-a-dict"}},
         )
 
@@ -2293,7 +2287,7 @@ class TestHealthChecks:
             return None
 
         with patch(
-            "deepagents_code.mcp_tools.shutil.which",
+            "niki_agent.mcp_tools.shutil.which",
             side_effect=_record_missing_command,
         ):
             tools, manager, server_infos = await get_mcp_tools(path)
@@ -2323,7 +2317,7 @@ class TestHealthChecks:
         client.head.side_effect = httpx.InvalidURL(f"invalid URL containing {secret}")
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=False)
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_tools")
 
         with patch("httpx.AsyncClient", return_value=client):
             tools, manager, infos = await _load_tools_from_config(
@@ -2375,10 +2369,10 @@ class TestHealthChecks:
             raise discovery_error
             yield
 
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.mcp_tools")
         with (
             patch(
-                "deepagents_code.mcp_tools._check_remote_server",
+                "niki_agent.mcp_tools._check_remote_server",
                 new_callable=AsyncMock,
             ),
             patch(
@@ -2426,14 +2420,14 @@ class TestHealthChecks:
         storage.get_tokens = AsyncMock(
             side_effect=RuntimeError(f"token store failure for {secret}")
         )
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.mcp_tools")
 
         with (
             patch(
-                "deepagents_code.mcp_tools._check_remote_server",
+                "niki_agent.mcp_tools._check_remote_server",
                 new_callable=AsyncMock,
             ),
-            patch("deepagents_code.mcp_auth.FileTokenStorage", return_value=storage),
+            patch("niki_agent.mcp_auth.FileTokenStorage", return_value=storage),
         ):
             tools, manager, infos = await _load_tools_from_config(
                 {
@@ -2464,9 +2458,9 @@ class TestHealthChecks:
         """Expanded commands never reach status or warning text."""
         secret = "command-token-must-not-leak"
         monkeypatch.setenv("MCP_COMMAND", secret)
-        caplog.set_level(logging.WARNING, logger="deepagents_code.mcp_tools")
+        caplog.set_level(logging.WARNING, logger="niki_agent.mcp_tools")
 
-        with patch("deepagents_code.mcp_tools.shutil.which", return_value=None):
+        with patch("niki_agent.mcp_tools.shutil.which", return_value=None):
             tools, manager, infos = await _load_tools_from_config(
                 {"mcpServers": {"stdio": {"command": "${MCP_COMMAND}"}}}
             )
@@ -2487,9 +2481,9 @@ class TestToolOrdering:
     def _bypass_health_checks(self) -> Generator[None]:
         """Bypass health checks for ordering tests."""
         with (
-            patch("deepagents_code.mcp_tools._check_stdio_server"),
+            patch("niki_agent.mcp_tools._check_stdio_server"),
             patch(
-                "deepagents_code.mcp_tools._check_remote_server",
+                "niki_agent.mcp_tools._check_remote_server",
                 new_callable=AsyncMock,
             ),
         ):
@@ -2521,7 +2515,7 @@ class TestLoadToolsConcurrency:
     @pytest.fixture(autouse=True)
     def _bypass_stdio_health_check(self) -> Generator[None]:
         """Bypass stdio pre-flight so tests focus on discovery concurrency."""
-        with patch("deepagents_code.mcp_tools._check_stdio_server"):
+        with patch("niki_agent.mcp_tools._check_stdio_server"):
             yield
 
     @staticmethod
@@ -2561,7 +2555,7 @@ class TestLoadToolsConcurrency:
         there is no per-server discovery fan-out left to bound.
         """
         monkeypatch.setattr(
-            "deepagents_code.mcp_tools._MCP_LOAD_CONCURRENCY", 2, raising=True
+            "niki_agent.mcp_tools._MCP_LOAD_CONCURRENCY", 2, raising=True
         )
         names = ["s1", "s2", "s3", "s4", "s5"]
         for name in names:
@@ -2580,7 +2574,7 @@ class TestLoadToolsConcurrency:
             with stats_lock:
                 stats["inflight"] -= 1
 
-        with patch("deepagents_code.mcp_tools._check_stdio_server", _slow_check):
+        with patch("niki_agent.mcp_tools._check_stdio_server", _slow_check):
             tools, manager, infos = await _load_tools_from_config(self._config(*names))
 
         assert stats["max_inflight"] == 2
@@ -2616,7 +2610,7 @@ class TestLoadToolsConcurrency:
                 finish_order.append(server_name)
             finished[server_name].set()
 
-        with patch("deepagents_code.mcp_tools._check_stdio_server", _check):
+        with patch("niki_agent.mcp_tools._check_stdio_server", _check):
             tools, manager, infos = await _load_tools_from_config(self._config(*names))
 
         assert finish_order == ["third", "second", "first"]
@@ -2680,7 +2674,7 @@ class TestLoadToolsConcurrency:
                 raise RuntimeError(msg)
             time.sleep(delays[name])
 
-        with patch("deepagents_code.mcp_tools._check_stdio_server", _check):
+        with patch("niki_agent.mcp_tools._check_stdio_server", _check):
             tools, manager, infos = await _load_tools_from_config(self._config(*names))
 
         by_name = {i.name: i for i in infos}
@@ -2706,7 +2700,7 @@ class TestLoadToolsConcurrency:
             msg = "nope"
             raise RuntimeError(msg)
 
-        with patch("deepagents_code.mcp_tools._check_stdio_server", _check):
+        with patch("niki_agent.mcp_tools._check_stdio_server", _check):
             tools, manager, infos = await _load_tools_from_config(self._config(*names))
 
         assert tools == []
@@ -2739,7 +2733,7 @@ class TestLoadToolsConcurrency:
                 raise RuntimeError(msg)
             return server_tools
 
-        with patch("deepagents_code.mcp_tools._apply_tool_filter", _filter):
+        with patch("niki_agent.mcp_tools._apply_tool_filter", _filter):
             tools, manager, infos = await _load_tools_from_config(self._config(*names))
 
         by_name = {i.name: i for i in infos}
@@ -2798,7 +2792,7 @@ class TestLoadToolsConcurrency:
 
         with (
             patch(
-                "deepagents_code.mcp_tools._build_mcp_tool",
+                "niki_agent.mcp_tools._build_mcp_tool",
                 AsyncMock(side_effect=asyncio.CancelledError),
             ),
             pytest.raises(asyncio.CancelledError),
@@ -2833,7 +2827,7 @@ class TestLoadToolsConcurrency:
             }
         }
         with (
-            patch("deepagents_code.mcp_tools._check_remote_server", _check),
+            patch("niki_agent.mcp_tools._check_remote_server", _check),
             pytest.raises(asyncio.CancelledError),
         ):
             await _load_tools_from_config(config)
@@ -2874,7 +2868,7 @@ class TestLoadToolsConcurrency:
                 await asyncio.sleep(0.005)
             barrier.set()
 
-        with patch("deepagents_code.mcp_tools._check_stdio_server", _slow_check):
+        with patch("niki_agent.mcp_tools._check_stdio_server", _slow_check):
             releaser = asyncio.create_task(_release())
             _tools, manager, infos = await _load_tools_from_config(self._config(*names))
             await releaser
@@ -2891,17 +2885,17 @@ class TestLoadToolsConcurrency:
         """Warmup eagerly imports every module used later on the event loop."""
         import langchain
 
-        import deepagents_code
+        import niki_agent
 
         # The adapter layer is now `langchain.mcp`; the warmed set follows what
         # `_warm_mcp_adapter_imports` actually imports.
         module_names = {
-            "deepagents_code.mcp_auth",
+            "niki_agent.mcp_auth",
             "langchain.mcp",
         }
         for module_name in module_names:
             monkeypatch.delitem(sys.modules, module_name, raising=False)
-        monkeypatch.delattr(deepagents_code, "mcp_auth", raising=False)
+        monkeypatch.delattr(niki_agent, "mcp_auth", raising=False)
         monkeypatch.delattr(langchain, "mcp", raising=False)
 
         _warm_mcp_adapter_imports()
@@ -2922,10 +2916,10 @@ class TestLoadToolsConcurrency:
         """
         import builtins
 
-        import deepagents_code
+        import niki_agent
 
-        monkeypatch.delitem(sys.modules, "deepagents_code.mcp_auth", raising=False)
-        monkeypatch.delattr(deepagents_code, "mcp_auth", raising=False)
+        monkeypatch.delitem(sys.modules, "niki_agent.mcp_auth", raising=False)
+        monkeypatch.delattr(niki_agent, "mcp_auth", raising=False)
 
         original_import = builtins.__import__
 
@@ -2936,9 +2930,9 @@ class TestLoadToolsConcurrency:
             fromlist: tuple[str, ...] = (),
             level: int = 0,
         ) -> ModuleType:
-            cold_auth_import = "deepagents_code.mcp_auth" not in sys.modules and (
-                name == "deepagents_code.mcp_auth"
-                or (name == "deepagents_code" and "mcp_auth" in fromlist)
+            cold_auth_import = "niki_agent.mcp_auth" not in sys.modules and (
+                name == "niki_agent.mcp_auth"
+                or (name == "niki_agent" and "mcp_auth" in fromlist)
             )
             if cold_auth_import:
                 msg = "simulated broken mcp_auth import"
@@ -2947,10 +2941,10 @@ class TestLoadToolsConcurrency:
 
         monkeypatch.setattr(builtins, "__import__", _failing_auth_import)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.mcp_tools"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.mcp_tools"):
             _warm_mcp_adapter_imports()  # must not raise
 
-        assert "deepagents_code.mcp_auth" not in sys.modules
+        assert "niki_agent.mcp_auth" not in sys.modules
         assert any(
             "Failed to warm mcp_auth import" in record.getMessage()
             for record in caplog.records
@@ -2968,7 +2962,7 @@ class TestLoadToolsConcurrency:
         def _warm() -> None:
             events.append(("warm", threading.get_ident()))
 
-        with patch("deepagents_code.mcp_tools._warm_mcp_adapter_imports", _warm):
+        with patch("niki_agent.mcp_tools._warm_mcp_adapter_imports", _warm):
             tools, manager, _infos = await _load_tools_from_config(self._config("only"))
 
         assert events[0][0] == "warm"
@@ -3034,7 +3028,7 @@ class TestGatherBounded:
             return _run
 
         with (
-            caplog.at_level(logging.DEBUG, logger="deepagents_code.mcp_tools"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent.mcp_tools"),
             pytest.raises(RuntimeError),
         ):
             await _gather_bounded(
@@ -3065,7 +3059,7 @@ class TestApplyToolFilter:
 
     def test_allowed_matches_original_name_after_truncation(self) -> None:
         tool = _make_prefixed_tool("server_" + "a" * 44 + "_0123456789ab")
-        tool.metadata = {"_deepagents_code_mcp_tool": "read_file"}
+        tool.metadata = {"_niki_agent_mcp_tool": "read_file"}
 
         result = _apply_tool_filter(
             [tool], "server", {"command": "node", "allowedTools": ["read_*"]}
@@ -3080,8 +3074,8 @@ class TestToolFilterEndToEnd:
     @pytest.fixture(autouse=True)
     def _bypass_health_checks(self) -> Generator[None]:
         with (
-            patch("deepagents_code.mcp_tools._check_stdio_server"),
-            patch("deepagents_code.mcp_tools._check_remote_server"),
+            patch("niki_agent.mcp_tools._check_stdio_server"),
+            patch("niki_agent.mcp_tools._check_remote_server"),
         ):
             yield
 
@@ -3322,7 +3316,7 @@ class TestNormalizeMCPArguments:
             {"q": {"type": "string"}, "ctx": {"type": "string"}},
             required=["q"],
         )
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.mcp_middleware"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.mcp_middleware"):
             _normalize_mcp_arguments({"q": "x", "ctx": ""}, schema)
         assert any(
             "dropped empty-string keys" in r.message and "ctx" in r.message
@@ -3382,7 +3376,7 @@ class TestSelectiveProjectMcpTrust:
         *,
         disabled: list[str] | None = None,
     ) -> None:
-        from deepagents_code.model_config import fingerprint_mcp_server_config
+        from niki_agent.model_config import fingerprint_mcp_server_config
 
         entries = [
             "{ "
@@ -3420,12 +3414,10 @@ class TestSelectiveProjectMcpTrust:
         home = project_root.parent / "home"
         (home / ".deepagents").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
 
         loader = AsyncMock(return_value=([], None, []))
-        monkeypatch.setattr("deepagents_code.mcp_tools._load_tools_from_config", loader)
+        monkeypatch.setattr("niki_agent.mcp_tools._load_tools_from_config", loader)
 
         ctx = ProjectContext(user_cwd=project_root, project_root=project_root)
         await resolve_and_load_mcp_tools(
@@ -3490,7 +3482,7 @@ class TestSelectiveProjectMcpTrust:
         in `add_enabled_project_mcp_servers` and the read-side derivation in
         `resolve_and_load_mcp_tools` — the only place the two could diverge.
         """
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         project = tmp_path / "project"
         nested = project / ".deepagents"
@@ -3516,7 +3508,7 @@ class TestSelectiveProjectMcpTrust:
     async def test_local_approval_does_not_load_in_sibling_worktree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         main = tmp_path / "main"
         first = tmp_path / "first"
@@ -3546,7 +3538,7 @@ class TestSelectiveProjectMcpTrust:
     async def test_remote_approval_loads_in_sibling_but_not_clone_or_new_transport(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         main = tmp_path / "main"
         first = tmp_path / "first"
@@ -3717,8 +3709,8 @@ class TestSelectiveProjectMcpTrust:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project = tmp_path / "project"
         project.mkdir()
@@ -3727,9 +3719,7 @@ class TestSelectiveProjectMcpTrust:
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", user_config)
         monkeypatch.chdir(project)
         monkeypatch.setattr("builtins.input", lambda: "d")
-        monkeypatch.setattr(
-            "deepagents_code.main._trust_picker_has_terminal", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.main._trust_picker_has_terminal", lambda: False)
         assert _check_mcp_project_trust() is False
 
         other_project = tmp_path / "other"
@@ -3863,9 +3853,7 @@ class TestSelectiveProjectMcpTrust:
         home = project.parent / "home"
         (home / ".deepagents").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         ctx = ProjectContext(user_cwd=project, project_root=project)
 
         _tools, _prompt, infos = await resolve_and_load_mcp_tools(
@@ -3881,7 +3869,7 @@ class TestSelectiveProjectMcpTrust:
         """The removed env var, still set, surfaces a visible rename notice.
 
         Mirrors the legacy TOML-key migration so a user who exported
-        `DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS` learns it was renamed
+        `NIKI_ENABLED_PROJECT_MCP_SERVERS` learns it was renamed
         instead of the server silently ceasing to pre-approve.
         """
         project = tmp_path / "project"
@@ -3893,10 +3881,8 @@ class TestSelectiveProjectMcpTrust:
         home = project.parent / "home"
         (home / ".deepagents").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setenv("DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS", "docs")
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setenv("NIKI_ENABLED_PROJECT_MCP_SERVERS", "docs")
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         ctx = ProjectContext(user_cwd=project, project_root=project)
 
         _tools, _prompt, infos = await resolve_and_load_mcp_tools(
@@ -3905,7 +3891,7 @@ class TestSelectiveProjectMcpTrust:
 
         errors = [info.error for info in infos if info.error]
         assert any(
-            "DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS" in msg
+            "NIKI_ENABLED_PROJECT_MCP_SERVERS" in msg
             and "DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS" in msg
             for msg in errors
         )
@@ -3935,9 +3921,7 @@ class TestSelectiveProjectMcpTrust:
         home = project.parent / "home"
         (home / ".deepagents").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         ctx = ProjectContext(user_cwd=project, project_root=project)
 
         _tools, _prompt, infos = await resolve_and_load_mcp_tools(
@@ -4150,11 +4134,9 @@ class TestSelectiveProjectMcpTrust:
         monkeypatch.setenv("HOME", str(home))
         user_config = tmp_path / "config.toml"
         user_config.write_text("[[not valid toml")
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         loader = AsyncMock(return_value=([], None, []))
-        monkeypatch.setattr("deepagents_code.mcp_tools._load_tools_from_config", loader)
+        monkeypatch.setattr("niki_agent.mcp_tools._load_tools_from_config", loader)
 
         ctx = ProjectContext(user_cwd=project, project_root=project)
         _tools, _manager, infos = await resolve_and_load_mcp_tools(
@@ -4301,7 +4283,7 @@ class TestSelectiveProjectMcpTrust:
             user_config, project, servers, [], disabled=["other"]
         )
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.mcp_tools"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.mcp_tools"):
             merged = await self._resolve_merged(
                 project,
                 monkeypatch,
@@ -4329,9 +4311,7 @@ class TestSelectiveProjectMcpTrust:
         home = project.parent / "home"
         (home / ".deepagents").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("HOME", str(home))
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
         ctx = ProjectContext(user_cwd=project, project_root=project)
 
         _, _, server_infos = await resolve_and_load_mcp_tools(
@@ -4360,7 +4340,7 @@ class TestFilterTrustedProjectServers:
 
     def test_disabled_wins_even_when_config_trusted(self, tmp_path: Path) -> None:
         """An explicit deny drops a server even from a fully trusted config."""
-        from deepagents_code.mcp_tools import filter_trusted_project_servers
+        from niki_agent.mcp_tools import filter_trusted_project_servers
 
         lists = model_config.McpServerTrustLists(
             enabled=frozenset(), disabled=frozenset({"blocked"})
@@ -4375,7 +4355,7 @@ class TestFilterTrustedProjectServers:
 
     def test_all_kept_when_config_trusted(self, tmp_path: Path) -> None:
         """A trusted config keeps every non-disabled server."""
-        from deepagents_code.mcp_tools import filter_trusted_project_servers
+        from niki_agent.mcp_tools import filter_trusted_project_servers
 
         lists = model_config.McpServerTrustLists(
             enabled=frozenset(), disabled=frozenset()
@@ -4390,7 +4370,7 @@ class TestFilterTrustedProjectServers:
 
     def test_scoped_approval_kept_when_untrusted(self, tmp_path: Path) -> None:
         """Without config trust, only a scoped-approved server survives."""
-        from deepagents_code.mcp_tools import filter_trusted_project_servers
+        from niki_agent.mcp_tools import filter_trusted_project_servers
 
         server = self._server()
         approval = model_config.McpProjectServerApproval.create(
@@ -4412,7 +4392,7 @@ class TestFilterTrustedProjectServers:
 
     def test_preserves_input_order(self, tmp_path: Path) -> None:
         """Kept servers retain their input order."""
-        from deepagents_code.mcp_tools import filter_trusted_project_servers
+        from niki_agent.mcp_tools import filter_trusted_project_servers
 
         lists = model_config.McpServerTrustLists(
             enabled=frozenset(), disabled=frozenset()
@@ -4437,7 +4417,7 @@ class TestDiscoveryFailureModes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An EACCES on the user config must not change project scoping."""
-        from deepagents_code._paths import PATHS
+        from niki_agent._paths import PATHS
 
         project_root = tmp_path / "repo"
         (project_root / ".deepagents").mkdir(parents=True)
@@ -4519,7 +4499,7 @@ class TestStderrLogSink:
         self, level: int, caplog: pytest.LogCaptureFixture
     ) -> None:
         with (
-            caplog.at_level(level, logger="deepagents_code.mcp_tools"),
+            caplog.at_level(level, logger="niki_agent.mcp_tools"),
             _server_stderr_log("alpha") as sink,
         ):
             subprocess.run(

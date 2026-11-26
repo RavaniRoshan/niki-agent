@@ -32,7 +32,7 @@ sources:
   - id: openwiki-source-6c2e9cfaa20096e021221d47
     resource: repo://libs/code/CHANGELOG.md
   - id: openwiki-source-ac769408e1d61a20b9874382
-    resource: repo://libs/code/deepagents_code/_version.py
+    resource: repo://libs/code/niki_agent/_version.py
   - id: openwiki-source-006b62af9993da1b48c11de8
     resource: repo://libs/code/Makefile
   - id: openwiki-source-7ba50bd13eb62341a2061ef9

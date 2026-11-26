@@ -10,10 +10,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-from deepagents_code import model_config
-from deepagents_code.auth_display import format_auth_badge, format_auth_indicator
-from deepagents_code.config import get_glyphs
-from deepagents_code.model_config import (
+from niki_agent import model_config
+from niki_agent.auth_display import format_auth_badge, format_auth_indicator
+from niki_agent.config import get_glyphs
+from niki_agent.model_config import (
     CODEX_PROVIDER,
     ProviderAuthSource,
     ProviderAuthState,
@@ -107,7 +107,7 @@ def test_format_auth_covers_all_states(
 ) -> None:
     """Both UI surfaces render every provider auth state."""
     if status.env_var:
-        monkeypatch.delenv(f"DEEPAGENTS_CODE_{status.env_var}", raising=False)
+        monkeypatch.delenv(f"NIKI_{status.env_var}", raising=False)
     assert format_auth_badge(status).plain == auth_label
     assert format_auth_indicator(status, get_glyphs()) == model_label
 
@@ -139,7 +139,7 @@ def test_auth_badge_env_source_without_var() -> None:
 def test_auth_badge_uses_resolved_env_var_name(monkeypatch: pytest.MonkeyPatch) -> None:
     """The auth manager names the env var that wins resolution."""
     monkeypatch.setenv("OPENAI_API_KEY", "canonical")
-    monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "prefixed")
+    monkeypatch.setenv("NIKI_OPENAI_API_KEY", "prefixed")
     status = ProviderAuthStatus(
         state=ProviderAuthState.CONFIGURED,
         provider="openai",
@@ -147,9 +147,7 @@ def test_auth_badge_uses_resolved_env_var_name(monkeypatch: pytest.MonkeyPatch) 
         source=ProviderAuthSource.ENV,
     )
 
-    assert (
-        format_auth_badge(status).plain == "[env set: DEEPAGENTS_CODE_OPENAI_API_KEY]"
-    )
+    assert format_auth_badge(status).plain == "[env set: NIKI_OPENAI_API_KEY]"
 
 
 def _badge_styles(status: ProviderAuthStatus) -> str:
@@ -186,7 +184,7 @@ def test_vertex_adc_path_renders_implicit_not_missing(
 ) -> None:
     """Vertex AI without env credentials uses implicit ADC auth labels."""
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("NIKI_GOOGLE_CLOUD_PROJECT", raising=False)
     status = get_provider_auth_status("google_vertexai")
 
     assert status.state is ProviderAuthState.IMPLICIT

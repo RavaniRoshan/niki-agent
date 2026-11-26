@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Input
 
-from deepagents_code.tui.modals.prompt_clipboard import PromptClipboardScreen
+from niki_agent.tui.modals.prompt_clipboard import PromptClipboardScreen
 
 
 class _PromptClipboardApp(App[None]):

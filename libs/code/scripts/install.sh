@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Install deepagents-code.
+# Install niki-agent.
 #
 # Usage:
-#   curl -LsSf https://langch.in/dcode | bash
-#   curl -LsSf https://langch.in/dcode | bash -s -- VERSION
+#   curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash
+#   curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash -s -- VERSION
 #
 # Install an exact pre-release version:
-#   curl -LsSf https://langch.in/dcode | DEEPAGENTS_CODE_VERSION="0.1.0rc1" bash
-#   curl -LsSf https://langch.in/dcode | bash -s -- 0.1.0rc1
+#   curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | NIKI_VERSION="0.1.0rc1" bash
+#   curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash -s -- 0.1.0rc1
 #
 # Override uv's pre-release strategy when resolving the latest version:
-#   curl -LsSf https://langch.in/dcode | DEEPAGENTS_CODE_PRERELEASE="allow" bash
+#   curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | NIKI_PRERELEASE="allow" bash
 #
 # Options:
 #   --help, -h     Show this help message and exit
 #   --version, -v  Print installer version and exit
 #
 # By default, the installer uses uv's `allow` pre-release strategy so stable
-# deepagents-code releases that pin a pre-release dependency can resolve.
-# DEEPAGENTS_CODE_VERSION and an explicit DEEPAGENTS_CODE_PRERELEASE are mutually
+# niki-agent releases that pin a pre-release dependency can resolve.
+# NIKI_VERSION and an explicit NIKI_PRERELEASE are mutually
 # exclusive: an exact pin already selects a single version, so setting both is an
 # error.
 #
@@ -26,17 +26,17 @@
 #   Safe to re-run. If a newer version exists, it asks before upgrading — or
 #   upgrades on its own when run unattended (cron/CI/Docker). If you're already
 #   on the latest, it does nothing. To skip the prompt:
-#     - DEEPAGENTS_CODE_YES=1                     accept the upgrade
-#     - DEEPAGENTS_CODE_VERSION / _PRERELEASE     install that exact selection
-#     - DEEPAGENTS_CODE_EXTRAS / _PYTHON          rebuild with those options
+#     - NIKI_YES=1                     accept the upgrade
+#     - NIKI_VERSION / _PRERELEASE     install that exact selection
+#     - NIKI_EXTRAS / _PYTHON          rebuild with those options
 #
 # Uninstall:
-#   This script installs deepagents-code as a uv tool. To remove it:
-#     uv tool uninstall deepagents-code
-#   That removes the dcode/deepagents-code binary and its isolated venv.
-#   User config and data live in the effective DEEPAGENTS_HOME (default:
-#   ~/.deepagents) and are NOT removed by the uninstall above. Before
-#   uninstalling, run `dcode doctor` and record its exact "Data directory".
+#   This script installs niki-agent as a uv tool. To remove it:
+#     uv tool uninstall niki-agent
+#   That removes the niki/niki-agent binary and its isolated venv.
+#   User config and data live in the effective NIKI_HOME (default:
+#   ~/.niki) and are NOT removed by the uninstall above. Before
+#   uninstalling, run `niki doctor` and record its exact "Data directory".
 #   To erase the profile too, remove only that confirmed dedicated directory;
 #   never recursively remove `/`, your home, a checkout, or an unresolved env
 #   expression. Managed support binaries live in the tool environment and are
@@ -45,8 +45,8 @@
 #   ~/Library/Caches/uv on macOS) — only if no other uv tools rely on it.
 #
 # Environment variables:
-#   DEEPAGENTS_HOME — user config and data directory (default: ~/.deepagents)
-#   DEEPAGENTS_CODE_EXTRAS — comma-separated pip extras, e.g. "ollama",
+#   NIKI_HOME — user config and data directory (default: ~/.niki)
+#   NIKI_EXTRAS — comma-separated pip extras, e.g. "ollama",
 #     "ollama,groq", or "daytona". Valid extras (see pyproject.toml for the
 #     authoritative list):
 #       Model providers: anthropic, baseten, bedrock, cohere, deepseek,
@@ -56,36 +56,36 @@
 #       Sandbox providers: agentcore, daytona, modal, runloop, vercel,
 #         all-sandboxes
 #       Standalone integrations: media, quickjs
-#   DEEPAGENTS_CODE_VERSION — exact version to install, e.g. "0.1.0rc1"
-#     (mutually exclusive with DEEPAGENTS_CODE_PRERELEASE)
-#   DEEPAGENTS_CODE_PRERELEASE — uv pre-release strategy applied when
+#   NIKI_VERSION — exact version to install, e.g. "0.1.0rc1"
+#     (mutually exclusive with NIKI_PRERELEASE)
+#   NIKI_PRERELEASE — uv pre-release strategy applied when
 #     resolving the latest version: disallow, allow, if-necessary, explicit,
 #     or if-necessary-or-explicit (default: allow; explicitly setting it is
-#     mutually exclusive with DEEPAGENTS_CODE_VERSION)
-#   DEEPAGENTS_CODE_PYTHON — Python version to use (default: 3.13)
-#   DEEPAGENTS_CODE_YES — set to 1 to accept an available update without
+#     mutually exclusive with NIKI_VERSION)
+#   NIKI_PYTHON — Python version to use (default: 3.13)
+#   NIKI_YES — set to 1 to accept an available update without
 #     prompting (assume "yes"). Exists so automated runs that still attach a
 #     terminal (CI, wrapper scripts) update instead of stalling at the y/n
 #     prompt.
-#   DEEPAGENTS_CODE_SKIP_OPTIONAL — set to 1 to skip optional tool checks
-#   DEEPAGENTS_CODE_RIPGREP_INSTALLER — how to provision ripgrep:
+#   NIKI_SKIP_OPTIONAL — set to 1 to skip optional tool checks
+#   NIKI_RIPGREP_INSTALLER — how to provision ripgrep:
 #     "managed" (default) eagerly installs the pinned, SHA-256-verified binary
-#     inside the dcode tool environment via `dcode tools install`; "system"
+#     inside the niki tool environment via `niki tools install`; "system"
 #     keeps the interactive package-manager install (brew/apt/cargo/...),
 #     which only counts as success when the resulting `rg` meets the minimum
-#     supported version. Set DEEPAGENTS_CODE_OFFLINE=1 to skip the managed
+#     supported version. Set NIKI_OFFLINE=1 to skip the managed
 #     download entirely.
 #
 # Before execution, the downloaded uv bootstrap script is checked for a shell
 # shebang and valid shell syntax. These structural checks help catch error
 # pages and some truncated downloads, but do not verify its integrity.
-#   DEEPAGENTS_CODE_SKIP_XCODE_CHECK — set to 1 to bypass the macOS Xcode
+#   NIKI_SKIP_XCODE_CHECK — set to 1 to bypass the macOS Xcode
 #     Command Line Tools preflight check
-#   DEEPAGENTS_CODE_NO_MODIFY_PATH — set to 1 to skip PATH setup entirely
+#   NIKI_NO_MODIFY_PATH — set to 1 to skip PATH setup entirely
 #     (no profile edits, no symlinks). The binary is still installed and
 #     verified; add the tool bin dir to PATH yourself, or run it by its
 #     absolute path. Intended for version-managed dotfiles and MDM fleets.
-#   DEEPAGENTS_CODE_VERBOSE — set to 1 to show uv's raw stderr (timing lines,
+#   NIKI_VERBOSE — set to 1 to show uv's raw stderr (timing lines,
 #     unfiltered package diff), the uv installer's own output (shown only when
 #     uv isn't already installed), and the quiet-by-default status lines
 #     (optional-tool checks, post-install footer); useful when debugging. A
@@ -106,16 +106,16 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # CLI flags — --help / --version short-circuit before any install work
 # ---------------------------------------------------------------------------
-INSTALLER_VERSION="deepagents-code installer 1.0"
+INSTALLER_VERSION="niki-agent installer 1.0"
 
 print_help() {
   cat <<'HELP'
-Install deepagents-code.
+Install niki-agent.
 
 Usage:
-  curl -LsSf https://langch.in/dcode | bash
-  curl -LsSf https://langch.in/dcode | bash -s -- [options]
-  curl -LsSf https://langch.in/dcode | bash -s -- VERSION
+  curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash
+  curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash -s -- [options]
+  curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash -s -- VERSION
 
 Options:
   --help, -h        Show this help message and exit
@@ -125,8 +125,8 @@ Target:
   VERSION           Install an exact version, e.g. 0.1.0rc1
 
 Environment variables:
-  DEEPAGENTS_HOME — user config and data directory (default: ~/.deepagents)
-  DEEPAGENTS_CODE_EXTRAS — comma-separated pip extras, e.g. "ollama",
+  NIKI_HOME — user config and data directory (default: ~/.niki)
+  NIKI_EXTRAS — comma-separated pip extras, e.g. "ollama",
     "ollama,groq", or "daytona". Valid extras (see pyproject.toml for the
     authoritative list):
       Model providers: anthropic, baseten, bedrock, cohere, deepseek,
@@ -136,30 +136,30 @@ Environment variables:
       Sandbox providers: agentcore, daytona, modal, runloop, vercel,
         all-sandboxes
       Standalone integrations: media, quickjs
-  DEEPAGENTS_CODE_VERSION — exact version to install, e.g. "0.1.0rc1"
-    (mutually exclusive with DEEPAGENTS_CODE_PRERELEASE)
-  DEEPAGENTS_CODE_PRERELEASE — uv pre-release strategy applied when
+  NIKI_VERSION — exact version to install, e.g. "0.1.0rc1"
+    (mutually exclusive with NIKI_PRERELEASE)
+  NIKI_PRERELEASE — uv pre-release strategy applied when
     resolving the latest version: disallow, allow, if-necessary, explicit,
     or if-necessary-or-explicit (default: allow; explicitly setting it is
-    mutually exclusive with DEEPAGENTS_CODE_VERSION)
-  DEEPAGENTS_CODE_PYTHON — Python version to use (default: 3.13)
-  DEEPAGENTS_CODE_YES — set to 1 to accept an available update without
+    mutually exclusive with NIKI_VERSION)
+  NIKI_PYTHON — Python version to use (default: 3.13)
+  NIKI_YES — set to 1 to accept an available update without
     prompting (assume "yes")
-  DEEPAGENTS_CODE_SKIP_OPTIONAL — set to 1 to skip optional tool checks
-  DEEPAGENTS_CODE_RIPGREP_INSTALLER — how to provision ripgrep:
+  NIKI_SKIP_OPTIONAL — set to 1 to skip optional tool checks
+  NIKI_RIPGREP_INSTALLER — how to provision ripgrep:
     "managed" (default) eagerly installs the pinned, SHA-256-verified binary
-    inside the dcode tool environment via `dcode tools install`; "system"
+    inside the niki tool environment via `niki tools install`; "system"
     keeps the interactive package-manager install (brew/apt/cargo/...). Set
-    DEEPAGENTS_CODE_OFFLINE=1 to skip the managed download entirely.
-  DEEPAGENTS_CODE_SKIP_XCODE_CHECK — set to 1 to bypass the macOS Xcode
+    NIKI_OFFLINE=1 to skip the managed download entirely.
+  NIKI_SKIP_XCODE_CHECK — set to 1 to bypass the macOS Xcode
     Command Line Tools preflight check
-  DEEPAGENTS_CODE_NO_MODIFY_PATH — set to 1 to skip PATH setup entirely
+  NIKI_NO_MODIFY_PATH — set to 1 to skip PATH setup entirely
     (no profile edits, no symlinks)
-  DEEPAGENTS_CODE_VERBOSE — set to 1 to show uv's raw stderr and additional
+  NIKI_VERBOSE — set to 1 to show uv's raw stderr and additional
     status lines
   UV_BIN — path to uv binary (auto-detected if unset)
 
-For full documentation: https://docs.langchain.com/deepagents-code
+For full documentation: https://github.com/RavaniRoshan/niki-agent
 HELP
 }
 
@@ -191,7 +191,7 @@ for _arg in "$@"; do
         printf 'Run with --help to see available options.\n' >&2
         exit 2
       fi
-      # Same validation (and rationale) as the DEEPAGENTS_CODE_VERSION check
+      # Same validation (and rationale) as the NIKI_VERSION check
       # further down: require a leading alphanumeric and a class free of shell
       # metacharacters, so the value is a version, not a smuggled option, and is
       # safe to interpolate into the single argv token passed to uv.
@@ -239,7 +239,7 @@ cleanup_temp_dirs() {
 
 # Keep the shell PATH the user started with. The installer may source
 # ~/.local/bin/env later so it can find a freshly installed uv, but that does
-# not update the parent shell that will receive the final "Run: dcode" advice.
+# not update the parent shell that will receive the final "Run: niki" advice.
 ORIGINAL_PATH="${PATH:-}"
 
 # ---------------------------------------------------------------------------
@@ -321,7 +321,7 @@ cleanup_on_signal() {
     log_signal_failure_hint "$exit_code"
     warn_live_log_replaced
     log_error "Installation failed (exit code ${exit_code}). See errors above."
-    log_error "For help, visit: https://docs.langchain.com/deepagents-code"
+    log_error "For help, visit: https://github.com/RavaniRoshan/niki-agent"
   fi
 }
 trap cleanup_on_signal EXIT
@@ -395,14 +395,14 @@ detect_os
 # ---------------------------------------------------------------------------
 # On a fresh Mac the /usr/bin shims for git, python3, etc. are stubs that pop a
 # blocking GUI dialog ("...requires the command line developer tools") the first
-# time they run. uv's interpreter discovery and dcode's own git usage hit those
+# time they run. uv's interpreter discovery and niki's own git usage hit those
 # stubs, so fail fast here with a clear instruction instead of leaving the user
 # staring at a confusing popup mid-install. `xcode-select -p` only reports the
 # active developer dir — it never triggers the install dialog itself.
-if [ "$OS" = "macos" ] && [ "${DEEPAGENTS_CODE_SKIP_XCODE_CHECK:-}" != "1" ] && ! xcode-select -p >/dev/null 2>&1; then
+if [ "$OS" = "macos" ] && [ "${NIKI_SKIP_XCODE_CHECK:-}" != "1" ] && ! xcode-select -p >/dev/null 2>&1; then
   log_error "Xcode Command Line Tools are required but not installed."
   log_error "  Install them with:  xcode-select --install"
-  log_error "  To bypass this check, set:  DEEPAGENTS_CODE_SKIP_XCODE_CHECK=1"
+  log_error "  To bypass this check, set:  NIKI_SKIP_XCODE_CHECK=1"
   log_error "  Then re-run this installer."
   exit 1
 fi
@@ -412,7 +412,7 @@ fi
 # ---------------------------------------------------------------------------
 # MDM tools run scripts as root in a minimal environment where HOME may be
 # unset or point to /var/root.  Resolve the real console user's home so uv
-# and dcode install to the right place.
+# and niki install to the right place.
 if [ "$OS" = "macos" ] && { [ -z "${HOME:-}" ] || [ "$(id -u)" -eq 0 ]; }; then
   CONSOLE_USER="$(stat -f '%Su' /dev/console 2>/dev/null)" || {
     log_warn "Could not determine console user via /dev/console. Falling back to directory scan."
@@ -479,7 +479,7 @@ path_has_unsearchable_ancestor() {
 # filesystem lookup is performed. A leading exactly-double slash is preserved,
 # because POSIX leaves `//` implementation-defined and `os.path.normpath` keeps
 # it — collapsing it here would make the installer and every later launch
-# disagree about which directory one DEEPAGENTS_HOME value names.
+# disagree about which directory one NIKI_HOME value names.
 # `tests/unit_tests/test_install_script.py` asserts parity against the Python
 # implementation directly, so both sides stay in step.
 normalize_absolute_path() {
@@ -522,31 +522,31 @@ normalize_absolute_path() {
   printf '%s' "$normalized"
 }
 
-normalize_deepagents_home() {
-  local raw="${DEEPAGENTS_HOME:-}"
+normalize_niki_home() {
+  local raw="${NIKI_HOME:-}"
   local candidate normalized_home
   case "$raw" in
-    "") candidate="${HOME}/.deepagents" ;;
+    "") candidate="${HOME}/.niki" ;;
     \~/*) candidate="${HOME}/${raw#\~/}" ;;
     \~*)
-      log_error "Invalid DEEPAGENTS_HOME: use an absolute path or a path beginning with '~/' ('~user' forms are not allowed)."
+      log_error "Invalid NIKI_HOME: use an absolute path or a path beginning with '~/' ('~user' forms are not allowed)."
       exit 1
       ;;
     /*) candidate="$raw" ;;
     *)
-      log_error "Invalid DEEPAGENTS_HOME '${raw}': use an absolute path or a path beginning with '~/'."
+      log_error "Invalid NIKI_HOME '${raw}': use an absolute path or a path beginning with '~/'."
       exit 1
       ;;
   esac
-  if ! DEEPAGENTS_HOME="$(normalize_absolute_path "$candidate")"; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': the resolved path must be absolute."
+  if ! NIKI_HOME="$(normalize_absolute_path "$candidate")"; then
+    log_error "Invalid NIKI_HOME '${raw}': the resolved path must be absolute."
     exit 1
   fi
   # Same degenerate-root rejections as `_paths._reject_degenerate_root`, so the
   # installer fails here rather than provisioning a profile the app refuses to
   # launch from.
-  if paths_are_same_file "$DEEPAGENTS_HOME" "/"; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': the filesystem root cannot be a profile. Use a dedicated directory."
+  if paths_are_same_file "$NIKI_HOME" "/"; then
+    log_error "Invalid NIKI_HOME '${raw}': the filesystem root cannot be a profile. Use a dedicated directory."
     exit 1
   fi
   # Fail rather than compare against an unnormalized value. The app treats a
@@ -557,33 +557,33 @@ normalize_deepagents_home() {
     log_error "Cannot resolve the home directory '${HOME}': \$HOME must be an absolute path."
     exit 1
   fi
-  if paths_are_same_file "$DEEPAGENTS_HOME" "$normalized_home"; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': the home directory itself cannot be a profile, because its '.env' would be loaded as trusted configuration. Use a subdirectory such as '~/.deepagents'."
+  if paths_are_same_file "$NIKI_HOME" "$normalized_home"; then
+    log_error "Invalid NIKI_HOME '${raw}': the home directory itself cannot be a profile, because its '.env' would be loaded as trusted configuration. Use a subdirectory such as '~/.niki'."
     exit 1
   fi
-  if [ -L "$DEEPAGENTS_HOME" ] && [ ! -e "$DEEPAGENTS_HOME" ]; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': is a symlink whose target is missing or cannot be resolved."
+  if [ -L "$NIKI_HOME" ] && [ ! -e "$NIKI_HOME" ]; then
+    log_error "Invalid NIKI_HOME '${raw}': is a symlink whose target is missing or cannot be resolved."
     exit 1
   fi
-  if [ -e "$DEEPAGENTS_HOME" ] && [ ! -d "$DEEPAGENTS_HOME" ]; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': exists but is not a directory."
+  if [ -e "$NIKI_HOME" ] && [ ! -d "$NIKI_HOME" ]; then
+    log_error "Invalid NIKI_HOME '${raw}': exists but is not a directory."
     exit 1
   fi
-  if [ -d "$DEEPAGENTS_HOME" ] && { [ ! -r "$DEEPAGENTS_HOME" ] || [ ! -x "$DEEPAGENTS_HOME" ]; }; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': exists but cannot be read or searched. Check the permissions on it and on its parent directories."
+  if [ -d "$NIKI_HOME" ] && { [ ! -r "$NIKI_HOME" ] || [ ! -x "$NIKI_HOME" ]; }; then
+    log_error "Invalid NIKI_HOME '${raw}': exists but cannot be read or searched. Check the permissions on it and on its parent directories."
     exit 1
   fi
-  if [ ! -e "$DEEPAGENTS_HOME" ] && path_has_unsearchable_ancestor "$DEEPAGENTS_HOME"; then
-    log_error "Invalid DEEPAGENTS_HOME '${raw}': cannot be inspected because a parent directory cannot be searched. Check the permissions on its parent directories."
+  if [ ! -e "$NIKI_HOME" ] && path_has_unsearchable_ancestor "$NIKI_HOME"; then
+    log_error "Invalid NIKI_HOME '${raw}': cannot be inspected because a parent directory cannot be searched. Check the permissions on its parent directories."
     exit 1
   fi
-  export DEEPAGENTS_HOME
+  export NIKI_HOME
   if [ -n "$raw" ]; then
-    log_info "Using DEEPAGENTS_HOME: ${DEEPAGENTS_HOME}"
+    log_info "Using NIKI_HOME: ${NIKI_HOME}"
   fi
 }
 
-normalize_deepagents_home
+normalize_niki_home
 UV_TOOL_DIR_ENV="${UV_TOOL_DIR:-}"
 
 # ---------------------------------------------------------------------------
@@ -731,7 +731,7 @@ path_is_under_home() {
 
 prepare_install_log_dir() {
   local cache_root="$1"
-  local dir="${cache_root}/deepagents-code"
+  local dir="${cache_root}/niki-agent"
   [ -n "$cache_root" ] || return 1
   [ ! -L "$cache_root" ] || return 1
   [ ! -L "$dir" ] || return 1
@@ -755,7 +755,7 @@ prepare_install_log_dir() {
 }
 
 # Render a path for pasting into a shell, quoting only when it needs it. The
-# overwhelmingly common path is a plain `~/.cache/deepagents-code/install.log`,
+# overwhelmingly common path is a plain `~/.cache/niki-agent/install.log`,
 # and rendering it bare keeps it identical to the "Full log:" pointer printed
 # later in the same run — two spellings of one path read as two different
 # files. A path carrying spaces or shell metacharacters (most plausibly a
@@ -873,7 +873,7 @@ copy_install_log() {
   # than the atomicity, since only root can be attacked through the staging
   # path and only the log's own contents are at stake through the other.
   local stage_dir staged
-  stage_dir=$(mktemp -d "/tmp/deepagents-code-install-log.XXXXXX" 2>/dev/null) || return 2
+  stage_dir=$(mktemp -d "/tmp/niki-agent-install-log.XXXXXX" 2>/dev/null) || return 2
   register_temp_dir "$stage_dir"
   staged="${stage_dir}/install.log"
   if ! (cd "$stage_dir" && cp "$uv_stderr" install.log) 2>/dev/null; then
@@ -1145,14 +1145,14 @@ resolve_installation_root() {
     /*) ;;
     *) tool_dir="$(pwd -P)/${tool_dir}" ;;
   esac
-  printf '%s\t%s' "$(normalize_absolute_path "${tool_dir}/deepagents-code")" "$guessed"
+  printf '%s\t%s' "$(normalize_absolute_path "${tool_dir}/niki-agent")" "$guessed"
 }
 
 # Serialize concurrent installs (racing `curl | bash` runs corrupting a shared
 # uv tool dir). Use an atomic mkdir lock dir with a PID + timestamp so a crashed
 # holder's lock can be aged out (see install_lock_is_stale). Avoid shell
 # redirection to a lock file here. The lock is derived from the uv tool
-# environment, not `DEEPAGENTS_HOME`, so profiles sharing an installation also
+# environment, not `NIKI_HOME`, so profiles sharing an installation also
 # share serialization.
 acquire_install_lock() {
   local installation_root
@@ -1177,7 +1177,7 @@ acquire_install_lock() {
   # Mirror _paths._installation_paths, including custom UV_TOOL_DIR locations.
   installation_parent="${installation_parent:-/}"
   lock_parent="$(dirname "$installation_parent")"
-  lock_root="${lock_parent%/}/.${installation_parent##*/}.${installation_name}.deepagents-code-locks"
+  lock_root="${lock_parent%/}/.${installation_parent##*/}.${installation_name}.niki-agent-locks"
   if [ "${guessed:-false}" = true ]; then
     log_warn "Could not ask uv for its tool directory; guessing the installer lock root."
     log_warn "  Concurrent installs may not serialize. Lock root: ${lock_root}"
@@ -1186,7 +1186,7 @@ acquire_install_lock() {
   # tool entry on fresh installs. An older installer that creates a legacy root
   # after this check cannot share this protection. Preserve existing roots for
   # waiters and keep their lock until exit, including while waiting for the new one.
-  legacy_root="${installation_parent}/.${installation_name}.deepagents-code-locks"
+  legacy_root="${installation_parent}/.${installation_name}.niki-agent-locks"
   if [ -e "$legacy_root" ] || [ -L "$legacy_root" ]; then
     acquire_install_lock_root "$legacy_root"
     LEGACY_INSTALL_LOCK_DIR="$INSTALL_LOCK_DIR"
@@ -1209,7 +1209,7 @@ acquire_install_lock_root() {
     if ! mkdir -p "$lock_root"; then
       log_error "Could not create the installer lock directory: ${lock_root}"
       log_error "Check that the parent of the uv tool directory is writable."
-      log_error "  This serializes concurrent installs; it is not related to DEEPAGENTS_HOME."
+      log_error "  This serializes concurrent installs; it is not related to NIKI_HOME."
       exit 1
     fi
     # `uv tool dir` can point outside $HOME (a system-wide tool dir), and this
@@ -1321,12 +1321,12 @@ release_install_lock() {
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-EXTRAS="${DEEPAGENTS_CODE_EXTRAS:-}"
-VERSION="${DEEPAGENTS_CODE_VERSION:-}"
-PRERELEASE_REQUESTED="${DEEPAGENTS_CODE_PRERELEASE:-}"
+EXTRAS="${NIKI_EXTRAS:-}"
+VERSION="${NIKI_VERSION:-}"
+PRERELEASE_REQUESTED="${NIKI_PRERELEASE:-}"
 if [ -n "$POSITIONAL_TARGET" ]; then
   if [ -n "$VERSION" ]; then
-    log_error "Do not combine a positional version with DEEPAGENTS_CODE_VERSION."
+    log_error "Do not combine a positional version with NIKI_VERSION."
     log_error "Use either the version argument, or the environment variable — not both."
     exit 1
   fi
@@ -1334,28 +1334,28 @@ if [ -n "$POSITIONAL_TARGET" ]; then
 fi
 PRERELEASE="${PRERELEASE_REQUESTED:-allow}"
 PYTHON_REQUESTED=false
-if [[ -n "${DEEPAGENTS_CODE_PYTHON:-}" ]]; then
+if [[ -n "${NIKI_PYTHON:-}" ]]; then
   PYTHON_REQUESTED=true
 fi
-PYTHON_VERSION="${DEEPAGENTS_CODE_PYTHON:-3.13}"
-SKIP_OPTIONAL="${DEEPAGENTS_CODE_SKIP_OPTIONAL:-0}"
-VERBOSE="${DEEPAGENTS_CODE_VERBOSE:-0}"
-ASSUME_YES="$(printf '%s' "${DEEPAGENTS_CODE_YES:-0}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+PYTHON_VERSION="${NIKI_PYTHON:-3.13}"
+SKIP_OPTIONAL="${NIKI_SKIP_OPTIONAL:-0}"
+VERBOSE="${NIKI_VERBOSE:-0}"
+ASSUME_YES="$(printf '%s' "${NIKI_YES:-0}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
 case "$ASSUME_YES" in
   1|true|yes) ASSUME_YES="1" ;;
   *)          ASSUME_YES="0" ;;
 esac
 # How ripgrep gets provisioned: "managed" (default) eagerly fetches the
-# pinned, SHA-256-verified binary inside the dcode tool environment via
-# `dcode tools install`; "system" keeps the interactive package-manager path below. Any
+# pinned, SHA-256-verified binary inside the niki tool environment via
+# `niki tools install`; "system" keeps the interactive package-manager path below. Any
 # value other than "system" normalizes to "managed".
 #
 # Lowercase and strip whitespace first so this matches the `.strip().lower()`
 # normalization in managed_tools.ripgrep_installer(). Without this, a value
-# like "System" would parse as "managed" here but "system" in dcode, and the
-# eager `dcode tools install` would skip silently while this script also
+# like "System" would parse as "managed" here but "system" in niki, and the
+# eager `niki tools install` would skip silently while this script also
 # skipped the package-manager path — leaving ripgrep unprovisioned.
-RIPGREP_INSTALLER="$(printf '%s' "${DEEPAGENTS_CODE_RIPGREP_INSTALLER:-managed}" \
+RIPGREP_INSTALLER="$(printf '%s' "${NIKI_RIPGREP_INSTALLER:-managed}" \
   | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
 case "$RIPGREP_INSTALLER" in
   system) RIPGREP_INSTALLER="system" ;;
@@ -1364,13 +1364,13 @@ esac
 
 # PyPI JSON endpoint used to discover the latest published release so we can
 # tell whether an existing install is out of date before upgrading it.
-PYPI_JSON_URL="https://pypi.org/pypi/deepagents-code/json"
+PYPI_JSON_URL="https://pypi.org/pypi/niki-agent/json"
 
 # Base URL for a version-specific GitHub release, surfaced before the update
 # prompt so users can review what changed before agreeing to upgrade. Release
-# tags are `deepagents-code==X.Y.Z`; the `==` must be percent-encoded (%3D%3D)
+# tags are `niki-agent==X.Y.Z`; the `==` must be percent-encoded (%3D%3D)
 # for the tag URL to resolve.
-RELEASE_TAG_URL_BASE="https://github.com/langchain-ai/deepagents/releases/tag/deepagents-code%3D%3D"
+RELEASE_TAG_URL_BASE="https://github.com/RavaniRoshan/niki-agent/releases/tag/niki-agent%3D%3D"
 
 # Validate and normalize extras: accept bare CSV, wrap in brackets for pip
 if [[ -n "$EXTRAS" ]]; then
@@ -1378,7 +1378,7 @@ if [[ -n "$EXTRAS" ]]; then
   EXTRAS="${EXTRAS#[}"
   EXTRAS="${EXTRAS%]}"
   if [[ ! "$EXTRAS" =~ ^[-a-zA-Z0-9,._]+$ ]]; then
-    log_error "DEEPAGENTS_CODE_EXTRAS must be comma-separated extra names, e.g. 'anthropic,groq' or 'daytona'"
+    log_error "NIKI_EXTRAS must be comma-separated extra names, e.g. 'anthropic,groq' or 'daytona'"
     exit 1
   fi
   EXTRAS="[${EXTRAS}]"
@@ -1390,7 +1390,7 @@ fi
 # user-provided combinations; the installer's default `if-necessary` strategy is
 # not forwarded when a version is pinned.
 if [[ -n "$VERSION" && -n "$PRERELEASE_REQUESTED" ]]; then
-  log_error "DEEPAGENTS_CODE_VERSION and DEEPAGENTS_CODE_PRERELEASE are mutually exclusive."
+  log_error "NIKI_VERSION and NIKI_PRERELEASE are mutually exclusive."
   log_error "Pin an exact version, or set a pre-release strategy — not both."
   exit 1
 fi
@@ -1401,7 +1401,7 @@ if [[ -n "$VERSION" ]]; then
   # an option (e.g. "-U"); the class excludes every shell metacharacter, so the
   # value is safe to interpolate into the single argv token passed to uv.
   if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9_.!+-]*$ ]]; then
-    log_error "DEEPAGENTS_CODE_VERSION must be an exact version, e.g. '0.1.0rc1'"
+    log_error "NIKI_VERSION must be an exact version, e.g. '0.1.0rc1'"
     exit 1
   fi
   VERSION_SPEC="==${VERSION}"
@@ -1412,7 +1412,7 @@ if [[ -n "$PRERELEASE" ]]; then
     disallow|allow|if-necessary|explicit|if-necessary-or-explicit)
       ;;
     *)
-      log_error "Invalid DEEPAGENTS_CODE_PRERELEASE."
+      log_error "Invalid NIKI_PRERELEASE."
       log_error "Use: disallow, allow, if-necessary, explicit, or if-necessary-or-explicit"
       exit 1
       ;;
@@ -1542,7 +1542,7 @@ wget_download() {
 # equivalent, so wget_download enforces the same property by rejecting
 # non-HTTPS URLs and auditing the response headers for a downgrade redirect.
 download_to_stdout() {
-  local url="$1" ua="${2:-deepagents-code-install}"
+  local url="$1" ua="${2:-niki-agent-install}"
   local attempt=1 body="" download_rc=1
   while [ "$attempt" -le 3 ]; do
     if command -v curl >/dev/null 2>&1 && ! is_snap_curl; then
@@ -1864,7 +1864,7 @@ fi
 # ---------------------------------------------------------------------------
 # Latest-version lookup
 # ---------------------------------------------------------------------------
-# Print the latest published deepagents-code version from PyPI, or nothing on
+# Print the latest published niki-agent version from PyPI, or nothing on
 # any failure (offline, transient error, missing downloader). PyPI nests the
 # latest release at "info.version"; that key appears first in the response (the
 # "info" object leads), so taking the first "version" match selects it without
@@ -1874,7 +1874,7 @@ fi
 # it ever changed, the worst case is a wrong/empty match, which the caller
 # already treats as "unknown latest" and recovers from — never a bad install.
 fetch_latest_version() {
-  local json="" ua="deepagents-code-install"
+  local json="" ua="niki-agent-install"
   json=$(download_to_stdout "$PYPI_JSON_URL" "$ua" 2>/dev/null) || return 0
   if [ -z "$json" ]; then
     return 0
@@ -1888,16 +1888,16 @@ fetch_latest_version() {
 }
 
 # ---------------------------------------------------------------------------
-# Install deepagents-code
+# Install niki-agent
 # ---------------------------------------------------------------------------
-PACKAGE="deepagents-code${EXTRAS}${VERSION_SPEC}"
+PACKAGE="niki-agent${EXTRAS}${VERSION_SPEC}"
 
 # Capture pre-install version (if any) for messaging
 PRE_VERSION=""
 PRE_INSTALL_IS_TOOL=false
 PRE_INSTALL_ON_PATH=false
 if [ "$(id -u)" -ne 0 ]; then
-  for candidate in dcode deepagents-code; do
+  for candidate in niki niki-agent; do
     if [ -x "${TOOL_BIN_DIR}/${candidate}" ]; then
       PRE_VERSION=$("${TOOL_BIN_DIR}/${candidate}" -v 2>/dev/null | head -1 | awk '{print $NF}') || PRE_VERSION=""
       PRE_INSTALL_IS_TOOL=true
@@ -1910,7 +1910,7 @@ if [ "$(id -u)" -ne 0 ]; then
     fi
   done
   if [ "$PRE_INSTALL_IS_TOOL" = false ]; then
-    for candidate in dcode deepagents-code; do
+    for candidate in niki niki-agent; do
       if command -v "$candidate" >/dev/null 2>&1; then
         PRE_VERSION=$("$candidate" -v 2>/dev/null | head -1 | awk '{print $NF}') || PRE_VERSION=""
         break
@@ -1927,8 +1927,8 @@ UV_TOOL_DIR=""
 if UV_TOOL_DIR_RAW=$("$UV_BIN" tool dir 2>/dev/null); then
   UV_TOOL_DIR="$UV_TOOL_DIR_RAW"
 fi
-MANAGED_BIN_DIR="${UV_TOOL_DIR:+${UV_TOOL_DIR}/deepagents-code/share/deepagents-code/bin}"
-# `dcode tools install` falls back to "${DEEPAGENTS_HOME}/bin" when
+MANAGED_BIN_DIR="${UV_TOOL_DIR:+${UV_TOOL_DIR}/niki-agent/share/niki-agent/bin}"
+# `niki tools install` falls back to "${NIKI_HOME}/bin" when
 # MANAGED_BIN_DIR is unwritable. Neither is snapshotted: see
 # fix_managed_bin_owner for why the repair must not be gated on pre-existence.
 
@@ -1947,9 +1947,9 @@ while IFS= read -r uv_cache_dir; do
     UV_TOOL_CACHE_NEW="${UV_TOOL_CACHE_NEW}${uv_cache_dir}"$'\n'
   fi
 done < <(uv_cache_candidates)
-if [ -n "$UV_TOOL_DIR" ] && [ -d "${UV_TOOL_DIR}/deepagents-code" ]; then
+if [ -n "$UV_TOOL_DIR" ] && [ -d "${UV_TOOL_DIR}/niki-agent" ]; then
   shopt -s nullglob
-  for du in "${UV_TOOL_DIR}"/deepagents-code/lib/python*/site-packages/deepagents_code-*.dist-info/direct_url.json; do
+  for du in "${UV_TOOL_DIR}"/niki-agent/lib/python*/site-packages/niki_agent-*.dist-info/direct_url.json; do
     if grep -q '"editable"[[:space:]]*:[[:space:]]*true' "$du" 2>/dev/null; then
       IS_EDITABLE=true
       EDITABLE_SRC=$(sed -nE 's|.*"url"[[:space:]]*:[[:space:]]*"file://([^"]*)".*|\1|p' "$du" | head -1)
@@ -1962,17 +1962,17 @@ if [ -n "$UV_TOOL_DIR" ] && [ -d "${UV_TOOL_DIR}/deepagents-code" ]; then
 fi
 
 # Read the extras the existing tool was installed with from uv's receipt. When
-# the user re-runs this installer without DEEPAGENTS_CODE_EXTRAS, uv rebuilds
-# the environment against bare `deepagents-code` and silently drops those
+# the user re-runs this installer without NIKI_EXTRAS, uv rebuilds
+# the environment against bare `niki-agent` and silently drops those
 # extras' packages - warn before that happens so they can re-run with the
 # extras preserved. Checked whenever the caller passed no EXTRAS and the
 # existing install isn't editable, which covers plain upgrades as well as the
 # same-version repair paths below (both re-run `uv tool install`).
 #
 # The receipt records every requirement in one array: the tool itself plus any
-# supplemental `--with` packages. Only parse extras from the `deepagents-code`
+# supplemental `--with` packages. Only parse extras from the `niki-agent`
 # requirement - a `--with rich[jupyter]` entry must not surface as a tool
-# extra, since `DEEPAGENTS_CODE_EXTRAS` installs `deepagents-code[...]` and
+# extra, since `NIKI_EXTRAS` installs `niki-agent[...]` and
 # cannot preserve supplemental packages.
 #
 # EXTRAS_UNREADABLE separates "this install has no extras" from "we could not
@@ -1984,7 +1984,7 @@ EXTRAS_UNREADABLE=false
 receipt=""
 receipt_install_dir=""
 if [ -z "$EXTRAS" ] && [ "$IS_EDITABLE" = false ]; then
-  receipt_install_dir="${UV_TOOL_DIR:+${UV_TOOL_DIR}/deepagents-code}"
+  receipt_install_dir="${UV_TOOL_DIR:+${UV_TOOL_DIR}/niki-agent}"
   if [ -z "$UV_TOOL_DIR" ] || { [ -e "$UV_TOOL_DIR" ] && [ ! -x "$UV_TOOL_DIR" ]; }; then
     # `uv tool dir` failed (a uv too old for the subcommand, a broken config),
     # or its directory can't be searched. Either way we can't reach a receipt.
@@ -2016,9 +2016,9 @@ if [ -z "$EXTRAS" ] && [ "$IS_EDITABLE" = false ]; then
     else
       # Narrow to the `requirements` assignment before looking for the entry. uv
       # also writes an `entrypoints` array, and this package declares a console
-      # script literally named `deepagents-code` (see [project.scripts] in
+      # script literally named `niki-agent` (see [project.scripts] in
       # pyproject.toml), so an unscoped match would happily pick
-      #   { name = "deepagents-code", install-path = "...", from = "deepagents-code" }
+      #   { name = "niki-agent", install-path = "...", from = "niki-agent" }
       # - an inline table that never carries extras. Matching it would report
       # "no extras" for an install that has them, defeating the whole check. The
       # range runs from the requirements line to the next top-level key
@@ -2032,7 +2032,7 @@ if [ -z "$EXTRAS" ] && [ "$IS_EDITABLE" = false ]; then
       if receipt_requirements=$(sed -nE \
         '/^requirements = /,$ { /^requirements = /!{ /^[A-Za-z_-]+ = /q; }; p; }' \
         "$receipt" 2>/dev/null); then
-        # Then isolate the deepagents-code inline table ([^{}] cannot cross into a
+        # Then isolate the niki-agent inline table ([^{}] cannot cross into a
         # neighbouring requirement) and read extras out of that entry alone. uv
         # keeps each inline table on one line (observed through uv 0.9); if a
         # future formatter wraps it, the entry match fails - handled below.
@@ -2043,7 +2043,7 @@ if [ -z "$EXTRAS" ] && [ "$IS_EDITABLE" = false ]; then
         # An empty value falls through to the "cannot tell" branch below, which
         # is the right answer for a receipt that large or that malformed.
         receipt_entry=$(printf '%s\n' "$receipt_requirements" \
-          | sed -nE 's/.*(\{[^{}]*name = "deepagents-code"[^{}]*\}).*/\1/p' \
+          | sed -nE 's/.*(\{[^{}]*name = "niki-agent"[^{}]*\}).*/\1/p' \
           | head -1) || receipt_entry=""
         if [ -n "$receipt_entry" ]; then
           INSTALLED_EXTRAS=$(printf '%s\n' "$receipt_entry" \
@@ -2077,7 +2077,7 @@ if [ -z "$EXTRAS" ] && [ "$IS_EDITABLE" = false ]; then
     fi
   else
     # `uv tool dir` resolved and is searchable, but this package has no
-    # directory under it. When the installed dcode came from uv's tool bin dir
+    # directory under it. When the installed niki came from uv's tool bin dir
     # there must be a receipt somewhere, so not finding it here means the tool
     # dir moved between installs (UV_TOOL_DIR, a changed `tool-dir` in uv.toml,
     # a relocated XDG_DATA_HOME). The old install is still on PATH and the
@@ -2095,9 +2095,9 @@ UV_REPORTED_PACKAGE_CHANGES=false
 if [ "$IS_EDITABLE" = true ]; then
   pre_label="${PRE_VERSION:-(version unknown)}"
   if [ -n "$EDITABLE_SRC" ]; then
-    log_info "deepagents-code ${pre_label} found (editable install from ${EDITABLE_SRC})."
+    log_info "niki-agent ${pre_label} found (editable install from ${EDITABLE_SRC})."
   else
-    log_info "deepagents-code ${pre_label} found (editable install from local source)."
+    log_info "niki-agent ${pre_label} found (editable install from local source)."
   fi
   log_info "  Replacing with a standard install from PyPI — the existing environment will be rebuilt."
 elif [ -n "$PRE_VERSION" ] && [ -z "$VERSION" ] && [ -z "$PRERELEASE_REQUESTED" ]; then
@@ -2107,13 +2107,13 @@ elif [ -n "$PRE_VERSION" ] && [ -z "$VERSION" ] && [ -z "$PRERELEASE_REQUESTED" 
   # below) expresses explicit intent, so those install directly.
   #
   # The up-to-date check below is plain string equality, so it relies on
-  # PRE_VERSION (the raw `dcode -v` literal) and LATEST_VERSION (PyPI's
+  # PRE_VERSION (the raw `niki -v` literal) and LATEST_VERSION (PyPI's
   # PEP 440-normalized `info.version`) being identically canonical. release-please
   # keeps `_version.py` to clean `X.Y.Z`, so they match today; a non-canonical
   # release literal would merely re-prompt an up-to-date user, never silently
   # skip a real upgrade. A shell installer can't import `packaging` to compare
   # semantically the way `update_check.py` does.
-  log_info "dcode ${PRE_VERSION} found — checking for updates..."
+  log_info "niki ${PRE_VERSION} found — checking for updates..."
   # Set on the branches that deliberately move to the PyPI latest the script
   # just fetched and confirmed differs from the installed version. That is the
   # one path where the run can honestly call the version move an "upgrade" in
@@ -2125,28 +2125,28 @@ elif [ -n "$PRE_VERSION" ] && [ -z "$VERSION" ] && [ -z "$PRERELEASE_REQUESTED" 
     log_warn "Could not determine the latest version from PyPI — continuing with an upgrade attempt."
   elif [ -n "$EXTRAS" ] || [ "$PYTHON_REQUESTED" = true ]; then
     if [ "$LATEST_VERSION" = "$PRE_VERSION" ]; then
-      log_info "deepagents-code is already up to date — rebuilding with requested options."
+      log_info "niki-agent is already up to date — rebuilding with requested options."
     else
-      log_info "Updating deepagents-code ${PRE_VERSION} → ${LATEST_VERSION} with requested options..."
+      log_info "Updating niki-agent ${PRE_VERSION} → ${LATEST_VERSION} with requested options..."
       UPGRADE_INTENDED=true
     fi
   elif [ "$LATEST_VERSION" = "$PRE_VERSION" ] && [ "$PRE_INSTALL_ON_PATH" = true ]; then
     log_success "Already up to date!"
     exit 0
   elif [ "$LATEST_VERSION" = "$PRE_VERSION" ] && [ "$PRE_INSTALL_IS_TOOL" = true ]; then
-    log_info "deepagents-code ${PRE_VERSION} is current but is not selected on PATH — repairing its install."
+    log_info "niki-agent ${PRE_VERSION} is current but is not selected on PATH — repairing its install."
   elif [ "$LATEST_VERSION" = "$PRE_VERSION" ]; then
-    log_info "deepagents-code ${PRE_VERSION} is current but is outside uv's configured tool bin — installing it there."
+    log_info "niki-agent ${PRE_VERSION} is current but is outside uv's configured tool bin — installing it there."
   elif [ "$ASSUME_YES" = "1" ]; then
-    log_info "Update available: deepagents-code ${PRE_VERSION} → ${LATEST_VERSION}"
+    log_info "Update available: niki-agent ${PRE_VERSION} → ${LATEST_VERSION}"
     log_info "  What's new: ${RELEASE_TAG_URL_BASE}${LATEST_VERSION}"
-    log_info "Updating deepagents-code ${PRE_VERSION} → ${LATEST_VERSION}..."
+    log_info "Updating niki-agent ${PRE_VERSION} → ${LATEST_VERSION}..."
     UPGRADE_INTENDED=true
   elif can_prompt; then
-    log_info "Update available: deepagents-code ${PRE_VERSION} → ${LATEST_VERSION}"
+    log_info "Update available: niki-agent ${PRE_VERSION} → ${LATEST_VERSION}"
     log_info "  What's new: ${RELEASE_TAG_URL_BASE}${LATEST_VERSION}"
     if prompt_yn "Install update?"; then
-      log_info "Updating deepagents-code ${PRE_VERSION} → ${LATEST_VERSION}..."
+      log_info "Updating niki-agent ${PRE_VERSION} → ${LATEST_VERSION}..."
       UPGRADE_INTENDED=true
     else
       update_prompt_rc=$?
@@ -2157,7 +2157,7 @@ elif [ -n "$PRE_VERSION" ] && [ -z "$VERSION" ] && [ -z "$PRERELEASE_REQUESTED" 
         log_warn "Could not ask — continuing with the update."
         UPGRADE_INTENDED=true
       else
-        log_info "Keeping deepagents-code ${PRE_VERSION}. Re-run this installer anytime to update."
+        log_info "Keeping niki-agent ${PRE_VERSION}. Re-run this installer anytime to update."
         exit 0
       fi
     fi
@@ -2165,12 +2165,12 @@ elif [ -n "$PRE_VERSION" ] && [ -z "$VERSION" ] && [ -z "$PRERELEASE_REQUESTED" 
     # No TTY to prompt (cron, CI, Dockerfile RUN, systemd): there is no human to
     # ask, and an installer's job is to make the current version present, so
     # complete the upgrade rather than silently no-op. Callers that want a fixed
-    # version pin DEEPAGENTS_CODE_VERSION, which skips this path entirely.
-    log_info "Update available: deepagents-code ${PRE_VERSION} → ${LATEST_VERSION} — updating (no TTY to prompt)."
+    # version pin NIKI_VERSION, which skips this path entirely.
+    log_info "Update available: niki-agent ${PRE_VERSION} → ${LATEST_VERSION} — updating (no TTY to prompt)."
     UPGRADE_INTENDED=true
   fi
 elif [ -n "$PRE_VERSION" ]; then
-  log_info "dcode ${PRE_VERSION} found — checking for updates..."
+  log_info "niki ${PRE_VERSION} found — checking for updates..."
 else
   log_info "Installing ${PACKAGE}..."
 fi
@@ -2183,7 +2183,7 @@ fi
 # one-shot POSIX bootstrap. The installed app instead uses platform-native
 # cache dirs (e.g. ~/Library/Caches on macOS) for its update logs, so the two
 # intentionally land under different roots on macOS; see default_cache_dir()
-# in deepagents_code/model_config.py.
+# in niki_agent/model_config.py.
 # INSTALL_LOG is the real path used for writes; INSTALL_LOG_DISPLAY is the
 # tilde-collapsed form shown to the user. Both stay empty when the dir can't
 # be created, which every consumer treats as "feature disabled" so messages
@@ -2217,7 +2217,7 @@ if [ -n "$cache_root" ]; then
     # run whose directory is not under $HOME. Name the path once — otherwise
     # the only signal is the *absence* of the `Update log:`/`Full log:` lines,
     # which is indistinguishable from a run that had nothing to report.
-    log_warn "Could not prepare ${cache_root}/deepagents-code — continuing without an install log."
+    log_warn "Could not prepare ${cache_root}/niki-agent — continuing without an install log."
   fi
 fi
 
@@ -2343,7 +2343,7 @@ setup_live_install_log() {
 # stall. An EOF on a terminal that *did* open is a human declining and arrives
 # as 1, so it aborts through the branches below like any other "n".
 #
-# Both branches end an abort with "Aborted. deepagents-code was left
+# Both branches end an abort with "Aborted. niki-agent was left
 # unchanged." rather than a bare "Aborted.": this point is also reachable on a
 # same-version PATH repair (the branches above that reinstall a current
 # version), so the message names what was left undone instead of implying the
@@ -2351,7 +2351,7 @@ setup_live_install_log() {
 extras_prompt_rc=0
 if [ "$EXTRAS_UNREADABLE" = true ]; then
   log_warn "Could not read ${receipt:-the uv tool receipt} to check which extras this install was built with."
-  log_warn "  If it was built with DEEPAGENTS_CODE_EXTRAS, re-run with the same value or those packages will be removed."
+  log_warn "  If it was built with NIKI_EXTRAS, re-run with the same value or those packages will be removed."
   # An unreadable receipt can still hide extras (e.g. one written by a prior
   # sudo run), so offer the same abort prompt as the known-extras case below:
   # the user is told their extras may be removed and must get the chance to
@@ -2361,16 +2361,16 @@ if [ "$EXTRAS_UNREADABLE" = true ]; then
     if [ "$extras_prompt_rc" -eq 2 ]; then
       log_warn "Could not ask — continuing; any extras this install has will be removed."
     elif [ "$extras_prompt_rc" -ne 0 ]; then
-      log_info "Aborted. deepagents-code was left unchanged."
+      log_info "Aborted. niki-agent was left unchanged."
       exit 0
     fi
   fi
 elif [ -n "$INSTALLED_EXTRAS" ]; then
   log_warn "This install has extras that a bare re-run will remove: ${INSTALLED_EXTRAS}"
-  log_warn "  To keep them, re-run with: DEEPAGENTS_CODE_EXTRAS=\"${INSTALLED_EXTRAS}\""
+  log_warn "  To keep them, re-run with: NIKI_EXTRAS=\"${INSTALLED_EXTRAS}\""
   # Give an interactive user the chance to back out before uv rebuilds the
   # environment and drops those packages. No TTY means nobody can answer; an
-  # explicit DEEPAGENTS_CODE_YES means they already did. Both keep the warning
+  # explicit NIKI_YES means they already did. Both keep the warning
   # and proceed - a pre-answered yes is an instruction to continue, not to
   # abort.
   if [ "$ASSUME_YES" != "1" ] && can_prompt; then
@@ -2378,7 +2378,7 @@ elif [ -n "$INSTALLED_EXTRAS" ]; then
     if [ "$extras_prompt_rc" -eq 2 ]; then
       log_warn "Could not ask — continuing; the extras above will be removed."
     elif [ "$extras_prompt_rc" -ne 0 ]; then
-      log_info "Aborted. deepagents-code was left unchanged."
+      log_info "Aborted. niki-agent was left unchanged."
       exit 0
     fi
   fi
@@ -2411,7 +2411,7 @@ if [ "$UV_LIVE_LOG" = true ]; then
       2>&$UV_LIVE_LOG_FD || uv_rc=$?
   fi
   # Close the write end now that uv has exited. Everything downstream — the
-  # awk/cat/grep passes, `dcode -v`, the ripgrep install — would otherwise
+  # awk/cat/grep passes, `niki -v`, the ripgrep install — would otherwise
   # inherit a writable handle on the log for the rest of the run. Matches the
   # convention prompt_yn already follows for its own descriptor. Say so if the
   # close fails: that inherited handle is exactly what this line exists to
@@ -2556,22 +2556,22 @@ if [ "$uv_rc" -ne 0 ]; then
   if [ -n "$INSTALL_LOG" ] && [ -s "$INSTALL_LOG" ]; then
     log_error "Full log: ${INSTALL_LOG_DISPLAY}"
   fi
-  log_error "Common fixes: check your network, try a different Python version (DEEPAGENTS_CODE_PYTHON=3.12), or install manually."
+  log_error "Common fixes: check your network, try a different Python version (NIKI_PYTHON=3.12), or install manually."
   exit "$uv_rc"
 fi
 if path_is_under_home "$TOOL_BIN_DIR"; then
   if [ "$TOOL_BIN_DIR_PREEXISTED" = false ]; then
     fix_file_owner "$TOOL_BIN_DIR"
   fi
-  fix_file_owner "${TOOL_BIN_DIR}/dcode" "${TOOL_BIN_DIR}/deepagents-code"
+  fix_file_owner "${TOOL_BIN_DIR}/niki" "${TOOL_BIN_DIR}/niki-agent"
 fi
 # Repair on every root run, not only a first install. `uv tool install` has
 # just written into this tree as root, so gating on "did this run create
 # it?" would leave the common `sudo` upgrade path root-owned — exactly
-# the breakage fix_tree_owner exists to prevent. The tree is dcode's own tool
+# the breakage fix_tree_owner exists to prevent. The tree is niki's own tool
 # environment, so the installer owns it whether or not this run created it.
-if [ -n "$UV_TOOL_DIR" ] && path_is_under_home "${UV_TOOL_DIR}/deepagents-code"; then
-  fix_tree_owner "${UV_TOOL_DIR}/deepagents-code"
+if [ -n "$UV_TOOL_DIR" ] && path_is_under_home "${UV_TOOL_DIR}/niki-agent"; then
+  fix_tree_owner "${UV_TOOL_DIR}/niki-agent"
 fi
 while IFS= read -r uv_cache_dir; do
   [ -n "$uv_cache_dir" ] || continue
@@ -2596,9 +2596,9 @@ fi
 fix_install_log_owner
 
 # ---------------------------------------------------------------------------
-# PATH setup — make dcode immediately findable in a new shell
+# PATH setup — make niki immediately findable in a new shell
 # ---------------------------------------------------------------------------
-# After `uv tool install`, dcode lands in uv's configured tool bin directory.
+# After `uv tool install`, niki lands in uv's configured tool bin directory.
 # If that directory is not already in PATH, expose the installed binary through
 # one of the user's conventional bin directories.
 #
@@ -2607,17 +2607,17 @@ fix_install_log_owner
 # file adapted from muse's installer, https://dev.meta.ai/install.sh):
 #   1. If a common bin dir (~/.local/bin, ~/bin, ~/.bin) is already in PATH,
 #      create a symlink there — no profile modification needed.
-#   2. Otherwise, create ~/.local/bin, symlink dcode there, then add
+#   2. Otherwise, create ~/.local/bin, symlink niki there, then add
 #      ~/.local/bin to the user's shell startup files. Every zsh/bash profile
 #      that already exists gets the entry (plus the primary one for the
-#      current shell), so dcode resolves even if the user later switches
-#      shells; fish gets a standalone conf.d/deepagents-code.fish file, which
+#      current shell), so niki resolves even if the user later switches
+#      shells; fish gets a standalone conf.d/niki-agent.fish file, which
 #      fish auto-sources, instead of a config.fish edit. Prompt interactively
 #      before writing; auto-add in non-interactive mode (CI, cron, piped
 #      install).
 #   3. Skip the whole thing if the binary was already on PATH or uv's env file
 #      exposes a binary installed under ~/.local/bin.
-#   DEEPAGENTS_CODE_NO_MODIFY_PATH=1 skips steps 1–2 entirely, for users with
+#   NIKI_NO_MODIFY_PATH=1 skips steps 1–2 entirely, for users with
 #   version-managed dotfiles or MDM-managed PATH.
 
 # Check if a directory was in PATH before the installer sourced any env files.
@@ -2631,7 +2631,7 @@ dir_in_original_path() {
   esac
 }
 
-# Try to symlink the dcode binary into a directory already in PATH. Tries
+# Try to symlink the niki binary into a directory already in PATH. Tries
 # ~/.local/bin, ~/bin, and ~/.bin in order. Returns 0 on success.
 try_symlink_in_path() {
   local binary_name="$1"
@@ -2667,7 +2667,7 @@ try_symlink_in_path() {
 # For fish, SHELL_PROFILE names config.fish only so the reload hint and the
 # "add this yourself" message have something to point at. The PATH entry itself
 # is never written there: ensure_path_setup writes a standalone
-# conf.d/deepagents-code.fish (see fish_conf_file) and never adds config.fish
+# conf.d/niki-agent.fish (see fish_conf_file) and never adds config.fish
 # as a write candidate.
 detect_shell_profile() {
   local default_shell="bash"
@@ -2713,7 +2713,7 @@ detect_shell_profile() {
       ;;
     fish)
       # Reload hint sources config.fish; the PATH entry itself is written to
-      # conf.d/deepagents-code.fish by ensure_path_setup. Honor XDG_CONFIG_HOME
+      # conf.d/niki-agent.fish by ensure_path_setup. Honor XDG_CONFIG_HOME
       # here too, or the hint names a file the user doesn't have.
       SHELL_PROFILE="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish"
       # shellcheck disable=SC2016  # single-quoted so $HOME expands at profile source time, not here
@@ -2729,7 +2729,7 @@ detect_shell_profile() {
 # startup. A standalone file keeps the installer from mutating the user's main
 # config.fish and makes the entry trivially removable.
 fish_conf_file() {
-  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/deepagents-code.fish"
+  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/niki-agent.fish"
 }
 
 # shellcheck disable=SC2016  # single-quoted so $PATH stays literal for the fish file
@@ -2873,7 +2873,7 @@ resolve_zdotdir() {
   # when the directory hasn't been created. An existence check would have the
   # failure mode backwards: on a fresh setup with `ZDOTDIR=$HOME/.config/zsh`,
   # rejecting the value writes ~/.zshrc, a file zsh never reads once ZDOTDIR
-  # is set, so `dcode` stays off PATH. The caller creates a missing candidate
+  # is set, so `niki` stays off PATH. The caller creates a missing candidate
   # directory before writing, which is safe only because guarded assignments
   # were skipped above — creating a directory an `if [ -d ... ]` is waiting on
   # would silently activate a ZDOTDIR the user has not opted into yet.
@@ -2890,7 +2890,7 @@ resolve_zdotdir() {
 managed_path_block_present() {
   local profile="$1"
   [ -f "$profile" ] || return 1
-  grep -F '# >>> deepagents-code installer >>>' "$profile" >/dev/null 2>&1
+  grep -F '# >>> niki-agent installer >>>' "$profile" >/dev/null 2>&1
 }
 
 managed_path_block_has_line() {
@@ -2903,9 +2903,9 @@ append_managed_path_block() {
   local profile="$1" path_export="$2"
   {
     echo ""
-    echo "# >>> deepagents-code installer >>>"
+    echo "# >>> niki-agent installer >>>"
     echo "$path_export"
-    echo "# <<< deepagents-code installer <<<"
+    echo "# <<< niki-agent installer <<<"
   } >>"$profile"
 }
 
@@ -2956,11 +2956,11 @@ rewrite_managed_path_block() {
       return 1
     fi
   fi
-  tmp_profile=$(mktemp "$(dirname "$profile")/.deepagents-code-profile.XXXXXX") || return 1
+  tmp_profile=$(mktemp "$(dirname "$profile")/.niki-agent-profile.XXXXXX") || return 1
   register_temp "$tmp_profile"
 
-  awk -v begin="# >>> deepagents-code installer >>>" \
-    -v end="# <<< deepagents-code installer <<<" \
+  awk -v begin="# >>> niki-agent installer >>>" \
+    -v end="# <<< niki-agent installer <<<" \
     -v line="$path_export" '
     BEGIN { in_block = 0; replaced = 0 }
     $0 == begin {
@@ -3011,7 +3011,7 @@ rewrite_managed_path_block() {
   return 0
 }
 
-# Ensure dcode is on PATH for new shell sessions. Creates symlinks and/or
+# Ensure niki is on PATH for new shell sessions. Creates symlinks and/or
 # modifies shell startup files as needed. Only acts when the binary verified
 # but isn't already on the user's original PATH.
 # Returns: 0 = nothing more to say — PATH is fixed for the current shell (a
@@ -3020,7 +3020,7 @@ rewrite_managed_path_block() {
 #          1 = failure (a specific warning was already printed),
 #          2 = no changes needed, or changes were written to startup files,
 #              but the current shell still must be reloaded or sourced before
-#              dcode will resolve,
+#              niki will resolve,
 #          3 = root install to a custom bin; PATH changes are left to MDM policy,
 #          4 = the user declined the prompt; nothing was written.
 # rc=0, 3 and 4 suppress the caller's reload hint. Any path that edits a
@@ -3035,24 +3035,24 @@ ensure_path_setup() {
   # MDM fleets: install and verify the binary, but never touch startup files
   # or create symlinks. The user adds the bin dir to PATH themselves.
   #
-  # Accept the same *truthy* spellings as DEEPAGENTS_CODE_YES. The falsy
+  # Accept the same *truthy* spellings as NIKI_YES. The falsy
   # handling deliberately differs: ASSUME_YES maps anything unrecognized to
   # off, while this maps it to on. The opt-out exists to protect managed
   # dotfiles, so an unparsed value must fail toward leaving files alone rather
   # than editing them. Don't unify the two parsers.
   local no_modify_path
-  no_modify_path="$(printf '%s' "${DEEPAGENTS_CODE_NO_MODIFY_PATH:-0}" \
+  no_modify_path="$(printf '%s' "${NIKI_NO_MODIFY_PATH:-0}" \
     | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
   case "$no_modify_path" in
     0|false|no|'') no_modify_path="0" ;;
     1|true|yes)    no_modify_path="1" ;;
     *)
-      log_warn "Unrecognized DEEPAGENTS_CODE_NO_MODIFY_PATH value — treating it as 1 (leaving startup files alone)."
+      log_warn "Unrecognized NIKI_NO_MODIFY_PATH value — treating it as 1 (leaving startup files alone)."
       no_modify_path="1"
       ;;
   esac
   if [ "$no_modify_path" = "1" ]; then
-    log_info "Skipping PATH setup (DEEPAGENTS_CODE_NO_MODIFY_PATH is set)."
+    log_info "Skipping PATH setup (NIKI_NO_MODIFY_PATH is set)."
     log_info "  ${binary_name} is at ${binary_path} — add its directory to PATH yourself, e.g.:"
     log_info "    export PATH=\"${binary_path%/*}:\$PATH\""
     # rc=0 so the caller stays quiet: the generic reload hint would name
@@ -3111,7 +3111,7 @@ ensure_path_setup() {
 
   # Step 3: detect the current shell, then write the PATH entry into every
   # relevant startup file that exists — plus the primary file for the current
-  # shell — so dcode resolves no matter which shell the user opens next.
+  # shell — so niki resolves no matter which shell the user opens next.
   detect_shell_profile
   # Reuse detect_shell_profile's result rather than re-deriving it from $SHELL,
   # so the two can't disagree about which shell this is: any second derivation
@@ -3130,7 +3130,7 @@ ensure_path_setup() {
   #     only if it already exists), plus the login file (.bash_profile
   #     preferred, else .bash_login, else ~/.profile, which is what a bash
   #     login shell falls back to reading)
-  #   - fish: conf.d/deepagents-code.fish, when fish is the shell or a fish
+  #   - fish: conf.d/niki-agent.fish, when fish is the shell or a fish
   #     config dir exists
   #   - any other shell: ~/.profile, in addition to whichever of the above
   #     matched on file existence
@@ -3350,15 +3350,15 @@ ensure_path_setup() {
       # Our block exists with a stale line — rewrite it in place.
       if rewrite_managed_path_block "$profile" "$export_line"; then
         fix_file_owner "$profile"
-        log_success "Updated deepagents-code PATH block in $(tilde_display "$profile")."
+        log_success "Updated niki-agent PATH block in $(tilde_display "$profile")."
         updated=$((updated + 1))
       else
-        log_warn "Could not update deepagents-code PATH block in $(tilde_display "$profile")."
+        log_warn "Could not update niki-agent PATH block in $(tilde_display "$profile")."
         # Deliberately hedged: rewrite_managed_path_block also returns 1 for an
         # unresolvable symlink, a mktemp failure and a failed mv, each of which
         # already printed its own reason just above. Asserting the marker cause
         # outright would contradict those.
-        log_warn "  One cause is a stray '# >>> deepagents-code installer >>>' line with no matching '<<<' line."
+        log_warn "  One cause is a stray '# >>> niki-agent installer >>>' line with no matching '<<<' line."
         failed=$((failed + 1))
       fi
     elif append_managed_path_block "$profile" "$export_line"; then
@@ -3406,7 +3406,7 @@ classify_shadowing_command() {
 
 detect_shadowing_install() {
   local candidate expected original manager
-  for candidate in dcode deepagents-code; do
+  for candidate in niki niki-agent; do
     expected="${TOOL_BIN_DIR}/${candidate}"
     [ -x "$expected" ] || continue
     original=$(PATH="$ORIGINAL_PATH" command -v "$candidate" 2>/dev/null || true)
@@ -3430,7 +3430,7 @@ DCODE_NAME=""
 # Tracks whether the binary would have resolved via the user's original PATH,
 # not the installer-mutated PATH.
 DCODE_ON_PATH=false
-for candidate in dcode deepagents-code; do
+for candidate in niki niki-agent; do
   if [ -x "${TOOL_BIN_DIR}/${candidate}" ]; then
     DCODE_BIN="${TOOL_BIN_DIR}/${candidate}"
     DCODE_NAME="$candidate"
@@ -3443,7 +3443,7 @@ for candidate in dcode deepagents-code; do
   fi
 done
 if [ -z "$DCODE_BIN" ]; then
-  for candidate in dcode deepagents-code; do
+  for candidate in niki niki-agent; do
     if resolved=$(command -v "$candidate" 2>/dev/null) && [ -n "$resolved" ]; then
       DCODE_BIN="$resolved"
       DCODE_NAME="$candidate"
@@ -3479,9 +3479,9 @@ if [ -n "$DCODE_BIN" ]; then
 fi
 
 if [ "$IS_EDITABLE" = true ]; then
-  log_success "deepagents-code${NEW_VERSION:+ ${NEW_VERSION}} reinstalled from PyPI."
+  log_success "niki-agent${NEW_VERSION:+ ${NEW_VERSION}} reinstalled from PyPI."
 elif [ -z "$PRE_VERSION" ]; then
-  log_success "deepagents-code${NEW_VERSION:+ ${NEW_VERSION}} installed."
+  log_success "niki-agent${NEW_VERSION:+ ${NEW_VERSION}} installed."
 elif [ -n "$NEW_VERSION" ] && [ "$PRE_VERSION" = "$NEW_VERSION" ]; then
   # Same app version, but uv may have refreshed transitive deps (security or
   # compat bumps). The final status line is the user-facing summary, so a flat
@@ -3498,14 +3498,14 @@ elif [ -n "$NEW_VERSION" ] && [ "$PRE_VERSION" = "$NEW_VERSION" ]; then
     # INSTALL_LOG on failure - and then there is no log to point at from either
     # site. Leaving the pointer to that one site also keeps this line short;
     # a live run already showed the path once in the `Update log:` hint.
-    log_success "deepagents-code ${NEW_VERSION} was already up to date; dependencies were updated."
+    log_success "niki-agent ${NEW_VERSION} was already up to date; dependencies were updated."
   else
-    log_success "deepagents-code ${NEW_VERSION} already up to date."
+    log_success "niki-agent ${NEW_VERSION} already up to date."
   fi
 elif [ -n "$NEW_VERSION" ]; then
-  log_success "deepagents-code updated: ${PRE_VERSION} → ${NEW_VERSION}."
+  log_success "niki-agent updated: ${PRE_VERSION} → ${NEW_VERSION}."
 else
-  log_success "deepagents-code installed."
+  log_success "niki-agent installed."
 fi
 # The log captured uv's full stderr (dependency diff, warnings, rebuild
 # notice). Point at it after any successful install so users can inspect what
@@ -3539,12 +3539,12 @@ elif [ -n "$DCODE_BIN" ]; then
   log_warn "  ${VERIFY_OUTPUT}"
   log_warn "The installation may be broken. Try running: ${DCODE_NAME} -v"
 else
-  log_warn "dcode (or deepagents-code) command not found in ${TOOL_BIN_DIR_DISPLAY} or PATH. Restart your shell or run:"
+  log_warn "niki (or niki-agent) command not found in ${TOOL_BIN_DIR_DISPLAY} or PATH. Restart your shell or run:"
   log_warn "  source ~/.zshrc   # (or ~/.bashrc)"
 fi
 
 # The binary verified via its absolute path but isn't on the current shell's
-# PATH (typical right after a fresh `uv tool install`): typing `dcode` won't
+# PATH (typical right after a fresh `uv tool install`): typing `niki` won't
 # work until the shell picks up ~/.local/bin. Instead of just telling the user
 # to restart their shell, try to fix the PATH now — symlink into an existing
 # PATH dir, or add ~/.local/bin to the shell profile — so the binary is
@@ -3741,7 +3741,7 @@ ripgrep_managed_failed() {
   ripgrep_manual_hint
 }
 
-# Hand back whichever managed bin directory `dcode tools install` just wrote
+# Hand back whichever managed bin directory `niki tools install` just wrote
 # to. It prefers the installation-scoped MANAGED_BIN_DIR and falls back to the
 # profile-scoped one when that is unwritable, so a root install must repair
 # both or the fallback stays root-owned inside the user's home. Each is gated
@@ -3749,7 +3749,7 @@ ripgrep_managed_failed() {
 # from `uv tool dir`, which the user can point outside $HOME.
 #
 # Repair on every root run, not only a first install — the same reason
-# `fix_tree_owner "${UV_TOOL_DIR}/deepagents-code"` is ungated. `dcode tools
+# `fix_tree_owner "${UV_TOOL_DIR}/niki-agent"` is ungated. `niki tools
 # install` has just written into these trees as root, and on an upgrade they
 # already exist, so a `*_PREEXISTED` gate would skip the common `sudo` path and
 # leave the freshly written `rg` root-owned. Both hold only the managed binary
@@ -3758,19 +3758,19 @@ fix_managed_bin_owner() {
   if [ -n "$MANAGED_BIN_DIR" ] && path_is_under_home "$MANAGED_BIN_DIR"; then
     fix_tree_owner "$MANAGED_BIN_DIR"
   fi
-  if [ -n "${DEEPAGENTS_HOME:-}" ] && path_is_under_home "${DEEPAGENTS_HOME}/bin"; then
-    fix_tree_owner "${DEEPAGENTS_HOME}/bin"
+  if [ -n "${NIKI_HOME:-}" ] && path_is_under_home "${NIKI_HOME}/bin"; then
+    fix_tree_owner "${NIKI_HOME}/bin"
   fi
 }
 
 if [ "$SKIP_OPTIONAL" != "1" ]; then
   if [ "$RIPGREP_INSTALLER" = "managed" ] && [ "$VERIFY_OK" = true ] && [ -n "$DCODE_BIN" ]; then
     # Eager, non-prompting managed install through the freshly installed binary
-    # — the same pinned, SHA-256-verified path dcode uses on first run
-    # (downloads inside the dcode tool environment). Doing it here removes the
+    # — the same pinned, SHA-256-verified path niki uses on first run
+    # (downloads inside the niki tool environment). Doing it here removes the
     # first-run download latency. The binary reuses a system `rg` already on
-    # PATH and honors DEEPAGENTS_CODE_OFFLINE and
-    # DEEPAGENTS_CODE_RIPGREP_INSTALLER=system. Routine output stays behind
+    # PATH and honors NIKI_OFFLINE and
+    # NIKI_RIPGREP_INSTALLER=system. Routine output stays behind
     # verbose mode because most users do not need ripgrep setup details.
     if [ "$VERBOSE" = "1" ]; then
       echo ""
@@ -3862,10 +3862,10 @@ fi
 # catch-all branch:
 #   - a *pinned* version (VERSION set): `bash -s -- 0.1.0` over an installed
 #     0.2.0 is a downgrade.
-#   - an explicit DEEPAGENTS_CODE_PRERELEASE (PRERELEASE_REQUESTED set): with
+#   - an explicit NIKI_PRERELEASE (PRERELEASE_REQUESTED set): with
 #     `disallow` over an installed 0.3.0rc1, uv resolves to the latest *stable*,
 #     which can be older than what's there.
-# It also covers an empty NEW_VERSION — the post-install `dcode -v` probe
+# It also covers an empty NEW_VERSION — the post-install `niki -v` probe
 # failed, was never run because DCODE_BIN didn't resolve, or exited 0 while
 # printing nothing.
 # ---------------------------------------------------------------------------
@@ -3888,5 +3888,5 @@ else
 fi
 echo ""
 # shellcheck disable=SC2059
-printf "${GREEN}✔${NC} %s Run: ${BOLD}dcode${NC}\n" "$footer_msg"
-echo "  Docs: https://docs.langchain.com/deepagents-code"
+printf "${GREEN}✔${NC} %s Run: ${BOLD}niki${NC}\n" "$footer_msg"
+echo "  Docs: https://github.com/RavaniRoshan/niki-agent"

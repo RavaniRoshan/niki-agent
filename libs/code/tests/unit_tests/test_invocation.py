@@ -1,4 +1,4 @@
-"""Unit tests for `deepagents_code._invocation`."""
+"""Unit tests for `niki_agent._invocation`."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code._env_vars import DEBUG, INVOKED_AS
-from deepagents_code._invocation import (
+from niki_agent._env_vars import DEBUG, INVOKED_AS
+from niki_agent._invocation import (
     DEFAULT_INVOKED_NAME,
     invoked_name,
     log_nonstandard_invoked_name,
@@ -54,11 +54,11 @@ class TestInvokedNameFromArgv:
         assert invoked_name() == "dcode"
 
     def test_reports_alias_entry_point(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """The longer `deepagents-code` console script is reported verbatim."""
+        """The longer `niki-agent` console script is reported verbatim."""
         monkeypatch.delenv(INVOKED_AS, raising=False)
-        monkeypatch.setattr(sys, "argv", ["/usr/local/bin/deepagents-code"])
+        monkeypatch.setattr(sys, "argv", ["/usr/local/bin/niki-agent"])
 
-        assert invoked_name() == "deepagents-code"
+        assert invoked_name() == "niki-agent"
 
     def test_reports_shim_name_not_symlink_target(
         self, monkeypatch: pytest.MonkeyPatch
@@ -77,10 +77,10 @@ class TestInvokedNameFromArgv:
     def test_module_entry_point_falls_back(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """`python -m deepagents_code` reports `__main__.py`, which is unusable."""
+        """`python -m niki_agent` reports `__main__.py`, which is unusable."""
         monkeypatch.delenv(INVOKED_AS, raising=False)
         monkeypatch.setattr(
-            sys, "argv", ["/venv/lib/deepagents_code/__main__.py", "-r", "t"]
+            sys, "argv", ["/venv/lib/niki_agent/__main__.py", "-r", "t"]
         )
 
         assert invoked_name() == DEFAULT_INVOKED_NAME
@@ -146,7 +146,7 @@ class TestInvokedNameFromEnv:
         """After the auto-update re-exec, only the sentinel knows the name."""
         monkeypatch.setenv(INVOKED_AS, "abc")
         monkeypatch.setattr(
-            sys, "argv", ["/venv/lib/deepagents_code/__main__.py", "-r", "t"]
+            sys, "argv", ["/venv/lib/niki_agent/__main__.py", "-r", "t"]
         )
 
         assert invoked_name() == "abc"
@@ -185,7 +185,7 @@ class TestLogNonstandardInvokedName:
         monkeypatch.delenv(DEBUG, raising=False)
         monkeypatch.setattr(sys, "argv", ["/home/user/.local/bin/abc"])
 
-        with caplog.at_level(logging.INFO, logger="deepagents_code._invocation"):
+        with caplog.at_level(logging.INFO, logger="niki_agent._invocation"):
             log_nonstandard_invoked_name()
 
         assert len(caplog.records) == 1
@@ -201,7 +201,7 @@ class TestLogNonstandardInvokedName:
         monkeypatch.setenv(DEBUG, "1")
         monkeypatch.setattr(sys, "argv", ["/home/user/.local/bin/abc"])
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code._invocation"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent._invocation"):
             log_nonstandard_invoked_name()
 
         assert len(caplog.records) == 1
@@ -209,7 +209,7 @@ class TestLogNonstandardInvokedName:
         assert record.levelno == logging.DEBUG
         assert "'abc'" in record.getMessage()
 
-    @pytest.mark.parametrize("argv0", ["dcode", "deepagents-code"])
+    @pytest.mark.parametrize("argv0", ["niki", "dcode", "deepagents-code"])
     def test_standard_names_log_nothing(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -220,7 +220,7 @@ class TestLogNonstandardInvokedName:
         monkeypatch.delenv(INVOKED_AS, raising=False)
         monkeypatch.setattr(sys, "argv", [f"/usr/local/bin/{argv0}"])
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code._invocation"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent._invocation"):
             log_nonstandard_invoked_name()
 
         assert caplog.records == []
@@ -233,7 +233,7 @@ class TestLogNonstandardInvokedName:
         monkeypatch.delenv(DEBUG, raising=False)
         monkeypatch.setattr(sys, "argv", ["/home/user/.local/bin/abc"])
 
-        with caplog.at_level(logging.INFO, logger="deepagents_code._invocation"):
+        with caplog.at_level(logging.INFO, logger="niki_agent._invocation"):
             log_nonstandard_invoked_name()
             log_nonstandard_invoked_name()
 
@@ -246,7 +246,7 @@ class TestLogNonstandardInvokedName:
         monkeypatch.delenv(INVOKED_AS, raising=False)
         monkeypatch.setattr(sys, "argv", ["python3.13"])
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code._invocation"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent._invocation"):
             log_nonstandard_invoked_name()
 
         assert caplog.records == []
