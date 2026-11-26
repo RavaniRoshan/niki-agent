@@ -139,6 +139,63 @@ impl SessionStore {
         Ok(summaries)
     }
 
+    /// One session by id, when it exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::Sqlite`] when the query fails.
+    pub fn find(&self, id: &str) -> Result<Option<Summary>, SessionError> {
+        let summary = self
+            .connection
+            .query_row(
+                "SELECT sessions.id, sessions.title, sessions.cwd, sessions.created_at,
+                        (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id)
+                 FROM sessions WHERE sessions.id = ?1",
+                params![id],
+                |row| {
+                    Ok(Summary {
+                        id: SessionId(row.get(0)?),
+                        title: row.get(1)?,
+                        cwd: row.get(2)?,
+                        created_at: row.get(3)?,
+                        messages: row.get(4)?,
+                    })
+                },
+            )
+            .optional()?;
+        Ok(summary)
+    }
+
+    /// The newest session rooted at `cwd`, when there is one.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::Sqlite`] when the query fails.
+    pub fn latest_for(&self, cwd: impl AsRef<Path>) -> Result<Option<Summary>, SessionError> {
+        let cwd = cwd.as_ref().to_str().ok_or(SessionError::NonUtf8Path)?;
+        let summary = self
+            .connection
+            .query_row(
+                "SELECT sessions.id, sessions.title, sessions.cwd, sessions.created_at,
+                        (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id)
+                 FROM sessions WHERE sessions.cwd = ?1
+                 ORDER BY sessions.created_at DESC, sessions.rowid DESC
+                 LIMIT 1",
+                params![cwd],
+                |row| {
+                    Ok(Summary {
+                        id: SessionId(row.get(0)?),
+                        title: row.get(1)?,
+                        cwd: row.get(2)?,
+                        created_at: row.get(3)?,
+                        messages: row.get(4)?,
+                    })
+                },
+            )
+            .optional()?;
+        Ok(summary)
+    }
+
     /// Append one message and return its id.
     ///
     /// # Errors

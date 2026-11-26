@@ -252,7 +252,32 @@ startup wiring is covered without a network or a terminal.
   one async mutex and marked closed after a timeout, exit or malformed line.
   HTTP requests are independent and are not marked closed.
 
-## Next: W5 — ACP and headless parity
+## W5 — ACP and headless parity
+
+`niki-acp` serves an editor on stdin/stdout (`--acp`): `initialize`,
+`session/new`, `session/prompt`, cancel, mode and config, with the agent's
+events streamed as session updates. A gated command becomes `session/request_permission`;
+a client that cannot be reached is a denial, not a hang.
+
+The headless entry point now matches the Python client's conventions:
+
+- `--output-format json` prints one object after the turn: `answer`, `steps`,
+  `tool_calls`, `usage`, `stop` (`end_turn`, `tool_use`, `max_tokens`,
+  `step_limit`, `cancelled`, `other`) and `session`. A script parses that
+  instead of scraping text; errors still go to stderr.
+- `--continue` reopens the newest session for the workspace and
+  `--resume <id|last>` a named one. Its `user` and `assistant` rows seed the
+  conversation; `tool_call`/`tool_result` rows stay in the store but are not
+  resent, because a stored row has no tool-call id to answer. A headless run
+  also appends its own prompt, tool rows and answer, so the screen's `/resume`
+  lists it.
+- Exit 124 when the step budget runs out (GNU `timeout`'s code, which the
+  Python client uses), 130 when Ctrl-C cancels, 2 for a usage error such as
+  `--acp -n`, 1 for a failure, 0 otherwise.
+
+The provider stream is read to its end rather than stopping at the finish
+reason, because OpenAI sends the usage chunk after it; token counts were
+always zero before that change.
 
 W4 is complete: `niki-mcp` (stdio, HTTP, config, registration, startup
 wiring and a per-server startup budget), `niki-skills` (discovery, front

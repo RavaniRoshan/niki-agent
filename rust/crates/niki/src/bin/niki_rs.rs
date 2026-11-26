@@ -10,16 +10,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
-use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
+use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
 use niki_config::{Config, Protocol, config_home};
 use niki_hooks::{HookRunner, Hooks, Loaded};
 use niki_mcp::ToolBridge;
-use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
-use niki_session::SessionStore;
+use niki_provider::{
+    AnthropicProvider, Message, OpenAiProvider, Provider, RetryPolicy, StopReason,
+};
+use niki_session::{SessionId, SessionStore};
 use niki_skills::SkillCatalog;
 use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
+use serde_json::json;
 
 const USAGE: &str = "\
 niki-rs — Niki agent (Rust)
@@ -41,6 +44,11 @@ OPTIONS:
     --max-steps <N>       Model turns allowed (default: 40)
     --system <TEXT>       Override the system prompt
     --quiet               Do not report tool calls on stderr
+    --output-format <text|json>
+                          text streams the answer (default); json prints one
+                          object with the answer, steps, tool calls and usage
+    --resume <ID|last>    Continue a saved session by id, or the newest one
+    --continue            Continue the newest session for this workspace
     --version             Print the version line
     --help                Print this text
 
@@ -52,6 +60,7 @@ EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
     1   configuration, provider or workspace failure
     2   usage error: --acp cannot be combined with -n
+    124 the step budget ran out before the model stopped calling tools
     130 cancelled with Ctrl-C
 ";
 
@@ -76,7 +85,7 @@ fn run(args: Vec<String>) -> Result<i32> {
             println!("niki-rs {}", env!("CARGO_PKG_VERSION"));
             return Ok(0);
         }
-        Parsed::Run(options) => options,
+        Parsed::Run(options) => *options,
     };
 
     if options.acp && options.prompt.is_some() {
@@ -113,6 +122,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     let root = workspace_root(&options)?;
     let ctx = ToolContext::new(root.clone())
         .with_context(|| format!("open the workspace at {}", root.display()))?;
+
     // Canonical, like the root the tools resolved: the path a skill is read
     // from must pass the same boundary check that `read_file` applies.
     let skills = skill_catalog(&ctx.root);
@@ -137,14 +147,23 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     }
     let hooks = load_hooks(&root, &config_home());
 
+    let Resumed {
+        store,
+        session,
+        history,
+    } = open_session(&options, &root)?;
+
     let cancel = CancelHandle::new();
     let mut agent = Agent::new(provider, ctx, settings)
         .with_registry(tool_registry(&mcp_tools))
         .with_policy(mode, allow)
         .with_hooks(hooks)
-        .with_cancel(cancel.clone());
+        .with_cancel(cancel.clone())
+        .with_history(history);
 
     let quiet = options.quiet;
+    let json = options.output == OutputFormat::Json;
+    let saved_prompt = prompt.clone();
     runtime.block_on(async move {
         let signal = cancel.clone();
         tokio::spawn(async move {
@@ -154,27 +173,183 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
         });
 
         let mut out = std::io::stdout().lock();
+        let mut rows: Vec<(String, String)> = Vec::new();
+        let mut buffered = String::new();
         let outcome = agent
-            .run(prompt, &mut |event| report(event, quiet, &mut out))
+            .run(prompt, &mut |event| {
+                match event {
+                    AgentEvent::Text(delta) if json => buffered.push_str(delta),
+                    AgentEvent::ToolStart { name, arguments } => {
+                        rows.push((
+                            "tool_call".to_owned(),
+                            format!("{name} {}", one_line(arguments)),
+                        ));
+                    }
+                    AgentEvent::ToolEnd { output, .. } => {
+                        rows.push(("tool_result".to_owned(), output.clone()));
+                    }
+                    _ => {}
+                }
+                if !(json && matches!(event, AgentEvent::Text(_))) {
+                    report(event, quiet, &mut out);
+                }
+            })
             .await
             .context("run the turn")?;
 
-        let _ = writeln!(out);
+        if json {
+            let value = json!({
+                "answer": outcome.text,
+                "steps": outcome.steps,
+                "tool_calls": outcome.tool_calls,
+                "usage": {
+                    "input_tokens": outcome.usage.input_tokens,
+                    "output_tokens": outcome.usage.output_tokens,
+                },
+                "stop": stop_label(&outcome.stop),
+                "session": session.as_ref().map(SessionId::as_str),
+            });
+            let _ = writeln!(out, "{value}");
+        } else {
+            let _ = writeln!(out);
+        }
         let _ = out.flush();
 
-        if quiet {
-            return Ok(0);
+        if let (Some(store), Some(session)) = (&store, &session) {
+            if let Err(error) = record(store, session, &saved_prompt, &outcome, &rows) {
+                eprintln!("niki-rs: warning: the session was not saved: {error:#}");
+            }
         }
-        let cancelled = matches!(&outcome.stop, niki_provider::StopReason::Other(reason) if reason == "cancelled");
-        eprintln!(
-            "\n{} steps, {} tool calls, {} in / {} out tokens",
-            outcome.steps,
-            outcome.tool_calls,
-            outcome.usage.input_tokens,
-            outcome.usage.output_tokens,
-        );
-        Ok(i32::from(cancelled) * 130)
+
+        if !quiet {
+            eprintln!(
+                "\n{} steps, {} tool calls, {} in / {} out tokens",
+                outcome.steps,
+                outcome.tool_calls,
+                outcome.usage.input_tokens,
+                outcome.usage.output_tokens,
+            );
+        }
+        Ok(exit_code(&outcome))
     })
+}
+
+/// The saved conversation a headless run continues.
+struct Resumed {
+    store: Option<SessionStore>,
+    session: Option<SessionId>,
+    history: Vec<Message>,
+}
+
+/// Open the session store and pick the conversation this run appends to.
+///
+/// Without `--resume` or `--continue` a new session is created. With either,
+/// the named session (or the newest one for this workspace) supplies its user
+/// and assistant turns as history; tool rows stay in the store but are not
+/// resent, because a stored row carries no tool-call id to answer.
+fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
+    let home = config_home();
+    let store = match open_store(&home) {
+        Ok(store) => store,
+        Err(error) => {
+            if options.resume.is_some() || options.continue_session {
+                return Err(error).context("resume needs the session store");
+            }
+            eprintln!("niki-rs: warning: sessions are not saved: {error:#}");
+            return Ok(Resumed {
+                store: None,
+                session: None,
+                history: Vec::new(),
+            });
+        }
+    };
+
+    let wanted = if options.continue_session {
+        Some("last".to_owned())
+    } else {
+        options.resume.clone()
+    };
+    let Some(wanted) = wanted else {
+        let session = store.create(root).context("create a session")?;
+        return Ok(Resumed {
+            store: Some(store),
+            session: Some(session),
+            history: Vec::new(),
+        });
+    };
+
+    let summary = if wanted == "last" {
+        store.latest_for(root).context("list the saved sessions")?
+    } else {
+        store.find(&wanted).context("look up the saved session")?
+    };
+    let summary = summary.with_context(|| {
+        format!(
+            "no saved session {wanted:?} for {}; run without --resume to start one",
+            root.display()
+        )
+    })?;
+    let rows = store.load(&summary.id).context("read the saved session")?;
+    let history = rows.iter().filter_map(model_message).collect();
+    Ok(Resumed {
+        store: Some(store),
+        session: Some(summary.id),
+        history,
+    })
+}
+
+/// The model message a stored row replays as, when it replays as one.
+fn model_message(row: &niki_session::Message) -> Option<Message> {
+    match row.role.as_str() {
+        "user" => Some(Message::user(row.content.clone())),
+        "assistant" => Some(Message::assistant(row.content.clone())),
+        _ => None,
+    }
+}
+
+/// Append the completed turn: the prompt, the tool rows, then the answer.
+fn record(
+    store: &SessionStore,
+    session: &SessionId,
+    prompt: &str,
+    outcome: &RunOutcome,
+    rows: &[(String, String)],
+) -> Result<()> {
+    store
+        .append(session, "user", prompt)
+        .context("save the prompt")?;
+    for (role, content) in rows {
+        store
+            .append(session, role, content)
+            .context("save a tool row")?;
+    }
+    if !outcome.text.is_empty() {
+        store
+            .append(session, "assistant", &outcome.text)
+            .context("save the answer")?;
+    }
+    Ok(())
+}
+
+/// Why the turn ended, in the JSON output's vocabulary.
+fn stop_label(stop: &StopReason) -> &'static str {
+    match stop {
+        StopReason::EndTurn => "end_turn",
+        StopReason::ToolUse => "tool_use",
+        StopReason::MaxTokens => "max_tokens",
+        StopReason::Other(reason) if reason == "cancelled" => "cancelled",
+        StopReason::Other(reason) if reason.starts_with("step limit") => "step_limit",
+        StopReason::Other(_) => "other",
+    }
+}
+
+/// The process exit code for a finished turn.
+fn exit_code(outcome: &RunOutcome) -> i32 {
+    match &outcome.stop {
+        StopReason::Other(reason) if reason == "cancelled" => 130,
+        StopReason::Other(reason) if reason.starts_with("step limit") => 124,
+        _ => 0,
+    }
 }
 
 /// The full-screen app. The agent is built on the worker thread, once per
@@ -390,12 +565,25 @@ struct Options {
     max_steps: Option<u32>,
     system: Option<String>,
     quiet: bool,
+    output: OutputFormat,
+    resume: Option<String>,
+    continue_session: bool,
+}
+
+/// What the headless run writes to stdout.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum OutputFormat {
+    /// Stream the answer text as the model produces it.
+    #[default]
+    Text,
+    /// Print one JSON object after the turn ends.
+    Json,
 }
 
 enum Parsed {
     Help,
     Version,
-    Run(Options),
+    Run(Box<Options>),
 }
 
 fn parse_options(args: Vec<String>) -> Result<Parsed> {
@@ -418,6 +606,16 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
                 );
             }
             "--system" => options.system = Some(value(&argument, iter.next())?),
+            "--output-format" => {
+                let raw = value(&argument, iter.next())?;
+                options.output = match raw.as_str() {
+                    "text" => OutputFormat::Text,
+                    "json" => OutputFormat::Json,
+                    other => bail!("--output-format takes text or json, got {other:?}"),
+                };
+            }
+            "--resume" => options.resume = Some(value(&argument, iter.next())?),
+            "--continue" => options.continue_session = true,
             "--quiet" | "-q" => options.quiet = true,
             "--help" | "-h" => return Ok(Parsed::Help),
             "--version" | "-V" => return Ok(Parsed::Version),
@@ -427,7 +625,7 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             positional => bail!("unexpected argument {positional:?}; the prompt is passed with -n"),
         }
     }
-    Ok(Parsed::Run(options))
+    Ok(Parsed::Run(Box::new(options)))
 }
 
 fn value(flag: &str, value: Option<String>) -> Result<String> {

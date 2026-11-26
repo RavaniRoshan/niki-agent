@@ -455,7 +455,7 @@ async fn a_workspace_tool_runs_and_streams_tool_call_updates() {
     assert_eq!(updates[0]["params"]["update"]["status"], json!("completed"));
     assert_eq!(
         updates[0]["params"]["update"]["content"][0]["content"]["text"],
-        json!("wrote 2 bytes to a.txt")
+        json!("Updated file a.txt")
     );
 
     let replay = harness.mark();
