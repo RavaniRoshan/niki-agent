@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/niki",
+    "crates/niki-acp",
     "crates/niki-agent",
     "crates/niki-commands",
     "crates/niki-config",

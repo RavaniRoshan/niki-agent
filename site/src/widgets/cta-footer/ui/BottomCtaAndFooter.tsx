@@ -42,8 +42,8 @@ const FOOTER_LINK_GROUPS: StubLinkGroup[] = [
 
 const FOOTER_EYEBROW = [
   INSTALL_COMMAND,
-  'no idle redraws at rest · four contrast-tested themes',
-  '3 providers built in · 18 extras · any OpenAI-compatible gateway',
+  'one self-contained Rust binary · four contrast-tested themes',
+  '11 providers built in · any OpenAI-compatible gateway in one TOML block',
 ];
 
 const FOOTER_LEGAL: StubLink[] = [
@@ -71,18 +71,18 @@ export function BottomCtaAndFooter({
         sections={FOOTER_SECTIONS}
         defaultSection={7}
         eyebrow={FOOTER_EYEBROW}
-        headline={['Stay still at rest.', 'Stream at full speed.']}
+        headline={['One binary, no runtime.', 'One command to start.']}
         description="A quiet terminal surface in front of an agent that reads your repository, edits files, and runs commands, with an approval gate in front of every action."
         cta={{ label: 'Install Niki' }}
         onCtaClick={onInstall}
         linkGroups={FOOTER_LINK_GROUPS}
-        statusLabels={['Active', 'Still']}
+        statusLabels={['Working', 'Idle']}
         statusCaption="Agent Loop"
         defaultActive={true}
-        count={30}
-        countLabel="Turns Mounted"
+        count={11}
+        countLabel="Providers Built In"
         rate={0}
-        blurb="One installer line, one command. Three providers built in, eighteen extras, and any OpenAI-compatible endpoint in ~/.niki/config.toml. No idle redraws at rest."
+        blurb="One installer line, one command. Eleven providers built in, any OpenAI-compatible endpoint in ~/.niki/config.toml, and sessions persisted in SQLite under ~/.niki."
         legal={FOOTER_LEGAL}
         background={isDark ? 'oklch(0 0 0)' : 'oklch(0.99 0.002 281.25)'}
         ink={isDark ? 'oklch(0.974 0.004 281.223)' : 'oklch(0.12 0.031 273.513)'}

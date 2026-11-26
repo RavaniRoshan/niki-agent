@@ -22,7 +22,7 @@ impl Tool for ReadFile {
         json!({
             "type": "object",
             "properties": {
-                "path": {
+                "file_path": {
                     "type": "string",
                     "description": "File path relative to the workspace root."
                 },
@@ -37,7 +37,7 @@ impl Tool for ReadFile {
                     "description": "Maximum number of lines to return."
                 }
             },
-            "required": ["path"],
+            "required": ["file_path"],
             "additionalProperties": false
         })
     }

@@ -1,9 +1,9 @@
 //! `niki-rs` — the Rust entry point.
 //!
 //! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
-//! Python product reads. Without a prompt it opens the full-screen app on the
-//! same agent, provider and workspace. Named `niki-rs` until cutover
-//! (RULES.md 2).
+//! Python product reads. With `--acp` it serves an editor over stdin/stdout on
+//! that same agent, provider and workspace. Without either it opens the
+//! full-screen app. Named `niki-rs` until cutover (RULES.md 2).
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -29,6 +29,7 @@ niki-rs — Niki agent (Rust)
 
 USAGE:
     niki-rs -n <PROMPT> [options]   run one prompt and exit
+    niki-rs --acp [options]         serve an editor over stdin/stdout
     niki-rs [options]              open the full-screen app
 
 OPTIONS:
@@ -58,6 +59,7 @@ ENVIRONMENT:
 EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
     1   configuration, provider or workspace failure
+    2   usage error: --acp cannot be combined with -n
     124 the step budget ran out before the model stopped calling tools
     130 cancelled with Ctrl-C
 ";
@@ -83,8 +85,16 @@ fn run(args: Vec<String>) -> Result<i32> {
             println!("niki-rs {}", env!("CARGO_PKG_VERSION"));
             return Ok(0);
         }
-        Parsed::Run(options) => options,
+        Parsed::Run(options) => *options,
     };
+
+    if options.acp && options.prompt.is_some() {
+        eprintln!(
+            "niki-rs: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout \
+             and -n runs one prompt"
+        );
+        return Ok(2);
+    }
 
     let config_path = options
         .config
@@ -93,9 +103,12 @@ fn run(args: Vec<String>) -> Result<i32> {
     let config =
         Config::load(&config_path).with_context(|| format!("read {}", config_path.display()))?;
 
-    match options.prompt.clone() {
-        Some(prompt) => headless(options, &config, &config_path, prompt),
-        None => screen(options, config, config_path),
+    if let Some(prompt) = options.prompt.clone() {
+        headless(options, &config, &config_path, prompt)
+    } else if options.acp {
+        acp(options, config, config_path)
+    } else {
+        screen(options, config, config_path)
     }
 }
 
@@ -167,7 +180,10 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
                 match event {
                     AgentEvent::Text(delta) if json => buffered.push_str(delta),
                     AgentEvent::ToolStart { name, arguments } => {
-                        rows.push(("tool_call".to_owned(), format!("{name} {}", one_line(arguments))));
+                        rows.push((
+                            "tool_call".to_owned(),
+                            format!("{name} {}", one_line(arguments)),
+                        ));
                     }
                     AgentEvent::ToolEnd { output, .. } => {
                         rows.push(("tool_result".to_owned(), output.clone()));
@@ -273,9 +289,7 @@ fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
             root.display()
         )
     })?;
-    let rows = store
-        .load(&summary.id)
-        .context("read the saved session")?;
+    let rows = store.load(&summary.id).context("read the saved session")?;
     let history = rows.iter().filter_map(model_message).collect();
     Ok(Resumed {
         store: Some(store),
@@ -411,6 +425,71 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     run_screen(&mut app, &mut worker).context("run the full-screen app")
 }
 
+/// Serve the Agent Client Protocol on stdin/stdout.
+///
+/// The provider, tools, policy and workspace are the host's: the server builds
+/// one agent per session through [`niki_acp::AgentFactory`] and owns the
+/// protocol, the session store and the approval round-trip. Nothing but frames
+/// may reach stdout while this runs; warnings go to stderr.
+fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
+    let spec = model_spec(&options, &config, &config_path)?;
+    let default_mode = mode(options.mode.as_deref());
+    let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
+    let max_steps = options.max_steps.unwrap_or(40);
+    let base_system = options
+        .system
+        .clone()
+        .unwrap_or_else(|| AgentConfig::default().system);
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .context("start the async runtime")?;
+
+    let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
+    for error in &mcp_errors {
+        eprintln!("niki-rs: warning: {error}");
+    }
+    let mcp_tools = Arc::new(mcp_tools);
+
+    let build_config = config;
+    let factory_tools = Arc::clone(&mcp_tools);
+    let factory = Box::new(
+        move |seed: niki_acp::SessionSeed| -> Result<Agent, String> {
+            let (provider_name, model) = split_spec(&spec).map_err(|error| format!("{error:#}"))?;
+            let provider = build_provider(&build_config, provider_name)
+                .map_err(|error| format!("{error:#}"))?;
+            let ctx = ToolContext::new(seed.cwd.as_path()).map_err(|error| error.to_string())?;
+            let skills = skill_catalog(&ctx.root);
+            for warning in skills.warnings() {
+                eprintln!("niki-rs: warning: {warning}");
+            }
+            let settings = AgentConfig {
+                model: model.to_owned(),
+                system: skills.inject_into(&base_system),
+                max_steps,
+                ..AgentConfig::default()
+            };
+            let hooks = load_hooks(&seed.cwd, &config_home());
+            Ok(Agent::new(provider, ctx, settings)
+                .with_registry(tool_registry(&factory_tools))
+                .with_policy(seed.mode, allow.clone())
+                .with_hooks(hooks)
+                .with_cancel(seed.cancel)
+                .with_approver(seed.approver))
+        },
+    );
+
+    let options = niki_acp::ServerOptions::new()
+        .with_store(config_home().join("sessions.db"))
+        .with_default_mode(default_mode);
+    runtime
+        .block_on(niki_acp::serve_stdio(factory, options))
+        .context("serve the editor protocol")?;
+    Ok(0)
+}
+
 /// Open the session store and give the screen a session to write into.
 ///
 /// A store that cannot be opened is a warning, not a failed startup: the screen
@@ -477,6 +556,7 @@ fn install_hooks(loaded: Loaded, app: &mut App) -> Arc<dyn HookRunner> {
 #[derive(Default)]
 struct Options {
     prompt: Option<String>,
+    acp: bool,
     model: Option<String>,
     config: Option<PathBuf>,
     root: Option<PathBuf>,
@@ -503,7 +583,7 @@ enum OutputFormat {
 enum Parsed {
     Help,
     Version,
-    Run(Options),
+    Run(Box<Options>),
 }
 
 fn parse_options(args: Vec<String>) -> Result<Parsed> {
@@ -512,6 +592,7 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
     while let Some(argument) = iter.next() {
         match argument.as_str() {
             "-n" | "--prompt" => options.prompt = Some(value(&argument, iter.next())?),
+            "--acp" => options.acp = true,
             "--model" => options.model = Some(value(&argument, iter.next())?),
             "--config" => options.config = Some(PathBuf::from(value(&argument, iter.next())?)),
             "--root" => options.root = Some(PathBuf::from(value(&argument, iter.next())?)),
@@ -544,7 +625,7 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             positional => bail!("unexpected argument {positional:?}; the prompt is passed with -n"),
         }
     }
-    Ok(Parsed::Run(options))
+    Ok(Parsed::Run(Box::new(options)))
 }
 
 fn value(flag: &str, value: Option<String>) -> Result<String> {
@@ -711,6 +792,21 @@ mod tests {
         assert_eq!(GlyphMode::from_value(None), GlyphMode::Unicode);
         assert_eq!(Motion::from_value(Some("1")), Motion::Reduced);
         assert_eq!(Motion::from_value(None), Motion::Full);
+    }
+
+    #[test]
+    fn the_acp_flag_rejects_a_headless_prompt() {
+        let args = vec!["--acp".to_owned(), "-n".to_owned(), "hi".to_owned()];
+        assert_eq!(run(args).expect("run"), 2);
+    }
+
+    #[test]
+    fn the_acp_flag_does_not_ask_for_a_prompt() {
+        let Ok(Parsed::Run(options)) = parse_options(vec!["--acp".to_owned()]) else {
+            panic!("not a run");
+        };
+        assert!(options.acp);
+        assert!(options.prompt.is_none());
     }
 
     #[test]

@@ -26,10 +26,13 @@ interface HeroSectionProps {
 
 const HERO_LEVEL_LINKS = [
   { label: '01 · Core Surface Bento', href: '#bento-features', note: 'Composer, Install, Providers, Keymap' },
-  { label: '02 · Scroll Parallax Craft', href: '#parallax-story', note: 'Stillness, Mount Window, A11y' },
+  { label: '02 · Scroll Parallax Craft', href: '#parallax-story', note: 'Binary, sessions, themes, approvals' },
   { label: '03 · 6-Stage Orbital Dial', href: '#lifecycle', note: 'Scroll-scrubbed /theme & CLI stages' },
-  { label: '04 · Verified Baselines', href: '#benchmarks', note: 'Stillness · mount window · contrast' },
+  { label: '04 · Verified Baselines', href: '#benchmarks', note: 'Install · sessions · contrast · keymap' },
 ];
+
+const MORE_ECOSYSTEM_COUNT =
+  ECOSYSTEM_LOGOS_ROW_1.length - HERO_FEATURED_LOGOS.length + ECOSYSTEM_LOGOS_ROW_2.length;
 
 export function HeroSection({
   isDark,
@@ -203,7 +206,7 @@ export function HeroSection({
 
           {/* Concise value-proposition subheadline for first-time visitors */}
           <p className="hero-seq-headline mt-5 max-w-[580px] rounded-[2px] bg-background/75 backdrop-blur-sm border border-grid/70 px-4 py-2 text-[15px] sm:text-[16px] leading-[1.55] text-foreground/90 shadow-sm">
-            A terminal coding agent that stays quiet: no idle redraws at rest, four contrast-tested themes, and any model you already pay for. No account required.
+            A terminal coding agent in one self-contained binary: four contrast-tested themes, session resume, and any model you already pay for. No account required.
           </p>
 
           {/* 3. Centered Architectural Quick-Launch Command Bar */}
@@ -231,7 +234,7 @@ export function HeroSection({
                 <span>
                   {showFullStack
                     ? 'Hide full ecosystem stack'
-                    : '+5 more providers & the runtime stack'}
+                    : `+${MORE_ECOSYSTEM_COUNT} more providers & the runtime stack`}
                 </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform duration-150 ${

@@ -9,20 +9,7 @@ interface LifecycleDiagramProps {
 
 const PHASE_GLYPHS = ['◐', '◓', '◑', '◒'];
 
-const NO_COLOR_PALETTE: NikiThemePalette = {
-  id: 'no-color',
-  name: 'NO_COLOR',
-  bg: '#0b0c0e',
-  surface: '#111317',
-  border: '#32363f',
-  text: '#f3f4f6',
-  muted: '#b3b8c2',
-  accent: '#ffffff',
-  tag: 'MONO',
-  description: 'Strict NO_COLOR=1 monochrome palette with semantic symbols and clean borders.',
-};
-
-const STAGE_THEMES: NikiThemePalette[] = [...NIKI_THEMES, NO_COLOR_PALETTE];
+const STAGE_THEMES: NikiThemePalette[] = NIKI_THEMES;
 
 export const LifecycleDiagram = React.memo(function LifecycleDiagram({
   stageId,
@@ -110,13 +97,13 @@ function BootStage() {
   return (
     <div ref={rootRef} className="relative w-full h-full">
       <div className="absolute left-5 sm:left-8 top-5 sm:top-6 -right-8 -bottom-6 rounded-tl-[2px] border-t border-l border-[#282e46] bg-[#0d1018] shadow-[-10px_20px_50px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col">
-        <TerminalTitleBar title="~/.local/niki" rightLabel="isolated env" />
+        <TerminalTitleBar title="~/.local/bin/niki" rightLabel="one binary" />
 
         <div className="p-5 sm:p-7 flex-1 flex flex-col justify-between font-tech">
           <div className="space-y-4">
             <div className="space-y-1 text-[10.5px] text-[#7f93ad]">
               <div>verified SHA256SUMS</div>
-              <div>prefix: ~/.local/niki (py 3.12+)</div>
+              <div>binary: niki · no runtime</div>
             </div>
 
             <div className="boot-beat flex items-center gap-2.5 text-[12.5px] text-[#dce7f5]">
@@ -138,7 +125,7 @@ function BootStage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[#9ec8f8]">✓</span>
-                <span>keymap: every binding bound · timers disarmed</span>
+                <span>keymap: every binding bound · session: new</span>
               </div>
             </div>
           </div>
@@ -151,7 +138,7 @@ function BootStage() {
               <span className="boot-caret inline-block w-2 h-4 bg-[#9ec8f8]" aria-hidden="true" />
             </div>
             <div className="text-[10px] text-[#7d91ab]">
-              enter send · /theme · ctrl+o tools · no idle redraws
+              enter send · /theme · shift+tab mode · /resume
             </div>
           </div>
         </div>
@@ -204,19 +191,19 @@ function StillStage() {
   return (
     <div ref={rootRef} className="relative w-full h-full">
       <div className="absolute -left-6 top-5 sm:top-6 right-10 sm:right-14 -bottom-6 rounded-tr-[2px] border-t border-r border-[#282e46] bg-[#0d1018] overflow-hidden flex flex-col">
-        <TerminalTitleBar title="niki · idle surface" rightLabel="5.0s" />
+        <TerminalTitleBar title="niki · release build" rightLabel="cargo" />
         <div className="p-5 sm:p-6 pl-10 sm:pl-12 space-y-5 font-tech">
           <div className="space-y-1.5 text-[10.5px] text-[#8da1ba]">
-            <div>[compositor] turn 14 complete · timers disarmed</div>
-            <div>[spinner] phase ticker disarmed · cpu 0.0%</div>
-            <div>[surface] frame diff skipped (unchanged)</div>
+            <div>[build] cargo build --release -p niki --bin niki</div>
+            <div>[link] turn loop · tools · policy · tui</div>
+            <div>[install] SHA256SUMS verified · niki installed</div>
           </div>
 
           <div className="pt-4 sm:pt-7 space-y-2.5">
             <div className="h-px w-full bg-[#455a78]" />
             <div className="flex items-center justify-between text-[12px]">
               <span className="text-[#dce7f5]">
-                <span className="text-[#9ec8f8] mr-2">›</span>Waiting for input
+                <span className="text-[#9ec8f8] mr-2">›</span>./target/release/niki
               </span>
             </div>
           </div>
@@ -232,7 +219,7 @@ function StillStage() {
 
       <div className="absolute right-3 sm:right-5 top-10 sm:top-12 w-[218px] sm:w-[254px] z-20 rounded-[2px] border border-[#3d5170] bg-[#212e42]/95 p-3.5 sm:p-4 shadow-2xl font-tech space-y-3">
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-[#9ec8f8]">Idle repaints</span>
+          <span className="text-[#9ec8f8]">Runtime deps</span>
           <button
             type="button"
             aria-pressed={reducedSim}
@@ -245,8 +232,8 @@ function StillStage() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[10.5px] text-[#9eb0c7]">
-            <span>Cursor blink</span>
-            <span className="tabular-nums">on</span>
+            <span>Runtime setup</span>
+            <span className="tabular-nums">none</span>
           </div>
           <div className="h-9 flex items-end gap-1 px-1 rounded-[2px] bg-[#162030] border border-[#2c3c54] py-1.5">
             {[62, 44, 80, 52, 88, 48, 76, 56, 84, 50].map((h, i) => (
@@ -262,7 +249,7 @@ function StillStage() {
         <div className="rounded-[2px] border border-[#9ec8f8]/55 bg-[#273954] px-3 py-2 space-y-2">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-[#f0f5fa] font-medium">Niki</span>
-            <span className="text-[#9ec8f8] font-medium tabular-nums">none</span>
+            <span className="text-[#9ec8f8] font-medium tabular-nums">1 file</span>
           </div>
           <div className="h-0.5 w-full bg-[#9ec8f8]" />
         </div>
@@ -400,8 +387,7 @@ function ThemeStage() {
 
 function BindStage() {
   const [approved, setApproved] = useState(true);
-  const [toolsExpanded, setToolsExpanded] = useState(true);
-  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const [autoMode, setAutoMode] = useState(false);
   const key1Ref = useRef<HTMLButtonElement | null>(null);
 
   const handleToggleApprove = () => {
@@ -416,28 +402,14 @@ function BindStage() {
     }
   };
 
-  useEffect(() => {
-    const drawer = drawerRef.current;
-    if (!drawer) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
-
-    gsap.to(drawer, {
-      height: toolsExpanded ? 'auto' : 0,
-      opacity: toolsExpanded ? 1 : 0,
-      duration: 0.28,
-      ease: 'power2.out',
-    });
-  }, [toolsExpanded]);
-
   return (
     <div className="relative w-full h-full">
       <div className="absolute left-5 sm:left-8 top-5 sm:top-6 -right-8 -bottom-6 rounded-tl-[2px] border-t border-l border-[#282e46] bg-[#0d1018] overflow-hidden flex flex-col">
-        <TerminalTitleBar title="keymap.py · live bindings" rightLabel="every key bound" />
+        <TerminalTitleBar title="keymap · live bindings" rightLabel="every key bound" />
 
         <div className="p-5 sm:p-6 space-y-3.5 font-tech">
           <div className="text-[10.5px] text-[#8da1ba]">
-            $ pytest tests/unit_tests/niki/test_keymap.py -q
+            $ cargo test -j 4 -p niki-tui
           </div>
 
           <div
@@ -448,7 +420,7 @@ function BindStage() {
             }`}
           >
             <div className="flex items-center justify-between gap-3 text-[11.5px]">
-              <span className="text-[#f0f5fa]">write_file · keymap.py</span>
+              <span className="text-[#f0f5fa]">write_file · lib.rs</span>
               <span
                 className={`px-2 py-0.5 rounded-[2px] text-[10px] transition-colors ${
                   approved
@@ -460,10 +432,10 @@ function BindStage() {
               </span>
             </div>
 
-            <div ref={drawerRef} className="overflow-hidden">
+            <div className="overflow-hidden">
               <div className="mt-3 pt-2.5 border-t border-[#334966] space-y-1.5 text-[10.5px] text-[#adc0d6]">
-                <div>+ approval_position(0)</div>
-                <div className="text-[#9ec8f8]">✓ handler verified in pytest</div>
+                <div>+ approval_yes</div>
+                <div className="text-[#9ec8f8]">✓ handler verified in cargo test</div>
               </div>
             </div>
           </div>
@@ -483,17 +455,17 @@ function BindStage() {
           onClick={handleToggleApprove}
           className="px-2.5 py-1.5 rounded-[2px] border border-[#4a6285] bg-[#293d5a] text-[#f0f5fa] shadow-[0_2px_0_#1a273b] hover:border-[#9ec8f8] cursor-pointer"
         >
-          <span className="text-[#9ec8f8] mr-1.5">1</span>
+          <span className="text-[#9ec8f8] mr-1.5">y</span>
           {approved ? 'Undo' : 'Approve'}
         </button>
         <button
           type="button"
-          aria-pressed={toolsExpanded}
-          onClick={() => setToolsExpanded((v) => !v)}
+          aria-pressed={autoMode}
+          onClick={() => setAutoMode((v) => !v)}
           className="px-2.5 py-1.5 rounded-[2px] border border-[#374b68] bg-[#1b2739] text-[#dce7f5] shadow-[0_2px_0_#131b29] hover:border-[#9ec8f8] cursor-pointer"
         >
-          <span className="text-[#9ec8f8] mr-1.5">ctrl+o</span>
-          {toolsExpanded ? 'Hide' : 'Show'}
+          <span className="text-[#9ec8f8] mr-1.5">shift+tab</span>
+          {autoMode ? 'Mode: auto' : 'Mode: manual'}
         </button>
       </div>
     </div>
@@ -524,27 +496,27 @@ function ScaleStage() {
     <div ref={rootRef} className="relative w-full h-full">
       <div className="absolute left-5 sm:left-7 -top-4 right-20 sm:right-28 -bottom-4 rounded-[2px] border border-[#282e46] bg-[#0d1018] p-4 sm:p-5 space-y-2.5 font-tech">
         <div className="rounded-[2px] border border-dashed border-[#242a40] bg-[#080a10] px-3.5 py-2 opacity-70 space-y-1">
-          <div className="text-[10px] text-[#8ea0b8]">Turns 01–42 · unmounted</div>
+          <div className="text-[10px] text-[#8ea0b8]">Older rows folded by /compact</div>
           <div className="text-[10px] text-[#6d7f99] truncate">
-            archived: 42 markdown turns serialized to sqlite
+            stored: 128 turns in the session db
           </div>
         </div>
 
         <div className="rounded-[2px] border border-[#5db8ff]/60 bg-[#131d36] px-4 py-3 space-y-1.5 shadow-lg">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#f4f6fc] font-medium">Active Mount Window</span>
-            <span className="text-[#5db8ff] tabular-nums">bounded</span>
+            <span className="text-[#f4f6fc] font-medium">Active Session</span>
+            <span className="text-[#5db8ff] tabular-nums">resumable</span>
           </div>
           <div className="space-y-1 text-[10px] text-[#9eb6d4]">
-            <div>mounted: 30 visible rows (pruned below)</div>
-            <div>diff cache: no redundant reflows</div>
+            <div>resume: /resume 7f3a · by id or index</div>
+            <div>view: older rows folded, store intact</div>
           </div>
-          <div className="text-[10px] text-[#b8cde4]">Turns 43–59 mounted</div>
+          <div className="text-[10px] text-[#b8cde4]">128 turns stored</div>
         </div>
 
         <div className="rounded-[2px] border border-[#282e46] bg-[#111524] px-3.5 py-2 space-y-1">
-          <div className="text-[10.5px] text-[#dce7f5]">Turn 60 · streaming</div>
-          <div className="text-[10px] text-[#8ea0b8]">delta: +48 tokens · 60fps compositor</div>
+          <div className="text-[10.5px] text-[#dce7f5]">New turn · streaming</div>
+          <div className="text-[10px] text-[#8ea0b8]">delta: +48 tokens · session db</div>
         </div>
       </div>
 
@@ -558,12 +530,12 @@ function ScaleStage() {
       />
 
       <div className="absolute right-3 sm:right-5 bottom-5 sm:bottom-8 z-20 w-[198px] sm:w-[210px] rounded-[2px] border border-[#3d5170] bg-[#202d41]/95 p-3.5 sm:p-4 shadow-2xl font-tech space-y-3">
-        <div className="text-[10px] text-[#9ec8f8]">Mount Window</div>
+        <div className="text-[10px] text-[#9ec8f8]">Session Store</div>
         <div className="space-y-2">
           <div>
             <div className="flex justify-between text-[10px] text-[#9eb0c7] mb-1">
-              <span>Unmounted turns</span>
-              <span className="tabular-nums">pruned</span>
+              <span>Folded rows</span>
+              <span className="tabular-nums">kept</span>
             </div>
             <div className="h-1.5 bg-[#162030] overflow-hidden">
               <div className="scale-meter-fill h-full w-full bg-[#4c6486]" />
@@ -571,8 +543,8 @@ function ScaleStage() {
           </div>
           <div>
             <div className="flex justify-between text-[10.5px] text-[#f0f5fa] mb-1">
-              <span>Mounted rows</span>
-              <span className="text-[#9ec8f8] tabular-nums">30</span>
+              <span>Stored turns</span>
+              <span className="text-[#9ec8f8] tabular-nums">128</span>
             </div>
             <div className="h-1.5 bg-[#162030] overflow-hidden">
               <div className="scale-meter-fill h-full w-[64%] bg-[#9ec8f8]" />
@@ -586,9 +558,9 @@ function ScaleStage() {
 
 function RouteStage() {
   const routes = [
-    { id: 'kimi', name: 'Kimi', mode: 'config.toml', model: 'kimi-k2.7-code', base: 'https://api.moonshot.ai/v1', env: 'MOONSHOT_API_KEY' },
-    { id: 'kilo', name: 'Kilo', mode: 'config.toml', model: 'claude-opus-4.7', base: 'https://api.kilo.ai/api/gateway', env: 'KILO_API_KEY' },
-    { id: 'opencode', name: 'OpenCode Zen', mode: 'config.toml', model: 'deepseek-v4-pro', base: 'https://opencode.ai/zen/v1', env: 'OPENCODE_API_KEY' },
+    { id: 'kimi', name: 'Kimi', mode: 'config.toml', model: 'kimi-k2.7-code', base: 'https://api.moonshot.ai/v1', env: 'MOONSHOT_API_KEY', protocol: 'openai' },
+    { id: 'kilo', name: 'Kilo', mode: 'config.toml', model: 'claude-opus-4.7', base: 'https://api.kilo.ai/api/gateway', env: 'KILO_API_KEY', protocol: 'openai' },
+    { id: 'opencode', name: 'OpenCode Zen', mode: 'config.toml', model: 'deepseek-v4-pro', base: 'https://opencode.ai/zen/v1', env: 'OPENCODE_API_KEY', protocol: 'openai' },
   ];
   const [activeRoute, setActiveRoute] = useState(1);
 
@@ -606,12 +578,12 @@ function RouteStage() {
   return (
     <div className="relative w-full h-full">
       <div className="absolute -left-4 top-5 sm:top-6 right-16 sm:right-20 -bottom-6 rounded-tr-[2px] border-t border-r border-[#282e46] bg-[#0d1018] overflow-hidden flex flex-col">
-        <TerminalTitleBar title="~/.niki/config.toml" rightLabel="zero deps" />
+        <TerminalTitleBar title="~/.niki/config.toml" rightLabel="one block" />
         <div className="p-5 sm:p-6 pl-8 sm:pl-9 font-tech text-[11px] sm:text-[11.5px] leading-[1.7] space-y-1 text-[#a5b9d1]">
-          <div className="text-[#9ec8f8]">[models.providers.{current.id}]</div>
+          <div className="text-[#9ec8f8]">[providers.{current.id}]</div>
           <div>
-            <span className="text-[#8295ae]">class_path = </span>
-            <span className="text-[#eef4fa]">&quot;langchain_openai:ChatOpenAI&quot;</span>
+            <span className="text-[#8295ae]">protocol = </span>
+            <span className="text-[#eef4fa]">&quot;{current.protocol}&quot;</span>
           </div>
           <div>
             <span className="text-[#8295ae]">base_url = </span>
