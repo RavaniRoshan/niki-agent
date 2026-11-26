@@ -46,8 +46,7 @@ that with a real turn before publishing, not with a version print.
 
 **The project directory is `.niki`.** Configuration, sessions, history, skills,
 and stored keys live under `~/.niki`; a repository-level `.niki/` holds
-project-scoped settings. A `.deepagents/` directory is still read when it is the
-only one present, and never written to.
+project-scoped settings.
 
 **The documentation is the product's.** The README, the provider guide, the
 architecture note, the independence page, the security policy, and the issue and
