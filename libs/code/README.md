@@ -37,8 +37,8 @@ uv run niki
 
 Niki ships its own implementation of the agent loop. The agent SDK and the ACP
 runtime are vendored under `niki_agent/` with their MIT notices intact (see
-`niki_agent/sdk/PROVENANCE.md` and `niki_agent/acp_sdk/PROVENANCE.md`); there is
-no runtime dependency on an upstream distribution.
+`niki_agent/sdk/PROVENANCE.md` and `niki_agent/acp_sdk/PROVENANCE.md`), so
+installing `niki-agent` pulls no second agent distribution.
 
 `niki` is the only console script.
 
@@ -51,8 +51,8 @@ Niki in a directory you do not trust without a sandbox backend; see
 
 ## Docs
 
-- [`docs/niki/`](../../docs/niki) — product checklist, UI notes, evaluation
-  protocol, and migration gates.
+- [`docs/niki/`](../../docs/niki) — architecture, independence guarantees, the
+  keymap, and provider setup.
 - [`AGENTS.md`](AGENTS.md) — contributor guide for this package.
 - [`EXTENSIONS.md`](EXTENSIONS.md) — plugin manifest and extension API.
 

@@ -5,7 +5,7 @@ New to the package? Start with [`ARCHITECTURE.md`](./ARCHITECTURE.md) for a high
 ## Contents
 
 - [Quickstart](#quickstart) — get a local checkout running and run the checks CI enforces
-- [LangSmith tracing projects](#langsmith-tracing-projects) — route dev traces away from the shared GA project
+- [LangSmith tracing projects](#langsmith-tracing-projects) — route dev traces away from the production project
 - [Local dev installs](#local-dev-installs) — keep an editable `niki-dev` separate from a released install
 - [Debugging](#debugging) — diagnose startup crashes and client-side issues
 - [Live CSS development with Textual devtools](#live-css-development-with-textual-devtools) — UI/CSS hot-reload
@@ -73,21 +73,17 @@ Run `make help` to see every available target.
 
 When LangSmith tracing is enabled and a `LANGSMITH_API_KEY` is available, `niki-agent` traces its own agent runs to LangSmith. A key alone is not enough for environment-supplied keys — set `LANGSMITH_TRACING=true`. Keys stored via `/auth` auto- enable tracing unless you explicitly opt out (for example `NIKI_LANGSMITH_TRACING=false`).
 
-By default those runs land in the `niki-agent` project, but the team routes shared runs to a GA project (`shared-niki-agent`) that is monitored by LangSmith Engine, which raises high-priority Slack alerts on suspected issues.
-
-**Do not point local development at the GA project.** Active development produces failures, half-finished branches, and experiments that Engine flags as issues — noise that buries the alerts that matter for the production project and costs the team triage time. Keep dev and prod runs in separate projects so Engine alerting on the GA project stays high-signal (this also mirrors LangSmith best practice of splitting dev and prod environments into distinct projects).
+Runs land in the `niki-agent` project by default. If your tracing account has a shared project that production runs write to, do not point local development at it: failures, half-finished branches, and experiments from a dev checkout bury the alerts that matter for the production project. Keep dev and prod runs in separate projects.
 
 Route your local runs to a dev-scoped project via `NIKI_LANGSMITH_PROJECT` (this overrides only the agent's own traces, leaving your shell's `LANGSMITH_PROJECT` for user code untouched):
 
 ```bash
-# A shared dev bucket, or your own personal project — anything but the GA project
-export NIKI_LANGSMITH_PROJECT=shared-niki-agent-dev
+# A shared dev bucket, or your own personal project — anything but the production one
+export NIKI_LANGSMITH_PROJECT=niki-agent-dev
 uv run niki-agent
 ```
 
-Set the same override for [local dev installs](#local-dev-installs) (`niki-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the GA project before doing noisy work.
-
-When onboarding a new tracing project to Engine, capture the nature of that project first: a production/GA app warrants high-priority alerts, while a staging or active-dev project should use looser thresholds (or stay off Engine) so it does not generate false positives.
+Set the same override for [local dev installs](#local-dev-installs) (`niki-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the production project before doing noisy work.
 
 A server keeps the first workspace's tracing configuration for its lifetime. Workspaces sharing that server must use matching tracing credentials, projects, endpoints, profile selectors, tracing flags, and redaction policy. A conflicting workspace is refused before its settings can affect cached or concurrent runs; start a separate server for that workspace. Restart the server to change its tracing configuration.
 
