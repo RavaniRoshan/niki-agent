@@ -25,6 +25,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# `$MyInvocation.MyCommand.Path` has no `Path` property inside a function under
+# StrictMode, so resolve the script's directory once at script scope. When the
+# script arrives through `iex` (the documented one-liner) this is empty and the
+# install falls back to the release download.
+$ScriptDir = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { '' }
+
 function Write-Step { param([string] $Message) Write-Host "  $Message" -ForegroundColor Cyan }
 function Fail { param([string] $Message) throw "error: $Message" }
 
@@ -39,10 +45,11 @@ function Get-Python {
 
 function Find-Wheel {
     <# Prefer a wheel beside this script; fall back to the newest release. #>
-    $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $local = Get-ChildItem -Path $dir -Filter 'niki_agent-*.whl' -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($local) { return $local.FullName }
+    if ($ScriptDir) {
+        $local = Get-ChildItem -Path $ScriptDir -Filter 'niki_agent-*.whl' -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($local) { return $local.FullName }
+    }
 
     Write-Step 'no wheel alongside the installer; downloading the latest release'
     $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/RavaniRoshan/niki-agent/releases/latest'
