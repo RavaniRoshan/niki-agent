@@ -2274,7 +2274,7 @@ async def _run_agent_loop(
         show_rubric_iterations: Whether rubric lifecycle messages should include
             iteration numbers.
         trust_project_hooks: When `True`, load project-scoped
-            `.deepagents/hooks.json` command handlers.
+            `.niki/hooks.json` command handlers.
 
             Defaults to `False` so untrusted checkouts cannot execute repository
             hooks in CI without an explicit opt-in.
@@ -2857,7 +2857,7 @@ async def run_non_interactive(
         recursion_limit: Explicit main-agent `recursion_limit`; `None` resolves
             from runtime configuration at agent-build time.
         trust_project_hooks: When `True`, load project-scoped
-            `.deepagents/hooks.json` handlers.
+            `.niki/hooks.json` handlers.
 
             Defaults to `False` so untrusted repositories cannot execute hook
             commands without an explicit `--trust-project-hooks` opt-in.

@@ -35,7 +35,7 @@ Use memory when the knowledge is:
 - A simple rule or pattern
 
 **Global** (`$NIKI_HOME/agent/AGENTS.md`): Universal preferences across all projects
-**Project** (`.deepagents/AGENTS.md`): Project-specific conventions and decisions
+**Project** (`.niki/AGENTS.md`): Project-specific conventions and decisions
 
 ### -> Skill for reusable workflows and methodologies
 **Create a skill when** we developed:

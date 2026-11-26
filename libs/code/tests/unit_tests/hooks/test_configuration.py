@@ -29,6 +29,8 @@ def test_load_hooks_config_precedence_and_snapshot_hash(tmp_path: Path) -> None:
     user_dir = tmp_path / "user"
     project_dir = tmp_path / "project"
     user_dir.mkdir()
+    # `.deepagents` with no `.niki` is the legacy-fallback case, kept to pin
+    # that an unmigrated repository still loads its project hooks.
     (project_dir / ".deepagents").mkdir(parents=True)
     (user_dir / "hooks.json").write_text(
         json.dumps(
@@ -93,6 +95,75 @@ def test_load_hooks_config_precedence_and_snapshot_hash(tmp_path: Path) -> None:
         )
     )
     assert canonical_hooks_bytes(loaded.config).startswith(b'{"hooks":')
+
+
+def test_project_hooks_load_from_niki(tmp_path: Path) -> None:
+    """`<root>/.niki/hooks.json` is the project-scoped source for a new project."""
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    project_dir = tmp_path / "project"
+    niki_hooks = project_dir / ".niki" / "hooks.json"
+    niki_hooks.parent.mkdir(parents=True)
+    niki_hooks.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "Stop": [
+                        {"hooks": [{"type": "command", "command": "project-hook"}]}
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_hooks_config(
+        project_root=project_dir,
+        workspace_trusted=True,
+        config_dir=user_dir,
+    )
+
+    handlers = loaded.config.hooks[HookEvent.STOP][0].hooks
+    assert [handler.command for handler in handlers] == ["project-hook"]
+    assert loaded.project_source_loaded
+    assert niki_hooks.resolve() in loaded.sources
+
+
+def test_niki_project_hooks_win_over_legacy(tmp_path: Path) -> None:
+    """When both directories exist, only `.niki/hooks.json` is loaded."""
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    project_dir = tmp_path / "project"
+    niki_hooks = project_dir / ".niki" / "hooks.json"
+    niki_hooks.parent.mkdir(parents=True)
+    niki_hooks.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "Stop": [{"hooks": [{"type": "command", "command": "current"}]}]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    legacy_hooks = project_dir / ".deepagents" / "hooks.json"
+    legacy_hooks.parent.mkdir()
+    legacy_hooks.write_text(
+        json.dumps(
+            {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "legacy"}]}]}}
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_hooks_config(
+        project_root=project_dir,
+        workspace_trusted=True,
+        config_dir=user_dir,
+    )
+
+    handlers = loaded.config.hooks[HookEvent.STOP][0].hooks
+    assert [handler.command for handler in handlers] == ["current"]
+    assert loaded.sources == (niki_hooks.resolve(),)
 
 
 def test_legacy_migration_maps_equivalent_lifecycle_events(

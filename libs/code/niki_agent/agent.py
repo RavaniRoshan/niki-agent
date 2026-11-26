@@ -1276,7 +1276,7 @@ def _is_agent_dir_entry(entry: Path) -> bool:
 def get_available_agent_names() -> list[str]:
     """Return a sorted list of available agent names from `~/.niki/`.
 
-    Scans the user's `.deepagents` directory and returns each real
+    Scans the user's `.niki` directory and returns each real
     subdirectory that contains the `AGENTS.md` agent marker and is not an
     app-reserved name. Fail-closed: bare directories, reserved app state
     (`bin/`, `plugins/`, `conversation_history/`), symlinks, and hidden
@@ -2568,8 +2568,8 @@ def get_skill_sources(
     """Return ordered skill sources for PluginSkillsMiddleware and audit tooling.
 
     Lowest to highest precedence:
-    built-in -> plugins -> user .deepagents -> user .agents
-    -> project .deepagents -> project .agents
+    built-in -> plugins -> user .niki -> user .agents
+    -> project .niki -> project .agents
     -> user .claude (experimental) -> project .claude (experimental)
 
     Args:

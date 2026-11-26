@@ -16,7 +16,7 @@ Deep Agents Code loads skills from five sources, listed here from lowest to high
 | 0 | `<package>/built_in_skills/` | Built-in | Ships with Deep Agents Code |
 | 1 | `$NIKI_HOME/<agent>/skills/` | User (deepagents alias) | Default for `dcode skills create` |
 | 2 | `~/.agents/skills/` | User | Shared across agent tools |
-| 3 | `.deepagents/skills/` | Project (deepagents alias) | Default for `dcode skills create --project` |
+| 3 | `.niki/skills/` | Project | Default for `dcode skills create --project` (legacy: `.deepagents/skills/`) |
 | 4 | `.agents/skills/` | Project | Shared across agent tools |
 
 `<agent>` is the agent configuration name (default: `agent`). When two directories contain a skill with the same name, the higher-precedence version wins — project skills override user skills, and any user or project skill overrides built-in skills.
@@ -29,7 +29,7 @@ $NIKI_HOME/agent/skills/     # user skills (lowest precedence)
 │   └── SKILL.md
 └── ...
 
-<project-root>/.deepagents/skills/   # project skills (higher precedence)
+<project-root>/.niki/skills/   # project skills (higher precedence)
 ├── skill-name-2/
 │   └── SKILL.md
 └── ...
@@ -291,7 +291,7 @@ For Deep Agents Code, use any of the skill directories listed in "Skill Location
 scripts/init_skill.py <skill-name> --path "${NIKI_HOME:-$HOME/.deepagents}/agent/skills"
 
 # Project skills
-scripts/init_skill.py <skill-name> --path .deepagents/skills
+scripts/init_skill.py <skill-name> --path .niki/skills
 ```
 
 The script:

@@ -250,10 +250,11 @@ def _list(
                 "[dim]Skills are loaded from these directories "
                 "(highest precedence first):\n"
                 "  1. .agents/skills/                 project skills\n"
-                "  2. .deepagents/skills/             project skills (alias)\n"
+                "  2. .niki/skills/                   project skills\n"
                 "  3. ~/.agents/skills/               user skills\n"
                 f"  4. {user_skills_display}   user skills (alias)\n"
-                "  5. <package>/built_in_skills/      built-in skills[/dim]",
+                "  5. <package>/built_in_skills/      built-in skills\n"
+                "     (legacy project dir: .deepagents/skills/)[/dim]",
                 style=theme.MUTED,
             )
             console.print(
@@ -1078,7 +1079,7 @@ def setup_skills_parser(
             "By default, skills are created in "
             f"{PATHS.display(PATHS.profile.agent_skills_dir('<agent>'))}. "
             "Use --project to create in the project's "
-            ".deepagents/skills/ directory."
+            ".niki/skills/ directory."
         ),
         add_help=False,
         parents=help_parent(_lazy_help("show_skills_create_help")),
