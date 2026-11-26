@@ -3,12 +3,12 @@
 import pytest
 from textual.content import Content
 
-from deepagents_code._env_vars import HIDE_SPLASH_TIPS
-from deepagents_code.tui.widgets.startup_tip import _TIPS, StartupTip, show_startup_tip
+from niki_agent._env_vars import HIDE_SPLASH_TIPS
+from niki_agent.tui.widgets.startup_tip import _TIPS, StartupTip, show_startup_tip
 
-_PICK_TIP = "deepagents_code.tui.widgets.startup_tip._pick_tip"
-_CHOICES = "deepagents_code.tui.widgets.startup_tip.random.choices"
-_IS_YOLO_SWITCHER = "deepagents_code.config.is_yolo_switcher_enabled"
+_PICK_TIP = "niki_agent.tui.widgets.startup_tip._pick_tip"
+_CHOICES = "niki_agent.tui.widgets.startup_tip.random.choices"
+_IS_YOLO_SWITCHER = "niki_agent.config.is_yolo_switcher_enabled"
 
 
 @pytest.fixture(autouse=True)

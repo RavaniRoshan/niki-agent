@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepagents_code.command_registry import (
+from niki_agent.command_registry import (
     ALWAYS_IMMEDIATE,
     COMMANDS,
     HIDDEN_COMMANDS,

@@ -40,20 +40,20 @@ from langgraph.types import Command
 from langsmith import tracing_context
 from pydantic import BaseModel, Field
 
-from deepagents_code._ask_user_types import (
+from niki_agent._ask_user_types import (
     ASK_USER_AUTHORIZATION_METADATA_KEY,
     CHOICE_QUESTION_TYPES,
     MAX_ASK_USER_AUTHORIZATION_ANSWER_CHARS,
     QUESTION_TYPES,
 )
-from deepagents_code._cli_context import INHERIT_CLASSIFIER_MODEL, CLIContextSchema
-from deepagents_code._fake_models import _ToolBindingFakeModel
-from deepagents_code.approval_mode import (
+from niki_agent._cli_context import INHERIT_CLASSIFIER_MODEL, CLIContextSchema
+from niki_agent._fake_models import _ToolBindingFakeModel
+from niki_agent.approval_mode import (
     APPROVAL_MODE_NAMESPACE,
     ApprovalMode,
     approval_mode_key,
 )
-from deepagents_code.auto_mode import (
+from niki_agent.auto_mode import (
     _MAX_CLASSIFIER_CONVERSATION_TURNS,
     _REASON_LIMIT,
     AUTO_DENIED_METADATA_KEY,
@@ -1041,7 +1041,7 @@ async def _plan_then_switch_mode(
     # The completion is emitted before any approval prompt, so a patched
     # `interrupt` that returns keeps the Manual branch out of a real graph.
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         await _route_plan(
@@ -1116,7 +1116,7 @@ async def test_a_rejected_plan_still_completes_its_review(tmp_path: Path) -> Non
     events = _capture_review_events(request)
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         update = await _route_plan(
@@ -1328,7 +1328,7 @@ def test_relayed_caller_tracing_key_is_a_known_secret(tmp_path: Path) -> None:
     not match the secret-name scan, so it would otherwise be the one credential
     never redacted from command output.
     """
-    from deepagents_code.config import (
+    from niki_agent.config import (
         _USER_LANGSMITH_ENV_CARRIER,
         _USER_LANGSMITH_ENV_VARS,
     )
@@ -1404,7 +1404,7 @@ async def test_trusted_compaction_is_deterministically_allowed_without_human_rev
         ],
     )
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         side_effect=AssertionError("unexpected human approval"),
     ):
         update = await middleware.aafter_model(
@@ -1426,7 +1426,7 @@ async def test_same_name_custom_compaction_tool_requires_classifier(
     custom_tool = _tool(
         "compact_conversation",
         metadata={
-            "_deepagents_code_mcp": True,
+            "_niki_agent_mcp": True,
             "readOnlyHint": True,
             "destructiveHint": False,
         },
@@ -1679,7 +1679,7 @@ async def test_read_only_mcp_remains_deterministically_allowed(tmp_path: Path) -
     mcp_tool = _tool(
         "mcp_read",
         metadata={
-            "_deepagents_code_mcp": True,
+            "_niki_agent_mcp": True,
             "readOnlyHint": True,
             "destructiveHint": False,
         },
@@ -2225,9 +2225,7 @@ def test_failed_temp_creation_does_not_grant_deletion_authority(
         raise OSError(msg)
 
     monkeypatch.setattr(tempfile, "mkstemp", recording_mkstemp)
-    monkeypatch.setattr(
-        "deepagents_code.auto_mode._write_temp_artifact_bytes", fail_write
-    )
+    monkeypatch.setattr("niki_agent.auto_mode._write_temp_artifact_bytes", fail_write)
     middleware = _middleware(worktree)
     request, _store, _key = _request(
         worktree,
@@ -2362,7 +2360,7 @@ async def test_counter_write_failure_is_not_reported_as_classifier_approval(
     )
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         await _route_plan(
@@ -2454,7 +2452,7 @@ async def test_approval_mode_mismatch_is_tagged_and_logged(
     )
     request.runtime.context["approval_mode"] = "yolo"
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.auto_mode"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.auto_mode"):
         plan, context = await _plan_with_trace_context(middleware, request)
 
     assert "approval_mode:mismatch" in context["tags"]
@@ -2529,7 +2527,7 @@ async def test_unavailable_auto_control_state_surfaces_manual_fallback(
         ],
     )
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ) as review:
         await middleware.aafter_model(
@@ -2598,7 +2596,7 @@ async def test_unavailable_manual_control_state_stays_plain_manual(
         ],
     )
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ) as review:
         await middleware.aafter_model(
@@ -2721,7 +2719,7 @@ async def test_real_agent_resume_forwards_ask_user_receipt_to_classifier(
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.store.memory import InMemoryStore
 
-    from deepagents_code.ask_user import AskUserMiddleware
+    from niki_agent.ask_user import AskUserMiddleware
 
     thread_id = "thread-real-resume"
     turn_id = "turn-1"
@@ -2909,7 +2907,7 @@ async def test_classifier_accepts_only_selected_same_turn_ask_user_answer(
         ],
     )
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         side_effect=AssertionError("unexpected duplicate human approval"),
     ):
         update = await middleware.aafter_model(
@@ -3492,7 +3490,7 @@ async def test_undecodable_multi_select_answer_is_withheld_and_logged(
         ],
     )
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.auto_mode"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.auto_mode"):
         await _plan(
             middleware,
             request,
@@ -5082,7 +5080,7 @@ async def test_classifier_unavailable_logs_underlying_error(
         args={"file_path": "old.py"},
     )
 
-    with caplog.at_level("INFO", logger="deepagents_code.auto_mode"):
+    with caplog.at_level("INFO", logger="niki_agent.auto_mode"):
         plan = await _plan(
             middleware,
             request,
@@ -5099,7 +5097,7 @@ async def test_classifier_unavailable_logs_underlying_error(
     records = [
         record
         for record in caplog.records
-        if record.name == "deepagents_code.auto_mode"
+        if record.name == "niki_agent.auto_mode"
         and "decision=unavailable" in record.getMessage()
     ]
     assert len(records) == 1
@@ -5145,7 +5143,7 @@ class _RecordingModelFactory:
 def _install_model_factory(
     monkeypatch: pytest.MonkeyPatch, factory: _RecordingModelFactory
 ) -> None:
-    import deepagents_code.config as config_module
+    import niki_agent.config as config_module
 
     monkeypatch.setattr(config_module, "create_model", factory)
 
@@ -5169,7 +5167,7 @@ async def test_classifier_model_switch_bypasses_timed_out_construction(
             return SimpleNamespace(model=_StructuredModel(_allow_result()))
         return SimpleNamespace(model=replacement)
 
-    import deepagents_code.config as config_module
+    import niki_agent.config as config_module
 
     monkeypatch.setattr(config_module, "create_model", create_model)
     middleware = _middleware(tmp_path, classifier_timeout_seconds=0.1)
@@ -5466,7 +5464,7 @@ async def test_unavailable_decision_log_names_classifier_model(
         args={"file_path": "old.py"},
     )
 
-    with caplog.at_level("INFO", logger="deepagents_code.auto_mode"):
+    with caplog.at_level("INFO", logger="niki_agent.auto_mode"):
         await _plan(
             middleware,
             request,
@@ -5477,7 +5475,7 @@ async def test_unavailable_decision_log_names_classifier_model(
     messages = [
         record.getMessage()
         for record in caplog.records
-        if record.name == "deepagents_code.auto_mode"
+        if record.name == "niki_agent.auto_mode"
         and "decision=unavailable" in record.getMessage()
     ]
     assert len(messages) == 1
@@ -5573,7 +5571,7 @@ async def test_human_fallback_resets_counters_only_when_approved(
     )
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [response_decision]},
     ):
         await middleware.aafter_model(
@@ -5645,7 +5643,7 @@ async def test_latched_classifier_fault_reaches_the_approval_prompt(
     }
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         await middleware.aafter_model(
@@ -5723,7 +5721,7 @@ async def test_fallback_approval_keeps_classifier_config_latch(
     }
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         await middleware.aafter_model(
@@ -5797,7 +5795,7 @@ async def test_fallback_switch_to_manual_requests_a_second_decision(
             return {"decisions": [{"type": "switch_manual"}]}
         return {"decisions": [{"type": "approve"}]}
 
-    with patch("deepagents_code.auto_mode.interrupt", side_effect=respond) as review:
+    with patch("niki_agent.auto_mode.interrupt", side_effect=respond) as review:
         await middleware.aafter_model(
             cast(
                 "AgentState[Any]",
@@ -5876,7 +5874,7 @@ async def test_policy_denial_marker_survives_server_round_trip(
     `test_auto_denied_tool_result_skips_uncorrelated_warning`, which builds its
     own message.
     """
-    from deepagents_code.client.remote_client import _convert_message_data
+    from niki_agent.client.remote_client import _convert_message_data
 
     middleware = _middleware(tmp_path)
     call = {
@@ -6123,7 +6121,7 @@ async def test_interrupt_replay_does_not_repeat_auto_events(tmp_path: Path) -> N
     # lets the first pass run past it, which real LangGraph would abandon; the
     # emissions under test all happen before that point either way.
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         await middleware.aafter_model(state, cast("Runtime[Any]", runtime))
@@ -6190,7 +6188,7 @@ async def test_auto_events_repeat_for_a_later_action_batch(tmp_path: Path) -> No
     )
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}]},
     ):
         for suffix in ("a", "b"):
@@ -6278,7 +6276,7 @@ async def test_manual_fallback_event_survives_an_earlier_threshold_notice(
     )
 
     with patch(
-        "deepagents_code.auto_mode.interrupt",
+        "niki_agent.auto_mode.interrupt",
         return_value={"decisions": [{"type": "approve"}, {"type": "approve"}]},
     ):
         await middleware.aafter_model(state, cast("Runtime[Any]", runtime))
@@ -6299,7 +6297,7 @@ async def test_auto_events_are_scoped_per_thread(tmp_path: Path) -> None:
         events: list[dict[str, Any]] = []
         runtime, _store, key = _auto_runtime(thread_id, events, unavailable=2)
         with patch(
-            "deepagents_code.auto_mode.interrupt",
+            "niki_agent.auto_mode.interrupt",
             return_value={"decisions": [{"type": "approve"}]},
         ):
             await middleware.aafter_model(
@@ -6342,7 +6340,7 @@ async def test_untrusted_thread_key_does_not_cross_suppress(tmp_path: Path) -> N
             stream_writer=events.append,
         )
         with patch(
-            "deepagents_code.auto_mode.interrupt",
+            "niki_agent.auto_mode.interrupt",
             return_value={"decisions": [{"type": "approve"}, {"type": "approve"}]},
         ):
             await middleware.aafter_model(
@@ -6366,7 +6364,7 @@ async def test_malformed_human_response_unpins_its_scope(tmp_path: Path) -> None
 
     with (
         patch(
-            "deepagents_code.auto_mode.interrupt",
+            "niki_agent.auto_mode.interrupt",
             return_value={"decisions": []},
         ),
         pytest.raises(ValueError, match="decision count"),

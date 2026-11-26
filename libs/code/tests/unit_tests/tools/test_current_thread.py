@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepagents_code.tools import get_current_thread_id
+from niki_agent.tools import get_current_thread_id
 
 
 def test_get_current_thread_id_returns_config_thread() -> None:

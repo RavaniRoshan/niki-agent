@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from deepagents_code import config
-from deepagents_code._env_vars import LANGSMITH_REPLICA_PROJECTS
+from niki_agent import config
+from niki_agent._env_vars import LANGSMITH_REPLICA_PROJECTS
 
 
 def test_replica_project_returns_single(monkeypatch) -> None:

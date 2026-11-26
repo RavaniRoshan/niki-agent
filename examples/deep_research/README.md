@@ -79,7 +79,7 @@ By default, `deepagents` uses `"claude-sonnet-4-5-20250929"`. You can customize 
 
 ```python
 from langchain.chat_models import init_chat_model
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 
 # Using Claude
 model = init_chat_model(model="anthropic:claude-sonnet-4-5-20250929", temperature=0.0)

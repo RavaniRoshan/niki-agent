@@ -103,7 +103,7 @@ def _keymap_rows() -> int:
 
 
 _VERSION_SNIPPET = (
-    "from deepagents_code.niki.branding import product_version as v; print(v())"
+    "from niki_agent.niki.branding import product_version as v; print(v())"
 )
 """Read the version without importing the app; `-v` must stay cheap."""
 

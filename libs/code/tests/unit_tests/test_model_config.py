@@ -14,9 +14,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from deepagents_code import model_config
-from deepagents_code.json_types import JsonObject
-from deepagents_code.model_config import (
+from niki_agent import model_config
+from niki_agent.json_types import JsonObject
+from niki_agent.model_config import (
     IMPLICIT_AUTH_PROVIDERS,
     NO_AUTH_REQUIRED_PROVIDERS,
     PROVIDER_API_KEY_ENV,
@@ -327,10 +327,10 @@ class TestHasProviderCredentials:
             assert has_provider_credentials("anthropic") is False
 
     def test_returns_true_with_prefixed_env_var(self):
-        """Returns True when only the DEEPAGENTS_CODE_ prefixed var is set."""
+        """Returns True when only the NIKI_ prefixed var is set."""
         with patch.dict(
             "os.environ",
-            {"DEEPAGENTS_CODE_ANTHROPIC_API_KEY": "sk-prefixed"},
+            {"NIKI_ANTHROPIC_API_KEY": "sk-prefixed"},
             clear=True,
         ):
             assert has_provider_credentials("anthropic") is True
@@ -407,16 +407,14 @@ class TestHasProviderCredentials:
         stand rather than reporting CONFIGURED off the gateway.
         """
         state_dir = tmp_path / ".state"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state_dir)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state_dir)
         config_path = tmp_path / "config.toml"
         config_path.write_text(
             "[models.providers.openai]\n"
             'class_path = "my_package:CustomChat"\n'
             'api_key_env = "CUSTOM_KEY"\n'
         )
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", config_path
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config_path)
         with patch.dict(
             "os.environ",
             {
@@ -435,7 +433,7 @@ class TestHasProviderCredentials:
 def fake_state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect the credential store into a temp directory."""
     state_dir = tmp_path / ".state"
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state_dir)
     return state_dir
 
 
@@ -444,15 +442,15 @@ class TestStoredCredentials:
 
     @pytest.fixture(autouse=True)
     def _clear_dotenv_prefixed_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Strip `DEEPAGENTS_CODE_*` keys preloaded from `~/.deepagents/.env`.
+        """Strip `NIKI_*` keys preloaded from `~/.deepagents/.env`.
 
         `dotenv.load_dotenv()` runs at config-import time and may inject
         prefixed variants that win over `monkeypatch.setenv` in
         `resolve_env_var`'s lookup order.
         """
         for var in (
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_ANTHROPIC_API_KEY",
+            "NIKI_OPENAI_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -462,8 +460,8 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Stored credential beats env var (matches pi-mono ordering)."""
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import resolve_provider_credential
+        from niki_agent import auth_store
+        from niki_agent.model_config import resolve_provider_credential
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
         auth_store.set_stored_key("anthropic", "from-store")
@@ -476,7 +474,7 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Env var is used when no stored credential exists."""
-        from deepagents_code.model_config import resolve_provider_credential
+        from niki_agent.model_config import resolve_provider_credential
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
         assert resolve_provider_credential("anthropic") == "from-env"
@@ -487,7 +485,7 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Provider with no env-var binding and no stored key returns None."""
-        from deepagents_code.model_config import resolve_provider_credential
+        from niki_agent.model_config import resolve_provider_credential
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         assert resolve_provider_credential("totally-unknown") is None
@@ -500,11 +498,11 @@ class TestStoredCredentials:
         override: str | None,
     ) -> None:
         """A stored key flips status to CONFIGURED with a stored detail."""
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         if override is not None:
-            monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", override)
+            monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", override)
         auth_store.set_stored_key("anthropic", "from-store")
 
         status = get_provider_auth_status("anthropic")
@@ -518,8 +516,8 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """`apply_stored_credentials` exports the stored key into os.environ."""
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         auth_store.set_stored_key("openai", "from-store")
@@ -536,8 +534,8 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Stored credential takes precedence over an already-set env var."""
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.setenv("OPENAI_API_KEY", "from-env")
         auth_store.set_stored_key("openai", "from-store")
@@ -553,7 +551,7 @@ class TestStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """No stored key means no environment mutation."""
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
         assert apply_stored_credentials("anthropic") is False
@@ -569,8 +567,8 @@ class TestStoredCredentials:
         """A stored base_url is exported alongside the key, alt name cleared."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.setenv("OPENAI_API_BASE", "https://stale.example/v1")
@@ -591,8 +589,8 @@ class TestStoredCredentials:
         """A stored Baseten endpoint writes `BASETEN_BASE_URL` and clears legacy."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("BASETEN_API_KEY", raising=False)
         monkeypatch.setenv("BASETEN_API_BASE", "https://stale.example/v1")
@@ -615,8 +613,8 @@ class TestStoredCredentials:
         """
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.setenv(
@@ -641,8 +639,8 @@ class TestStoredCredentials:
         """
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         monkeypatch.setenv(
@@ -669,8 +667,8 @@ class TestStoredCredentials:
         """
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.setenv(
@@ -698,8 +696,8 @@ class TestStoredCredentials:
         """
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.setenv("ANTHROPIC_CUSTOM_HEADERS", "X-Api-Key: lsv2_sk_gateway_key")
@@ -727,8 +725,8 @@ class TestStoredCredentials:
         """A config-routed Anthropic gateway keeps its custom headers."""
         import os
 
-        from deepagents_code import auth_store, model_config
-        from deepagents_code.model_config import apply_stored_credentials, clear_caches
+        from niki_agent import auth_store, model_config
+        from niki_agent.model_config import apply_stored_credentials, clear_caches
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("""
@@ -766,15 +764,15 @@ models = ["claude-sonnet-4-5"]
         """A scoped Anthropic endpoint override keeps its gateway headers."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_credentials
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.setenv(
             "ANTHROPIC_BASE_URL", "https://stale.gateway.example/anthropic"
         )
         monkeypatch.setenv(
-            "DEEPAGENTS_CODE_ANTHROPIC_BASE_URL",
+            "NIKI_ANTHROPIC_BASE_URL",
             "https://scoped.gateway.example/anthropic",
         )
         monkeypatch.setenv("ANTHROPIC_CUSTOM_HEADERS", "X-Api-Key: lsv2_sk_gateway_key")
@@ -786,7 +784,7 @@ models = ["claude-sonnet-4-5"]
         assert "ANTHROPIC_BASE_URL" not in os.environ
         assert "ANTHROPIC_API_URL" not in os.environ
         assert (
-            os.environ["DEEPAGENTS_CODE_ANTHROPIC_BASE_URL"]
+            os.environ["NIKI_ANTHROPIC_BASE_URL"]
             == "https://scoped.gateway.example/anthropic"
         )
         assert (
@@ -806,8 +804,8 @@ models = ["claude-sonnet-4-5"]
         """
         import os
 
-        from deepagents_code import auth_store, model_config
-        from deepagents_code.model_config import apply_stored_credentials, clear_caches
+        from niki_agent import auth_store, model_config
+        from niki_agent.model_config import apply_stored_credentials, clear_caches
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("""
@@ -851,11 +849,11 @@ class TestServiceCredentials:
         """Strip service env vars so each test controls its own state."""
         for var in (
             "TAVILY_API_KEY",
-            "DEEPAGENTS_CODE_TAVILY_API_KEY",
+            "NIKI_TAVILY_API_KEY",
             "LANGSMITH_API_KEY",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
+            "NIKI_LANGSMITH_API_KEY",
             "LANGCHAIN_API_KEY",
-            "DEEPAGENTS_CODE_LANGCHAIN_API_KEY",
+            "NIKI_LANGCHAIN_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -867,8 +865,8 @@ class TestServiceCredentials:
         """A stored LangSmith key is copied onto LANGSMITH_API_KEY."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_service_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_service_credentials
 
         monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
         auth_store.set_stored_key("langsmith", "lsv2_test")
@@ -880,7 +878,7 @@ class TestServiceCredentials:
         fake_state_dir: Path,  # noqa: ARG002
     ) -> None:
         """No stored or env key reports MISSING with the canonical env var."""
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent.model_config import get_service_auth_status
 
         status = get_service_auth_status("tavily")
         assert status.state is ProviderAuthState.MISSING
@@ -893,7 +891,7 @@ class TestServiceCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An env var reports CONFIGURED from the env source."""
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent.model_config import get_service_auth_status
 
         monkeypatch.setenv("TAVILY_API_KEY", "from-env")
         status = get_service_auth_status("tavily")
@@ -906,7 +904,7 @@ class TestServiceCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """LangSmith status reports its primary env var when both are set."""
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent.model_config import get_service_auth_status
 
         monkeypatch.setenv("LANGSMITH_API_KEY", "from-primary")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "from-fallback")
@@ -921,11 +919,11 @@ class TestServiceCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A prefixed override reports ENV, because the store never applies."""
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent import auth_store
+        from niki_agent.model_config import get_service_auth_status
 
         auth_store.set_stored_key("langsmith", "from-store")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "from-prefix")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "from-prefix")
         status = get_service_auth_status("langsmith")
         assert status.state is ProviderAuthState.CONFIGURED
         assert status.source is ProviderAuthSource.ENV
@@ -942,11 +940,11 @@ class TestServiceCredentials:
         name is present, so the stored key never reaches the SDK. Reporting it
         as configured would be a promise the app cannot keep.
         """
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent import auth_store
+        from niki_agent.model_config import get_service_auth_status
 
         auth_store.set_stored_key("langsmith", "from-store")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
         assert get_service_auth_status("langsmith").state is ProviderAuthState.MISSING
 
     def test_missing_langsmith_detail_names_the_fallback(
@@ -954,7 +952,7 @@ class TestServiceCredentials:
         fake_state_dir: Path,  # noqa: ARG002
     ) -> None:
         """The MISSING message names every env var that would have worked."""
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent.model_config import get_service_auth_status
 
         status = get_service_auth_status("langsmith")
         assert status.state is ProviderAuthState.MISSING
@@ -968,25 +966,23 @@ class TestServiceCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A prefixed fallback also records its canonical spelling."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             get_service_auth_status,
             resolved_env_var_name,
         )
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "from-prefix")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "from-prefix")
         status = get_service_auth_status("langsmith")
         assert status.env_var == "LANGCHAIN_API_KEY"
-        assert (
-            resolved_env_var_name(status.env_var) == "DEEPAGENTS_CODE_LANGCHAIN_API_KEY"
-        )
+        assert resolved_env_var_name(status.env_var) == "NIKI_LANGCHAIN_API_KEY"
 
     def test_status_configured_from_store(
         self,
         fake_state_dir: Path,  # noqa: ARG002
     ) -> None:
         """A stored key reports CONFIGURED from the stored source."""
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import get_service_auth_status
+        from niki_agent import auth_store
+        from niki_agent.model_config import get_service_auth_status
 
         auth_store.set_stored_key("tavily", "from-store")
         status = get_service_auth_status("tavily")
@@ -1000,8 +996,8 @@ class TestServiceCredentials:
         """`apply_stored_service_credentials` copies the stored key to env."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_service_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_service_credentials
 
         auth_store.set_stored_key("tavily", "from-store")
         apply_stored_service_credentials()
@@ -1015,7 +1011,7 @@ class TestServiceCredentials:
         """No stored key leaves an existing env var untouched."""
         import os
 
-        from deepagents_code.model_config import apply_stored_service_credentials
+        from niki_agent.model_config import apply_stored_service_credentials
 
         monkeypatch.setenv("TAVILY_API_KEY", "from-env")
         apply_stored_service_credentials()
@@ -1034,8 +1030,8 @@ class TestServiceCredentials:
         """
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_service_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_service_credentials
 
         monkeypatch.setenv("TAVILY_API_KEY", "from-env")
         auth_store.set_stored_key("tavily", "from-store")
@@ -1050,10 +1046,10 @@ class TestServiceCredentials:
         """A scoped service key is not overwritten by a stored key."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.model_config import apply_stored_service_credentials
+        from niki_agent import auth_store
+        from niki_agent.model_config import apply_stored_service_credentials
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_prefixed")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_prefixed")
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_prefixed")
         auth_store.set_stored_key("langsmith", "lsv2_stored")
         apply_stored_service_credentials()
@@ -1073,11 +1069,11 @@ class TestSplitCredentialSource:
         """
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "OPENAI_API_BASE",
-            "DEEPAGENTS_CODE_OPENAI_BASE_URL",
-            "DEEPAGENTS_CODE_OPENAI_API_BASE",
+            "NIKI_OPENAI_BASE_URL",
+            "NIKI_OPENAI_API_BASE",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -1087,18 +1083,17 @@ class TestSplitCredentialSource:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Prefixed key + plain base URL (no prefixed base URL) emits a DEBUG line."""
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-secret-value")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("openai")
 
         messages = [r.getMessage() for r in caplog.records]
         assert any(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY" in m and "OPENAI_BASE_URL" in m
-            for m in messages
+            "NIKI_OPENAI_API_KEY" in m and "OPENAI_BASE_URL" in m for m in messages
         )
         # The secret value and the URL value must never appear in the log.
         assert all("sk-secret-value" not in m for m in messages)
@@ -1110,15 +1105,13 @@ class TestSplitCredentialSource:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A matching prefixed base URL means the pair shares a source: no warning."""
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-secret-value")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_OPENAI_BASE_URL", "https://gateway.example/v1"
-        )
+        monkeypatch.setenv("NIKI_OPENAI_BASE_URL", "https://gateway.example/v1")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("openai")
 
         assert not caplog.records
@@ -1129,12 +1122,12 @@ class TestSplitCredentialSource:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A plain key with a plain base URL is a same-tier pair: no warning."""
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
         monkeypatch.setenv("OPENAI_API_KEY", "sk-secret-value")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("openai")
 
         assert not caplog.records
@@ -1145,11 +1138,11 @@ class TestSplitCredentialSource:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A prefixed key with no endpoint at all has nothing to mismatch."""
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-secret-value")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("openai")
 
         assert not caplog.records
@@ -1164,12 +1157,12 @@ class TestSplitCredentialSource:
         Symmetric to `test_empty_prefixed_base_url_is_not_treated_as_plain`: the
         key half of the pair must be *present and non-empty* for a split to exist.
         """
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("openai")
 
         assert not caplog.records
@@ -1185,11 +1178,11 @@ class TestSplitCredentialSource:
         no entry in `PROVIDER_BASE_URL_ENV`, so there is no endpoint variable to
         compare against.
         """
-        from deepagents_code.model_config import warn_on_split_credential_source
+        from niki_agent.model_config import warn_on_split_credential_source
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_GOOGLE_CLOUD_PROJECT", "my-project")
+        monkeypatch.setenv("NIKI_GOOGLE_CLOUD_PROJECT", "my-project")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             warn_on_split_credential_source("google_vertexai")
 
         assert not caplog.records
@@ -1205,17 +1198,17 @@ class TestSplitCredentialSource:
         A `config.toml` provider that declares its own `api_key_env` /
         `base_url_env` participates in the same split-source detection.
         """
-        from deepagents_code import model_config
-        from deepagents_code.model_config import (
+        from niki_agent import model_config
+        from niki_agent.model_config import (
             clear_caches,
             warn_on_split_credential_source,
         )
 
         for var in (
             "MYCO_KEY",
-            "DEEPAGENTS_CODE_MYCO_KEY",
+            "NIKI_MYCO_KEY",
             "MYCO_BASE_URL",
-            "DEEPAGENTS_CODE_MYCO_BASE_URL",
+            "NIKI_MYCO_BASE_URL",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -1226,20 +1219,18 @@ api_key_env = "MYCO_KEY"
 base_url_env = "MYCO_BASE_URL"
 models = ["m1"]
 """)
-        monkeypatch.setenv("DEEPAGENTS_CODE_MYCO_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_MYCO_KEY", "sk-secret-value")
         monkeypatch.setenv("MYCO_BASE_URL", "https://gateway.example/myco")
 
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"),
         ):
             clear_caches()
             warn_on_split_credential_source("myco")
 
         messages = [r.getMessage() for r in caplog.records]
-        assert any(
-            "DEEPAGENTS_CODE_MYCO_KEY" in m and "MYCO_BASE_URL" in m for m in messages
-        )
+        assert any("NIKI_MYCO_KEY" in m and "MYCO_BASE_URL" in m for m in messages)
 
     def test_no_warning_when_config_base_url_literal_set(
         self,
@@ -1248,8 +1239,8 @@ models = ["m1"]
         tmp_path: Path,
     ) -> None:
         """A `config.toml` `base_url` literal wins over env vars: no env split."""
-        from deepagents_code import model_config
-        from deepagents_code.model_config import (
+        from niki_agent import model_config
+        from niki_agent.model_config import (
             clear_caches,
             warn_on_split_credential_source,
         )
@@ -1259,12 +1250,12 @@ models = ["m1"]
 [models.providers.openai]
 base_url = "https://configured.example/v1"
 """)
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-secret-value")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
 
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"),
         ):
             clear_caches()
             warn_on_split_credential_source("openai")
@@ -1293,7 +1284,7 @@ class TestThreadConfigCoalesced:
 
     def test_corrupt_toml_returns_defaults(self, tmp_path: Path) -> None:
         """A corrupt config file should return defaults without crashing."""
-        from deepagents_code.model_config import load_thread_config
+        from niki_agent.model_config import load_thread_config
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("this is not valid TOML {{{{")
@@ -1314,9 +1305,9 @@ class TestResolveEnvVar:
     ) -> None:
         """Prefixed variables take priority and log their source only once."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-canonical")
-        monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-override")
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.model_config")
-        from deepagents_code.model_config import (
+        monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-override")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.model_config")
+        from niki_agent.model_config import (
             reset_env_resolution_log,
             resolve_env_var,
         )
@@ -1327,7 +1318,7 @@ class TestResolveEnvVar:
             assert resolve_env_var("ANTHROPIC_API_KEY") == "sk-override"
             assert (
                 caplog.messages.count(
-                    "Resolved ANTHROPIC_API_KEY from DEEPAGENTS_CODE_ANTHROPIC_API_KEY"
+                    "Resolved ANTHROPIC_API_KEY from NIKI_ANTHROPIC_API_KEY"
                 )
                 == 1
             )
@@ -1340,9 +1331,9 @@ class TestResolveEnvVar:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Resetting resolution diagnostics starts a new logging generation."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-prefixed")
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.model_config")
-        from deepagents_code.model_config import (
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-prefixed")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.model_config")
+        from niki_agent.model_config import (
             reset_env_resolution_log,
             resolve_env_var,
         )
@@ -1354,7 +1345,7 @@ class TestResolveEnvVar:
             assert resolve_env_var("OPENAI_API_KEY") == "sk-prefixed"
             assert (
                 caplog.messages.count(
-                    "Resolved OPENAI_API_KEY from DEEPAGENTS_CODE_OPENAI_API_KEY"
+                    "Resolved OPENAI_API_KEY from NIKI_OPENAI_API_KEY"
                 )
                 == 2
             )
@@ -1367,8 +1358,8 @@ class TestResolveEnvVar:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A resolve while DEBUG is off must not consume the one-time log slot."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-prefixed")
-        from deepagents_code.model_config import (
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-prefixed")
+        from niki_agent.model_config import (
             reset_env_resolution_log,
             resolve_env_var,
         )
@@ -1377,17 +1368,17 @@ class TestResolveEnvVar:
         try:
             # DEBUG disabled: resolve succeeds but records nothing, so the name
             # must not be marked as already-logged.
-            caplog.set_level(logging.INFO, logger="deepagents_code.model_config")
+            caplog.set_level(logging.INFO, logger="niki_agent.model_config")
             assert resolve_env_var("OPENAI_API_KEY") == "sk-prefixed"
             assert caplog.messages == []
 
             # DEBUG enabled: the first resolution should still emit exactly once.
-            caplog.set_level(logging.DEBUG, logger="deepagents_code.model_config")
+            caplog.set_level(logging.DEBUG, logger="niki_agent.model_config")
             assert resolve_env_var("OPENAI_API_KEY") == "sk-prefixed"
             assert resolve_env_var("OPENAI_API_KEY") == "sk-prefixed"
             assert (
                 caplog.messages.count(
-                    "Resolved OPENAI_API_KEY from DEEPAGENTS_CODE_OPENAI_API_KEY"
+                    "Resolved OPENAI_API_KEY from NIKI_OPENAI_API_KEY"
                 )
                 == 1
             )
@@ -1414,7 +1405,7 @@ class TestModelConfigLoad:
         config_path = tmp_path / "config.toml"
         config_path.write_text('models = "oops"\n')
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.model_config"):
             config = ModelConfig.load(config_path)
 
         assert config.default_model is None
@@ -1626,7 +1617,7 @@ api_key_env = "ANTHROPIC_API_KEY"
             assert config.has_credentials("anthropic") is False
 
     def test_returns_true_with_prefixed_env_var(self, tmp_path):
-        """Returns True when only the DEEPAGENTS_CODE_ prefixed var is set."""
+        """Returns True when only the NIKI_ prefixed var is set."""
         config_path = tmp_path / "config.toml"
         config_path.write_text("""
 [models.providers.anthropic]
@@ -1637,7 +1628,7 @@ api_key_env = "ANTHROPIC_API_KEY"
 
         with patch.dict(
             "os.environ",
-            {"DEEPAGENTS_CODE_ANTHROPIC_API_KEY": "sk-prefixed"},
+            {"NIKI_ANTHROPIC_API_KEY": "sk-prefixed"},
             clear=True,
         ):
             assert config.has_credentials("anthropic") is True
@@ -1672,7 +1663,7 @@ class TestModelConfigGetBaseUrl:
         it reaches the model as the `base_url` kwarg — otherwise a value saved in
         `/auth` is silently lost.
         """
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         auth_store.set_stored_key("litellm", "k", base_url="https://proxy.example/v1")
         config = ModelConfig()
@@ -1685,7 +1676,7 @@ class TestModelConfigGetBaseUrl:
         tmp_path: Path,
     ) -> None:
         """A `config.toml` literal still wins over the stored endpoint."""
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         auth_store.set_stored_key("baseten", "k", base_url="https://stored.example/v1")
         config_path = tmp_path / "config.toml"
@@ -1703,7 +1694,7 @@ models = ["m1"]
         fake_state_dir: Path,  # noqa: ARG002
     ) -> None:
         """A stored key with no endpoint leaves `get_base_url` at the default."""
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         auth_store.set_stored_key("baseten", "k")
         config = ModelConfig()
@@ -1726,7 +1717,7 @@ class TestGetDefaultBaseUrlEnv:
     """Tests for `get_default_base_url_env` — the var a blank save falls back to.
 
     A blank save clears the *plain* endpoint vars, so only the
-    `DEEPAGENTS_CODE_`-prefixed name still supplies a value afterward. The
+    `NIKI_`-prefixed name still supplies a value afterward. The
     helper returns that name (for display), never the plain name or a value.
     """
 
@@ -1734,25 +1725,19 @@ class TestGetDefaultBaseUrlEnv:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A prefixed alternate is named when it supplies the blank fallback."""
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_BASETEN_API_BASE", "https://legacy.example/v1"
-        )
+        monkeypatch.setenv("NIKI_BASETEN_API_BASE", "https://legacy.example/v1")
         assert (
-            model_config.get_default_base_url_env("baseten")
-            == "DEEPAGENTS_CODE_BASETEN_API_BASE"
+            model_config.get_default_base_url_env("baseten") == "NIKI_BASETEN_API_BASE"
         )
 
     def test_canonical_prefixed_name_precedes_alternate(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The helper matches `get_base_url` provider env precedence."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_BASETEN_BASE_URL", "https://new.example/v1")
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_BASETEN_API_BASE", "https://legacy.example/v1"
-        )
+        monkeypatch.setenv("NIKI_BASETEN_BASE_URL", "https://new.example/v1")
+        monkeypatch.setenv("NIKI_BASETEN_API_BASE", "https://legacy.example/v1")
         assert (
-            model_config.get_default_base_url_env("baseten")
-            == "DEEPAGENTS_CODE_BASETEN_BASE_URL"
+            model_config.get_default_base_url_env("baseten") == "NIKI_BASETEN_BASE_URL"
         )
 
 
@@ -1901,7 +1886,7 @@ class TestGetAvailableModelsMergesConfig:
 
         with (
             patch(
-                "deepagents_code.model_config._load_provider_profiles",
+                "niki_agent.model_config._load_provider_profiles",
                 side_effect=mock_load,
             ),
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
@@ -1918,7 +1903,7 @@ class TestOllamaModelDiscovery:
     def _patch_registry() -> AbstractContextManager[object]:
         """Patch the langchain registry so `ollama` is a known provider."""
         return patch(
-            "deepagents_code.model_config._get_builtin_providers",
+            "niki_agent.model_config._get_builtin_providers",
             return_value={
                 "ollama": ("langchain_ollama.chat_models", "ChatOllama"),
             },
@@ -1937,13 +1922,11 @@ class TestOllamaModelDiscovery:
     ) -> None:
         """An unreachable daemon is probed and logged once per reload."""
         reachable = MagicMock(return_value=False)
-        monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable", reachable
-        )
+        monkeypatch.setattr("niki_agent.model_config._ollama_host_reachable", reachable)
 
         with (
             patch("urllib.request.urlopen") as urlopen,
-            caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"),
         ):
             assert (
                 model_config._get_ollama_installed_models("http://localhost:11434")
@@ -1974,25 +1957,25 @@ class TestOllamaModelDiscovery:
         """
         config_path = tmp_path / "config.toml"
         config_path.write_text("")
-        monkeypatch.delenv("DEEPAGENTS_CODE_OLLAMA_DISCOVERY", raising=False)
+        monkeypatch.delenv("NIKI_OLLAMA_DISCOVERY", raising=False)
         monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable",
+            "niki_agent.model_config._ollama_host_reachable",
             MagicMock(return_value=False),
         )
 
         with (
             self._patch_registry(),
             patch(
-                "deepagents_code.model_config._load_provider_profiles",
+                "niki_agent.model_config._load_provider_profiles",
                 side_effect=self._empty_profiles_loader,
             ),
             patch(
-                "deepagents_code.model_config.importlib.util.find_spec",
+                "niki_agent.model_config.importlib.util.find_spec",
                 return_value=object(),
             ),
             patch("urllib.request.urlopen") as urlopen,
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"),
         ):
             get_available_models()
             get_model_profiles()
@@ -2012,9 +1995,7 @@ class TestOllamaModelDiscovery:
         re-probed every call instead of once per reload.
         """
         reachable = MagicMock(return_value=False)
-        monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable", reachable
-        )
+        monkeypatch.setattr("niki_agent.model_config._ollama_host_reachable", reachable)
 
         with patch("urllib.request.urlopen"):
             assert model_config._get_ollama_installed_models(endpoint) == []
@@ -2043,7 +2024,7 @@ class TestFetchOllamaInstalledModels:
     def _assume_host_reachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Bypass the TCP presence preflight so HTTP parsing paths are exercised."""
         monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable",
+            "niki_agent.model_config._ollama_host_reachable",
             lambda *_args, **_kwargs: True,
         )
 
@@ -2052,7 +2033,7 @@ class TestFetchOllamaInstalledModels:
     ) -> None:
         """An unreachable daemon short-circuits before any HTTP request."""
         monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable",
+            "niki_agent.model_config._ollama_host_reachable",
             lambda *_args, **_kwargs: False,
         )
 
@@ -2071,9 +2052,7 @@ class TestFetchOllamaInstalledModels:
         import json
 
         reachable = MagicMock(return_value=False)
-        monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable", reachable
-        )
+        monkeypatch.setattr("niki_agent.model_config._ollama_host_reachable", reachable)
 
         with patch(
             "urllib.request.urlopen",
@@ -2096,11 +2075,9 @@ class TestFetchOllamaInstalledModels:
         import json
 
         reachable = MagicMock(return_value=True)
-        monkeypatch.setattr(
-            "deepagents_code.model_config._ollama_host_reachable", reachable
-        )
+        monkeypatch.setattr("niki_agent.model_config._ollama_host_reachable", reachable)
         monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_OLLAMA_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OLLAMA_API_KEY", raising=False)
 
         with patch(
             "urllib.request.urlopen",
@@ -2134,7 +2111,7 @@ class TestFetchOllamaInstalledModels:
             return _BytesContext(json.dumps(payload).encode("utf-8"))
 
         monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_OLLAMA_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OLLAMA_API_KEY", raising=False)
 
         with patch("urllib.request.urlopen", side_effect=fake_urlopen):
             result = model_config._fetch_ollama_installed_models(
@@ -2251,7 +2228,7 @@ class TestOllamaHostReachable:
             raise refused
 
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.model_config"),
             patch("socket.create_connection", side_effect=boom),
         ):
             assert (
@@ -2276,7 +2253,7 @@ class TestOllamaHostReachable:
             raise TimeoutError
 
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.model_config"),
             patch("socket.create_connection", side_effect=boom),
         ):
             assert model_config._ollama_host_reachable("http://localhost:11434") is True
@@ -2298,7 +2275,7 @@ class TestOllamaHostReachable:
             raise blocked
 
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.model_config"),
             patch("socket.create_connection", side_effect=boom),
         ):
             assert (
@@ -2469,7 +2446,7 @@ api_key_env = "BASETEN_API_KEY"
 """)
         with (
             patch(
-                "deepagents_code.model_config._load_provider_profiles",
+                "niki_agent.model_config._load_provider_profiles",
                 side_effect=ImportError("not installed"),
             ),
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
@@ -2488,7 +2465,7 @@ api_key_env = "BASETEN_API_KEY"
 """)
         with (
             patch(
-                "deepagents_code.model_config._load_provider_profiles",
+                "niki_agent.model_config._load_provider_profiles",
                 side_effect=ImportError("not installed"),
             ),
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
@@ -2892,7 +2869,7 @@ class TestModelPrecedenceOrder:
         self, tmp_path: Path
     ) -> None:
         """Stale defaults cannot outrank an allowed authenticated fallback."""
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -2910,7 +2887,7 @@ class TestModelPrecedenceOrder:
 
     def test_empty_allowlist_blocks_default_resolution(self, tmp_path: Path) -> None:
         """A deny-all list never reaches unrestricted credential fallback."""
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("[models]\nallowed = []\n")
@@ -2931,7 +2908,7 @@ class TestModelPrecedenceOrder:
         that state here would block startup even though `create_model()`
         deliberately permits it.
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -2958,7 +2935,7 @@ class TestModelPrecedenceOrder:
         first credentialed model the provider declares rather than selecting
         the wildcard literally.
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -2987,7 +2964,7 @@ class TestModelPrecedenceOrder:
         credential present, default resolution must pick a discovered model
         rather than reporting "No discoverable models".
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text('[models]\nallowed = ["openai:*"]\n')
@@ -3013,7 +2990,7 @@ class TestModelPrecedenceOrder:
         candidates. (A built-in like `openai` would expand to its discovered
         profile lineup instead.)
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -3032,7 +3009,7 @@ class TestModelPrecedenceOrder:
 
     def test_env_used_when_neither_set(self, tmp_path):
         """Falls back to env var auto-detection when neither default nor recent set."""
-        from deepagents_code.config import _get_credentials, _get_default_model_spec
+        from niki_agent.config import _get_credentials, _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("")
@@ -3045,7 +3022,7 @@ class TestModelPrecedenceOrder:
         )
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            patch("deepagents_code.auth_store.get_stored_key", return_value=None),
+            patch("niki_agent.auth_store.get_stored_key", return_value=None),
             patch.object(owner, "_active", replacement),
             patch.dict(
                 "os.environ",
@@ -3059,7 +3036,7 @@ class TestModelPrecedenceOrder:
 
     def test_stored_key_used_when_neither_model_set(self, tmp_path):
         """Falls back to stored TUI credentials when no env vars are set."""
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("")
@@ -3069,7 +3046,7 @@ class TestModelPrecedenceOrder:
 
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            patch("deepagents_code.auth_store.get_stored_key", side_effect=stored_key),
+            patch("niki_agent.auth_store.get_stored_key", side_effect=stored_key),
             patch.dict("os.environ", {}, clear=True),
         ):
             result = _get_default_model_spec()
@@ -3078,7 +3055,7 @@ class TestModelPrecedenceOrder:
 
     def test_vertex_project_does_not_drive_env_default(self, tmp_path):
         """Vertex project alone should not select an automatic default model."""
-        from deepagents_code.config import _get_credentials, _get_default_model_spec
+        from niki_agent.config import _get_credentials, _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("")
@@ -3094,7 +3071,7 @@ class TestModelPrecedenceOrder:
         )
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            patch("deepagents_code.auth_store.get_stored_key", return_value=None),
+            patch("niki_agent.auth_store.get_stored_key", return_value=None),
             patch.dict("os.environ", {}, clear=True),
             patch.object(owner, "_active", replacement),
             pytest.raises(ModelConfigError),
@@ -3103,7 +3080,7 @@ class TestModelPrecedenceOrder:
 
     def test_nvidia_key_does_not_drive_env_default(self, tmp_path):
         """NVIDIA key alone should not select an automatic default model."""
-        from deepagents_code.config import _get_credentials, _get_default_model_spec
+        from niki_agent.config import _get_credentials, _get_default_model_spec
 
         config_path = tmp_path / "config.toml"
         config_path.write_text("")
@@ -3119,7 +3096,7 @@ class TestModelPrecedenceOrder:
         )
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            patch("deepagents_code.auth_store.get_stored_key", return_value=None),
+            patch("niki_agent.auth_store.get_stored_key", return_value=None),
             patch.dict("os.environ", {}, clear=True),
             patch.object(owner, "_active", replacement),
             pytest.raises(ModelConfigError),
@@ -4316,7 +4293,7 @@ class TestLoadMcpServerTrustLists:
         """The removed env var, still exported, is flagged (not honored)."""
         config_path = tmp_path / "config.toml"
         config_path.write_text("[mcp]\n")
-        monkeypatch.setenv("DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS", "docs")
+        monkeypatch.setenv("NIKI_ENABLED_PROJECT_MCP_SERVERS", "docs")
 
         result = load_mcp_server_trust_lists(config_path)
 
@@ -4330,7 +4307,7 @@ class TestLoadMcpServerTrustLists:
         """With the old env var unset, the diagnostic flag stays `False`."""
         config_path = tmp_path / "config.toml"
         config_path.write_text("[mcp]\n")
-        monkeypatch.delenv("DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS", raising=False)
+        monkeypatch.delenv("NIKI_ENABLED_PROJECT_MCP_SERVERS", raising=False)
 
         result = load_mcp_server_trust_lists(config_path)
 
@@ -4472,7 +4449,7 @@ class TestAddEnabledProjectMcpServers:
     def test_scopes_mixed_transports_per_server_across_worktrees(
         self, tmp_path: Path
     ) -> None:
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         main = tmp_path / "main"
         first = tmp_path / "first"
@@ -4513,7 +4490,7 @@ class TestAddEnabledProjectMcpServers:
     def test_nested_external_common_identity_stays_idempotent(
         self, tmp_path: Path
     ) -> None:
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         outer = tmp_path / "outer"
         _create_git_repository(outer)
@@ -4545,7 +4522,7 @@ class TestAddEnabledProjectMcpServers:
 
     def test_removes_migrated_names_from_legacy_approvals(self, tmp_path: Path) -> None:
         """Scoped approvals consume matching names from the legacy allowlist."""
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         config_path = tmp_path / "config.toml"
         config_path.write_text('[mcp]\nenabled_project_servers = ["docs", "github"]\n')
@@ -4568,7 +4545,7 @@ class TestAddEnabledProjectMcpServers:
 
     def test_deletes_empty_legacy_approval_key(self, tmp_path: Path) -> None:
         """Migrating the final legacy name removes its warning source."""
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         config_path = tmp_path / "config.toml"
         config_path.write_text('[mcp]\nenabled_project_servers = ["docs"]\n')
@@ -4593,7 +4570,7 @@ class TestAddEnabledProjectMcpServers:
         The write-side analog of the read-side `test_non_table_mcp_sets_read_error`:
         a corrupt `[mcp]` must not abort the save, and unrelated config survives.
         """
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(
@@ -4616,7 +4593,7 @@ class TestAddEnabledProjectMcpServers:
 
     def test_round_trips_through_loader(self, tmp_path: Path) -> None:
         """Persisted approvals are read back by `load_mcp_server_trust_lists`."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             add_enabled_project_mcp_servers,
             load_mcp_server_trust_lists,
         )
@@ -4652,7 +4629,7 @@ class TestAddEnabledProjectMcpServers:
 
     def test_returns_false_on_unparseable_config(self, tmp_path: Path) -> None:
         """A corrupt existing config fails closed (returns False) and is untouched."""
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         config_path = tmp_path / "config.toml"
         corrupt = "[mcp]\nenabled_project_server_approvals = [\n"
@@ -4676,7 +4653,7 @@ class TestAddEnabledProjectMcpServers:
         directory cannot be created because a regular file sits where a
         directory must go.
         """
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         blocker = tmp_path / "afile"
         blocker.write_text("")  # a file where a parent directory is needed
@@ -4699,8 +4676,8 @@ class TestAddEnabledProjectMcpServers:
         Covers the `except BaseException: unlink; raise` arm: a serialization
         failure after `mkstemp` must not leave a `.tmp` turd in the config dir.
         """
-        from deepagents_code import model_config
-        from deepagents_code.model_config import add_enabled_project_mcp_servers
+        from niki_agent import model_config
+        from niki_agent.model_config import add_enabled_project_mcp_servers
 
         config_path = tmp_path / "config.toml"
 
@@ -4784,7 +4761,7 @@ class TestLoadStartupMode:
         mode: str,
     ) -> None:
         """A stored recent mode is restored on a bare launch."""
-        from deepagents_code.approval_mode import save_auto_mode_notice
+        from niki_agent.approval_mode import save_auto_mode_notice
 
         monkeypatch.setattr(model_config, "DEFAULT_STATE_DIR", tmp_path / ".state")
         if mode == STARTUP_MODE_AUTO:
@@ -4825,7 +4802,7 @@ class TestLoadStartupMode:
         log line and a queued toast an `AUTO_NOTICE_VERSION` bump looks exactly
         like the persistence feature being broken.
         """
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             consume_recent_auto_not_restored_notice,
         )
 
@@ -4835,7 +4812,7 @@ class TestLoadStartupMode:
         # The notice is module state; clear anything an earlier test queued.
         consume_recent_auto_not_restored_notice()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.model_config"):
             assert load_startup_mode(config) == STARTUP_MODE_MANUAL
 
         assert any(
@@ -4852,8 +4829,8 @@ class TestLoadStartupMode:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A successful restore leaves nothing to explain."""
-        from deepagents_code.approval_mode import save_auto_mode_notice
-        from deepagents_code.model_config import (
+        from niki_agent.approval_mode import save_auto_mode_notice
+        from niki_agent.model_config import (
             consume_recent_auto_not_restored_notice,
         )
 
@@ -4882,7 +4859,7 @@ class TestLoadStartupMode:
         """Only Manual and Auto restore; anything else warns and fails closed."""
         config = tmp_path / "config.toml"
         config.write_text(f"[startup]\nrecent = '{recent}'\n")
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.model_config"):
             assert load_startup_mode(config) == STARTUP_MODE_MANUAL
         assert any(
             "[startup].recent" in record.getMessage() for record in caplog.records
@@ -4911,7 +4888,7 @@ class TestLoadStartupMode:
         mode: str,
     ) -> None:
         """A saved mode reloads, and neighbouring config keys survive the write."""
-        from deepagents_code.approval_mode import save_auto_mode_notice
+        from niki_agent.approval_mode import save_auto_mode_notice
 
         monkeypatch.setattr(model_config, "DEFAULT_STATE_DIR", tmp_path / ".state")
         if mode == STARTUP_MODE_AUTO:
@@ -4946,7 +4923,7 @@ class TestLoadStartupMode:
         """An invalid explicit mode fails closed instead of restoring recent Auto."""
         config = tmp_path / "config.toml"
         config.write_text("[startup]\nmode = 'hands-off'\nrecent = 'auto'\n")
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.model_config"):
             assert load_startup_mode(config) == STARTUP_MODE_MANUAL
         # Assert on the `mode` warning specifically: matching bare "startup"
         # would also pass on the `recent` warning, which must not fire here.
@@ -5000,7 +4977,7 @@ class TestWritesReachTheSharedResolver:
         """
         import logging
 
-        from deepagents_code.configuration import resolver as resolver_module
+        from niki_agent.configuration import resolver as resolver_module
 
         config_path = tmp_path / "config.toml"
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
@@ -5075,8 +5052,8 @@ class TestWritesReachTheSharedResolver:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """An equal on-disk value still invalidates stale cached views."""
-        from deepagents_code.config_manifest import get_option
-        from deepagents_code.configuration.resolver import get_config_resolver
+        from niki_agent.config_manifest import get_option
+        from niki_agent.configuration.resolver import get_config_resolver
 
         config_path = tmp_path / "config.toml"
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)

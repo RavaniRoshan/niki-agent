@@ -12,11 +12,11 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code import _paths as _paths_module
-from deepagents_code._paths import (
+from niki_agent import _paths as _paths_module
+from niki_agent._paths import (
     PATHS,
-    DeepAgentsHomeError,
     DeepAgentsPathSnapshot,
+    NikiHomeError,
     PathState,
     _capture_paths,
     classify_path,
@@ -76,7 +76,7 @@ class TestGetDeepagentsHome:
         """Custom tool directories must neither contain nor share lock roots."""
         locks = set()
         for container in (tmp_path / "tools", tmp_path / "custom tools"):
-            monkeypatch.setattr(sys, "prefix", str(container / "deepagents-code"))
+            monkeypatch.setattr(sys, "prefix", str(container / "niki-agent"))
             installation = _paths_module._installation_paths()
             assert not installation.locks_dir.is_relative_to(container)
             locks.add(installation.locks_dir)
@@ -87,11 +87,11 @@ def _subprocess_env(*, home: Path, configured: str | None) -> dict[str, str]:
     """Return a synthetic launch environment without reading secret files."""
     env = os.environ.copy()
     env["HOME"] = str(home)
-    env.pop("DEEPAGENTS_HOME_IS_DEFAULT", None)
+    env.pop("NIKI_HOME_IS_DEFAULT", None)
     if configured is None:
-        env.pop("DEEPAGENTS_HOME", None)
+        env.pop("NIKI_HOME", None)
     else:
-        env["DEEPAGENTS_HOME"] = configured
+        env["NIKI_HOME"] = configured
     return env
 
 
@@ -160,7 +160,7 @@ class TestProbeWritable:
         directory.mkdir()
         try:
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code._paths"),
+                caplog.at_level(logging.WARNING, logger="niki_agent._paths"),
                 patch.object(Path, "unlink", side_effect=OSError("cannot unlink")),
             ):
                 probe_writable(directory)
@@ -181,7 +181,7 @@ class TestProbeWritable:
 class TestDefaultProfileMarkerSurvivesChildProcesses:
     """`uses_default_profile` must not be destroyed at a process boundary.
 
-    The parent re-exports `DEEPAGENTS_HOME` for every descendant, so without a
+    The parent re-exports `NIKI_HOME` for every descendant, so without a
     separate marker a child re-derives the value through the absolute-path
     branch and concludes the profile was configured. That renders absolute
     paths in the server's system prompt (leaking the OS username) and makes a
@@ -189,14 +189,14 @@ class TestDefaultProfileMarkerSurvivesChildProcesses:
     """
 
     _CHILD = (
-        "from deepagents_code._paths import PATHS; "
+        "from niki_agent._paths import PATHS; "
         "print(PATHS.uses_default_profile, PATHS.display(PATHS.profile.config_file))"
     )
 
     def _run(self, env: dict[str, str]) -> str:
         code = f"""
 import subprocess, sys
-from deepagents_code._paths import PATHS
+from niki_agent._paths import PATHS
 print(PATHS.uses_default_profile, PATHS.display(PATHS.profile.config_file))
 proc = subprocess.run([sys.executable, "-c", {self._CHILD!r}],
                       check=True, capture_output=True, text=True)
@@ -216,7 +216,7 @@ print(proc.stdout.strip())
         """A forged marker is ignored: it is a display hint, not a trust input."""
         configured = tmp_path / "profile"
         env = _subprocess_env(home=tmp_path, configured=str(configured))
-        env["DEEPAGENTS_HOME_IS_DEFAULT"] = "1"
+        env["NIKI_HOME_IS_DEFAULT"] = "1"
 
         out = self._run(env)
 
@@ -234,7 +234,7 @@ class TestLaunchSnapshotSubprocess:
         (project / ".mcp.json").write_text(
             '{"mcpServers": {"evil": {"command": "/bin/echo", "args": []}}}'
         )
-        (project / ".env").write_text(f"DEEPAGENTS_HOME={project}\n")
+        (project / ".env").write_text(f"NIKI_HOME={project}\n")
         configured = tmp_path / "safe-profile"
         # Assert on the outcome, not only the labelling: every other trust test
         # supplies the provenance itself, so this is the one place that proves
@@ -242,21 +242,21 @@ class TestLaunchSnapshotSubprocess:
         code = """
 import asyncio, os
 from pathlib import Path
-from deepagents_code._paths import PATHS
-from deepagents_code.config import _load_dotenv
-from deepagents_code.mcp_tools import (
+from niki_agent._paths import PATHS
+from niki_agent.config import _load_dotenv
+from niki_agent.mcp_tools import (
     MCPConfigScope,
     discover_mcp_config_sources,
     resolve_and_load_mcp_tools,
 )
-from deepagents_code.project_utils import ProjectContext
+from niki_agent.project_utils import ProjectContext
 project = Path(os.environ["TEST_PROJECT"])
-os.environ.pop("DEEPAGENTS_HOME", None)
+os.environ.pop("NIKI_HOME", None)
 _load_dotenv(start_path=project)
 context = ProjectContext(user_cwd=project, project_root=project)
 sources = discover_mcp_config_sources(project_context=context)
 assert PATHS.profile.root != project
-assert "DEEPAGENTS_HOME" not in os.environ
+assert "NIKI_HOME" not in os.environ
 assert sources and all(source.scope is MCPConfigScope.PROJECT for source in sources)
 tools, manager, servers = asyncio.run(
     resolve_and_load_mcp_tools(trust_project_mcp=None, project_context=context)
@@ -284,14 +284,14 @@ print(PATHS.profile.root)
     ) -> None:
         """The CLI reports invalid inherited values without a traceback."""
         proc = subprocess.run(
-            [sys.executable, "-m", "deepagents_code", "--version"],
+            [sys.executable, "-m", "niki_agent", "--version"],
             env=_subprocess_env(home=tmp_path, configured=configured),
             check=False,
             capture_output=True,
             text=True,
         )
         assert proc.returncode == 2
-        assert "Invalid DEEPAGENTS_HOME" in proc.stderr
+        assert "Invalid NIKI_HOME" in proc.stderr
         assert "Traceback" not in proc.stderr
 
 
@@ -304,13 +304,13 @@ class TestDegenerateProfileRoots:
     """
 
     def test_rejects_home_directory_itself(self, tmp_path: Path) -> None:
-        """`DEEPAGENTS_HOME=~/` must not make `~/.env` the trusted dotenv."""
-        with pytest.raises(DeepAgentsHomeError, match="home directory itself"):
+        """`NIKI_HOME=~/` must not make `~/.env` the trusted dotenv."""
+        with pytest.raises(NikiHomeError, match="home directory itself"):
             _capture_paths("~/", launch_home=tmp_path)
 
     def test_rejects_filesystem_root(self, tmp_path: Path) -> None:
         """A root of `/` would place credentials in `/.state/auth.json`."""
-        with pytest.raises(DeepAgentsHomeError, match="filesystem root"):
+        with pytest.raises(NikiHomeError, match="filesystem root"):
             _capture_paths("/", launch_home=tmp_path)
 
     def test_rejects_dangling_symlink(self, tmp_path: Path) -> None:
@@ -319,7 +319,7 @@ class TestDegenerateProfileRoots:
         link = tmp_path / "profile-link"
         link.symlink_to(target, target_is_directory=True)
 
-        with pytest.raises(DeepAgentsHomeError, match="symlink whose target"):
+        with pytest.raises(NikiHomeError, match="symlink whose target"):
             _capture_paths(str(link), launch_home=tmp_path)
 
 
@@ -336,19 +336,19 @@ class TestUnresolvableHome:
         """The `RuntimeError` is translated and names both escape hatches."""
         with (
             mock.patch.object(Path, "home", side_effect=RuntimeError("no home")),
-            pytest.raises(DeepAgentsHomeError) as excinfo,
+            pytest.raises(NikiHomeError) as excinfo,
         ):
             _capture_paths(None)
 
         message = str(excinfo.value)
         assert "$HOME" in message
-        assert "DEEPAGENTS_HOME" in message
+        assert "NIKI_HOME" in message
 
 
 class TestDefaultProfileDisplayThroughConsumers:
     """The `~`-abbreviating branch must be exercised through real call sites.
 
-    The suite runs with `DEEPAGENTS_HOME` set (see `conftest`), so
+    The suite runs with `NIKI_HOME` set (see `conftest`), so
     `uses_default_profile` is `False` and `display()` is the identity function
     everywhere. An assertion comparing a message against `PATHS.display(...)`
     therefore passes even if the call site forgot to call `display` at all.
@@ -365,7 +365,7 @@ class TestConfiguredProfileNotice:
         install_profile_snapshot: InstallProfileSnapshot,
     ) -> None:
         """A typo must not look like lost credentials."""
-        from deepagents_code import main
+        from niki_agent import main
 
         configured = tmp_path / "typoed"
         install_profile_snapshot(configured, launch_home=tmp_path)
@@ -407,7 +407,7 @@ class TestHomeDirectoryProfileSpellings:
         link = tmp_path / "link"
         link.symlink_to(home, target_is_directory=True)
 
-        with pytest.raises(DeepAgentsHomeError, match="home directory itself"):
+        with pytest.raises(NikiHomeError, match="home directory itself"):
             _capture_paths(str(link), launch_home=home)
 
     def test_rejects_a_symlinked_spelling_of_the_filesystem_root(
@@ -417,7 +417,7 @@ class TestHomeDirectoryProfileSpellings:
         link = tmp_path / "slash"
         link.symlink_to(Path("/"), target_is_directory=True)
 
-        with pytest.raises(DeepAgentsHomeError, match="filesystem root"):
+        with pytest.raises(NikiHomeError, match="filesystem root"):
             _capture_paths(str(link), launch_home=tmp_path / "home")
 
     def test_accepts_a_subdirectory_reached_through_a_symlink(
@@ -461,7 +461,7 @@ class TestHardenStateDir:
         locates the database from `model_config.DEFAULT_STATE_DIR`, not from
         `PATHS.profile.state_dir`, so this patches the name it actually reads.
         """
-        from deepagents_code import model_config, sessions as sessions_module
+        from niki_agent import model_config, sessions as sessions_module
 
         state_dir = tmp_path / "profile" / ".state"
         with (
@@ -484,7 +484,7 @@ class TestPathsBindingModulesDrift:
 
     Only module-level imports count. A `from ... import PATHS` inside a
     function re-binds on each call and therefore already follows a patch of
-    `deepagents_code._paths.PATHS`.
+    `niki_agent._paths.PATHS`.
     """
 
     @staticmethod
@@ -560,10 +560,10 @@ class TestUnreadableProfileRoot:
 
         with (
             mock.patch(
-                "deepagents_code._paths.classify_path",
+                "niki_agent._paths.classify_path",
                 return_value=PathState.UNREADABLE,
             ),
-            pytest.raises(DeepAgentsHomeError) as exc_info,
+            pytest.raises(NikiHomeError) as exc_info,
         ):
             _capture_paths(str(configured), launch_home=tmp_path)
 
@@ -588,7 +588,7 @@ class TestHomeComparisonFailsClosed:
 
         with (
             mock.patch.object(Path, "samefile", side_effect=PermissionError("denied")),
-            pytest.raises(DeepAgentsHomeError, match="Cannot determine"),
+            pytest.raises(NikiHomeError, match="Cannot determine"),
         ):
             _capture_paths(str(configured), launch_home=tmp_path)
 
@@ -612,7 +612,7 @@ class TestHomeResolvedOncePerLaunch:
 
 
 class TestUserDeepagentsDirHelpers:
-    """Free functions for user-level paths derived from `DEEPAGENTS_HOME`."""
+    """Free functions for user-level paths derived from `NIKI_HOME`."""
 
 
 class TestGetProjectAgentMdPath:
@@ -632,14 +632,14 @@ class TestReservedAgentNameGuards:
 
     def test_trailing_dot_is_invalid(self) -> None:
         """A trailing-dot alias is rejected by the character allowlist."""
-        from deepagents_code import _paths
+        from niki_agent import _paths
 
         with pytest.raises(ValueError, match="Invalid agent name"):
             _paths.get_agent_dir("plugins.")
 
     def test_agent_md_accessor_rejects_invalid_characters(self) -> None:
         """The instruction path accessor cannot escape the profile root."""
-        from deepagents_code import _paths
+        from niki_agent import _paths
 
         with pytest.raises(ValueError, match="Invalid agent name"):
             _paths.get_user_agent_md_path("../escape")

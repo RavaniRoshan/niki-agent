@@ -2,7 +2,7 @@
 
 import pytest
 
-from deepagents_code.unicode_security import (
+from niki_agent.unicode_security import (
     CONFUSABLES,
     UnicodeIssue,
     UrlSafetyResult,

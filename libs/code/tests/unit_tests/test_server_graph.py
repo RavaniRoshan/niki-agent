@@ -17,9 +17,9 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
 
-from deepagents_code._env_vars import SERVER_ENV_PREFIX
-from deepagents_code._server_config import ServerConfig
-from deepagents_code.integrations import sandbox_factory
+from niki_agent._env_vars import SERVER_ENV_PREFIX
+from niki_agent._server_config import ServerConfig
+from niki_agent.integrations import sandbox_factory
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,13 +28,13 @@ if TYPE_CHECKING:
 @pytest.fixture(autouse=True)
 def _disable_extensions(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep user extension code out of server graph unit tests."""
-    monkeypatch.delenv("DEEPAGENTS_CODE_EXPERIMENTAL", raising=False)
+    monkeypatch.delenv("NIKI_EXPERIMENTAL", raising=False)
 
 
 def _import_fresh_server_graph() -> ModuleType:
-    """Import `deepagents_code.server_graph` from a clean module state."""
-    sys.modules.pop("deepagents_code.server_graph", None)
-    return importlib.import_module("deepagents_code.server_graph")
+    """Import `niki_agent.server_graph` from a clean module state."""
+    sys.modules.pop("niki_agent.server_graph", None)
+    return importlib.import_module("niki_agent.server_graph")
 
 
 def _module_with_attrs(name: str, **attrs: object) -> ModuleType:
@@ -47,7 +47,7 @@ def _module_with_attrs(name: str, **attrs: object) -> ModuleType:
 
 def _backend_with_offload(default: object) -> SimpleNamespace:
     """Build a minimal backend carrying the server operation resource."""
-    from deepagents_code.offload_middleware import OffloadOperation
+    from niki_agent.offload_middleware import OffloadOperation
 
     backend = SimpleNamespace(default=default)
     backend._dcode_offload_operation = OffloadOperation(MagicMock(), MagicMock())
@@ -101,14 +101,14 @@ class TestServerGraph:
         profile = tmp_path / "profile"
         profile.mkdir()
         env = os.environ.copy()
-        env["DEEPAGENTS_HOME"] = str(profile)
-        env.pop("DEEPAGENTS_HOME_IS_DEFAULT", None)
+        env["NIKI_HOME"] = str(profile)
+        env.pop("NIKI_HOME_IS_DEFAULT", None)
         code = """
 import asyncio
 from unittest.mock import AsyncMock, patch
 from blockbuster import blockbuster_ctx
-from deepagents_code._server_config import ServerConfig
-import deepagents_code.server_graph as module
+from niki_agent._server_config import ServerConfig
+import niki_agent.server_graph as module
 
 async def main():
     runtime = module.ServerRuntime(object(), object(), object())
@@ -138,7 +138,7 @@ asyncio.run(main())
     def test_criteria_context_tools_use_identity_allowlist_in_tool_order(self) -> None:
         """Criteria tools should be known context objects in main-tool order."""
         module = _import_fresh_server_graph()
-        from deepagents_code.tools import fetch_url, get_current_thread_id, web_search
+        from niki_agent.tools import fetch_url, get_current_thread_id, web_search
 
         mcp_tool = SimpleNamespace(
             name="repository_search",
@@ -175,7 +175,7 @@ asyncio.run(main())
         from mcp.types import ToolAnnotations
 
         module = _import_fresh_server_graph()
-        from deepagents_code.tools import fetch_url, web_search
+        from niki_agent.tools import fetch_url, web_search
 
         readonly_metadata = ToolAnnotations(read_only_hint=True).model_dump(
             by_alias=True, exclude_none=True
@@ -210,7 +210,7 @@ asyncio.run(main())
         """Server-controlled annotation extras cannot grant criteria access."""
         from langchain_core.tools import StructuredTool
 
-        from deepagents_code.tools import fetch_url
+        from niki_agent.tools import fetch_url
 
         module = _import_fresh_server_graph()
         remote = StructuredTool.from_function(
@@ -237,7 +237,7 @@ asyncio.run(main())
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A construction failure must emit the startup marker, then exit non-zero."""
-        from deepagents_code._startup_error import STARTUP_ERROR_MARKER
+        from niki_agent._startup_error import STARTUP_ERROR_MARKER
 
         module = _import_fresh_server_graph()
 
@@ -261,7 +261,7 @@ asyncio.run(main())
         bound_tool = object()
 
         with patch(
-            "deepagents_code.tools.create_web_search_tool",
+            "niki_agent.tools.create_web_search_tool",
             return_value=bound_tool,
         ) as create:
             tools, _, _, read_only_builtins = await module._build_tools(
@@ -274,7 +274,7 @@ asyncio.run(main())
         # The read-only allowlist is a security control, and the
         # `_criteria_context_tools` tests are handed it as an argument, so this
         # is the only place its contents are actually checked.
-        from deepagents_code.tools import fetch_url, get_current_thread_id
+        from niki_agent.tools import fetch_url, get_current_thread_id
 
         assert read_only_builtins == [fetch_url, bound_tool]
         assert get_current_thread_id not in read_only_builtins
@@ -283,7 +283,7 @@ asyncio.run(main())
     async def test_build_tools_read_only_allowlist_without_web_search(self) -> None:
         """With no Tavily key the allowlist holds `fetch_url` alone."""
         module = _import_fresh_server_graph()
-        from deepagents_code.tools import fetch_url, get_current_thread_id
+        from niki_agent.tools import fetch_url, get_current_thread_id
 
         tools, _, mcp_tools, read_only_builtins = await module._build_tools(
             ServerConfig(no_mcp=True), None, tavily_api_key=None
@@ -300,28 +300,28 @@ asyncio.run(main())
         thread_tool = object()
         resolve_mcp_tools = AsyncMock()
         config_module = _module_with_attrs(
-            "deepagents_code.config",
+            "niki_agent.config",
             active_environment=dict,
             credentials=SimpleNamespace(has_tavily=False),
         )
         tools_module = _module_with_attrs(
-            "deepagents_code.tools",
+            "niki_agent.tools",
             create_web_search_tool=Mock(),
             fetch_url=fetch_tool,
             get_current_thread_id=thread_tool,
             web_search=object(),
         )
         mcp_module = _module_with_attrs(
-            "deepagents_code.mcp_tools",
+            "niki_agent.mcp_tools",
             resolve_and_load_mcp_tools=resolve_mcp_tools,
         )
 
         with patch.dict(
             sys.modules,
             {
-                "deepagents_code.config": config_module,
-                "deepagents_code.tools": tools_module,
-                "deepagents_code.mcp_tools": mcp_module,
+                "niki_agent.config": config_module,
+                "niki_agent.tools": tools_module,
+                "niki_agent.mcp_tools": mcp_module,
             },
         ):
             module = _import_fresh_server_graph()
@@ -338,14 +338,14 @@ asyncio.run(main())
 
     async def test_interpreter_settings_apply_before_agent_construction(self) -> None:
         """Server PTC overrides should reach the interpreter snapshot."""
-        from deepagents_code.config import _tracing_environment_values
+        from niki_agent.config import _tracing_environment_values
 
         graph_obj = object()
         model_obj = object()
         observed: dict[str, object] = {}
 
         def create_cli_agent_side_effect(**kwargs: object) -> tuple[object, object]:
-            from deepagents_code.configuration.interpreter import InterpreterConfig
+            from niki_agent.configuration.interpreter import InterpreterConfig
 
             interpreter = kwargs["interpreter_config"]
             assert isinstance(interpreter, InterpreterConfig)
@@ -358,7 +358,7 @@ asyncio.run(main())
         settings_obj = SimpleNamespace(has_tavily=False, tavily_api_key=None)
         environment = dict(os.environ)
         config_module = _module_with_attrs(
-            "deepagents_code.config",
+            "niki_agent.config",
             Credentials=SimpleNamespace(
                 snapshot_from_environment=MagicMock(return_value=settings_obj)
             ),
@@ -386,12 +386,12 @@ asyncio.run(main())
             credentials=settings_obj,
         )
         agent_module = _module_with_attrs(
-            "deepagents_code.agent",
+            "niki_agent.agent",
             create_cli_agent=MagicMock(side_effect=create_cli_agent_side_effect),
             load_async_subagents=MagicMock(return_value=None),
         )
         tools_module = _module_with_attrs(
-            "deepagents_code.tools",
+            "niki_agent.tools",
             create_web_search_tool=Mock(),
             fetch_url=object(),
             get_current_thread_id=object(),
@@ -414,13 +414,13 @@ asyncio.run(main())
             patch.dict(
                 sys.modules,
                 {
-                    "deepagents_code.agent": agent_module,
-                    "deepagents_code.config": config_module,
-                    "deepagents_code.tools": tools_module,
+                    "niki_agent.agent": agent_module,
+                    "niki_agent.config": config_module,
+                    "niki_agent.tools": tools_module,
                 },
             ),
             patch(
-                "deepagents_code.project_utils.get_server_project_context",
+                "niki_agent.project_utils.get_server_project_context",
                 return_value=None,
             ),
         ):
@@ -473,7 +473,7 @@ asyncio.run(main())
         settings_obj = SimpleNamespace(has_tavily=False, tavily_api_key=None)
         environment = dict(os.environ)
         config_module = _module_with_attrs(
-            "deepagents_code.config",
+            "niki_agent.config",
             Credentials=SimpleNamespace(
                 snapshot_from_environment=MagicMock(return_value=settings_obj)
             ),
@@ -499,12 +499,12 @@ asyncio.run(main())
             credentials=settings_obj,
         )
         agent_module = _module_with_attrs(
-            "deepagents_code.agent",
+            "niki_agent.agent",
             create_cli_agent=MagicMock(side_effect=create_cli_agent_side_effect),
             load_async_subagents=MagicMock(return_value=None),
         )
         tools_module = _module_with_attrs(
-            "deepagents_code.tools",
+            "niki_agent.tools",
             create_web_search_tool=Mock(),
             fetch_url=object(),
             get_current_thread_id=object(),
@@ -522,13 +522,13 @@ asyncio.run(main())
             patch.dict(
                 sys.modules,
                 {
-                    "deepagents_code.agent": agent_module,
-                    "deepagents_code.config": config_module,
-                    "deepagents_code.tools": tools_module,
+                    "niki_agent.agent": agent_module,
+                    "niki_agent.config": config_module,
+                    "niki_agent.tools": tools_module,
                 },
             ),
             patch(
-                "deepagents_code.project_utils.get_server_project_context",
+                "niki_agent.project_utils.get_server_project_context",
                 return_value=None,
             ),
             patch.object(
@@ -593,7 +593,7 @@ asyncio.run(main())
 class TestWorkspaceEnvironmentBinding:
     """The workspace snapshot must actually be bound around construction.
 
-    Every other `_make_graphs` test stubs `deepagents_code.config`, including
+    Every other `_make_graphs` test stubs `niki_agent.config`, including
     `use_environment`, while each consumer test patches `active_environment`
     directly. Both ends are mocked, so nothing exercises the wire between them:
     dropping the `with use_environment(...)` block leaves `active_environment()`
@@ -605,9 +605,9 @@ class TestWorkspaceEnvironmentBinding:
         self, tmp_path, monkeypatch
     ) -> None:
         """The real config module binds the workspace `.env` for consumers."""
-        import deepagents_code.agent as agent_mod
-        import deepagents_code.config as config_mod
-        import deepagents_code.integrations.sandbox_factory as sandbox_mod
+        import niki_agent.agent as agent_mod
+        import niki_agent.config as config_mod
+        import niki_agent.integrations.sandbox_factory as sandbox_mod
 
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -679,7 +679,7 @@ class TestWorkspaceEnvironmentBinding:
 
 def _bind(config: ServerConfig, cwd: Any) -> Any:  # noqa: ANN401
     """Resolve a workspace binding for `cwd`, creating the directory first."""
-    from deepagents_code.workspace import resolve_workspace
+    from niki_agent.workspace import resolve_workspace
 
     cwd.mkdir(exist_ok=True)
     identity = resolve_workspace(str(cwd))
@@ -697,7 +697,7 @@ class TestWorkspaceRuntime:
     def test_runtime_workspace_port_is_bound_to_validated_identity(
         self, tmp_path: Path
     ) -> None:
-        from deepagents_code.adapters.workspace import DeepAgentsWorkspaceAdapter
+        from niki_agent.adapters.workspace import DeepAgentsWorkspaceAdapter
 
         module = _import_fresh_server_graph()
         binding = _bind(ServerConfig(), tmp_path)
@@ -738,7 +738,7 @@ class TestWorkspaceRuntime:
         assert not module._workspace_runtimes
 
     async def test_validation_refuses_owned_sandbox(self, tmp_path) -> None:
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         config = ServerConfig(sandbox_type="daytona")
@@ -754,18 +754,18 @@ class TestWorkspaceRuntime:
 
     @pytest.mark.parametrize(
         "setting",
-        ["DEEPAGENTS_CODE_LANGSMITH_PROJECT", "DEEPAGENTS_CODE_LANGSMITH_REDACT"],
+        ["NIKI_LANGSMITH_PROJECT", "NIKI_LANGSMITH_REDACT"],
     )
     async def test_validation_refuses_tracing_mismatch(
         self, tmp_path, setting: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code.config import (
+        from niki_agent.config import (
             _preview_dotenv_environ,
             _tracing_environment_values,
             is_langsmith_redaction_enabled,
             use_environment,
         )
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         config = ServerConfig()
@@ -778,14 +778,12 @@ class TestWorkspaceRuntime:
         changed = dict(environ)
         changed[setting] = (
             "another-project"
-            if setting == "DEEPAGENTS_CODE_LANGSMITH_PROJECT"
+            if setting == "NIKI_LANGSMITH_PROJECT"
             else str(not redact).lower()
         )
         with (
             patch.object(ServerConfig, "from_env", return_value=config),
-            patch(
-                "deepagents_code.config._preview_dotenv_environ", return_value=changed
-            ),
+            patch("niki_agent.config._preview_dotenv_environ", return_value=changed),
             pytest.raises(WorkspaceConflictError, match="tracing settings differ"),
         ):
             await module._validate_workspace_runtime(binding)
@@ -838,7 +836,7 @@ class TestWorkspaceRuntime:
 
     async def test_readiness_runtime_owns_sandbox_workspace(self, tmp_path) -> None:
         """The startup runtime must reserve its sandbox for the launch workspace."""
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         launch_dir = tmp_path / "launch"
@@ -862,7 +860,7 @@ class TestWorkspaceRuntime:
     async def test_sandbox_refuses_second_workspace_and_keeps_first(
         self, tmp_path
     ) -> None:
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         config = ServerConfig(sandbox_type="daytona")
@@ -893,7 +891,7 @@ class TestWorkspaceRuntime:
         self, tmp_path
     ) -> None:
         """A failed build must not let another workspace claim the sandbox."""
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         config = ServerConfig(sandbox_type="daytona")
@@ -938,7 +936,7 @@ class TestWorkspaceRuntime:
     async def test_rejects_resolved_project_policy_divergence(
         self, tmp_path, validate_only: bool
     ) -> None:
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         project = tmp_path / "project"
@@ -970,7 +968,7 @@ class TestWorkspaceRuntime:
     async def test_cached_runtime_rejects_project_policy_divergence(
         self, tmp_path
     ) -> None:
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         project = tmp_path / "project"
@@ -1010,7 +1008,7 @@ class TestWorkspaceRuntime:
         only the project-policy comparison can catch the revocation. Without
         it, a runtime keeps executing project Python the user has untrusted.
         """
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         launch = tmp_path / "launch"
@@ -1020,7 +1018,7 @@ class TestWorkspaceRuntime:
         launch_config = ServerConfig(cwd=str(launch), project_root=str(launch))
         runtime = module.ServerRuntime(object(), object(), object())
         make = AsyncMock(return_value=runtime)
-        trust = "deepagents_code.extensions.trust.is_project_extensions_trusted"
+        trust = "niki_agent.extensions.trust.is_project_extensions_trusted"
 
         with patch(trust, return_value=True):
             binding = _bind(launch_config, other)
@@ -1070,7 +1068,7 @@ class TestWorkspaceRuntime:
         )
         runtime = module.ServerRuntime(object(), object(), object())
         make = AsyncMock(return_value=runtime)
-        trust = "deepagents_code.extensions.trust.is_project_extensions_trusted"
+        trust = "niki_agent.extensions.trust.is_project_extensions_trusted"
 
         with patch(trust, return_value=False):
             binding = _bind(launch_config, other)
@@ -1103,7 +1101,7 @@ class TestWorkspaceRuntime:
 
         `resolve_workspace` derives the project root with `find_project_root`,
         but `get_server_project_context` prefers an explicit
-        `DEEPAGENTS_CODE_SERVER_PROJECT_ROOT`. Where they disagreed, the launch
+        `NIKI_SERVER_PROJECT_ROOT`. Where they disagreed, the launch
         binding recorded scrubbed project policy while the process-wide runtime
         kept the launch project's MCP servers and extensions live.
         """
@@ -1149,7 +1147,7 @@ class TestWorkspaceRuntime:
         launch_config = ServerConfig(cwd=str(launch), project_root=str(launch))
         runtime = module.ServerRuntime(object(), object(), object())
         make = AsyncMock(return_value=runtime)
-        trust = "deepagents_code.extensions.trust.is_project_extensions_trusted"
+        trust = "niki_agent.extensions.trust.is_project_extensions_trusted"
 
         with patch(trust, return_value=False):
             binding = _bind(launch_config, other)
@@ -1225,7 +1223,7 @@ class TestWorkspaceRuntime:
 
     async def test_rejects_access_policy_drift(self, tmp_path) -> None:
         """Real policy drift (approval/tool/sandbox/trust) still refuses."""
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         bound_config = ServerConfig(auto_approve=False)
@@ -1249,7 +1247,7 @@ class TestWorkspaceRuntime:
         """The runtime drift refusal names allowlisted changed fields."""
         import logging
 
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         module = _import_fresh_server_graph()
         bound_config = ServerConfig(model="trusted:model", auto_approve=False)
@@ -1285,7 +1283,7 @@ class TestWorkspaceRuntime:
         A launch cwd that cannot be canonicalized must still produce the marker
         the parent app process scrapes, not a bare `ValueError`.
         """
-        from deepagents_code._startup_error import STARTUP_ERROR_MARKER
+        from niki_agent._startup_error import STARTUP_ERROR_MARKER
 
         module = _import_fresh_server_graph()
         missing = tmp_path / "gone"

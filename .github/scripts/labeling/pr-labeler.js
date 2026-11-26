@@ -264,22 +264,28 @@ function init(github, owner, repo, config, core) {
       console.log(`${author} is a Bot — treating as internal`);
       return { isExternal: false };
     }
+    // The repository owner is always internal; a personal account has no org
+    // membership to look up.
+    if (author.toLowerCase() === owner.toLowerCase()) {
+      console.log(`${author} owns ${owner}/${repo} — treating as internal`);
+      return { isExternal: false };
+    }
 
     try {
       const membership = await github.rest.orgs.getMembershipForUser({
-        org: 'langchain-ai',
+        org: owner,
         username: author,
       });
       const isExternal = membership.data.state !== 'active';
       console.log(
         isExternal
           ? `${author} has pending membership — treating as external`
-          : `${author} is an active member of langchain-ai`,
+          : `${author} is an active member of ${owner}`,
       );
       return { isExternal };
     } catch (e) {
       if (e.status === 404) {
-        console.log(`${author} is not a member of langchain-ai`);
+        console.log(`${author} is not a member of ${owner}`);
         return { isExternal: true };
       }
       // Non-404 errors (rate limit, auth failure, server error) must not

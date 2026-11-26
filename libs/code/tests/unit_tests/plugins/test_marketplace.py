@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.plugins._json import json_object
-from deepagents_code.plugins.marketplace import (
+from niki_agent.plugins._json import json_object
+from niki_agent.plugins.marketplace import (
     MarketplaceError,
     _download_marketplace,
     _HttpsOnlyRedirectHandler,
@@ -22,7 +22,7 @@ from deepagents_code.plugins.marketplace import (
     parse_marketplace_source,
     unresolved_source_message,
 )
-from deepagents_code.plugins.models import (
+from niki_agent.plugins.models import (
     GitSubdirectoryPluginSource,
     LocalPluginSource,
     MarketplacePluginEntry,
@@ -103,7 +103,7 @@ def test_download_marketplace_rejects_non_https_final_url(
             return Response(json.dumps({"name": "x", "plugins": []}).encode())
 
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     monkeypatch.setattr("urllib.request.build_opener", lambda *_handlers: Opener())
 
@@ -128,7 +128,7 @@ def test_download_marketplace_cache_path_is_opaque(
             return Response(json.dumps({"name": "x", "plugins": []}).encode())
 
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     monkeypatch.setattr("urllib.request.build_opener", lambda *_handlers: Opener())
 
@@ -268,7 +268,7 @@ def test_materialize_git_subdir_source_accepts_bare_and_dotted_paths(
     clone = tmp_path / "clone"
     (clone / "skills").mkdir(parents=True)
     monkeypatch.setattr(
-        "deepagents_code.plugins.marketplace._materialize_plugin_repository",
+        "niki_agent.plugins.marketplace._materialize_plugin_repository",
         lambda *_args, **_kwargs: clone,
     )
     entry = MarketplacePluginEntry(
@@ -291,7 +291,7 @@ def test_materialize_git_subdir_source_rejects_escaping_path(
     clone = tmp_path / "clone"
     clone.mkdir()
     monkeypatch.setattr(
-        "deepagents_code.plugins.marketplace._materialize_plugin_repository",
+        "niki_agent.plugins.marketplace._materialize_plugin_repository",
         lambda *_args, **_kwargs: clone,
     )
     entry = MarketplacePluginEntry(
@@ -312,7 +312,7 @@ def test_unresolved_source_message_names_the_rejected_path(
     clone = tmp_path / "clone"
     clone.mkdir()
     monkeypatch.setattr(
-        "deepagents_code.plugins.marketplace._materialize_plugin_repository",
+        "niki_agent.plugins.marketplace._materialize_plugin_repository",
         lambda *_args, **_kwargs: clone,
     )
     entry = MarketplacePluginEntry(

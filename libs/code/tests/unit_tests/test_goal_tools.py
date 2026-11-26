@@ -8,18 +8,18 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.types import Command
 
-from deepagents_code.goal_state_limits import (
+from niki_agent.goal_state_limits import (
     GOAL_STATUS_NOTE_CHAR_LIMIT,
     RUBRIC_CHAR_LIMIT,
 )
-from deepagents_code.goal_state_notice import (
+from niki_agent.goal_state_notice import (
     GOAL_MESSAGE_SCHEMA_VERSION,
     build_goal_continuation,
     build_goal_state_notice,
     goal_state_fingerprint,
     goal_state_notice_info,
 )
-from deepagents_code.goal_tools import GoalToolsMiddleware, _update_goal_command
+from niki_agent.goal_tools import GoalToolsMiddleware, _update_goal_command
 
 if TYPE_CHECKING:
     from langchain.agents.middleware.types import AgentState

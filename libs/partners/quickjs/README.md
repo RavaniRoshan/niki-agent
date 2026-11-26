@@ -5,7 +5,7 @@ A [`deepagents`](../../deepagents) middleware that gives an agent a persistent, 
 Instead of issuing N serial tool calls, the model can write one block of JavaScript that orchestrates work in-loop — variables and functions defined in one call survive into the next, `Promise.all` runs concurrent work, configured subagents are dispatchable as `await task({...})`, and (opt-in) agent tools are callable from inside the REPL as `await tools.<name>(...)`.
 
 ```python
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(
@@ -51,7 +51,7 @@ uv add langchain-quickjs
 ## Quick start
 
 ```python
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain_quickjs import CodeInterpreterMiddleware
 
 agent = create_deep_agent(

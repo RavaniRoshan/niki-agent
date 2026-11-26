@@ -40,7 +40,7 @@ def _detected_sites(check: Any, package: Path) -> list[Any]:  # noqa: ANN401
 
 def test_new_process_cwd_read_fails_guard(tmp_path: Path) -> None:
     """An unreviewed process-cwd read must fail with its source location."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     (package / "request_path.py").write_text(
         "from pathlib import Path as P\n\ndef handle_request():\n    return P.cwd()\n",
@@ -58,10 +58,10 @@ def test_new_process_cwd_read_fails_guard(tmp_path: Path) -> None:
 
 def test_nullable_project_root_read_fails_guard(tmp_path: Path) -> None:
     """A `find_project_root` call with an argument must also fail the guard."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     (package / "request_path.py").write_text(
-        "from deepagents_code.project_utils import find_project_root as root\n"
+        "from niki_agent.project_utils import find_project_root as root\n"
         "\n"
         "def handle_request(start_path=None):\n"
         "    return root(start_path)\n",
@@ -82,7 +82,7 @@ def test_nullable_project_root_read_fails_guard(tmp_path: Path) -> None:
 
 def test_defining_module_read_fails_guard(tmp_path: Path) -> None:
     """The module that defines `find_project_root` must not be exempt."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     (package / "project_utils.py").write_text(
         "def find_project_root(start_path=None):\n"
@@ -107,7 +107,7 @@ def test_defining_module_read_fails_guard(tmp_path: Path) -> None:
 
 def test_added_read_does_not_shift_reviewed_entries(tmp_path: Path) -> None:
     """A new read must be reported, and must not take a reviewed reason."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     module = package / "request_path.py"
     reviewed = (
@@ -142,7 +142,7 @@ def test_added_read_does_not_shift_reviewed_entries(tmp_path: Path) -> None:
 
 def test_stale_allowlist_entry_reports_its_reason(tmp_path: Path) -> None:
     """A removed read must report the reason that no longer applies."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     (package / "request_path.py").write_text(
         "from pathlib import Path\n\ndef build():\n    return Path.cwd()\n",
@@ -164,7 +164,7 @@ def test_stale_allowlist_entry_reports_its_reason(tmp_path: Path) -> None:
 
 def test_unreadable_file_stops_the_check(tmp_path: Path) -> None:
     """A file the check cannot parse must fail instead of going unchecked."""
-    package = tmp_path / "deepagents_code"
+    package = tmp_path / "niki_agent"
     package.mkdir()
     (package / "broken.py").write_text("def build(:\n", encoding="utf-8")
 
@@ -177,6 +177,6 @@ def test_unreadable_file_stops_the_check(tmp_path: Path) -> None:
 def test_current_package_matches_allowlist() -> None:
     """The reviewed package must have no new or stale entries."""
     check = cast("Any", _load_check())
-    package = Path(__file__).parents[2] / "deepagents_code"
+    package = Path(__file__).parents[2] / "niki_agent"
 
     assert check.find_violations(package) == []

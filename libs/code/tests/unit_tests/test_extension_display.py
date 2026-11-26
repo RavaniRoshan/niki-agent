@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from deepagents_code._env_vars import EXPERIMENTAL
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.command_registry import get_slash_commands
+from niki_agent._env_vars import EXPERIMENTAL
+from niki_agent.app import DeepAgentsApp
+from niki_agent.command_registry import get_slash_commands
 
 
 def test_extension_command_autocomplete_requires_experimental_mode(
@@ -31,7 +31,7 @@ async def test_extension_command_rejects_when_experimental_mode_is_off(
 
     await app._handle_extensions_command("/extensions")
 
-    assert "DEEPAGENTS_CODE_EXPERIMENTAL=1" in str(
+    assert "NIKI_EXPERIMENTAL=1" in str(
         mount_message.await_args_list[-1].args[0]._content
     )
 

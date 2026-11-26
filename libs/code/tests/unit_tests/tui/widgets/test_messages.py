@@ -9,26 +9,26 @@ from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from deepagents.backends.utils import (
-    MAX_LINE_LENGTH,
-    _format_source_block,
-    format_content_with_line_numbers,
-)
 from rich.style import Style
 from textual.app import App, ComposeResult
 from textual.content import Content
 from textual.widgets import Markdown, Static
 
-import deepagents_code
-from deepagents_code import theme
-from deepagents_code._ask_user_types import ASK_USER_ANSWERED_SUMMARY
-from deepagents_code.formatting import format_duration
-from deepagents_code.tool_display import (
+import niki_agent
+from niki_agent import theme
+from niki_agent._ask_user_types import ASK_USER_ANSWERED_SUMMARY
+from niki_agent.formatting import format_duration
+from niki_agent.sdk.backends.utils import (
+    MAX_LINE_LENGTH,
+    _format_source_block,
+    format_content_with_line_numbers,
+)
+from niki_agent.tool_display import (
     EXECUTE_HEADER_MAX_LENGTH,
     JS_EVAL_HEADER_MAX_LENGTH,
 )
-from deepagents_code.tui.widgets.message_store import MessageData
-from deepagents_code.tui.widgets.messages import (
+from niki_agent.tui.widgets.message_store import MessageData
+from niki_agent.tui.widgets.messages import (
     _TOOL_ROW_ACTION_CLASS,
     AppMessage,
     AssistantMessage,
@@ -790,7 +790,7 @@ class TestToolCallMessageTodos:
 
         # Continuation lines hang-indent to the width of the status label, which
         # starts flush at the gutter (the formatter emits no leading pad).
-        from deepagents_code.config import get_glyphs
+        from niki_agent.config import get_glyphs
 
         indent = "\n" + " " * len(f"{get_glyphs().circle_filled} active ")
         assert "..." not in plain
@@ -815,7 +815,7 @@ class _ToolMsgApp(App[None]):
 class _AsciiToolMsgApp(_ToolMsgApp):
     """Tool-message app that loads the app-level ASCII overrides."""
 
-    CSS_PATH = Path(deepagents_code.__file__).resolve().parent / "app.tcss"
+    CSS_PATH = Path(niki_agent.__file__).resolve().parent / "app.tcss"
 
 
 def _tool_msg_app(tool_name: str, args: dict | None = None) -> _ToolMsgApp:
@@ -1099,7 +1099,7 @@ class TestToolCallMessageOutputGutter:
         gutter (instead of baked into the first content line) lets the content
         widget own a single hanging indent for every wrapped line.
         """
-        from deepagents_code.config import get_glyphs
+        from niki_agent.config import get_glyphs
 
         # Two logical lines; the first is long enough to soft-wrap in a terminal.
         output = (
@@ -2064,7 +2064,7 @@ class TestToolCallMessageJsEvalArgs:
 
     def test_delete_in_tools_with_header_info(self) -> None:
         """`delete` is registered so its path stays in the header only."""
-        from deepagents_code.tui.widgets.messages import _TOOLS_WITH_HEADER_INFO
+        from niki_agent.tui.widgets.messages import _TOOLS_WITH_HEADER_INFO
 
         assert "delete" in _TOOLS_WITH_HEADER_INFO
 
@@ -2429,8 +2429,8 @@ class TestToolCallMessageFileOutput:
         following, the exact assertion fails in CI instead of the header
         silently leaking into the displayed source.
         """
-        from deepagents.backends.protocol import ReadResult
-        from deepagents.middleware.filesystem import _assemble_read, _window_fields
+        from niki_agent.sdk.backends.protocol import ReadResult
+        from niki_agent.sdk.middleware.filesystem import _assemble_read, _window_fields
 
         read_result = ReadResult(
             total_lines=40, start_line=9, end_line=10, next_offset=10
@@ -2982,17 +2982,17 @@ class TestMarkdownToContent:
     """Direct unit tests for `_markdown_to_content` edge cases."""
 
     def test_empty_markdown_yields_empty_content(self) -> None:
-        from deepagents_code.tui.widgets.messages import _markdown_to_content
+        from niki_agent.tui.widgets.messages import _markdown_to_content
 
         assert not _markdown_to_content("", 40).plain
 
     def test_whitespace_only_markdown_yields_empty_content(self) -> None:
-        from deepagents_code.tui.widgets.messages import _markdown_to_content
+        from niki_agent.tui.widgets.messages import _markdown_to_content
 
         assert not _markdown_to_content("   \n   \n", 40).plain
 
     def test_trailing_blank_lines_are_trimmed(self) -> None:
-        from deepagents_code.tui.widgets.messages import _markdown_to_content
+        from niki_agent.tui.widgets.messages import _markdown_to_content
 
         content = _markdown_to_content("# Title\n\n\n", 40)
         assert "Title" in content.plain
@@ -3007,8 +3007,8 @@ class TestMarkdownToContent:
 
         from textual.style import Style
 
-        from deepagents_code.tui.widgets import messages as messages_module
-        from deepagents_code.tui.widgets.messages import _markdown_to_content
+        from niki_agent.tui.widgets import messages as messages_module
+        from niki_agent.tui.widgets.messages import _markdown_to_content
 
         def _boom(_style: object) -> Style:
             msg = "unconvertible"
@@ -3031,7 +3031,7 @@ class TestAppMessageAutoLinksDisabled:
     """Tests that `auto_links` is disabled to prevent hover flicker."""
 
 
-_WEBBROWSER_OPEN = "deepagents_code.tui.widgets._links.webbrowser.open"
+_WEBBROWSER_OPEN = "niki_agent.tui.widgets._links.webbrowser.open"
 
 
 class TestAppMessageOnClickOpensLink:
@@ -3545,7 +3545,7 @@ class TestSummaryTargetCounting:
         self, calls: list[tuple[str, dict]], expected: str
     ) -> None:
         """Repeat targets collapse; distinct and unidentifiable ones do not."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         assert summarize_tool_group(calls) == expected
 
@@ -3556,7 +3556,7 @@ class TestSummaryTargetCounting:
         category. Without that, `b.py` is already seen from the read when the
         second edit arrives, and the edits collapse to "edited 1 file".
         """
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [
             ("read_file", {"file_path": "a.py"}),
@@ -3591,9 +3591,8 @@ class TestSummaryTargetCounting:
         the middleware resolves to one file must tally as one file, and only the
         middleware decides which spellings those are.
         """
-        from deepagents.backends.utils import validate_path
-
-        from deepagents_code.tui.widgets.messages import _normalize_path_target
+        from niki_agent.sdk.backends.utils import validate_path
+        from niki_agent.tui.widgets.messages import _normalize_path_target
 
         assert _normalize_path_target(path) == validate_path(path)
 
@@ -3616,9 +3615,8 @@ class TestSummaryTargetCounting:
         — `~` and drive prefixes too — so every rejected form is covered here,
         not just the `..` case.
         """
-        from deepagents.backends.utils import validate_path
-
-        from deepagents_code.tui.widgets.messages import _normalize_path_target
+        from niki_agent.sdk.backends.utils import validate_path
+        from niki_agent.tui.widgets.messages import _normalize_path_target
 
         with pytest.raises(ValueError):  # noqa: PT011
             validate_path(path)
@@ -3630,7 +3628,7 @@ class TestSummaryTargetCounting:
         Canonicalizing the rejected spelling would make both identities `/~` and
         undercount the group — the one error this summary must never make.
         """
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [
             ("read_file", {"file_path": "~"}),
@@ -3644,7 +3642,7 @@ class TestSummaryTargetCounting:
         `calls` can only exceed `targets` for a category that has a target, so a
         noun added without one would silently never render.
         """
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             _REPEAT_COUNT_NOUNS,
             _TOOL_SUMMARY_TARGET_ARGS,
         )
@@ -3653,7 +3651,7 @@ class TestSummaryTargetCounting:
 
     def test_path_compared_categories_all_name_a_target(self) -> None:
         """Path normalization is unreachable for a category with no target arg."""
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             _PATH_TARGET_CATEGORIES,
             _TOOL_SUMMARY_TARGET_ARGS,
         )
@@ -3662,7 +3660,7 @@ class TestSummaryTargetCounting:
 
     def test_category_order_follows_first_call(self) -> None:
         """Collapsing a repeat does not disturb first-appearance ordering."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [
             ("execute", {"command": "ls"}),
@@ -3673,7 +3671,7 @@ class TestSummaryTargetCounting:
 
     def test_repeated_read_reports_one_file_in_both_tenses(self) -> None:
         """The user-visible payoff: neither tense claims two files."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [
             ("read_file", {"file_path": "a.py"}),
@@ -3726,13 +3724,13 @@ class TestRepeatOperationCounts:
     )
     def test_repeat_counts(self, calls: list[tuple[str, dict]], expected: str) -> None:
         """Only mutating categories append the operation count."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         assert summarize_tool_group(calls) == expected
 
     def test_present_tense_keeps_the_parenthetical(self) -> None:
         """An in-flight burst of edits reports both numbers too."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [("edit_file", {"file_path": "a.py"})] * 2
         assert (
@@ -3741,7 +3739,7 @@ class TestRepeatOperationCounts:
 
     def test_parenthetical_lowercases_in_trailing_position(self) -> None:
         """The segment still joins correctly when it is not the lead."""
-        from deepagents_code.tui.widgets.messages import summarize_tool_group
+        from niki_agent.tui.widgets.messages import summarize_tool_group
 
         calls = [
             ("execute", {"command": "ls"}),
@@ -3758,7 +3756,7 @@ class _ToolGroupApp(App[None]):
     """Minimal app mounting two completed tools plus a group summary."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         t1 = ToolCallMessage("read_file", {"file_path": "a.py"})
         t1.id = "t1"
@@ -3776,7 +3774,7 @@ class TestToolGroupSummary:
 
     async def test_repeated_read_of_one_file_counts_once(self) -> None:
         """A file read twice renders as one file, not two."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         class _RepeatReadApp(App[None]):
             def compose(self) -> ComposeResult:
@@ -3807,7 +3805,7 @@ class TestSummarizeLiveToolGroup:
 
     def test_completed_and_pending_mixed_tense(self) -> None:
         """Finished calls read past tense; still-running calls read present."""
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         assert (
             summarize_live_tool_group(_calls("execute", "execute"), _calls("task"))
@@ -3816,7 +3814,7 @@ class TestSummarizeLiveToolGroup:
 
     def test_only_pending_is_present_tense(self) -> None:
         """With nothing finished yet the line is purely present tense."""
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         assert (
             summarize_live_tool_group([], _calls("read_file", "read_file"))
@@ -3825,13 +3823,13 @@ class TestSummarizeLiveToolGroup:
 
     def test_only_completed_is_past_tense(self) -> None:
         """With nothing left running the line is purely past tense."""
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         assert summarize_live_tool_group(_calls("execute"), []) == "Ran 1 shell command"
 
     def test_empty_returns_blank(self) -> None:
         """No members at all yields an empty string, not a fallback phrase."""
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         assert summarize_live_tool_group([], []) == ""
 
@@ -3842,7 +3840,7 @@ class TestSummarizeLiveToolGroup:
         the split would drop the file from the present-tense half and the line
         would stop reporting the step as reading at all.
         """
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         one_read = [("read_file", {"file_path": "a.py"})]
         assert (
@@ -3852,7 +3850,7 @@ class TestSummarizeLiveToolGroup:
 
     def test_repeats_within_a_half_still_collapse(self) -> None:
         """Independent tallies do not disable collapsing inside either half."""
-        from deepagents_code.tui.widgets.messages import summarize_live_tool_group
+        from niki_agent.tui.widgets.messages import summarize_live_tool_group
 
         two_edits = [("edit_file", {"file_path": "a.py"})] * 2
         assert (
@@ -3865,7 +3863,7 @@ class _LiveToolGroupApp(App[None]):
     """Minimal app with an empty live group and two tools to add to it."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         summary = ToolGroupSummary(live=True)
         summary.id = "summary"
@@ -3882,7 +3880,7 @@ class _LiveToolGroupSameCategoryApp(App[None]):
     """Live group with two tools of the same category (both shell commands)."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         summary = ToolGroupSummary(live=True)
         summary.id = "summary"
@@ -3899,7 +3897,7 @@ class _LiveToolGroupOnePathApp(App[None]):
     """Live group whose two reads name the same file."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         summary = ToolGroupSummary(live=True)
         summary.id = "summary"
@@ -3916,7 +3914,7 @@ class _LiveToolGroupTwoEditsApp(App[None]):
     """Live group whose two edits name the same file."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         summary = ToolGroupSummary(live=True)
         summary.id = "summary"
@@ -3939,7 +3937,7 @@ class TestLiveToolGroupSummary:
         files; without the target in the cache key the line would keep the stale
         text once the first read finished.
         """
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupOnePathApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -3962,7 +3960,7 @@ class TestLiveToolGroupSummary:
 
     async def test_live_line_keeps_completed_in_past_tense(self) -> None:
         """Finished tools stay on the live line in past tense while others run."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -3986,7 +3984,7 @@ class TestLiveToolGroupSummary:
 
     async def test_live_line_decrements_same_category_count(self) -> None:
         """One of two shell commands finishing splits the line by tense."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupSameCategoryApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4012,7 +4010,7 @@ class TestLiveToolGroupSummary:
 
     async def test_pending_member_is_revealed_for_approval(self) -> None:
         """Only unfinished calls leave the collapsed group before approval."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4036,7 +4034,7 @@ class TestLiveToolGroupSummary:
 
     async def test_suppressed_pending_member_stays_hidden(self) -> None:
         """A command mirrored in the approval menu is detached without duplication."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4067,7 +4065,7 @@ class TestLiveToolGroupSummary:
         makes the cache reset in `_evict_unfoldable` load-bearing rather than
         defensive, so the assertion fails if the reset is dropped.
         """
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupTwoEditsApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4094,7 +4092,7 @@ class TestLiveToolGroupSummary:
 
     async def test_close_waits_for_pending_member_terminal_status(self) -> None:
         """A stream boundary must not report a still-pending tool as having run."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4131,7 +4129,7 @@ class TestLiveToolGroupSummary:
         `is_pending`, so a skipped tool stayed folded and inflated the count
         (e.g. "Ran 1 shell command" for a command that never executed).
         """
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         async with _LiveToolGroupApp().run_test() as pilot:
             summary = pilot.app.query_one("#summary", ToolGroupSummary)
@@ -4490,7 +4488,7 @@ class _CaveatGroupApp(App[None]):
     """Live group holding two groupable write rows."""
 
     def compose(self) -> ComposeResult:
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         summary = ToolGroupSummary(live=True)
         summary.id = "summary"

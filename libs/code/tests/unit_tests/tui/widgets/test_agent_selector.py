@@ -8,7 +8,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import OptionList
 
-from deepagents_code.tui.widgets.agent_selector import AgentSelectorScreen
+from niki_agent.tui.widgets.agent_selector import AgentSelectorScreen
 
 if TYPE_CHECKING:
     from textual.pilot import Pilot
@@ -156,7 +156,7 @@ class TestAgentSelectorSetDefault:
             return True
 
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.agent_selector.save_default_agent",
+            "niki_agent.tui.widgets.agent_selector.save_default_agent",
             fake_save,
         )
 
@@ -191,7 +191,7 @@ class TestAgentSelectorSetDefaultErrorPaths:
         from textual.widgets import OptionList
 
         monkeypatch.setattr(
-            "deepagents_code.tui.widgets.agent_selector.save_default_agent",
+            "niki_agent.tui.widgets.agent_selector.save_default_agent",
             lambda _name: False,
         )
 

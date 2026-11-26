@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from deepagents_code import _env_vars
-from deepagents_code.client.commands.config import (
+from niki_agent import _env_vars
+from niki_agent.client.commands.config import (
     _display_value,
     _missing_extra_hint,
     _resolve,
@@ -25,7 +25,7 @@ from deepagents_code.client.commands.config import (
     _source_label,
     run_config_command,
 )
-from deepagents_code.config_manifest import (
+from niki_agent.config_manifest import (
     MCP_TOOL_TIMEOUT_CEILING,
     MCP_TOOL_TIMEOUT_FLOOR,
     MCP_TOOL_TIMEOUT_SECONDS_DEFAULT,
@@ -36,13 +36,13 @@ from deepagents_code.config_manifest import (
     options_with_key_prefix,
     resolve_mcp_tool_timeout,
 )
-from deepagents_code.model_config import DEFAULT_STARTUP_MODE, PROVIDER_API_KEY_ENV
+from niki_agent.model_config import DEFAULT_STARTUP_MODE, PROVIDER_API_KEY_ENV
 from unit_tests.conftest import resolve_option_for_test
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-# Most unit tests set `DEEPAGENTS_CODE_NO_UPDATE_CHECK=1` to avoid accidental
+# Most unit tests set `NIKI_NO_UPDATE_CHECK=1` to avoid accidental
 # PyPI/DNS work. This module checks whether update settings came from the env,
 # config file, or built-in defaults; adding the env var here would hide the
 # config/default cases these tests are trying to verify.
@@ -82,7 +82,7 @@ def test_mcp_timeout_rejects_scoped_environment_override(
     managed_value: float | None,
 ) -> None:
     """A rejected workspace override reveals TOML without changing the process."""
-    from deepagents_code.config import active_environment, use_environment
+    from niki_agent.config import active_environment, use_environment
 
     if process_value is None:
         monkeypatch.delenv(_env_vars.MCP_TOOL_TIMEOUT, raising=False)
@@ -147,7 +147,7 @@ def test_config_get_mcp_timeout_reports_bounded_value(
     """The config command falls back to TOML or the default for invalid env values."""
     config = tmp_path / "config.toml"
     config.write_text(f"[mcp]\ntool_timeout = {user_timeout}\n", encoding="utf-8")
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
     monkeypatch.setenv(_env_vars.MCP_TOOL_TIMEOUT, "901")
 
     payload = _get_json_object("mcp.tool_timeout", capsys)
@@ -253,7 +253,7 @@ def test_max_resume_age_rejects_invalid_duration(value, caplog) -> None:
     option = get_option("threads.max_resume_age")
     assert option is not None
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(
             option,
             toml_data={"threads": {"max_resume_age": value}},
@@ -278,7 +278,7 @@ def test_resume_after_rejects_naive_datetime(caplog) -> None:
     option = get_option("threads.resume_after")
     assert option is not None
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(
             option,
             toml_data={"threads": {"resume_after": "2026-06-01T08:00:00"}},
@@ -314,7 +314,7 @@ def test_negative_retry_count_is_not_reported_as_effective(caplog) -> None:
 
     option = get_option("retries.max_retries")
     assert option is not None
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(
             option, toml_data={"retries": {"max_retries": -1}}
         ) == (
@@ -334,7 +334,7 @@ def test_blank_saved_agent_is_not_reported_as_effective(key: str, caplog) -> Non
     option = get_option(key)
     assert option is not None
     field = key.removeprefix("agents.")
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(
             option, toml_data={"agents": {field: "   "}}
         ) == (
@@ -372,8 +372,8 @@ def test_show_message_timestamps_env_overrides_config(monkeypatch) -> None:
 
 def test_is_openai_prompt_cache_key_enabled_reads_env(monkeypatch) -> None:
     """`is_openai_prompt_cache_key_enabled` honors the env override."""
-    from deepagents_code import config_manifest
-    from deepagents_code.config import is_openai_prompt_cache_key_enabled
+    from niki_agent import config_manifest
+    from niki_agent.config import is_openai_prompt_cache_key_enabled
 
     monkeypatch.setattr(config_manifest, "load_config_toml", dict)
     monkeypatch.delenv(_env_vars.OPENAI_PROMPT_CACHE_KEY, raising=False)
@@ -385,8 +385,8 @@ def test_is_openai_prompt_cache_key_enabled_reads_env(monkeypatch) -> None:
 
 def test_is_openai_prompt_cache_key_enabled_empty_env_opts_out(monkeypatch) -> None:
     """An explicitly empty env value opts out (via `empty_env_is_false`)."""
-    from deepagents_code import config_manifest
-    from deepagents_code.config import is_openai_prompt_cache_key_enabled
+    from niki_agent import config_manifest
+    from niki_agent.config import is_openai_prompt_cache_key_enabled
 
     monkeypatch.setattr(config_manifest, "load_config_toml", dict)
     monkeypatch.setenv(_env_vars.OPENAI_PROMPT_CACHE_KEY, "")
@@ -397,7 +397,7 @@ def test_is_openai_prompt_cache_key_enabled_unrecognized_env_falls_through(
     monkeypatch, tmp_path: Path
 ) -> None:
     """An unrecognized env token is ignored, so config.toml decides."""
-    from deepagents_code.config import is_openai_prompt_cache_key_enabled
+    from niki_agent.config import is_openai_prompt_cache_key_enabled
 
     monkeypatch.setenv(_env_vars.OPENAI_PROMPT_CACHE_KEY, "banana")
     (tmp_path / "config.toml").write_text(
@@ -414,14 +414,14 @@ def test_resolve_auto_classifier_model_warns_on_blank_value(
     Reverting to the main agent model is a security control quietly changing
     behavior, so it gets the same audible treatment a malformed value gets.
     """
-    from deepagents_code.config import resolve_auto_classifier_model
+    from niki_agent.config import resolve_auto_classifier_model
 
     monkeypatch.delenv(_env_vars.AUTO_CLASSIFIER_MODEL, raising=False)
     (tmp_path / "config.toml").write_text(
         '[models]\nauto_classifier = "   "\n', encoding="utf-8"
     )
 
-    with caplog.at_level("WARNING", logger="deepagents_code.config"):
+    with caplog.at_level("WARNING", logger="niki_agent.config"):
         assert resolve_auto_classifier_model() is None
 
     assert any(
@@ -439,7 +439,7 @@ def test_resolve_auto_classifier_model_reports_malformed_problem(
     malformed entry indistinguishable from an absent one — so the agent resumed
     grading its own actions with nothing logged at all.
     """
-    from deepagents_code.config import resolve_auto_classifier_model_with_problem
+    from niki_agent.config import resolve_auto_classifier_model_with_problem
 
     monkeypatch.delenv(_env_vars.AUTO_CLASSIFIER_MODEL, raising=False)
     (tmp_path / "config.toml").write_text(
@@ -595,7 +595,7 @@ def test_missing_extra_hint_checks_provider_dependency(monkeypatch) -> None:
         install_extra="missing-provider",
     )
     monkeypatch.setattr(
-        "deepagents_code.client.commands.config.importlib.util.find_spec",
+        "niki_agent.client.commands.config.importlib.util.find_spec",
         lambda name: None if name == "langchain_missing_provider" else object(),
     )
     assert _missing_extra_hint(option) is True
@@ -615,26 +615,23 @@ def test_source_label_marks_prefixed_credential_env_as_session_override() -> Non
 
     assert (
         _source_label(
-            "env (DEEPAGENTS_CODE_ANTHROPIC_API_KEY)",
+            "env (NIKI_ANTHROPIC_API_KEY)",
             option=credential,
         )
-        == "env (DEEPAGENTS_CODE_ANTHROPIC_API_KEY); session override"
+        == "env (NIKI_ANTHROPIC_API_KEY); session override"
     )
     assert (
         _source_label("env (ANTHROPIC_API_KEY)", option=credential)
         == "env (ANTHROPIC_API_KEY)"
     )
-    assert (
-        _source_label("env (DEEPAGENTS_CODE_THEME)", option=display)
-        == "env (DEEPAGENTS_CODE_THEME)"
-    )
+    assert _source_label("env (NIKI_THEME)", option=display) == "env (NIKI_THEME)"
 
 
 def test_run_get_json_omits_secret_value(monkeypatch, capsys) -> None:
     """JSON output for a secret option reports presence but never the value."""
     import json
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-secret")
+    monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-secret")
     assert _run_get("credentials.anthropic", "json") == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["data"]["set"] is True
@@ -645,14 +642,14 @@ def test_run_get_json_omits_secret_value(monkeypatch, capsys) -> None:
 def stored_auth_dir(tmp_path, monkeypatch):
     """Redirect the credential store into a temp dir so `/auth` keys are isolated."""
     state_dir = tmp_path / ".deepagents" / ".state"
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state_dir)
     return state_dir
 
 
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_credential_prefers_stored_over_env(monkeypatch):
     """A `/auth`-stored key wins over an env var, matching runtime precedence."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
     auth_store.set_stored_key("anthropic", "from-store")
@@ -667,24 +664,24 @@ def test_resolve_credential_prefers_stored_over_env(monkeypatch):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_credential_prefers_prefixed_env_over_stored(monkeypatch):
     """A prefixed credential env var stays authoritative over a stored key."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "from-prefix")
+    monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "from-prefix")
     auth_store.set_stored_key("anthropic", "from-store")
     option = get_option("credentials.anthropic")
     assert option is not None
     is_set, source, value = _resolve(option, {}, managed_toml_data={})
     assert is_set is True
-    assert source == "env (DEEPAGENTS_CODE_ANTHROPIC_API_KEY)"
+    assert source == "env (NIKI_ANTHROPIC_API_KEY)"
     assert value == "from-prefix"
 
 
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_empty_prefixed_credential_blocks_stored(monkeypatch):
     """An empty prefixed credential suppresses the stored key like the runtime."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "")
     auth_store.set_stored_key("anthropic", "from-store")
     option = get_option("credentials.anthropic")
     assert option is not None
@@ -697,10 +694,10 @@ def test_resolve_empty_prefixed_credential_blocks_stored(monkeypatch):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_credential_uses_stored_when_env_unset(monkeypatch):
     """A stored key is surfaced even with no env var set."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
     auth_store.set_stored_key("anthropic", "from-store")
     option = get_option("credentials.anthropic")
     assert option is not None
@@ -743,7 +740,7 @@ def test_resolve_credential_corrupt_store_falls_back_to_env(
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_run_get_text_reports_stored_source(capsys):
     """`config get` shows a stored credential as configured from the store."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("anthropic", "from-store")
     assert _run_get("credentials.anthropic", "text") == 0
@@ -756,15 +753,15 @@ def test_run_get_text_reports_stored_source(capsys):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_run_get_text_reports_prefixed_env_as_session_override(monkeypatch, capsys):
     """`config get` labels a visible prefixed credential env var as session-scoped."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "from-prefix")
+    monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "from-prefix")
     auth_store.set_stored_key("anthropic", "from-store")
     assert _run_get("credentials.anthropic", "text") == 0
     out = capsys.readouterr().out
     compact = " ".join(out.split())
     assert "configured" in out
-    assert "env (DEEPAGENTS_CODE_ANTHROPIC_API_KEY); session override" in compact
+    assert "env (NIKI_ANTHROPIC_API_KEY); session override" in compact
     assert "from-prefix" not in out
     assert "from-store" not in out
 
@@ -774,7 +771,7 @@ def test_run_get_json_redacts_stored_secret_value(capsys):
     """`config get --json` reports a stored credential as set but never its value."""
     import json
 
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("anthropic", "from-store")
     assert _run_get("credentials.anthropic", "json") == 0
@@ -791,7 +788,7 @@ def test_run_config_json_redacts_stored_secret_value(capsys):
     """`config --json` redacts a stored secret on the aggregate path too."""
     import json
 
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("anthropic", "from-store")
     args = argparse.Namespace(config_command=None, output_format="json")
@@ -808,7 +805,7 @@ def test_run_config_json_redacts_stored_secret_value(capsys):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_run_config_text_reports_stored_source(capsys):
     """`config` (aggregate text path) shows a stored credential as configured."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("anthropic", "from-store")
     args = argparse.Namespace(config_command=None, output_format="text")
@@ -847,7 +844,7 @@ def test_resolve_empty_stored_key_falls_back_to_env(stored_auth_dir, monkeypatch
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_non_credential_ignores_store():
     """Non-credential options never consult the `/auth` store."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("anthropic", "from-store")
     option = get_option("display.show_header")
@@ -866,9 +863,9 @@ def clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for var in (
         "LANGSMITH_API_KEY",
-        "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
+        "NIKI_LANGSMITH_API_KEY",
         "LANGCHAIN_API_KEY",
-        "DEEPAGENTS_CODE_LANGCHAIN_API_KEY",
+        "NIKI_LANGCHAIN_API_KEY",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -876,7 +873,7 @@ def clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.usefixtures("stored_auth_dir", "clear_langsmith_env")
 def test_resolve_langsmith_service_prefers_stored():
     """A stored LangSmith key resolves with a stored source."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("langsmith", "from-store")
     option = get_option("credentials.langsmith")
@@ -892,12 +889,12 @@ def test_resolve_langsmith_service_prefers_stored():
 def test_resolve_langsmith_falls_back_to_prefixed_langchain_api_key(monkeypatch):
     """LangSmith credential display honors the prefixed runtime fallback."""
     monkeypatch.setenv("LANGCHAIN_API_KEY", "from-fallback")
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "from-prefix")
+    monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "from-prefix")
     option = get_option("credentials.langsmith")
     assert option is not None
     is_set, source, value = _resolve(option, {}, managed_toml_data={})
     assert is_set is True
-    assert source == "env (DEEPAGENTS_CODE_LANGCHAIN_API_KEY)"
+    assert source == "env (NIKI_LANGCHAIN_API_KEY)"
     assert value == "from-prefix"
 
 
@@ -906,7 +903,7 @@ def test_resolve_langsmith_empty_prefixed_fallback_shadows_canonical(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An empty fallback override keeps config display aligned with runtime."""
-    from deepagents_code.model_config import (
+    from niki_agent.model_config import (
         ProviderAuthState,
         get_service_auth_status,
     )
@@ -915,13 +912,13 @@ def test_resolve_langsmith_empty_prefixed_fallback_shadows_canonical(
     option = get_option("credentials.langsmith")
     assert option is not None
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+    monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
     assert get_service_auth_status("langsmith").state is ProviderAuthState.MISSING
     is_set, _, value = _resolve(option, {}, managed_toml_data={})
     assert is_set is False
     assert value is None
 
-    monkeypatch.delenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY")
+    monkeypatch.delenv("NIKI_LANGCHAIN_API_KEY")
     assert _resolve(option, {}, managed_toml_data={}) == (
         True,
         "env (LANGCHAIN_API_KEY)",
@@ -932,15 +929,15 @@ def test_resolve_langsmith_empty_prefixed_fallback_shadows_canonical(
 @pytest.mark.usefixtures("stored_auth_dir", "clear_langsmith_env")
 def test_stored_key_with_empty_prefixed_primary_agrees_across_surfaces(monkeypatch):
     """`config` and `auth status` agree once a fallback can outrank the store."""
-    from deepagents_code import auth_store
-    from deepagents_code.model_config import (
+    from niki_agent import auth_store
+    from niki_agent.model_config import (
         ProviderAuthSource,
         ProviderAuthState,
         get_service_auth_status,
     )
 
     auth_store.set_stored_key("langsmith", "from-store")
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+    monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
     monkeypatch.setenv("LANGCHAIN_API_KEY", "from-fallback")
 
     option = get_option("credentials.langsmith")
@@ -961,7 +958,7 @@ def test_stored_key_with_empty_prefixed_primary_agrees_across_surfaces(monkeypat
 def test_resolve_langsmith_primary_env_wins_over_fallback(monkeypatch):
     """The primary LangSmith env var retains precedence over its fallback."""
     monkeypatch.setenv("LANGSMITH_API_KEY", "from-primary")
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "from-prefix")
+    monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "from-prefix")
     monkeypatch.setenv("LANGCHAIN_API_KEY", "from-fallback")
     option = get_option("credentials.langsmith")
     assert option is not None
@@ -978,10 +975,10 @@ def test_resolve_tavily_service_prefers_stored(monkeypatch):
     Guards that the credential branch keys on group membership (and the
     `provider` field), not on model-provider-registry membership.
     """
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_TAVILY_API_KEY", raising=False)
+    monkeypatch.delenv("NIKI_TAVILY_API_KEY", raising=False)
     auth_store.set_stored_key("tavily", "from-store")
     option = get_option("credentials.tavily")
     assert option is not None
@@ -994,15 +991,15 @@ def test_resolve_tavily_service_prefers_stored(monkeypatch):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_tavily_prefixed_env_overrides_stored(monkeypatch):
     """A prefixed tavily env var wins over the stored key, matching runtime."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_TAVILY_API_KEY", "from-prefix")
+    monkeypatch.setenv("NIKI_TAVILY_API_KEY", "from-prefix")
     auth_store.set_stored_key("tavily", "from-store")
     option = get_option("credentials.tavily")
     assert option is not None
     is_set, source, value = _resolve(option, {}, managed_toml_data={})
     assert is_set is True
-    assert source == "env (DEEPAGENTS_CODE_TAVILY_API_KEY)"
+    assert source == "env (NIKI_TAVILY_API_KEY)"
     assert value == "from-prefix"
 
 
@@ -1034,8 +1031,8 @@ def test_run_get_pairs_values_and_health_from_one_managed_snapshot(
     monkeypatch, capsys
 ) -> None:
     """A config invocation refreshes managed provider state exactly once."""
-    from deepagents_code.configuration import service
-    from deepagents_code.configuration.types import (
+    from niki_agent.configuration import service
+    from niki_agent.configuration.types import (
         ProviderHealth,
         ProviderStatus,
         TomlSnapshot,
@@ -1106,7 +1103,7 @@ def test_run_get_text_warns_on_unreadable_store(stored_auth_dir, capsys):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_run_config_reads_store_once(monkeypatch):
     """`config` parses the credential store once, not once per option."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     calls = 0
     real_load = auth_store.load_credentials
@@ -1127,10 +1124,10 @@ def test_run_config_reads_store_once(monkeypatch):
 @pytest.mark.usefixtures("stored_auth_dir")
 def test_resolve_non_redacted_credential_shows_stored_value(monkeypatch):
     """A non-redacted stored credential (the Vertex project) shows its value."""
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("NIKI_GOOGLE_CLOUD_PROJECT", raising=False)
     auth_store.set_stored_key("google_vertexai", "my-project")
     option = get_option("credentials.google_vertexai")
     assert option is not None
@@ -1146,7 +1143,7 @@ def test_run_get_json_shows_non_redacted_stored_value(capsys):
     """`config get --json` surfaces a non-redacted stored value (not `None`)."""
     import json
 
-    from deepagents_code import auth_store
+    from niki_agent import auth_store
 
     auth_store.set_stored_key("google_vertexai", "my-project")
     assert _run_get("credentials.google_vertexai", "json") == 0
@@ -1173,13 +1170,13 @@ def test_run_get_non_utf8_store_does_not_crash(stored_auth_dir, capsys):
 
 
 def test_resolve_prefers_prefixed_env(monkeypatch) -> None:
-    """A `DEEPAGENTS_CODE_`-prefixed env var wins over the canonical name."""
+    """A `NIKI_`-prefixed env var wins over the canonical name."""
     opt = get_option("credentials.openai")
     assert opt is not None
     monkeypatch.setenv("OPENAI_API_KEY", "canonical")
-    monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "prefixed")
+    monkeypatch.setenv("NIKI_OPENAI_API_KEY", "prefixed")
     value, source = _resolve_manifest_option(opt, toml_data={})
-    assert source == "env (DEEPAGENTS_CODE_OPENAI_API_KEY)"
+    assert source == "env (NIKI_OPENAI_API_KEY)"
     assert value == "prefixed"
 
 
@@ -1191,12 +1188,12 @@ def test_resolve_empty_env_is_unset_matching_resolve_env_var(monkeypatch) -> Non
     `config` would report a credential as "set" that the app treats as
     unset — the exact drift this feature exists to prevent.
     """
-    from deepagents_code.model_config import resolve_env_var
+    from niki_agent.model_config import resolve_env_var
 
     opt = get_option("credentials.openai")
     assert opt is not None
     monkeypatch.setenv("OPENAI_API_KEY", "canonical")
-    monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "")
+    monkeypatch.setenv("NIKI_OPENAI_API_KEY", "")
 
     value, source = _resolve_manifest_option(opt, toml_data={})
     assert resolve_env_var("OPENAI_API_KEY") is None
@@ -1208,10 +1205,10 @@ def test_langsmith_project_prefers_prefixed_env(monkeypatch) -> None:
     """The prefixed project env var wins over a bare `LANGSMITH_PROJECT`."""
     opt = get_option("tracing.langsmith_project")
     assert opt is not None
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", "prefixed")
+    monkeypatch.setenv("NIKI_LANGSMITH_PROJECT", "prefixed")
     monkeypatch.setenv("LANGSMITH_PROJECT", "bare")
     value, source = _resolve_manifest_option(opt, toml_data={})
-    assert (value, source) == ("prefixed", "env (DEEPAGENTS_CODE_LANGSMITH_PROJECT)")
+    assert (value, source) == ("prefixed", "env (NIKI_LANGSMITH_PROJECT)")
 
 
 def test_langsmith_project_falls_back_to_bare_env(monkeypatch) -> None:
@@ -1222,7 +1219,7 @@ def test_langsmith_project_falls_back_to_bare_env(monkeypatch) -> None:
     """
     opt = get_option("tracing.langsmith_project")
     assert opt is not None
-    monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+    monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
     monkeypatch.setenv("LANGSMITH_PROJECT", "bare")
     value, source = _resolve_manifest_option(opt, toml_data={})
     assert (value, source) == ("bare", "env (LANGSMITH_PROJECT)")
@@ -1230,11 +1227,11 @@ def test_langsmith_project_falls_back_to_bare_env(monkeypatch) -> None:
 
 def test_langsmith_project_default_when_unset(monkeypatch) -> None:
     """With no project env var set, the default project name is rendered."""
-    from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+    from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
     opt = get_option("tracing.langsmith_project")
     assert opt is not None
-    monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+    monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
     monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
     assert _resolve_manifest_option(opt, toml_data={}) == (
         LANGSMITH_PROJECT_DEFAULT,
@@ -1252,7 +1249,7 @@ def test_langsmith_project_empty_prefixed_falls_through_to_bare(monkeypatch) -> 
     """
     opt = get_option("tracing.langsmith_project")
     assert opt is not None
-    monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", "")
+    monkeypatch.setenv("NIKI_LANGSMITH_PROJECT", "")
     monkeypatch.setenv("LANGSMITH_PROJECT", "bare")
     value, source = _resolve_manifest_option(opt, toml_data={})
     assert (value, source) == ("bare", "env (LANGSMITH_PROJECT)")
@@ -1260,11 +1257,11 @@ def test_langsmith_project_empty_prefixed_falls_through_to_bare(monkeypatch) -> 
 
 def test_langsmith_project_empty_bare_is_default(monkeypatch) -> None:
     """An empty bare `LANGSMITH_PROJECT` is unset, so the default applies."""
-    from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+    from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
     opt = get_option("tracing.langsmith_project")
     assert opt is not None
-    monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+    monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
     monkeypatch.setenv("LANGSMITH_PROJECT", "")
     assert _resolve_manifest_option(opt, toml_data={}) == (
         LANGSMITH_PROJECT_DEFAULT,
@@ -1296,7 +1293,7 @@ def test_run_config_json_redacts_every_secret(monkeypatch, capsys) -> None:
     """The `config` aggregate (separate path from `get`) never leaks a secret."""
     import json
 
-    monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-secret")
+    monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-secret")
     args = argparse.Namespace(config_command=None, output_format="json")
     assert run_config_command(args) == 0
     rows = json.loads(capsys.readouterr().out)["data"]
@@ -1313,7 +1310,7 @@ def test_run_get_json_redacts_credential_bearing_tables(
     `[sandboxes.providers]` can hold tokens, so their rows carry `redacted`
     and a `None` value instead of the raw table.
     """
-    from deepagents_code import model_config
+    from niki_agent import model_config
 
     secret = "Bearer sk-secret"
     config = tmp_path / "config.toml"
@@ -1360,7 +1357,7 @@ def test_resolve_cursor_style_from_env(monkeypatch, caplog) -> None:
     )
 
     monkeypatch.setenv(_env_vars.CURSOR_STYLE, "bar")
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(opt, toml_data=toml_data) == (
             "underline",
             "config.toml",
@@ -1432,7 +1429,7 @@ def test_resolve_ptc_delegates_to_parser() -> None:
 
 def test_missing_key_example_is_a_real_option() -> None:
     """The hint's example key must stay a resolvable manifest key."""
-    from deepagents_code.client.commands.config import _GET_KEY_EXAMPLE
+    from niki_agent.client.commands.config import _GET_KEY_EXAMPLE
 
     assert get_option(_GET_KEY_EXAMPLE) is not None
 
@@ -1457,11 +1454,11 @@ def test_structured_fallback_preserves_invalid_tier(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A defaultless table fallback retains the rejected provider metadata."""
-    from deepagents_code.configuration.resolver import (
+    from niki_agent.configuration.resolver import (
         USER_RANK,
         resolver_from_snapshots,
     )
-    from deepagents_code.configuration.types import (
+    from niki_agent.configuration.types import (
         Invalid,
         ProviderHealth,
         ProviderStatus,
@@ -1483,7 +1480,7 @@ def test_structured_fallback_preserves_invalid_tier(
     assert resolved.value is None
     assert isinstance(resolved.tier_health[USER_RANK], Invalid)
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(
             option,
             toml_data=toml_data,
@@ -1501,12 +1498,12 @@ def test_load_config_toml_corrupt_returns_empty_with_warning(
     """A corrupt config file logs a warning and falls back to {}."""
     import logging
 
-    from deepagents_code import config_manifest, model_config
+    from niki_agent import config_manifest, model_config
 
     bad = tmp_path / "config.toml"
     bad.write_text("this is = not valid = toml ][")
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", bad)
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert config_manifest.load_config_toml() == {}
     assert any("Could not read config" in r.getMessage() for r in caplog.records)
 
@@ -1563,7 +1560,7 @@ def test_config_get_parser_accepts_verbose_on_either_side(monkeypatch, argv) -> 
     """
     import sys
 
-    from deepagents_code.main import parse_args
+    from niki_agent.main import parse_args
 
     monkeypatch.setattr(sys, "argv", argv)
     ns = parse_args()
@@ -1684,7 +1681,7 @@ def test_run_get_section_skips_store_when_no_credentials(monkeypatch) -> None:
     without the pin this test's counts depend on which tests ran earlier in
     the same worker.
     """
-    from deepagents_code import auth_store, config as config_mod
+    from niki_agent import auth_store, config as config_mod
 
     monkeypatch.setattr(config_mod._bootstrap_state, "done", True)
 
@@ -1726,7 +1723,7 @@ def test_resolve_shell_list_env_happy_and_invalid(monkeypatch, caplog) -> None:
     # `'all'` cannot be combined with other commands; the parser raises and the
     # resolver logs + falls back rather than crashing.
     monkeypatch.setenv(opt.env_var, "all,ls")
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         value, source = _resolve_manifest_option(opt, toml_data={})
     assert source == "default"
     assert any("Ignoring invalid" in r.getMessage() for r in caplog.records)
@@ -1739,12 +1736,12 @@ def test_environment_coercion_delegate_returns_invalid_not_raw() -> None:
     the live manifest. The guard exists so that if one ever gains an env var,
     an uncoerced raw string cannot leak into a typed credentials field.
     """
-    from deepagents_code.configuration.providers import coerce_environment_value
-    from deepagents_code.configuration.types import Invalid
+    from niki_agent.configuration.providers import coerce_environment_value
+    from niki_agent.configuration.types import Invalid
 
     opt = get_option("interpreter.ptc")
     assert opt is not None
-    result = coerce_environment_value(opt, "safe", "DEEPAGENTS_CODE_FAKE")
+    result = coerce_environment_value(opt, "safe", "NIKI_FAKE")
     assert isinstance(result, Invalid)
     assert "not env-backed" in result.reason
 
@@ -1763,7 +1760,7 @@ def test_resolve_startup_mode_from_toml(caplog) -> None:
             mode,
             "config.toml",
         )
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         value, source = _resolve_manifest_option(
             opt, toml_data={"startup": {"mode": "dangerously-auto"}}
         )
@@ -1774,7 +1771,7 @@ def test_resolve_startup_mode_from_toml(caplog) -> None:
 
     for raw in (["manual"], {"name": "manual"}):
         caplog.clear()
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
             value, source = _resolve_manifest_option(
                 opt, toml_data={"startup": {"mode": raw}}
             )
@@ -1837,8 +1834,8 @@ def test_resolve_startup_mode_with_source_reports_recent_fallback(
     expected: tuple[str, str],
 ) -> None:
     """`startup.mode` display reflects the `[startup].recent` restore."""
-    from deepagents_code import approval_mode
-    from deepagents_code.config_manifest import resolve_startup_mode_with_source
+    from niki_agent import approval_mode
+    from niki_agent.config_manifest import resolve_startup_mode_with_source
 
     monkeypatch.setattr(approval_mode, "has_auto_mode_notice", lambda: True)
 
@@ -1881,9 +1878,9 @@ def test_resolve_startup_mode_with_source_agrees_with_loader(
     two separate implementations held together only by a docstring. Per-case
     assertions cannot catch drift between them; this can.
     """
-    from deepagents_code import approval_mode
-    from deepagents_code.config_manifest import resolve_startup_mode_with_source
-    from deepagents_code.model_config import load_startup_mode
+    from niki_agent import approval_mode
+    from niki_agent.config_manifest import resolve_startup_mode_with_source
+    from niki_agent.model_config import load_startup_mode
 
     monkeypatch.setattr(approval_mode, "has_auto_mode_notice", lambda: True)
     config = tmp_path / "config.toml"
@@ -1902,8 +1899,8 @@ def test_resolve_startup_mode_with_source_gates_recent_auto_on_notice(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The displayed fallback matches a launch blocked by a stale notice."""
-    from deepagents_code import approval_mode
-    from deepagents_code.config_manifest import resolve_startup_mode_with_source
+    from niki_agent import approval_mode
+    from niki_agent.config_manifest import resolve_startup_mode_with_source
 
     monkeypatch.setattr(approval_mode, "has_auto_mode_notice", lambda: False)
 
@@ -1924,8 +1921,8 @@ def test_config_paths_logs_and_reports_missing_on_oserror(monkeypatch, caplog) -
     import logging
     from pathlib import Path
 
-    from deepagents_code import model_config
-    from deepagents_code.client.commands.config import _config_paths
+    from niki_agent import model_config
+    from niki_agent.client.commands.config import _config_paths
 
     target = model_config.DEFAULT_CONFIG_PATH
     real_stat = Path.stat
@@ -1939,7 +1936,7 @@ def test_config_paths_logs_and_reports_missing_on_oserror(monkeypatch, caplog) -
     monkeypatch.setattr(Path, "stat", fake_stat)
     # The OSError guard and its debug log now live in the shared `_paths`
     # classifier that `_config_paths` delegates to.
-    with caplog.at_level(logging.DEBUG, logger="deepagents_code._paths"):
+    with caplog.at_level(logging.DEBUG, logger="niki_agent._paths"):
         rows = _config_paths()
     config_row = next(row for row in rows if row[0] == "config.toml")
     assert config_row[2] is False
@@ -1990,8 +1987,8 @@ def test_new_provider_surfaces_after_cache_clear(monkeypatch) -> None:
     credential surface is regenerated from `PROVIDER_API_KEY_ENV`, so a new
     provider must produce a `credentials.<name>` option after the cache resets.
     """
-    from deepagents_code import config_manifest, model_config
-    from deepagents_code.configuration import service
+    from niki_agent import config_manifest, model_config
+    from niki_agent.configuration import service
 
     patched = {
         **model_config.PROVIDER_API_KEY_ENV,
@@ -2038,7 +2035,7 @@ def test_config_resolve_reports_effective_startup_mode(
     expected: tuple[bool, str, str],
 ) -> None:
     """`config get startup.mode` must route through the recent-aware resolver."""
-    from deepagents_code import approval_mode
+    from niki_agent import approval_mode
 
     monkeypatch.setattr(approval_mode, "has_auto_mode_notice", lambda: True)
     option = get_option("startup.mode")
@@ -2052,7 +2049,7 @@ def test_config_resolve_reports_effective_startup_mode(
 
 def test_resolve_recursion_limit_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """With no override, the resolver leaves the limit to LangGraph."""
-    from deepagents_code.config_manifest import resolve_recursion_limit
+    from niki_agent.config_manifest import resolve_recursion_limit
 
     monkeypatch.delenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", raising=False)
     assert resolve_recursion_limit(toml_data={}) is None
@@ -2062,7 +2059,7 @@ def test_resolve_recursion_limit_inherits_langgraph_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The upstream environment default becomes the effective agent limit."""
-    from deepagents_code.config_manifest import resolve_recursion_limit
+    from niki_agent.config_manifest import resolve_recursion_limit
 
     monkeypatch.delenv(_env_vars.RECURSION_LIMIT, raising=False)
     monkeypatch.setenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "12000")
@@ -2082,7 +2079,7 @@ def test_whitespace_env_is_ignored_with_a_warning(monkeypatch, caplog) -> None:
     assert option.env_var is not None
     monkeypatch.setenv(option.env_var, "   ")
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         value, source = _resolve_manifest_option(
             option, toml_data={"models": {"auto_classifier": "openai:gpt-5"}}
         )
@@ -2120,7 +2117,7 @@ def test_invalid_primary_env_warns_before_valid_fallback(monkeypatch, caplog) ->
     monkeypatch.setenv(option.env_var, "  ")
     monkeypatch.setenv(fallback, "fallback-project")
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         value, source = _resolve_manifest_option(option, toml_data={})
 
     assert (value, source) == ("fallback-project", f"env ({fallback})")
@@ -2139,7 +2136,7 @@ def test_non_table_toml_section_is_reported_once(caplog) -> None:
     from the output with no explanation. Logged once per path per process
     because `config` resolves the whole manifest in one pass.
     """
-    from deepagents_code import config_manifest
+    from niki_agent import config_manifest
 
     config_manifest._warned_non_table_paths.clear()
     scrollbar = get_option("display.show_scrollbar")
@@ -2147,7 +2144,7 @@ def test_non_table_toml_section_is_reported_once(caplog) -> None:
     assert scrollbar is not None
     assert blink is not None
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
         assert _resolve_manifest_option(scrollbar, toml_data={"ui": "dark"}) == (
             False,
             "default",
@@ -2165,7 +2162,7 @@ def test_non_table_toml_section_is_reported_once(caplog) -> None:
 
 def test_verbose_provenance_distinguishes_quoted_dotted_keys() -> None:
     """Display labels retain the resolver's tuple-path distinction."""
-    from deepagents_code.client.commands.config import _option_provenance
+    from niki_agent.client.commands.config import _option_provenance
 
     option = get_option("display.themes")
     assert option is not None
@@ -2191,7 +2188,7 @@ def test_blank_env_auto_classifier_reports_a_problem(
     agent grading its own actions. A `logger.warning` lands in the debug log,
     which is not a surface the user reads, so the caller needs the description.
     """
-    from deepagents_code.config import resolve_auto_classifier_model_with_problem
+    from niki_agent.config import resolve_auto_classifier_model_with_problem
 
     (tmp_path / "config.toml").write_text(
         '[models]\nauto_classifier = "openai:gpt-5"\n', encoding="utf-8"
@@ -2218,7 +2215,7 @@ def test_config_surface_agrees_with_runtime_on_blank_env_classifier(
     with the generic scalar path would report the config.toml model while the
     runtime inherits the main agent model.
     """
-    from deepagents_code.config import resolve_auto_classifier_model_with_problem
+    from niki_agent.config import resolve_auto_classifier_model_with_problem
 
     toml_data = {"models": {"auto_classifier": "openai:gpt-5"}}
     (tmp_path / "config.toml").write_text(
@@ -2242,7 +2239,7 @@ def test_config_surface_agrees_with_runtime_on_blank_env_classifier(
 
 def test_usable_env_classifier_is_still_reported(monkeypatch) -> None:
     """The veto must not swallow a real env value."""
-    from deepagents_code import config_manifest
+    from niki_agent import config_manifest
 
     toml_data = {"models": {"auto_classifier": "openai:gpt-5"}}
     monkeypatch.setattr(config_manifest, "load_config_toml", lambda: toml_data)
@@ -2265,7 +2262,7 @@ def test_config_text_output_redacts_credential_bearing_tables(
     and `config get` text paths go through `_display_value` instead, so they
     need their own guard against a renderer that forgets.
     """
-    from deepagents_code import model_config
+    from niki_agent import model_config
 
     config = tmp_path / "config.toml"
     config.write_text(
@@ -2310,9 +2307,9 @@ def test_empty_redacted_table_reads_as_unset() -> None:
 
 
 def test_display_value_ascii_truncation_respects_limit(monkeypatch) -> None:
-    from deepagents_code.config import ASCII_GLYPHS
+    from niki_agent.config import ASCII_GLYPHS
 
-    monkeypatch.setattr("deepagents_code.config.get_glyphs", lambda: ASCII_GLYPHS)
+    monkeypatch.setattr("niki_agent.config.get_glyphs", lambda: ASCII_GLYPHS)
     opt = ConfigOption(key="x", group="g", summary="s", kind=OptionKind.STR)
 
     rendered = _display_value(opt, is_set=True, value="a" * 100)
@@ -2325,12 +2322,12 @@ def test_display_value_ascii_truncation_respects_limit(monkeypatch) -> None:
 def test_legacy_debug_file_remains_discoverable(monkeypatch) -> None:
     option = get_option("debug.file")
     assert option is not None
-    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_FILE", "/tmp/legacy.log")
+    monkeypatch.setenv("NIKI_DEBUG_FILE", "/tmp/legacy.log")
     assert _resolve_manifest_option(option, toml_data={}) == (
         "/tmp/legacy.log",
-        "env (DEEPAGENTS_CODE_DEBUG_FILE)",
+        "env (NIKI_DEBUG_FILE)",
     )
-    monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG_FILE")
+    monkeypatch.delenv("NIKI_DEBUG_FILE")
     assert _resolve_manifest_option(
         option, toml_data={"debug": {"file": "/tmp/configured.log"}}
     ) == ("/tmp/configured.log", "config.toml")

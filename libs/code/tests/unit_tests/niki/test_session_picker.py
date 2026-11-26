@@ -21,7 +21,7 @@ import pytest
 from unit_tests.niki.turn_harness import make_app
 
 if TYPE_CHECKING:
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
 CWD = str(Path.cwd())
 """Threads are filtered to the current working directory by default."""
@@ -61,7 +61,7 @@ def _write_sessions_db(state_dir: Path) -> None:
 @pytest.fixture
 def sessions_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point the session store at a throwaway directory with three threads."""
-    from deepagents_code import model_config, sessions
+    from niki_agent import model_config, sessions
 
     state_dir = tmp_path / "state"
     _write_sessions_db(state_dir)
@@ -76,7 +76,7 @@ async def test_f5_arrow_keys_resume_the_thread_under_the_cursor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """F5: three stored threads, two Downs, Enter -> the bottom row resumes."""
-    from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+    from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
     app: NikiApp = make_app()
     resumed: list[str] = []

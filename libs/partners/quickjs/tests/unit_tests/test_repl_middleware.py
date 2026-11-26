@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from deepagents.backends.state import StateBackend
-from deepagents.middleware.subagents import (
+from niki_agent.sdk.backends.state import StateBackend
+from niki_agent.sdk.middleware.subagents import (
     SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY,
     SubAgentMiddleware,
     _build_task_tool,

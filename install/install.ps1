@@ -11,7 +11,7 @@
     Install location. Defaults to $env:LOCALAPPDATA\niki.
 
 .EXAMPLE
-    irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/main/install/install.ps1 | iex
+    irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 
 .EXAMPLE
     .\install.ps1 -Prefix C:\Tools\niki
@@ -40,7 +40,7 @@ function Get-Python {
 function Find-Wheel {
     <# Prefer a wheel beside this script; fall back to the newest release. #>
     $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $local = Get-ChildItem -Path $dir -Filter 'niki-*.whl' -ErrorAction SilentlyContinue |
+    $local = Get-ChildItem -Path $dir -Filter 'niki_agent-*.whl' -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if ($local) { return $local.FullName }
 
@@ -56,7 +56,7 @@ function Find-Wheel {
     $zip = Join-Path $tmp $asset.name
     Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip
     Expand-Archive -Path $zip -DestinationPath $tmp
-    $wheel = Get-ChildItem -Path $tmp -Recurse -Filter 'niki-*.whl' |
+    $wheel = Get-ChildItem -Path $tmp -Recurse -Filter 'niki_agent-*.whl' |
         Select-Object -First 1
     if (-not $wheel) { Fail 'release asset contained no wheel' }
     return $wheel.FullName

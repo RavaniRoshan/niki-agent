@@ -8,8 +8,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from deepagents_code.input import MediaTracker
-from deepagents_code.media_utils import (
+from niki_agent.input import MediaTracker
+from niki_agent.media_utils import (
     ImageData,
     VideoData,
     _detect_video_format,

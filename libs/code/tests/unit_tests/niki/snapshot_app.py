@@ -5,7 +5,7 @@ built by a fixture. This module exists to be that path: it builds one
 `DeepAgentsApp` with a mock agent and a stubbed post-paint init, which is the
 same construction `test_pilot_driver.py` and `test_lint_rules.py` use.
 
-`DEEPAGENTS_HOME` has already been redirected to a temp dir by the suite
+`NIKI_HOME` has already been redirected to a temp dir by the suite
 conftest before this module is imported, so a snapshot run never reads or
 writes the developer's real `~/.deepagents`.
 """
@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock
 # `random.choices`, so without this every launch renders a different splash and
 # no snapshot can ever re-verify. Seeding `random` as well costs nothing and
 # covers any other incidental sampling.
-os.environ["DEEPAGENTS_CODE_HIDE_SPLASH_TIPS"] = "1"
+os.environ["NIKI_HIDE_SPLASH_TIPS"] = "1"
 random.seed(0)
 
 # Textual honours `NO_COLOR` by filtering the screen to monochrome, so a
@@ -33,10 +33,10 @@ os.environ.pop("NO_COLOR", None)
 # The splash greets the name the process was launched with, which under pytest
 # is `pytest`. Pin it to the console script this app ships as, so the baseline
 # records what a `niki` user sees rather than a harness artifact.
-os.environ["DEEPAGENTS_CODE_INVOKED_AS"] = "niki"
+os.environ["NIKI_INVOKED_AS"] = "niki"
 
-from deepagents_code._invocation import invoked_name as _invoked_name  # noqa: E402
-from deepagents_code.niki.app import NikiApp  # noqa: E402
+from niki_agent._invocation import invoked_name as _invoked_name  # noqa: E402
+from niki_agent.niki.app import NikiApp  # noqa: E402
 
 # `invoked_name` memoises its first answer, and another test in the same worker
 # may already have asked before this module was imported.

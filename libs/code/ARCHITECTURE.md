@@ -2,7 +2,7 @@
 
 ## What this package is
 
-`deepagents-code` is a prebuilt terminal coding agent built on top of the `deepagents` SDK. It is a reference implementation: one design for packaging the SDK into a useful coding-agent product, based on patterns that have worked well in our experience.
+`niki-agent` is a prebuilt terminal coding agent built on top of the `deepagents` SDK. It is a reference implementation: one design for packaging the SDK into a useful coding-agent product, based on patterns that have worked well in our experience.
 
 The SDK provides the agent harness. This package shows how to combine that harness with a terminal experience, persistence, tools, skills, and optional sandboxed execution.
 

@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code._env_vars import SERVER_ENV_PREFIX
-from deepagents_code._server_config import (
+from niki_agent._env_vars import SERVER_ENV_PREFIX
+from niki_agent._server_config import (
     ServerConfig,
     _interpreter_suppressed_by_sandbox,
     _normalize_path,
@@ -52,7 +52,7 @@ class TestNormalizePath:
     def test_label_appears_in_error_message(self) -> None:
         with (
             patch(
-                "deepagents_code._server_config.Path.expanduser",
+                "niki_agent._server_config.Path.expanduser",
                 side_effect=OSError("perm"),
             ),
             pytest.raises(ValueError, match="sandbox setup"),
@@ -215,7 +215,7 @@ class TestServerConfigEdgeCases:
         """No `ServerConfig` field may fall outside the policy/runtime split."""
         import dataclasses
 
-        from deepagents_code._server_config import (
+        from niki_agent._server_config import (
             MODEL_COMPATIBLE_FIELDS,
             RUNTIME_ONLY_FIELDS,
             WORKSPACE_IDENTITY_FIELDS,
@@ -315,7 +315,7 @@ class TestServerConfigEdgeCases:
         )
 
         with patch(
-            "deepagents_code.extensions.trust.is_project_extensions_trusted",
+            "niki_agent.extensions.trust.is_project_extensions_trusted",
             return_value=True,
         ) as trusted:
             resolved = config.resolve_workspace(str(other), str(other))

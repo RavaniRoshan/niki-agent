@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
-from deepagents_code._ask_user_types import (
+from niki_agent._ask_user_types import (
     AskUserRequest,
     decode_multi_select_answer,
     encode_multi_select_answer,
@@ -22,7 +22,7 @@ from deepagents_code._ask_user_types import (
 )
 
 if TYPE_CHECKING:
-    from deepagents_code._ask_user_types import Question
+    from niki_agent._ask_user_types import Question
 
 
 class TestFormatAskUserTranscript:

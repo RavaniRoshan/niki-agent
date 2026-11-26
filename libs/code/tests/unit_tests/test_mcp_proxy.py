@@ -8,8 +8,8 @@ import httpx2
 from fastmcp import FastMCP
 from fastmcp.client.transports import StreamableHttpTransport
 
-from deepagents_code import mcp_tools
-from deepagents_code.mcp_auth import MCPReauthRequiredError
+from niki_agent import mcp_tools
+from niki_agent.mcp_auth import MCPReauthRequiredError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

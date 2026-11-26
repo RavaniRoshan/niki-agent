@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path
 
-    from deepagents.middleware.subagents import SubAgent
     from langchain.agents.middleware import AgentMiddleware
     from langchain_core.messages.ai import UsageMetadata
     from langchain_core.runnables import RunnableConfig
@@ -22,9 +21,9 @@ if TYPE_CHECKING:
     )
     from langgraph.graph.state import CompiledStateGraph
 
+    from niki_agent.sdk.middleware.subagents import SubAgent
+
 import pytest
-from deepagents.backends import StateBackend
-from deepagents.middleware import SubAgentMiddleware
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import StructuredTool, tool
@@ -32,10 +31,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.types import Command, interrupt
 
-from deepagents_code import cost_tracking
-from deepagents_code._fake_models import _ToolBindingFakeModel
-from deepagents_code._js_cost import CostAwareCodeInterpreterMiddleware
-from deepagents_code.cost_tracking import CostTrackingMiddleware
+from niki_agent import cost_tracking
+from niki_agent._fake_models import _ToolBindingFakeModel
+from niki_agent._js_cost import CostAwareCodeInterpreterMiddleware
+from niki_agent.cost_tracking import CostTrackingMiddleware
+from niki_agent.sdk.backends import StateBackend
+from niki_agent.sdk.middleware import SubAgentMiddleware
 
 _INTERPRETERS: list[CostAwareCodeInterpreterMiddleware] = []
 _CONFIG: RunnableConfig = {"configurable": {"thread_id": "js-cost"}}
@@ -222,7 +223,7 @@ async def test_js_subagent_cost_is_durable(mode) -> None:
     assert snapshot.values["_session_cost_usd"] == pytest.approx(3.0)
     await _assert_accounting(agent, 3)
     assert snapshot.values["_session_cost_transfers"] == {}
-    from deepagents_code.app import _format_cost_breakdown_table
+    from niki_agent.app import _format_cost_breakdown_table
 
     table = _format_cost_breakdown_table(
         snapshot.values["_session_cost_usd"], snapshot.values["_session_cost_breakdown"]
@@ -644,7 +645,7 @@ async def test_completion_order_does_not_swap_results_on_sqlite_resume(
         assert result["__interrupt__"]
         assert dispatched.index("D") < dispatched.index("C")
     _fresh_runtime()
-    from deepagents_code import _js_cost
+    from niki_agent import _js_cost
 
     original = _js_cost._cost_task
     resumed_dispatches = []
@@ -808,7 +809,7 @@ async def test_parallel_usage_with_partial_or_zero_pricing(
     )
     await agent.ainvoke({"messages": [HumanMessage("go")]}, _CONFIG)
     await _assert_accounting(agent, 4, priced=priced, charged=charged)
-    from deepagents_code.app import _format_cost_breakdown_table
+    from niki_agent.app import _format_cost_breakdown_table
 
     snapshot = await agent.aget_state(_CONFIG)
     table = _format_cost_breakdown_table(
@@ -983,7 +984,7 @@ async def test_legacy_dollar_only_receipt_survives_sqlite_resume(
         assert breakdown["cache_creation_cost_usd"] == pytest.approx(0.6)
         assert breakdown["cache_read_cost_usd"] == pytest.approx(0.3)
         assert breakdown["reasoning_cost_usd"] == pytest.approx(0.36)
-        from deepagents_code.app import _format_cost_breakdown_table
+        from niki_agent.app import _format_cost_breakdown_table
 
         assert _format_cost_breakdown_table(4.0, breakdown) == ""
         await agent.ainvoke(None, _CONFIG)

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from textual.app import App
 
-from deepagents_code.notifications import (
+from niki_agent.notifications import (
     ActionId,
     MissingDepPayload,
     NotificationAction,
     PendingNotification,
 )
-from deepagents_code.tui.widgets.notification_detail import NotificationDetailScreen
+from niki_agent.tui.widgets.notification_detail import NotificationDetailScreen
 
 
 def _dep_entry() -> PendingNotification:

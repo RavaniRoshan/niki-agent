@@ -9,9 +9,9 @@ from unittest.mock import MagicMock
 import pytest
 from textual import events
 
-from deepagents_code.command_registry import CommandEntry, get_slash_commands
-from deepagents_code.tui.widgets import autocomplete as autocomplete_module
-from deepagents_code.tui.widgets.autocomplete import (
+from niki_agent.command_registry import CommandEntry, get_slash_commands
+from niki_agent.tui.widgets import autocomplete as autocomplete_module
+from niki_agent.tui.widgets.autocomplete import (
     CompletionController,
     CompletionResult,
     FuzzyFileController,
@@ -464,7 +464,7 @@ class TestGetProjectFiles:
         git_path = _get_git_executable()
         assert git_path is not None
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent"):
             ok, files = _run_git_ls_files(git_path, tmp_path, [])
 
         assert ok is False
@@ -489,7 +489,7 @@ class TestGetProjectFiles:
 
         monkeypatch.setattr(autocomplete_module.subprocess, "run", fake_run)
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent"):
             ok, files = _run_git_ls_files("git", tmp_path, ["--bogus"])
 
         assert ok is False
@@ -519,7 +519,7 @@ class TestGetProjectFiles:
 
         monkeypatch.setattr(autocomplete_module.subprocess, "run", fake_run)
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent"):
             _run_git_ls_files("git", tmp_path, [])
 
         assert len(caplog.records) == 1

@@ -5,15 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from deepagents.backends.filesystem import FilesystemBackend
-
-from deepagents_code.plugins.adapters.skills_middleware import PluginSkillsMiddleware
+from niki_agent.plugins.adapters.skills_middleware import PluginSkillsMiddleware
+from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-_MERGE_LOGGER = "deepagents_code.skills.merge"
+_MERGE_LOGGER = "niki_agent.skills.merge"
 
 
 def _create_skill(skill_dir: Path, name: str, description: str) -> None:

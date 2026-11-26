@@ -14,51 +14,47 @@ Starting point for working in the Deep Agents monorepo. For how the code is stru
 
 ## Quickstart
 
-Pick the package you are changing, install its dependencies, and use its `Makefile` for the normal edit-test-lint loop:
-
 ```bash
 uv tool install pre-commit
 pre-commit install --install-hooks
-cd libs/deepagents
+cd libs/code
 uv sync --all-groups
-make test
-make lint
+make check
 ```
 
-Use `make help` inside any package to see its supported targets. To run a repo-wide check, move to `libs/` and use the fan-out targets, for example `make lint` or `make lock-check`.
+`make help` lists the supported targets. `make check` is the full local CI
+gauntlet; `make test` and `make lint` run its halves.
 
 ## Repository layout
 
-This is a monorepo of independently versioned packages under `libs/`:
+The product is a single package under `libs/`:
 
 ```txt
 libs/
-├── deepagents/     # Core SDK — create_deep_agent, middleware, backends
-├── acp/            # Agent Client Protocol integration
-├── code/           # Prebuilt coding agent for interactive and headless use
-├── talon/          # Local runtime host for long-running agents
-└── partners/       # Provider/sandbox integrations
-    ├── daytona/
-    ├── modal/
-    ├── vercel/
-    ├── runloop/
-    └── quickjs/
+├── code/                  # niki-agent — the whole product
+│   ├── niki_agent/        # Textual TUI, headless mode, MCP, skills, CLI
+│   ├── niki_agent/sdk/    # vendored Deep Agents SDK
+│   └── niki_agent/acp_sdk/ # vendored ACP runtime
+└── partners/
+    └── quickjs/           # langchain-quickjs, built from this repository
 ```
 
-Each package has its own `pyproject.toml`, `Makefile`, and `README.md`. There is no root `pyproject.toml`; you work inside the package you are changing. Local package dependencies are editable, so changes in one package are visible to sibling packages that depend on it during development.
+`archive/` holds the former upstream packages for reference; nothing there is
+built or tested. Each active package has its own `pyproject.toml`, `Makefile`,
+and `README.md`. There is no root `pyproject.toml`.
 
 ## Setup
 
 Work inside the package you are changing. `uv` creates and manages the virtual environment for you — no manual `activate` needed.
 
 ```bash
-cd libs/deepagents
+cd libs/code
 uv sync --all-groups      # install the package + all dependency groups
 ```
 
 Prefer the package's `make` targets for standard workflows; use `uv run ...` for direct one-off commands.
 
-Four rules for this monorepo:
+Four rules for this repository:
 
 - Install dependencies explicitly with `uv sync` (add `--group <name>` or `--all-groups` as needed). Never let them install implicitly.
 - Do not create a virtual environment outside the package directory.
@@ -67,7 +63,7 @@ Four rules for this monorepo:
 
 ## Common commands
 
-Run these from inside a package directory (e.g. `libs/deepagents`). They are consistent across the core SDK packages (`deepagents`, `code`); run `make help` to see what a given package supports:
+Run these from `libs/code`. `make help` lists what the package supports:
 
 | Command | What it does |
 | --- | --- |
@@ -134,7 +130,7 @@ Reserve `per-file-ignores` for categorical policy that applies to a whole class 
 "tests/**" = ["D1", "S101"]
 
 # BAD - single-line exception buried in pyproject.toml
-"deepagents_code/agent.py" = ["PLR2004"]
+"niki_agent/agent.py" = ["PLR2004"]
 ```
 
 ```python
@@ -175,7 +171,7 @@ The hook is a local convenience and can be skipped with `git push --no-verify` o
 
 ## Testing
 
-Test files mirror the source layout: tests for `deepagents/middleware/foo.py` live in `tests/unit_tests/middleware/test_foo.py`. Write tests against real behavior and avoid mocks where practical. When the conventions for a case are unclear, read the nearby existing tests first.
+Test files mirror the source layout: tests for `niki_agent/middleware/foo.py` live in `tests/unit_tests/middleware/test_foo.py`. Write tests against real behavior and avoid mocks where practical. When the conventions for a case are unclear, read the nearby existing tests first.
 
 ### Warnings fail the suite
 
@@ -196,28 +192,32 @@ Maintainers can apply the `ci:allow-warnings` PR label and re-run failed jobs to
 
 ## Benchmarks
 
-Three packages carry benchmarks: `libs/deepagents`, `libs/code`, and `libs/partners/quickjs`. Each defines `bench` (walltime) and `bench-memory` (heap) Make targets. Other packages have no `bench` target.
+`libs/code` and `libs/partners/quickjs` define `bench` (walltime) and
+`bench-memory` (heap) targets.
 
 These targets are the single source of truth for the benchmark invocation. Both local runs and the reusable CI workflow (`.github/workflows/_benchmark.yml`) call them. To change how benchmarks run, edit the Makefile; CI inherits the change.
 
 ```bash
 # Single package (same target CI invokes):
-make -C libs/deepagents bench
+make -C libs/code bench
 
-# `deepagents` and `code` in one go (BENCH_PACKAGES in libs/Makefile;
+# `code` from the fan-out target (BENCH_PACKAGES in libs/Makefile;
 # note quickjs is not included):
 make -C libs bench-all
 
 # Plain pytest-benchmark without CodSpeed instrumentation — faster, for
 # ad-hoc local tuning:
-make -C libs/deepagents benchmark
+make -C libs/code benchmark
 ```
 
 `bench-memory` runs the `memory_benchmark`-marked subset. In CI it is gated behind the `has-memory-benchmarks` input on `_benchmark.yml`, which defaults to `false`. No caller sets it today, so memory benchmarks are effectively local-only; wire the flag in if you add one to the sweep.
 
-Results land on the [CodSpeed dashboard](https://codspeed.io/langchain-ai/deepagents), with a separate view per package via the upper-left selector. Regression thresholds are managed in the dashboard, not in this repo, so a value quoted here will drift (10% global at the time of writing); tighten per-benchmark thresholds for benches whose noise floor is well below that, since a wide threshold masks real regressions in tight code.
+CodSpeed dashboards and regression thresholds are configured outside this
+repository. Tighten per-benchmark thresholds for benches whose noise floor is
+well below the global value.
 
-`.github/workflows/_benchmark_nightly.yml` is the only caller of `_benchmark.yml`; there is no per-PR benchmark job. It runs on a daily cron over every package in its list, so baselines for unchanged packages do not drift. It covers `libs/deepagents` and `libs/code` only — `libs/partners/quickjs` defines benchmark targets but is not in the sweep. Use `workflow_dispatch` on that workflow for an ad-hoc run before bumping `pytest-codspeed` or the `CodSpeedHQ/action` SHA.
+There is no per-PR benchmark job. Run `make -C libs/code bench` locally before
+and after a change to a hot path.
 
 ## Contributing conventions
 

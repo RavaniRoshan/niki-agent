@@ -8,33 +8,33 @@ verified:
     at: 2026-10-03T08:05:07.881Z
 sources:
   - id: openwiki-source-d4716b8ae162796c2c7ad991
-    resource: repo://libs/code/deepagents_code/_js_cost.py
+    resource: repo://libs/code/niki_agent/_js_cost.py
   - id: openwiki-source-dc8749c06f6da0ecc0666f26
-    resource: repo://libs/code/deepagents_code/_session_stats.py
+    resource: repo://libs/code/niki_agent/_session_stats.py
   - id: openwiki-source-05106e66a949150d557266a2
-    resource: repo://libs/code/deepagents_code/agent.py
+    resource: repo://libs/code/niki_agent/agent.py
   - id: openwiki-source-fdf5afeb1dd1d11652374e88
-    resource: repo://libs/code/deepagents_code/app.py
+    resource: repo://libs/code/niki_agent/app.py
   - id: openwiki-source-687ee9fda0e4ffad852cebb5
-    resource: repo://libs/code/deepagents_code/btw_cost.py
+    resource: repo://libs/code/niki_agent/btw_cost.py
   - id: openwiki-source-8412043b716cd8e03e899f63
-    resource: repo://libs/code/deepagents_code/client/session_cost.py
+    resource: repo://libs/code/niki_agent/client/session_cost.py
   - id: openwiki-source-2fb89d2b59c886d0cb3ee3ea
-    resource: repo://libs/code/deepagents_code/config_manifest.py
+    resource: repo://libs/code/niki_agent/config_manifest.py
   - id: openwiki-source-f2ac9d5fb6c7c6a21f241281
-    resource: repo://libs/code/deepagents_code/cost_tracking.py
+    resource: repo://libs/code/niki_agent/cost_tracking.py
   - id: openwiki-source-ea1089f0d7536fbc96c64866
-    resource: repo://libs/code/deepagents_code/offload_api.py
+    resource: repo://libs/code/niki_agent/offload_api.py
   - id: openwiki-source-9b6cab59e92c8914079f0f53
-    resource: repo://libs/code/deepagents_code/offload.py
+    resource: repo://libs/code/niki_agent/offload.py
   - id: openwiki-source-0f8622164498a685abc913d5
-    resource: repo://libs/code/deepagents_code/sessions.py
+    resource: repo://libs/code/niki_agent/sessions.py
   - id: openwiki-source-1326222fbf96b7f18194e63b
-    resource: repo://libs/code/deepagents_code/tui/modals/session_cost.py
+    resource: repo://libs/code/niki_agent/tui/modals/session_cost.py
   - id: openwiki-source-29a60a7d68da0bf4ec625403
-    resource: repo://libs/code/deepagents_code/tui/textual_adapter.py
+    resource: repo://libs/code/niki_agent/tui/textual_adapter.py
   - id: openwiki-source-9b7dc6bc03826e98808c6a5c
-    resource: repo://libs/code/deepagents_code/tui/widgets/subagent_panel.py
+    resource: repo://libs/code/niki_agent/tui/widgets/subagent_panel.py
   - id: openwiki-source-5775d9bd08f14b550e010f4c
     resource: repo://libs/code/PRICING.md
   - id: openwiki-source-11d6c59d85493653aee76558

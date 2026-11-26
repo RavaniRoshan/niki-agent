@@ -8,8 +8,8 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Static
 
-from deepagents_code.config import get_glyphs
-from deepagents_code.tui.widgets.cwd_switch import (
+from niki_agent.config import get_glyphs
+from niki_agent.tui.widgets.cwd_switch import (
     CwdSwitchAbortMode,
     CwdSwitchChoice,
     CwdSwitchPromptScreen,

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from deepagents_code.state_migration import migrate_legacy_state
+from niki_agent.state_migration import migrate_legacy_state
 
 if TYPE_CHECKING:
     import pytest
@@ -83,7 +83,7 @@ class TestMigrateLegacyState:
         (config_dir / "sessions.db").write_bytes(b"old")
         (state_dir / "sessions.db").write_bytes(b"new")
 
-        with caplog.at_level("WARNING", logger="deepagents_code.state_migration"):
+        with caplog.at_level("WARNING", logger="niki_agent.state_migration"):
             migrate_legacy_state(config_dir=config_dir, state_dir=state_dir)
 
         # Destination preserved; legacy not clobbered, not moved.
@@ -150,7 +150,7 @@ class TestMigrateLegacyState:
         state_path.write_text("not a directory")
         (config_dir / "sessions.db").write_bytes(b"db")
 
-        with caplog.at_level("WARNING", logger="deepagents_code.state_migration"):
+        with caplog.at_level("WARNING", logger="niki_agent.state_migration"):
             migrate_legacy_state(config_dir=config_dir, state_dir=state_path)
 
         # Legacy untouched, warning emitted.
@@ -188,7 +188,7 @@ class TestMigrateLegacyState:
 
         monkeypatch.setattr(Path, "rename", selective_rename)
 
-        with caplog.at_level("WARNING", logger="deepagents_code.state_migration"):
+        with caplog.at_level("WARNING", logger="niki_agent.state_migration"):
             migrate_legacy_state(config_dir=config_dir, state_dir=state_dir)
 
         # Failing entry stays at legacy; non-failing entry moved.

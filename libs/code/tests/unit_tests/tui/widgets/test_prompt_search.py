@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepagents_code.tui.widgets.prompt_search import (
+from niki_agent.tui.widgets.prompt_search import (
     PROMPT_SEARCH_MAX_HINT_ROWS,
     PROMPT_SEARCH_WINDOW,
     _window_bounds,

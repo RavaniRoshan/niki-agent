@@ -28,7 +28,7 @@ def _app() -> App:  # type: ignore[type-arg]
     """A NikiApp wired to a mock agent, post-paint work stubbed out."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-mouse")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -42,7 +42,7 @@ async def _fill(app: App, pilot: Pilot[None]) -> None:
     the wrong object silently does nothing -- which would leave the transcript
     too short to scroll and make every scroll assertion vacuous.
     """
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     await app.query_one("#messages").mount_all(
         [AssistantMessage(content=f"line {i}") for i in range(TRANSCRIPT_LINES)]
@@ -99,7 +99,7 @@ async def test_f4_scroll_position_survives_a_streaming_update() -> None:
     """
     import asyncio
 
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -132,7 +132,7 @@ async def test_pageup_pages_the_transcript_from_the_composer() -> None:
     `TextArea` binds `pageup`/`pagedown` itself, so before Niki routed them at
     the app level the composer swallowed both and the transcript never moved.
     """
-    from deepagents_code.niki.keymap import build_keymap
+    from niki_agent.niki.keymap import build_keymap
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -166,7 +166,7 @@ async def test_pageup_pages_the_transcript_from_the_composer() -> None:
 
 async def test_pageup_is_left_to_a_scrollable_draft() -> None:
     """K2: a draft that scrolls keeps PgUp for itself."""
-    from deepagents_code.tui.widgets.chat_input import ChatTextArea
+    from niki_agent.tui.widgets.chat_input import ChatTextArea
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -249,7 +249,7 @@ async def test_m5_every_mouse_gesture_has_a_keyboard_equivalent() -> None:
     Built from the keymap registry rather than a hand-written list, so a binding
     added upstream is covered automatically instead of silently going untested.
     """
-    from deepagents_code.niki.keymap import build_keymap
+    from niki_agent.niki.keymap import build_keymap
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -292,7 +292,7 @@ async def test_m2_clicking_a_tool_card_toggles_its_output() -> None:
     The card is given more output than the preview shows, otherwise there is
     nothing to toggle and the test would pass without proving the click path.
     """
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:

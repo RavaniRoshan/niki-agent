@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.goal_state_notice import (
+from niki_agent.app import DeepAgentsApp
+from niki_agent.goal_state_notice import (
     build_goal_state_notice,
     goal_state_notice_info,
 )
@@ -212,7 +212,7 @@ async def test_unusable_cutoff_is_logged_by_the_notice_predicate(
             "_get_thread_state_values",
             AsyncMock(return_value=checkpoint),
         ),
-        caplog.at_level(logging.WARNING, logger="deepagents_code.goal_state_notice"),
+        caplog.at_level(logging.WARNING, logger="niki_agent.goal_state_notice"),
     ):
         assert await app._ensure_goal_state_notice()
 
@@ -244,7 +244,7 @@ async def test_usable_cutoff_is_not_logged_as_a_discard(
             "_get_thread_state_values",
             AsyncMock(return_value=checkpoint),
         ),
-        caplog.at_level(logging.WARNING, logger="deepagents_code.goal_state_notice"),
+        caplog.at_level(logging.WARNING, logger="niki_agent.goal_state_notice"),
     ):
         assert await app._ensure_goal_state_notice()
 

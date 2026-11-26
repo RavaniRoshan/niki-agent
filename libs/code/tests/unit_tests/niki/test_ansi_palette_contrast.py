@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepagents_code.niki.theme import (
+from niki_agent.niki.theme import (
     GLYPH_CONTRAST_MIN,
     GLYPH_TOKENS,
     NIKI_ANSI16_DARK,

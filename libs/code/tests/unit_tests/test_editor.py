@@ -5,7 +5,7 @@ from __future__ import annotations
 import pathlib
 from unittest.mock import MagicMock, patch
 
-from deepagents_code.editor import open_in_editor
+from niki_agent.editor import open_in_editor
 
 
 class TestResolveEditor:
@@ -23,7 +23,7 @@ class TestPrepareCommand:
 class TestOpenInEditor:
     """Tests for the full open_in_editor flow."""
 
-    @patch("deepagents_code.editor.subprocess.run")
+    @patch("niki_agent.editor.subprocess.run")
     def test_handles_permission_error_on_cleanup(self, mock_run: MagicMock) -> None:
         """PermissionError during temp file cleanup should not propagate."""
 
@@ -34,7 +34,7 @@ class TestOpenInEditor:
 
         mock_run.side_effect = fake_run
         with (
-            patch("deepagents_code.editor.resolve_editor", return_value=["nano"]),
+            patch("niki_agent.editor.resolve_editor", return_value=["nano"]),
             patch.object(
                 pathlib.Path,
                 "unlink",

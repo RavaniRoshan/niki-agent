@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 
     from textual.pilot import Pilot
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.tui.textual_adapter import TextualUIAdapter
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.tui.textual_adapter import TextualUIAdapter
 
 
 @dataclass(frozen=True)
@@ -229,7 +229,7 @@ def make_app(*, thread_id: str = "niki-turn") -> NikiApp:
     """Build a keyless NikiApp with its server start-up stubbed out."""
     from unittest.mock import AsyncMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=None, thread_id=thread_id)
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -244,7 +244,7 @@ def build_adapter(app: NikiApp) -> TextualUIAdapter:
     Without them a recorded usage chunk updates the session stats but never
     reaches the footer.
     """
-    from deepagents_code.tui.textual_adapter import TextualUIAdapter
+    from niki_agent.tui.textual_adapter import TextualUIAdapter
 
     adapter = TextualUIAdapter(
         mount_message=app._mount_message,

@@ -43,8 +43,8 @@ Use a provider-qualified model string or an initialized `BaseChatModel`; strings
 `model=None` currently falls back to `ChatAnthropic(model_name="claude-sonnet-4-6")`, but that fallback is deprecated and scheduled for removal in `deepagents==1.0.0`; construct a model explicitly.
 
 ```python
-from deepagents import create_deep_agent
-from deepagents.backends import StateBackend
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.backends import StateBackend
 
 agent = create_deep_agent(
     model="openai:gpt-5.4",
@@ -102,8 +102,8 @@ Pass `skills=["/skills/base/", "/skills/project/"]` to install `SkillsMiddleware
 The system prompt initially lists skill metadata, not full instructions. The agent reads a selected `SKILL.md` with `read_file` when it needs the workflow. A skill may declare space-separated `metadata.include_tools`. Provide the corresponding tools by constructing a replacement `SkillsMiddleware(..., tools=[...])` with the same `sources`, or provide a resolver for dynamic tools:
 
 ```python
-from deepagents import create_deep_agent
-from deepagents.middleware.skills import SkillsMiddleware
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.middleware.skills import SkillsMiddleware
 
 skills = SkillsMiddleware(
     backend=backend,

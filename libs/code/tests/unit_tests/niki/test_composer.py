@@ -24,11 +24,11 @@ from unit_tests.niki.turn_harness import (
 if TYPE_CHECKING:
     from textual.pilot import Pilot
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
 from textual.widgets import Static
 
-from deepagents_code.tui.widgets.chat_input import ChatTextArea
+from niki_agent.tui.widgets.chat_input import ChatTextArea
 
 SIZE = (100, 32)
 
@@ -43,7 +43,7 @@ def _queue_label(app: NikiApp) -> Static:
 
 async def test_v5_the_prompt_glyph_is_the_shared_cursor_glyph() -> None:
     """V5: the composer glyph comes from `get_glyphs()`, per mode."""
-    from deepagents_code.config import get_glyphs
+    from niki_agent.config import get_glyphs
 
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
@@ -70,7 +70,7 @@ async def test_v5_the_empty_composer_shows_a_placeholder_and_drops_it_on_typing(
     None
 ):
     """V5: the hint fills the empty composer and leaves with the first key."""
-    from deepagents_code.niki.app import COMPOSER_HINT
+    from niki_agent.niki.app import composer_hint
 
     app = make_app()
     async with app.run_test(size=SIZE) as pilot:
@@ -81,7 +81,9 @@ async def test_v5_the_empty_composer_shows_a_placeholder_and_drops_it_on_typing(
         await pilot.pause()
         typed_screen = str(screen_text(app))
 
-    assert hint == COMPOSER_HINT, f"V5: the empty composer has no placeholder: {hint!r}"
+    assert hint == composer_hint(SIZE[0]), (
+        f"V5: the empty composer has no placeholder: {hint!r}"
+    )
     assert hint in empty_screen, (
         f"V5: the placeholder never reached the screen:\n{empty_screen}"
     )
@@ -145,3 +147,13 @@ async def test_v5_a_queued_prompt_is_named_under_the_composer() -> None:
     assert hidden_after == "none", (
         f"V5: the queue banner stayed visible after draining: {hidden_after!r}"
     )
+
+
+def test_v5_the_placeholder_shrinks_before_it_clips() -> None:
+    """40 columns gets a sentence that fits, not a longer one cut mid-word."""
+    from niki_agent.niki.app import composer_hint
+
+    assert composer_hint(40) == "Message, / commands, @ files"
+    assert composer_hint(50) == "Type a message, / for commands, @ for files"
+    assert composer_hint(20) == "Message, / commands"
+    assert len(composer_hint(40)) <= 32, "40-column text area is 32 cells wide"

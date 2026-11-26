@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code.mcp_login_service import (
+from niki_agent.mcp_login_service import (
     ConfigErrorKind,
     ConfigResolution,
     ConfigResolutionError,
@@ -19,10 +19,10 @@ from deepagents_code.mcp_login_service import (
     resolve_mcp_config,
     select_server,
 )
-from deepagents_code.mcp_tools import DiscoveredMCPConfig, MCPConfigScope
+from niki_agent.mcp_tools import DiscoveredMCPConfig, MCPConfigScope
 
 if TYPE_CHECKING:
-    from deepagents_code.json_types import JsonValue
+    from niki_agent.json_types import JsonValue
 
 
 def _user_source(path: Path) -> DiscoveredMCPConfig:
@@ -43,7 +43,7 @@ def _project_approval_config(
     disabled: list[str] | None = None,
 ) -> str:
     """Build user config text with one scoped project MCP approval."""
-    from deepagents_code.model_config import fingerprint_mcp_server_config
+    from niki_agent.model_config import fingerprint_mcp_server_config
 
     text = (
         "[mcp]\n"
@@ -63,11 +63,11 @@ def _isolate_project_mcp_trust_lists(
     config_text: str = "[mcp]\n",
 ) -> Path:
     """Point MCP trust lists at a test-only user config."""
-    from deepagents_code import _env_vars
+    from niki_agent import _env_vars
 
     user_config = tmp_path / "config.toml"
     user_config.write_text(config_text)
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", user_config)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", user_config)
     monkeypatch.delenv(_env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, raising=False)
     monkeypatch.delenv(_env_vars.DISABLED_PROJECT_MCP_SERVERS, raising=False)
     return user_config
@@ -76,7 +76,7 @@ def _isolate_project_mcp_trust_lists(
 @pytest.fixture
 def plugin_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     """Install an enabled HTTP plugin in isolated local state."""
-    from deepagents_code.plugins.adapters.mcp import scoped_mcp_server_name
+    from niki_agent.plugins.adapters.mcp import scoped_mcp_server_name
 
     plugin_id = "sentry@claude-plugins-official"
     plugin = tmp_path / "plugins" / "sentry"
@@ -108,12 +108,12 @@ def plugin_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data), encoding="utf-8")
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state)
-    monkeypatch.setenv("DEEPAGENTS_CODE_PLUGIN_CACHE_DIR", str(tmp_path / "plugins"))
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state)
+    monkeypatch.setenv("NIKI_PLUGIN_CACHE_DIR", str(tmp_path / "plugins"))
     monkeypatch.setattr(
-        "deepagents_code.mcp_tools._resolve_project_config_base", lambda _: tmp_path
+        "niki_agent.mcp_tools._resolve_project_config_base", lambda _: tmp_path
     )
-    monkeypatch.setattr("deepagents_code.mcp_tools.discover_mcp_config_sources", list)
+    monkeypatch.setattr("niki_agent.mcp_tools.discover_mcp_config_sources", list)
     _isolate_project_mcp_trust_lists(monkeypatch, tmp_path)
     return scoped_mcp_server_name(plugin_id, "sentry")
 
@@ -137,7 +137,7 @@ class TestResolveMcpConfigPlugins:
         )
         if with_user_config:
             monkeypatch.setattr(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 lambda: [_user_source(user_cfg)],
             )
         result = resolve_mcp_config(None)
@@ -193,7 +193,7 @@ class TestResolveMcpConfigPlugins:
                 )
             )
         monkeypatch.setattr(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             lambda: [_user_source(paths[0]), _project_source(paths[1])],
         )
         result = resolve_mcp_config(None, trust_project_mcp=trusted_project)
@@ -265,7 +265,7 @@ class TestResolveMcpConfigAutodiscover:
             '"url":"https://mcp.notion.com/mcp","auth":"oauth"}}}'
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -286,7 +286,7 @@ class TestResolveMcpConfigAutodiscover:
             '"url":"https://mcp.notion.com/mcp","auth":"oauth"}}}'
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None, trust_project_mcp=True)
@@ -308,7 +308,7 @@ class TestResolveMcpConfigAutodiscover:
         instead fail closed (a revoked-but-mistyped deny must not be bypassed)
         and surface the policy read error rather than a bare "no usable config".
         """
-        from deepagents_code.model_config import fingerprint_mcp_server_config
+        from niki_agent.model_config import fingerprint_mcp_server_config
 
         project_cfg = tmp_path / "project" / ".mcp.json"
         project_cfg.parent.mkdir()
@@ -327,7 +327,7 @@ class TestResolveMcpConfigAutodiscover:
         )
         _isolate_project_mcp_trust_lists(monkeypatch, tmp_path, config_text)
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None, trust_project_mcp=True)
@@ -349,7 +349,7 @@ class TestResolveMcpConfigAutodiscover:
         swallowed whenever a user-level config still loaded — and the dropped
         project servers were then mislabeled as merely "untrusted".
         """
-        from deepagents_code.mcp_login_service import format_policy_error_notice
+        from niki_agent.mcp_login_service import format_policy_error_notice
 
         fake_home = tmp_path / "home"
         user_dir = fake_home / ".deepagents"
@@ -368,7 +368,7 @@ class TestResolveMcpConfigAutodiscover:
         )
         monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_user_source(user_cfg), _project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -386,15 +386,15 @@ class TestResolveMcpConfigAutodiscover:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The removed env var, still set, rides through resolution for surfacing."""
-        from deepagents_code.mcp_login_service import format_legacy_env_ignored_notice
+        from niki_agent.mcp_login_service import format_legacy_env_ignored_notice
 
         project_cfg = tmp_path / "project" / ".mcp.json"
         project_cfg.parent.mkdir()
         project_cfg.write_text('{"mcpServers":{"fs":{"command":"node"}}}')
         _isolate_project_mcp_trust_lists(monkeypatch, tmp_path)
-        monkeypatch.setenv("DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS", "fs")
+        monkeypatch.setenv("NIKI_ENABLED_PROJECT_MCP_SERVERS", "fs")
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -415,7 +415,7 @@ class TestResolveMcpConfigAutodiscover:
         project_cfg.parent.mkdir()
         project_cfg.write_text("{not valid json")
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -441,7 +441,7 @@ class TestResolveMcpConfigAutodiscover:
         )
         monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_user_source(user_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -472,7 +472,7 @@ class TestResolveMcpConfigAutodiscover:
         )
         monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_user_source(user_cfg), _project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -506,7 +506,7 @@ class TestResolveMcpConfigAutodiscover:
             _project_approval_config(project_cfg.parent, "slack", slack),
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -539,7 +539,7 @@ class TestResolveMcpConfigAutodiscover:
             _project_approval_config(project, "docs", approved),
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[
                 _project_source(nested_cfg, project),
                 _project_source(root_cfg, project),
@@ -557,7 +557,7 @@ class TestResolveMcpConfigAutodiscover:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Login retains explicit env approvals when trust TOML is unreadable."""
-        from deepagents_code import _env_vars
+        from niki_agent import _env_vars
 
         project_cfg = tmp_path / "project" / ".mcp.json"
         project_cfg.parent.mkdir()
@@ -569,7 +569,7 @@ class TestResolveMcpConfigAutodiscover:
         _isolate_project_mcp_trust_lists(monkeypatch, tmp_path, "[[not valid toml")
         monkeypatch.setenv(_env_vars.DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, "docs")
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -599,7 +599,7 @@ class TestResolveMcpConfigAutodiscover:
             _project_approval_config(project_cfg.parent, "slack", slack),
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -623,7 +623,7 @@ class TestResolveMcpConfigAutodiscover:
             '"broken":{"args":[]}}}'
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None, trust_project_mcp=True)
@@ -655,7 +655,7 @@ class TestResolveMcpConfigAutodiscover:
             _project_approval_config(approved_project, "slack", slack),
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(attack_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -685,7 +685,7 @@ class TestResolveMcpConfigAutodiscover:
             ),
         )
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(project_cfg)],
         ):
             result = resolve_mcp_config(None)
@@ -715,7 +715,7 @@ class TestResolveMcpConfigAutodiscover:
         broken = tmp_path / "broken.json"
         broken.write_text("{not json")
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[_project_source(good), _project_source(broken)],
         ):
             result = resolve_mcp_config(None, trust_project_mcp=True)
@@ -811,7 +811,7 @@ class TestFormatMalformedApprovalsNotice:
 
     def test_count_and_migration_hint(self) -> None:
         """The notice reports the count and how to re-approve."""
-        from deepagents_code.mcp_login_service import format_malformed_approvals_notice
+        from niki_agent.mcp_login_service import format_malformed_approvals_notice
 
         notice = format_malformed_approvals_notice(2)
         assert "2" in notice
@@ -829,10 +829,10 @@ class TestFormatLegacyEnvIgnoredNotice:
 
     def test_names_old_and_new_env_var(self) -> None:
         """The notice names both the removed and the replacement env var."""
-        from deepagents_code.mcp_login_service import format_legacy_env_ignored_notice
+        from niki_agent.mcp_login_service import format_legacy_env_ignored_notice
 
         notice = format_legacy_env_ignored_notice(True)
-        assert "DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS" in notice
+        assert "NIKI_ENABLED_PROJECT_MCP_SERVERS" in notice
         assert "DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS" in notice
 
 

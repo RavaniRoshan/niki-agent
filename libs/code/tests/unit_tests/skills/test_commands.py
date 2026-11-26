@@ -9,11 +9,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from deepagents.middleware.skills import SkillMetadata
 from rich.console import Console
 
-from deepagents_code.main import parse_args
-from deepagents_code.skills.commands import (
+from niki_agent.main import parse_args
+from niki_agent.sdk.middleware.skills import SkillMetadata
+from niki_agent.skills.commands import (
     _delete,
     _format_info_fields,
     _generate_template,
@@ -36,23 +36,23 @@ def _patch_skill_paths(
     """Patch the free path helpers used by the skills command under test."""
     with (
         patch(
-            "deepagents_code.skills.commands.get_user_skills_dir",
+            "niki_agent.skills.commands.get_user_skills_dir",
             return_value=user,
         ),
         patch(
-            "deepagents_code.skills.commands.get_project_skills_dir",
+            "niki_agent.skills.commands.get_project_skills_dir",
             return_value=project,
         ),
         patch(
-            "deepagents_code.skills.commands.get_built_in_skills_dir",
+            "niki_agent.skills.commands.get_built_in_skills_dir",
             return_value=built_in,
         ),
         patch(
-            "deepagents_code.skills.commands.get_user_agent_skills_dir",
+            "niki_agent.skills.commands.get_user_agent_skills_dir",
             return_value=user_agent,
         ),
         patch(
-            "deepagents_code.skills.commands.get_project_agent_skills_dir",
+            "niki_agent.skills.commands.get_project_agent_skills_dir",
             return_value=project_agent,
         ),
     ):
@@ -321,7 +321,7 @@ class TestSkillsHelpFlag:
 
         with (
             patch("sys.argv", ["deepagents", "skills", "-h"]),
-            patch("deepagents_code.ui.console", test_console),
+            patch("niki_agent.ui.console", test_console),
             pytest.raises(SystemExit) as exc_info,
         ):
             parse_args()
@@ -347,7 +347,7 @@ class TestSkillsHelpFlag:
 
         with (
             patch("sys.argv", ["deepagents", "skills", "list", "-h"]),
-            patch("deepagents_code.ui.console", test_console),
+            patch("niki_agent.ui.console", test_console),
             pytest.raises(SystemExit) as exc_info,
         ):
             parse_args()
@@ -378,7 +378,7 @@ class TestThreadsHelpFlag:
 
         with (
             patch("sys.argv", ["deepagents", "threads", "-h"]),
-            patch("deepagents_code.ui.console", test_console),
+            patch("niki_agent.ui.console", test_console),
             pytest.raises(SystemExit) as exc_info,
         ):
             parse_args()
@@ -431,7 +431,7 @@ class TestInfoShadowWarning:
         self._make_skill_dir(project_dir, "web-research", "Project version")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -454,7 +454,7 @@ class TestInfoShadowWarning:
         with (
             mock_settings,
             _patch_skill_paths(user=user_dir, project=project_dir),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _info("web-research", agent="agent")
@@ -469,7 +469,7 @@ class TestInfoShadowWarning:
         self._make_skill_dir(user_dir, "web-research", "User only skill")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -492,7 +492,7 @@ class TestInfoShadowWarning:
         with (
             mock_settings,
             _patch_skill_paths(user=user_dir, project=project_dir),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _info("web-research", agent="agent")
@@ -525,7 +525,7 @@ class TestInfoBuiltInSkill:
         self._make_skill_dir(built_in_dir, "test-builtin", "A built-in skill")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -548,7 +548,7 @@ class TestInfoBuiltInSkill:
         with (
             mock_settings,
             _patch_skill_paths(user=None, project=None, built_in=built_in_dir),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _info("test-builtin", agent="agent")
@@ -565,7 +565,7 @@ class TestInfoBuiltInSkill:
         self._make_skill_dir(user_dir, "shared-skill", "User version")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -592,7 +592,7 @@ class TestInfoBuiltInSkill:
                 project=None,
                 built_in=built_in_dir,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             # User overrides built-in; info shows user version, no shadow note
@@ -620,7 +620,7 @@ class TestListBuiltInSkillsDisplay:
         self._make_skill_dir(built_in_dir, "test-builtin", "A built-in skill")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -643,7 +643,7 @@ class TestListBuiltInSkillsDisplay:
         with (
             mock_settings,
             _patch_skill_paths(user=None, project=None, built_in=built_in_dir),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _list(agent="agent")
@@ -658,7 +658,7 @@ class TestListBuiltInSkillsDisplay:
         self._make_skill_dir(built_in_dir, "test-builtin", "A built-in skill")
 
         mock_settings = patch(
-            "deepagents_code.config.Credentials.from_environment",
+            "niki_agent.config.Credentials.from_environment",
             return_value=type(
                 "FakeSettings",
                 (),
@@ -681,7 +681,7 @@ class TestListBuiltInSkillsDisplay:
         with (
             mock_settings,
             _patch_skill_paths(user=None, project=None, built_in=built_in_dir),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _list(agent="agent")
@@ -733,7 +733,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -758,9 +758,9 @@ class TestDeleteSkill:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
             mock_console.print = capture_print
@@ -787,7 +787,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -809,7 +809,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -831,7 +831,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -853,7 +853,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -875,7 +875,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -909,9 +909,9 @@ class TestDeleteSkill:
             output.clear()
 
             with (
-                patch("deepagents_code.config.Credentials") as mock_settings_cls,
+                patch("niki_agent.config.Credentials") as mock_settings_cls,
                 _patch_skill_paths(user=user_skills_dir, project=None),
-                patch("deepagents_code.config.console") as mock_console,
+                patch("niki_agent.config.console") as mock_console,
             ):
                 mock_settings_cls.from_environment.return_value = mock_settings
                 mock_console.print = capture_print
@@ -938,7 +938,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_dir, project=project_skills_dir),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -959,9 +959,9 @@ class TestDeleteSkill:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_dir, project=None),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
             mock_console.print = capture_print
@@ -993,7 +993,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -1019,7 +1019,7 @@ class TestDeleteSkill:
         mock_settings.get_project_agent_skills_dir.return_value = None
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=agent1_skills_dir, project=None),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -1046,9 +1046,9 @@ class TestDeleteSkill:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(user=user_skills_dir, project=None),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
             patch("shutil.rmtree", side_effect=OSError("Permission denied")),
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
@@ -1080,13 +1080,13 @@ class TestDeleteSkill:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.config.Credentials") as mock_settings_cls,
+            patch("niki_agent.config.Credentials") as mock_settings_cls,
             _patch_skill_paths(
                 user=None,
                 project=None,
                 user_agent=agent_skills_dir,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_settings_cls.from_environment.return_value = mock_settings
             mock_console.print = capture_print
@@ -1114,19 +1114,19 @@ class TestSkillsTrustCommand:
 
     def test_list_populated(self) -> None:
         """`list` prints each trusted directory."""
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="list")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.list_trusted_skill_dir_entries",
+                "niki_agent.skills.trust.list_trusted_skill_dir_entries",
                 return_value=[
                     ("/shared/a", "2026-01-01T00:00:00+00:00"),
                     ("/shared/b", ""),
                 ],
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1139,16 +1139,16 @@ class TestSkillsTrustCommand:
 
     def test_list_empty(self) -> None:
         """`list` on an empty store reports that nothing is trusted."""
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="list")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.list_trusted_skill_dir_entries",
+                "niki_agent.skills.trust.list_trusted_skill_dir_entries",
                 return_value=[],
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1157,16 +1157,16 @@ class TestSkillsTrustCommand:
 
     def test_ls_alias_behaves_like_list(self) -> None:
         """`ls` is an alias for `list`."""
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="ls")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.list_trusted_skill_dir_entries",
+                "niki_agent.skills.trust.list_trusted_skill_dir_entries",
                 return_value=[("/shared/a", "")],
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1178,13 +1178,13 @@ class TestSkillsTrustCommand:
         import json
         from io import StringIO
 
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="list", output_format="json")
         buf = StringIO()
         with (
             patch(
-                "deepagents_code.skills.trust.list_trusted_skill_dir_entries",
+                "niki_agent.skills.trust.list_trusted_skill_dir_entries",
                 return_value=[("/shared/a", "2026-01-01T00:00:00+00:00")],
             ),
             patch("sys.stdout", buf),
@@ -1203,16 +1203,16 @@ class TestSkillsTrustCommand:
         It must never silently print "No trusted skill directories" while
         entries the user cannot see or revoke sit in the file.
         """
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="list")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.list_trusted_skill_dir_entries",
+                "niki_agent.skills.trust.list_trusted_skill_dir_entries",
                 side_effect=OSError("permission denied"),
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             with pytest.raises(SystemExit) as exc_info:
@@ -1225,17 +1225,17 @@ class TestSkillsTrustCommand:
 
     def test_revoke_success(self) -> None:
         """A successful revoke confirms the removed directory."""
-        from deepagents_code.skills.commands import _trust
-        from deepagents_code.skills.trust import RevokeResult
+        from niki_agent.skills.commands import _trust
+        from niki_agent.skills.trust import RevokeResult
 
         args = argparse.Namespace(trust_command="revoke", dir="/shared/a")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.revoke_skill_dir_trust",
+                "niki_agent.skills.trust.revoke_skill_dir_trust",
                 return_value=RevokeResult.REMOVED,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1244,17 +1244,17 @@ class TestSkillsTrustCommand:
 
     def test_revoke_not_found_reports_honestly(self) -> None:
         """Revoking a dir that was never trusted must not print a false success."""
-        from deepagents_code.skills.commands import _trust
-        from deepagents_code.skills.trust import RevokeResult
+        from niki_agent.skills.commands import _trust
+        from niki_agent.skills.trust import RevokeResult
 
         args = argparse.Namespace(trust_command="revoke", dir="/shared/nope")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.revoke_skill_dir_trust",
+                "niki_agent.skills.trust.revoke_skill_dir_trust",
                 return_value=RevokeResult.NOT_FOUND,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1268,8 +1268,8 @@ class TestSkillsTrustCommand:
         import json
         from io import StringIO
 
-        from deepagents_code.skills.commands import _trust
-        from deepagents_code.skills.trust import RevokeResult
+        from niki_agent.skills.commands import _trust
+        from niki_agent.skills.trust import RevokeResult
 
         args = argparse.Namespace(
             trust_command="revoke", dir="/shared/a", output_format="json"
@@ -1277,7 +1277,7 @@ class TestSkillsTrustCommand:
         buf = StringIO()
         with (
             patch(
-                "deepagents_code.skills.trust.revoke_skill_dir_trust",
+                "niki_agent.skills.trust.revoke_skill_dir_trust",
                 return_value=RevokeResult.NOT_FOUND,
             ),
             patch("sys.stdout", buf),
@@ -1290,17 +1290,17 @@ class TestSkillsTrustCommand:
 
     def test_revoke_failure_exits(self) -> None:
         """A store/IO error reports an error and exits non-zero."""
-        from deepagents_code.skills.commands import _trust
-        from deepagents_code.skills.trust import RevokeResult
+        from niki_agent.skills.commands import _trust
+        from niki_agent.skills.trust import RevokeResult
 
         args = argparse.Namespace(trust_command="revoke", dir="/shared/a")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.revoke_skill_dir_trust",
+                "niki_agent.skills.trust.revoke_skill_dir_trust",
                 return_value=RevokeResult.ERROR,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             with pytest.raises(SystemExit) as exc_info:
@@ -1311,16 +1311,16 @@ class TestSkillsTrustCommand:
 
     def test_clear_success(self) -> None:
         """A successful clear confirms removal."""
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="clear")
         output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.clear_trusted_skill_dirs",
+                "niki_agent.skills.trust.clear_trusted_skill_dirs",
                 return_value=True,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             _trust(args)
@@ -1332,13 +1332,13 @@ class TestSkillsTrustCommand:
         import json
         from io import StringIO
 
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="clear", output_format="json")
         buf = StringIO()
         with (
             patch(
-                "deepagents_code.skills.trust.clear_trusted_skill_dirs",
+                "niki_agent.skills.trust.clear_trusted_skill_dirs",
                 return_value=True,
             ),
             patch("sys.stdout", buf),
@@ -1351,16 +1351,16 @@ class TestSkillsTrustCommand:
 
     def test_clear_failure_exits(self) -> None:
         """A failed clear reports an error and exits non-zero."""
-        from deepagents_code.skills.commands import _trust
+        from niki_agent.skills.commands import _trust
 
         args = argparse.Namespace(trust_command="clear")
         _output, capture_print = self._capture()
         with (
             patch(
-                "deepagents_code.skills.trust.clear_trusted_skill_dirs",
+                "niki_agent.skills.trust.clear_trusted_skill_dirs",
                 return_value=False,
             ),
-            patch("deepagents_code.config.console") as mock_console,
+            patch("niki_agent.config.console") as mock_console,
         ):
             mock_console.print = capture_print
             with pytest.raises(SystemExit) as exc_info:

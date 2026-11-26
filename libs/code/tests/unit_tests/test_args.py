@@ -9,8 +9,8 @@ from unittest.mock import patch
 import pytest
 from rich.console import Console
 
-from deepagents_code._constants import DEFAULT_AGENT_NAME, DEFAULT_THREAD_LIMIT
-from deepagents_code.main import _resolve_agent_arg, parse_args
+from niki_agent._constants import DEFAULT_AGENT_NAME, DEFAULT_THREAD_LIMIT
+from niki_agent.main import _resolve_agent_arg, parse_args
 
 
 class TestInitialPromptArg:
@@ -180,8 +180,8 @@ class TestTopLevelHelp:
         test_console = Console(file=buf, highlight=False, width=120)
 
         with (
-            patch.object(sys, "argv", ["deepagents", "-h"]),
-            patch("deepagents_code.ui.console", test_console),
+            patch.object(sys, "argv", ["niki", "-h"]),
+            patch("niki_agent.ui.console", test_console),
             pytest.raises(SystemExit) as exc_info,
         ):
             parse_args()
@@ -190,7 +190,7 @@ class TestTopLevelHelp:
         output = buf.getvalue()
 
         # Should contain global help content
-        assert "deepagents" in output.lower()
+        assert "niki-agent" in output.lower()
         assert "--help" in output
 
 
@@ -212,7 +212,7 @@ class TestSubcommandHelpFlags:
 
         with (
             patch.object(sys, "argv", argv),
-            patch("deepagents_code.ui.console", test_console),
+            patch("niki_agent.ui.console", test_console),
             pytest.raises(SystemExit) as exc_info,
         ):
             parse_args()
@@ -353,10 +353,10 @@ class TestStaleStoredAgent:
         args = argparse.Namespace(agent=None, resume_thread=None)
 
         with (
-            patch("deepagents_code.main.get_deepagents_home", return_value=tmp_path),
-            patch("deepagents_code.model_config.load_default_agent", return_value=None),
+            patch("niki_agent.main.get_deepagents_home", return_value=tmp_path),
+            patch("niki_agent.model_config.load_default_agent", return_value=None),
             patch(
-                "deepagents_code.model_config.load_recent_agent",
+                "niki_agent.model_config.load_recent_agent",
                 return_value="plugins",
             ),
         ):

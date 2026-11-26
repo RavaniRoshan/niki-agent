@@ -8,13 +8,13 @@ from unittest import mock
 import pytest
 from langchain_core.messages import ToolMessage
 
-from deepagents_code.diff_utils import DiffStats
+from niki_agent.diff_utils import DiffStats
 
 if TYPE_CHECKING:
-    from deepagents.backends.protocol import BackendProtocol
+    from niki_agent.sdk.backends.protocol import BackendProtocol
 
 
-from deepagents_code.file_ops import (
+from niki_agent.file_ops import (
     FileOperationRecord,
     FileOpTracker,
     build_approval_preview,
@@ -79,7 +79,7 @@ def test_unreadable_before_content_is_flagged(tmp_path: Path) -> None:
     tracker = FileOpTracker(assistant_id=None)
 
     with mock.patch(
-        "deepagents_code.file_ops._read_with_reason",
+        "niki_agent.file_ops._read_with_reason",
         return_value=(None, "Permission denied"),
     ):
         tracker.start_operation("edit_file", {"file_path": str(path)}, "locked-1")
@@ -160,9 +160,7 @@ def test_an_unresolvable_delete_does_not_claim_a_verified_zero() -> None:
     """
     tracker = FileOpTracker(assistant_id=None)
 
-    with mock.patch(
-        "deepagents_code.file_ops.resolve_physical_path", return_value=None
-    ):
+    with mock.patch("niki_agent.file_ops.resolve_physical_path", return_value=None):
         tracker.start_operation("delete", {"file_path": "/nul\x00/x"}, "lost-1")
 
     assert tracker.active["lost-1"].diff_outcome == "untrusted_before"
@@ -216,7 +214,7 @@ def test_failed_read_back_still_reports_what_the_request_knew(
     )
 
     with mock.patch(
-        "deepagents_code.file_ops._read_with_reason",
+        "niki_agent.file_ops._read_with_reason",
         return_value=(None, "Permission denied"),
     ):
         record = tracker.complete_with_message(
@@ -243,7 +241,7 @@ def test_unreadable_existing_file_is_flagged_even_for_write_file(
     tracker = FileOpTracker(assistant_id=None)
 
     with mock.patch(
-        "deepagents_code.file_ops._read_with_reason",
+        "niki_agent.file_ops._read_with_reason",
         return_value=(None, "Permission denied"),
     ):
         tracker.start_operation("write_file", {"file_path": str(path)}, "locked-2")
@@ -259,7 +257,7 @@ def test_backend_file_not_found_is_not_flagged_as_unreadable() -> None:
     pre-image of the create case, not a read failure, so the diff of the whole
     file as additions is trustworthy and must not be suppressed.
     """
-    from deepagents.backends.protocol import FileDownloadResponse
+    from niki_agent.sdk.backends.protocol import FileDownloadResponse
 
     backend = mock.Mock()
     backend.download_files.return_value = [
@@ -282,7 +280,7 @@ def test_backend_read_failure_is_flagged_as_unreadable() -> None:
     `permission_denied` means the file may exist and differ from the stand-in
     empty string, so any diff against it is suspect and must be flagged.
     """
-    from deepagents.backends.protocol import FileDownloadResponse
+    from niki_agent.sdk.backends.protocol import FileDownloadResponse
 
     backend = mock.Mock()
     backend.download_files.return_value = [
@@ -307,7 +305,7 @@ def test_backend_response_without_content_or_error_is_flagged_as_unreadable() ->
     diff a fabricated empty pre-image with nothing marking it untrustworthy —
     the whole file would render as a confident insertion.
     """
-    from deepagents.backends.protocol import FileDownloadResponse
+    from niki_agent.sdk.backends.protocol import FileDownloadResponse
 
     backend = mock.Mock()
     backend.download_files.return_value = [FileDownloadResponse(path="/x.txt")]
@@ -442,7 +440,7 @@ def test_write_preview_distinguishes_an_unreadable_file_from_a_new_one(
     target = tmp_path / "locked.py"
     target.write_text("secret = 1\n", encoding="utf-8")
 
-    with mock.patch("deepagents_code.file_ops._safe_read", return_value=None):
+    with mock.patch("niki_agent.file_ops._safe_read", return_value=None):
         preview = build_approval_preview(
             "write_file", {"file_path": str(target), "content": "new = 2\n"}, None
         )
@@ -477,7 +475,7 @@ class TestUntrustedBeforeThroughCompletion:
         tracker = FileOpTracker(assistant_id=None)
 
         with mock.patch(
-            "deepagents_code.file_ops._read_with_reason",
+            "niki_agent.file_ops._read_with_reason",
             return_value=(None, "Permission denied"),
         ):
             tracker.start_operation("edit_file", {"file_path": str(target)}, "t-1")
@@ -533,12 +531,12 @@ class TestBackendReadBack:
 
     @staticmethod
     def _found(content: bytes) -> list[object]:
-        from deepagents.backends.protocol import FileDownloadResponse
+        from niki_agent.sdk.backends.protocol import FileDownloadResponse
 
         return [FileDownloadResponse(path="/x.txt", content=content, error=None)]
 
     def test_an_error_response_carries_its_reason(self) -> None:
-        from deepagents.backends.protocol import FileDownloadResponse
+        from niki_agent.sdk.backends.protocol import FileDownloadResponse
 
         record = self._complete(
             self._backend(

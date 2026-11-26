@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from deepagents_code.client.commands.extras import run_install_request
-from deepagents_code.update_check import (
+from niki_agent.client.commands.extras import run_install_request
+from niki_agent.update_check import (
     UPDATE_LOCK_CONTENDED_MESSAGE,
     ExtraInstallOutcome,
 )
@@ -19,18 +19,18 @@ class TestInstallCommandDispatch:
         """A manual reinstall must not bypass another process's lock."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=Path("/tmp/deepagents-install.log"),
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value="unsafe manual command",
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(
                     False,

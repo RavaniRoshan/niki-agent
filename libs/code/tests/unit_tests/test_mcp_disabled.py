@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code import mcp_disabled
-from deepagents_code.configuration.service import invalidate_config_sources
-from deepagents_code.mcp_disabled import (
+from niki_agent import mcp_disabled
+from niki_agent.configuration.service import invalidate_config_sources
+from niki_agent.mcp_disabled import (
     get_disabled_servers,
     is_server_disabled,
     set_server_disabled,

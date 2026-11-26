@@ -5,16 +5,16 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.manager import HookSessionIdentity, HooksManager
-from deepagents_code.hooks.models.domain import PermissionEffect
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.manager import HookSessionIdentity, HooksManager
+from niki_agent.hooks.models.domain import PermissionEffect
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
 
-    from deepagents_code.hooks.presenter import HookPresenter
+    from niki_agent.hooks.presenter import HookPresenter
 
 
 def _write_project_hooks(root: Path) -> Path:
@@ -33,9 +33,9 @@ def _write_project_hooks(root: Path) -> Path:
 def _isolate_hook_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    monkeypatch.setattr("deepagents_code.hooks.loading.DEFAULT_CONFIG_DIR", user_dir)
+    monkeypatch.setattr("niki_agent.hooks.loading.DEFAULT_CONFIG_DIR", user_dir)
     monkeypatch.setattr(
-        "deepagents_code.hooks.runtime.DEFAULT_CONFIG_DIR", tmp_path / "state"
+        "niki_agent.hooks.runtime.DEFAULT_CONFIG_DIR", tmp_path / "state"
     )
 
 

@@ -8,7 +8,7 @@ from typing import Any, cast
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk
 
-from deepagents_code._session_stats import (
+from niki_agent._session_stats import (
     ModelStats,
     RecordedRequest,
     RecordedUsage,
@@ -20,7 +20,7 @@ from deepagents_code._session_stats import (
     record_model_usage_event,
     usage_table_enabled,
 )
-from deepagents_code.cost_tracking import MODEL_USAGE_EVENT_VERSION
+from niki_agent.cost_tracking import MODEL_USAGE_EVENT_VERSION
 
 
 class TestFormatCost:
@@ -188,7 +188,7 @@ class TestRecordMessageUsage:
         provisional display can follow the correction down.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, model, _provider="": (
                 0.5 if model == "fallback-model" else 0.05
             ),
@@ -259,7 +259,7 @@ class TestRecordMessageUsage:
         loss has to be diagnosable.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, _model, _provider="": 0.1,
         )
         stats = SessionStats()
@@ -285,7 +285,7 @@ class TestRecordMessageUsage:
         )
 
         record_message_usage(stats, chunk, recorded_requests=ledger)
-        with caplog.at_level(logging.WARNING, logger="deepagents_code._session_stats"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent._session_stats"):
             record_message_usage(stats, completion, recorded_requests=ledger)
 
         assert stats.input_tokens == 0
@@ -304,7 +304,7 @@ class TestRecordMessageUsage:
         expensive model and report a spike instead of a correction.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, model, _provider="": (
                 0.5 if model == "parent-model" else 0.05
             ),
@@ -371,7 +371,7 @@ class TestRecordMessageUsage:
         Once from the message stream and once as a nested event.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, _model, _provider="": 0.05,
         )
         stats = SessionStats()
@@ -411,7 +411,7 @@ class TestRecordMessageUsage:
     ) -> None:
         """A finalization closes the ledger entry against later chunk deltas."""
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, _model, _provider="": 0.05,
         )
         stats = SessionStats()
@@ -455,7 +455,7 @@ class TestRecordMessageUsage:
         It is an ordinary first record, not a correction.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, _model, _provider="": 0.05,
         )
         stats = SessionStats()
@@ -486,7 +486,7 @@ class TestRecordMessageUsage:
         A completion finalizes only its own attempt's entry.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, _model, _provider="": 0.1,
         )
         stats = SessionStats()
@@ -545,7 +545,7 @@ class TestRecordMessageUsage:
             priced_models.append(model)
             return 0.25 if model == "child-model" else 9.99
 
-        monkeypatch.setattr("deepagents_code.cost_tracking.estimate_cost", fake_price)
+        monkeypatch.setattr("niki_agent.cost_tracking.estimate_cost", fake_price)
         stats = SessionStats()
         ledger: dict[UsageLedgerKey, RecordedRequest] = {}
         chunk = AIMessageChunk(
@@ -565,8 +565,8 @@ class TestRecordMessageUsage:
             fallback_model="main-model",
             fallback_provider="openai",
             request_metadata={
-                "deepagents_code_configured_model": "child-model",
-                "deepagents_code_configured_provider": "openai",
+                "niki_agent_configured_model": "child-model",
+                "niki_agent_configured_provider": "openai",
             },
             kind="subagent",
             recorded_requests=ledger,
@@ -592,7 +592,7 @@ class TestRecordMessageUsage:
             priced_models.append(model)
             return 0.25
 
-        monkeypatch.setattr("deepagents_code.cost_tracking.estimate_cost", fake_price)
+        monkeypatch.setattr("niki_agent.cost_tracking.estimate_cost", fake_price)
         stats = SessionStats()
         ledger: dict[UsageLedgerKey, RecordedRequest] = {}
         chunk = AIMessageChunk(
@@ -615,8 +615,8 @@ class TestRecordMessageUsage:
             fallback_model="main-model",
             fallback_provider="openai",
             request_metadata={
-                "deepagents_code_configured_model": "child-model",
-                "deepagents_code_configured_provider": "openai",
+                "niki_agent_configured_model": "child-model",
+                "niki_agent_configured_provider": "openai",
             },
             kind="subagent",
             recorded_requests=ledger,
@@ -640,7 +640,7 @@ class TestRecordMessageUsage:
             priced_providers.append(provider)
             return 0.25
 
-        monkeypatch.setattr("deepagents_code.cost_tracking.estimate_cost", fake_price)
+        monkeypatch.setattr("niki_agent.cost_tracking.estimate_cost", fake_price)
         stats = SessionStats()
         chunk = AIMessageChunk(
             content="",
@@ -659,8 +659,8 @@ class TestRecordMessageUsage:
             fallback_model="main-model",
             fallback_provider="openai",
             request_metadata={
-                "deepagents_code_configured_model": "gpt-5.5",
-                "deepagents_code_configured_provider": "azure_openai",
+                "niki_agent_configured_model": "gpt-5.5",
+                "niki_agent_configured_provider": "azure_openai",
             },
             kind="subagent",
             recorded_requests={},
@@ -683,7 +683,7 @@ class TestRecordMessageUsage:
             priced_models.append(model)
             return 0.25
 
-        monkeypatch.setattr("deepagents_code.cost_tracking.estimate_cost", fake_price)
+        monkeypatch.setattr("niki_agent.cost_tracking.estimate_cost", fake_price)
         stats = SessionStats()
         chunk = AIMessageChunk(
             content="",
@@ -745,7 +745,7 @@ class TestParallelChildrenAndLateCorrections:
         backend total already reset the display.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, model, _provider="": 0.05 if model == "real-model" else 0.5,
         )
         stats = SessionStats()
@@ -788,7 +788,7 @@ class TestParallelChildrenAndLateCorrections:
         spend.
         """
         monkeypatch.setattr(
-            "deepagents_code.cost_tracking.estimate_cost",
+            "niki_agent.cost_tracking.estimate_cost",
             lambda _usage, model, _provider="": 0.05 if model == "real-model" else 0.5,
         )
         stats = SessionStats()
@@ -829,7 +829,7 @@ class TestParallelChildrenAndLateCorrections:
             input_tokens = cast("dict[str, Any]", usage)["input_tokens"]
             return input_tokens / 1000 * rates[model]
 
-        monkeypatch.setattr("deepagents_code.cost_tracking.estimate_cost", fake_price)
+        monkeypatch.setattr("niki_agent.cost_tracking.estimate_cost", fake_price)
         stats = SessionStats()
         ledger: dict[UsageLedgerKey, RecordedRequest] = {}
         partial = {
@@ -1143,10 +1143,10 @@ class TestUsageTableEnabled:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.load_bool_display_preference", _boom
+            "niki_agent.config_manifest.load_bool_display_preference", _boom
         )
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code._session_stats"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent._session_stats"):
             assert usage_table_enabled() is True
 
         assert "show_usage_stats" in caplog.text
@@ -1179,7 +1179,7 @@ class TestUsageTableEnabled:
             raise BlockingError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.load_bool_display_preference", _blocked
+            "niki_agent.config_manifest.load_bool_display_preference", _blocked
         )
 
         with pytest.raises(BlockingError):

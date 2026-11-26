@@ -34,9 +34,9 @@ if TYPE_CHECKING:
         CallbackManagerForLLMRun,
     )
 
-from deepagents_code import model_retry
-from deepagents_code.config import MODEL_RETRIES_ATTR
-from deepagents_code.model_retry import (
+from niki_agent import model_retry
+from niki_agent.config import MODEL_RETRIES_ATTR
+from niki_agent.model_retry import (
     CodeModelRetryMiddleware,
     _is_retryable_model_error,
     _retry_after_seconds,
@@ -248,7 +248,7 @@ def test_graph_bubble_up_is_never_handled(
         raise GraphBubbleUp
 
     with (
-        caplog.at_level(logging.DEBUG, logger="deepagents_code.model_retry"),
+        caplog.at_level(logging.DEBUG, logger="niki_agent.model_retry"),
         pytest.raises(GraphBubbleUp),
     ):
         mw.wrap_model_call(_req(), _handler(handler))
@@ -275,7 +275,7 @@ async def test_async_graph_bubble_up_is_never_handled(
         raise GraphBubbleUp
 
     with (
-        caplog.at_level(logging.DEBUG, logger="deepagents_code.model_retry"),
+        caplog.at_level(logging.DEBUG, logger="niki_agent.model_retry"),
         pytest.raises(GraphBubbleUp),
     ):
         await mw.awrap_model_call(_req(), _async_handler(handler))
@@ -370,7 +370,7 @@ def test_unstamped_model_falls_back_to_the_default_budget(
             raise httpx.ReadError(_DROPPED)
         return "ok"
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.model_retry"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.model_retry"):
         assert retry_model_call(SimpleNamespace(), call) == "ok"
 
     assert attempts == 3
@@ -605,7 +605,7 @@ def test_hidden_model_call_marks_retry_output_as_not_visible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Filtered nested streams retry without claiming visible supersession."""
-    monkeypatch.setattr("deepagents_code.model_retry.time.sleep", lambda *_: None)
+    monkeypatch.setattr("niki_agent.model_retry.time.sleep", lambda *_: None)
     events: list[dict[str, object]] = []
     calls = 0
 
@@ -638,7 +638,7 @@ def test_lifecycle_events_stop_at_permanent_error_and_exhaustion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Only a decided retry emits `model_retry`; failures end after `start`."""
-    monkeypatch.setattr("deepagents_code.model_retry.time.sleep", lambda *_: None)
+    monkeypatch.setattr("niki_agent.model_retry.time.sleep", lambda *_: None)
     middleware = CodeModelRetryMiddleware(max_retries=1)
 
     permanent_events: list[dict[str, object]] = []
@@ -713,7 +713,7 @@ def test_lifecycle_events_stop_at_permanent_error_and_exhaustion(
 def test_malformed_attempt_event_is_rejected_and_logged(
     event: dict[str, object], caplog: pytest.LogCaptureFixture
 ) -> None:
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.model_retry"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.model_retry"):
         assert model_attempt_from_event(event) is None
     assert "malformed model_attempt lifecycle fields" in caplog.text
 
@@ -721,7 +721,7 @@ def test_malformed_attempt_event_is_rejected_and_logged(
 def test_middleware_call_id_is_stable_per_invocation_and_unique_across_them(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("deepagents_code.model_retry.time.sleep", lambda *_: None)
+    monkeypatch.setattr("niki_agent.model_retry.time.sleep", lambda *_: None)
     middleware = CodeModelRetryMiddleware(max_retries=1)
     invocation_ids: list[set[object]] = []
 
@@ -839,7 +839,7 @@ def test_sync_model_call_is_retried_after_streaming(
     only covers `awrap_model_call`. The sync path is a verbatim duplicate and
     an async-only fix leaves it still ending the turn on a mid-stream drop.
     """
-    monkeypatch.setattr("deepagents_code.model_retry.time.sleep", lambda *_: None)
+    monkeypatch.setattr("niki_agent.model_retry.time.sleep", lambda *_: None)
     events: list[dict[str, object]] = []
     calls = 0
 

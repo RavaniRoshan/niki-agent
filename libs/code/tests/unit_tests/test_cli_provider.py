@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from deepagents_code.config_manifest import get_option
-from deepagents_code.configuration.provider import CliProvider
-from deepagents_code.configuration.resolver import CLI_RANK
-from deepagents_code.configuration.types import Found
+from niki_agent.config_manifest import get_option
+from niki_agent.configuration.provider import CliProvider
+from niki_agent.configuration.resolver import CLI_RANK
+from niki_agent.configuration.types import Found
 
 
 @pytest.mark.parametrize(

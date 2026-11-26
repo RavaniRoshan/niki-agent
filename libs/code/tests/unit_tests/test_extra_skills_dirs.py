@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code import config
+from niki_agent import config
 
 
 @pytest.mark.parametrize(

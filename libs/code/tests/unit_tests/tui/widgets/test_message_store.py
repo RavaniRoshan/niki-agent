@@ -3,14 +3,14 @@
 import pytest
 from textual.content import Content
 
-from deepagents_code.tui.widgets.message_store import (
+from niki_agent.tui.widgets.message_store import (
     DEFAULT_HEIGHT_HINT,
     MIN_HEIGHT_HINT,
     MessageData,
     MessageStore,
     MessageType,
 )
-from deepagents_code.tui.widgets.messages import (
+from niki_agent.tui.widgets.messages import (
     AssistantMessage,
     ErrorMessage,
     UserMessage,

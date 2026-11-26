@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code.subagents import (
+from niki_agent.subagents import (
     _load_subagents_from_dir,
     _parse_subagent_file,
     list_subagents,

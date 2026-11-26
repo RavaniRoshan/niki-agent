@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from deepagents_code.config import ASCII_GLYPHS
-from deepagents_code.context_doctor import (
+from niki_agent.config import ASCII_GLYPHS
+from niki_agent.context_doctor import (
     _bounded,
     build_context_doctor_report,
     format_memory_prompt,
     render_context_doctor_report,
 )
-from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-from deepagents_code.tool_catalog import ToolEntry
+from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+from niki_agent.tool_catalog import ToolEntry
 
 if TYPE_CHECKING:
     import pytest
@@ -79,9 +79,7 @@ def test_report_counts_schemas_and_surfaces_mcp_errors() -> None:
 def test_bounded_uses_length_aware_ascii_ellipsis(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        "deepagents_code.context_doctor.get_glyphs", lambda: ASCII_GLYPHS
-    )
+    monkeypatch.setattr("niki_agent.context_doctor.get_glyphs", lambda: ASCII_GLYPHS)
 
     result = _bounded("abcdefghij", limit=7)
 

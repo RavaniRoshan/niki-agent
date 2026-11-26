@@ -12,12 +12,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 import pytest
-from deepagents.backends import LocalShellBackend
-from deepagents.backends.protocol import ExecuteResponse
-from deepagents.middleware._state import private_state_field_names
-from deepagents.middleware.summarization import SummarizationMiddleware
 
-from deepagents_code.local_context import (
+from niki_agent.local_context import (
     DETECT_CONTEXT_SCRIPT,
     LocalContextMiddleware,
     LocalContextState,
@@ -37,7 +33,11 @@ from deepagents_code.local_context import (
     _section_test_command,
     _section_tree,
 )
-from deepagents_code.mcp_tools import MCPServerInfo
+from niki_agent.mcp_tools import MCPServerInfo
+from niki_agent.sdk.backends import LocalShellBackend
+from niki_agent.sdk.backends.protocol import ExecuteResponse
+from niki_agent.sdk.middleware._state import private_state_field_names
+from niki_agent.sdk.middleware.summarization import SummarizationMiddleware
 
 
 class _SyncBackendFake:
@@ -154,7 +154,7 @@ class TestLocalContextMiddleware:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """A project `.env` cannot add `BASH_ENV` to startup detection."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         payload = tmp_path / "payload.sh"
         marker = tmp_path / "marker"

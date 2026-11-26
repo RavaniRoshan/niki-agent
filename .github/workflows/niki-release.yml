@@ -109,12 +109,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Proves the launcher can create an environment and resolve the CLI.
-          # It does NOT prove a model call works -- that needs a key.
-          stage="niki-smoke-${{ matrix.platform }}"
-          mkdir -p "$stage"
-          tar -xzf "niki-smoke-${{ matrix.platform }}.tar.gz" 2>/dev/null || true
-          echo "built $(ls -1 *.whl) for ${{ matrix.platform }}"
+          # Proves the installer creates an environment, resolves dependencies,
+          # and runs the CLI from the built wheel. It does NOT prove a model
+          # call works -- that needs a key.
+          version="${{ steps.version.outputs.value }}"
+          stage="niki-${version}-${{ matrix.platform }}"
+          extract="$RUNNER_TEMP/extract"
+          prefix="$RUNNER_TEMP/niki-smoke"
+          mkdir -p "$extract"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            powershell -NoProfile -Command \
+              "Expand-Archive -Path '${stage}.zip' -DestinationPath '$extract'"
+            powershell -NoProfile -ExecutionPolicy Bypass \
+              -File "$extract/$stage/install.ps1" -Prefix "$prefix"
+          else
+            tar -xzf "${stage}.tar.gz" -C "$extract"
+            NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -152,10 +163,10 @@ jobs:
         run: |
           set -euo pipefail
           cd artifacts
+          # One checksum line per artifact, uploaded beside the release files.
           find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 \
-            | sort -z | xargs -0 sha256sum > "$GITHUB_STEP_SUMMARY"
-          cat SHA256SUMS 2>/dev/null || true
-          ls -1
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create the release
         uses: softprops/action-gh-release@v2
@@ -167,11 +178,11 @@ jobs:
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
 
       - name: Upload checksums
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.value }}
           files: artifacts/SHA256SUMS
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true

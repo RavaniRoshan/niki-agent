@@ -9,8 +9,8 @@ import pytest
 from langchain_core.messages import ToolMessage
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
-from deepagents_code.memory_guard import ManagedMemoryGuardMiddleware
-from deepagents_code.onboarding import (
+from niki_agent.memory_guard import ManagedMemoryGuardMiddleware
+from niki_agent.onboarding import (
     ONBOARDING_NAME_MEMORY_END,
     ONBOARDING_NAME_MEMORY_START,
     extract_onboarding_name_block,

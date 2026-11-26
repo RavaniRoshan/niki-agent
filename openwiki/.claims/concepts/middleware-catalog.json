@@ -4,7 +4,7 @@
   "claims": [
     {
       "id": "claim_d3c0b63bcdd446b9b1fe8e28af20eec7",
-      "statement": "The deepagents.middleware package re-exports its public middleware classes and supporting types for filesystem, summarization, skills (including SkillToolResolver), subagents, async subagents, memory, rubric, and unsupported content from its __init__.py, defining the surface consumers import from deepagents.middleware.",
+      "statement": "The deepagents.middleware package re-exports its public middleware classes and supporting types for filesystem, summarization, skills (including SkillToolResolver), subagents, async subagents, memory, rubric, and unsupported content from its __init__.py, defining the surface consumers import from niki_agent.sdk.middleware.",
       "evidence": [
         {
           "resource": "repo://libs/deepagents/deepagents/middleware/__init__.py",

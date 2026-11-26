@@ -21,7 +21,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import Field, PrivateAttr
 
-from deepagents_code._fake_models import _ToolBindingFakeModel
+from niki_agent._fake_models import _ToolBindingFakeModel
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

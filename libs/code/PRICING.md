@@ -3,7 +3,7 @@
 `/cost` reports an estimate for the current thread. Rates come from
 [genai-prices](https://github.com/pydantic/genai-prices), which ships an offline
 catalog and refreshes it hourly in the background (opt out with
-`DEEPAGENTS_CODE_PRICES_AUTO_UPDATE=0`, or `[update].prices_auto_update = false`
+`NIKI_PRICES_AUTO_UPDATE=0`, or `[update].prices_auto_update = false`
 in `config.toml`).
 
 Estimates are display-only. Nothing in dcode caps spend or gates execution on
@@ -101,5 +101,5 @@ pricing: the bad source is dropped and everything else still prices.
 dcode also ships a small maintainer-curated catalog for models upstream has not
 priced yet. Your file wins over it on a conflicting `(provider id, model id)`
 pair, and both are consulted only when genai-prices itself has no rates. See
-[`deepagents_code/bundled_prices.README.md`](./deepagents_code/bundled_prices.README.md)
+[`niki_agent/bundled_prices.README.md`](./niki_agent/bundled_prices.README.md)
 for that policy.

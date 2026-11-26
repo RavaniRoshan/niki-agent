@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from deepagents_code.config import get_glyphs
-from deepagents_code.tui.widgets.approval import ApprovalMenu
+from niki_agent.config import get_glyphs
+from niki_agent.tui.widgets.approval import ApprovalMenu
 
 MenuFactory = Callable[..., tuple[ApprovalMenu, "asyncio.Future[dict[str, str]]"]]
 

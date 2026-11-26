@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from deepagents_code.skills.load import list_skills
+from niki_agent.skills.load import list_skills
 
 
 def _create_skill(skill_dir: Path, name: str, description: str) -> None:
@@ -79,7 +79,7 @@ class TestListSkillsBuiltIn:
         built_in_dir.mkdir()
 
         original_list = __import__(
-            "deepagents.middleware.skills", fromlist=["_list_skills"]
+            "niki_agent.sdk.middleware.skills", fromlist=["_list_skills"]
         )._list_skills
 
         call_count = 0
@@ -93,9 +93,7 @@ class TestListSkillsBuiltIn:
                 raise OSError(msg)
             return original_list(backend=backend, source_path=source_path)
 
-        with patch(
-            "deepagents_code.skills.load.list_skills_from_backend", patched_list
-        ):
+        with patch("niki_agent.skills.load.list_skills_from_backend", patched_list):
             skills = list_skills(
                 built_in_skills_dir=built_in_dir,
                 user_skills_dir=user_dir,

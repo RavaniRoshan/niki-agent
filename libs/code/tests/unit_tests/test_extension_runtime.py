@@ -6,13 +6,13 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code.extensions import load_extensions
-from deepagents_code.extensions.runtime import (
+from niki_agent.extensions import load_extensions
+from niki_agent.extensions.runtime import (
     bind_server_extensions,
     shutdown_server_extensions,
 )
-from deepagents_code.extensions.settings import ExtensionSettings, TrustPolicy
-from deepagents_code.plugins.models import (
+from niki_agent.extensions.settings import ExtensionSettings, TrustPolicy
+from niki_agent.plugins.models import (
     ComponentInventory,
     PluginDiscoveryResult,
     PluginInstance,
@@ -23,17 +23,17 @@ from deepagents_code.plugins.models import (
 @pytest.fixture(autouse=True)
 def _isolate_plugins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Prevent tests from loading executable code from real user state."""
-    monkeypatch.setenv("DEEPAGENTS_CODE_EXPERIMENTAL", "1")
+    monkeypatch.setenv("NIKI_EXPERIMENTAL", "1")
     monkeypatch.setattr(
-        "deepagents_code.plugins.discover_plugins",
+        "niki_agent.plugins.discover_plugins",
         lambda: PluginDiscoveryResult(plugins=()),
     )
     monkeypatch.setattr(
-        "deepagents_code.extensions.discovery.user_extensions_dir",
+        "niki_agent.extensions.discovery.user_extensions_dir",
         lambda: tmp_path / "user-extensions",
     )
     monkeypatch.setattr(
-        "deepagents_code.extensions.discovery.importlib.metadata.entry_points",
+        "niki_agent.extensions.discovery.importlib.metadata.entry_points",
         lambda **_: (),
     )
 
@@ -95,7 +95,7 @@ async def extension(d):
     plugin = _plugin(directory, ["a_broken.py", "b_valid.py"])
 
     with patch(
-        "deepagents_code.plugins.discover_plugins",
+        "niki_agent.plugins.discover_plugins",
         return_value=PluginDiscoveryResult(plugins=(plugin,)),
     ):
         result = await load_extensions(cwd=tmp_path)
@@ -123,12 +123,12 @@ async def test_project_directory_is_hidden_until_trusted(
     expected: str | None,
 ) -> None:
     """Discovery never receives an unauthorized project directory."""
-    from deepagents_code.extensions import runtime
+    from niki_agent.extensions import runtime
 
     observed: list[Path | None] = []
 
     def discover(**kwargs: object) -> object:
-        from deepagents_code.extensions.discovery import DiscoveryResult
+        from niki_agent.extensions.discovery import DiscoveryResult
 
         observed.append(cast("Path | None", kwargs["project_dir"]))
         return DiscoveryResult()

@@ -10,9 +10,9 @@ from textual.style import Style
 from textual.visual import RenderOptions
 from textual.widgets import Static
 
-from deepagents_code.config import reset_glyphs_cache
-from deepagents_code.tui.widgets import diff as diff_module
-from deepagents_code.tui.widgets.diff import _DiffRowStatic, compose_diff_lines
+from niki_agent.config import reset_glyphs_cache
+from niki_agent.tui.widgets import diff as diff_module
+from niki_agent.tui.widgets.diff import _DiffRowStatic, compose_diff_lines
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

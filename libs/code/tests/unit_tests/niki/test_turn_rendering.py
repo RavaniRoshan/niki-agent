@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
     from textual.pilot import Pilot
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
     from unit_tests.niki.turn_harness import Step
 
 SIZE = (100, 32)
@@ -54,7 +54,7 @@ def _rewrite(target: Path) -> Callable[[], None]:
 
 def _loading_text(app: NikiApp) -> str:
     """Return the activity line's visible text, or an empty string."""
-    from deepagents_code.tui.widgets.loading import LoadingWidget
+    from niki_agent.tui.widgets.loading import LoadingWidget
 
     widgets = list(app.query(LoadingWidget))
     if not widgets:
@@ -76,7 +76,7 @@ async def _turn(app: NikiApp, pilot: Pilot[None], script: list[Step]) -> Scripte
 
 async def test_v6_the_footer_reports_the_model_and_real_usage(monkeypatch) -> None:
     """V6: model and token figures appear only once a real turn supplies them."""
-    from deepagents_code import config
+    from niki_agent import config
 
     monkeypatch.setattr(config.runtime_state, "model_name", "niki-test-model")
     monkeypatch.setattr(config.runtime_state, "model_provider", "openai")
@@ -108,7 +108,7 @@ async def test_v6_the_footer_reports_the_model_and_real_usage(monkeypatch) -> No
         await app._submit_input("go", "normal")
         await wait_idle(app, pilot)
         footer = screen_text(app).splitlines()[-1]
-        from deepagents_code.tui.widgets.status import MetricsLine
+        from niki_agent.tui.widgets.status import MetricsLine
 
         metrics = " ".join(
             segment.plain

@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 import pytest
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain.tools import (
     ToolRuntime,  # noqa: TC002  # tool decorator resolves type hints at import time
 )

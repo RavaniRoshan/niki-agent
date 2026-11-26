@@ -6,19 +6,19 @@ import pytest
 from textual.app import App
 from textual.widgets import Checkbox, Static
 
-from deepagents_code.notifications import (
+from niki_agent.notifications import (
     ActionId,
     MissingDepPayload,
     NotificationAction,
     PendingNotification,
 )
-from deepagents_code.tui.widgets import notification_center
-from deepagents_code.tui.widgets.notification_center import (
+from niki_agent.tui.widgets import notification_center
+from niki_agent.tui.widgets.notification_center import (
     NotificationActionRequested,
     NotificationActionResult,
     NotificationCenterScreen,
 )
-from deepagents_code.tui.widgets.notification_detail import NotificationDetailScreen
+from niki_agent.tui.widgets.notification_detail import NotificationDetailScreen
 
 
 def _dep_entry(key: str = "dep:ripgrep") -> PendingNotification:
@@ -142,7 +142,7 @@ class TestNotificationCenterScreen:
 
             assert isinstance(app.screen, NotificationDetailScreen)
 
-        assert imports == [("deepagents_code.tui.widgets.auth", screen)]
+        assert imports == [("niki_agent.tui.widgets.auth", screen)]
 
     async def test_in_place_action_keeps_center_open_and_posts_message(self) -> None:
         """ENTER_API_KEY posts a request message and leaves the center up."""

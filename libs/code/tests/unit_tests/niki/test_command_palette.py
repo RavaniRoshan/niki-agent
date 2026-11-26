@@ -6,9 +6,9 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import AsyncMock
 
-from deepagents_code.command_registry import BypassTier, SlashCommand
-from deepagents_code.niki.app import NikiApp
-from deepagents_code.niki.command_palette import CommandPaletteScreen
+from niki_agent.command_registry import BypassTier, SlashCommand
+from niki_agent.niki.app import NikiApp
+from niki_agent.niki.command_palette import CommandPaletteScreen
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

@@ -6,30 +6,29 @@ import shutil
 from typing import TYPE_CHECKING
 
 import pytest
-from deepagents.backends.filesystem import FilesystemBackend
 from textual.widgets import OptionList
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.plugins import (
+from niki_agent.app import DeepAgentsApp
+from niki_agent.plugins import (
     add_local_marketplace,
     add_marketplace_source,
     discover_plugins,
     install_plugin,
     set_installed_plugin_enabled,
 )
-from deepagents_code.plugins.adapters.mcp import (
+from niki_agent.plugins.adapters.mcp import (
     plugin_mcp_server_entries,
     scoped_mcp_server_name,
 )
-from deepagents_code.plugins.adapters.skills_middleware import discover_skill_dirs
-from deepagents_code.plugins.commands_cli import execute_plugin_command
-from deepagents_code.plugins.marketplace import (
+from niki_agent.plugins.adapters.skills_middleware import discover_skill_dirs
+from niki_agent.plugins.commands_cli import execute_plugin_command
+from niki_agent.plugins.marketplace import (
     MarketplaceError,
     load_marketplace,
     parse_marketplace_source,
 )
-from deepagents_code.plugins.models import MarketplaceRecord
-from deepagents_code.plugins.store import (
+from niki_agent.plugins.models import MarketplaceRecord
+from niki_agent.plugins.store import (
     get_primary_install_entry,
     load_enabled_plugin_ids,
     load_installed_plugins,
@@ -38,8 +37,9 @@ from deepagents_code.plugins.store import (
     save_marketplace_record,
     versioned_cache_path,
 )
-from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
-from deepagents_code.tui.modals.plugin_manager.state import _load_manager_state
+from niki_agent.sdk.backends.filesystem import FilesystemBackend
+from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
+from niki_agent.tui.modals.plugin_manager.state import _load_manager_state
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -96,11 +96,9 @@ def _make_marketplace(root: Path) -> None:
 async def test_plugin_manager_installed_selection_opens_details_not_disable(
     tmp_path: Path, monkeypatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -136,11 +134,9 @@ async def test_plugin_manager_installed_selection_opens_details_not_disable(
 def test_invalid_unversioned_reinstall_preserves_previous_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -184,7 +180,7 @@ def test_invalid_unversioned_reinstall_preserves_previous_install(
         manifest.write_text("{", encoding="utf-8")
         return copied
 
-    monkeypatch.setattr("deepagents_code.plugins.store.shutil.copytree", copy_invalid)
+    monkeypatch.setattr("niki_agent.plugins.store.shutil.copytree", copy_invalid)
     with pytest.raises(MarketplaceError, match="Invalid JSON syntax"):
         install_plugin(plugin_id)
 
@@ -196,11 +192,9 @@ def test_invalid_unversioned_reinstall_preserves_previous_install(
 def test_install_does_not_follow_component_symlinks_outside_plugin(
     tmp_path: Path, monkeypatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -222,9 +216,7 @@ def test_marketplace_list_redacts_credentials(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     save_marketplace_record(
         MarketplaceRecord(
             name="private-tools",
@@ -260,11 +252,9 @@ def test_marketplace_list_redacts_credentials(
 def test_marketplace_and_manifest_display_name_surface_in_manager(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     root = tmp_path / "marketplace"
     _write_json(
@@ -345,17 +335,15 @@ def test_marketplace_credentials_are_preserved_for_updates(
     )
     assert credentialed.value == ("https://user:secret@example.com/marketplace.json")
 
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
     marketplace = load_marketplace(marketplace_root)
     monkeypatch.setattr(
-        "deepagents_code.plugins.discovery.materialize_marketplace_source",
+        "niki_agent.plugins.discovery.materialize_marketplace_source",
         lambda _source: (marketplace, marketplace_root),
     )
 
@@ -419,11 +407,9 @@ def _make_agents_only_plugin(root: Path) -> None:
 def test_inventory_reports_unsupported_agents_and_commands(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_agents_only_plugin(marketplace_root)
@@ -438,11 +424,9 @@ def test_inventory_reports_unsupported_agents_and_commands(
 def test_manager_state_surfaces_unsupported_components_for_agents_plugin(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_agents_only_plugin(marketplace_root)
@@ -462,11 +446,9 @@ def test_manager_state_surfaces_unsupported_components_for_agents_plugin(
 def test_manager_state_keeps_pending_reload_after_disable_while_loaded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -486,11 +468,9 @@ def test_manager_state_keeps_pending_reload_after_disable_while_loaded(
 def test_manager_state_defers_mcp_reload_hint_while_connecting(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -519,11 +499,9 @@ def test_manager_state_defers_mcp_reload_hint_while_connecting(
 def test_manager_state_previews_local_discover_components(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -546,11 +524,9 @@ def test_manager_state_previews_local_discover_components(
 def test_manager_preview_does_not_create_plugin_data_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)
@@ -569,11 +545,9 @@ def test_manager_preview_does_not_create_plugin_data_dir(
 def test_manager_state_marks_installed_plugin_with_missing_cache_as_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / "state"
-    )
-    monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
+        "niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path / "config"
     )
     marketplace_root = tmp_path / "marketplace"
     _make_marketplace(marketplace_root)

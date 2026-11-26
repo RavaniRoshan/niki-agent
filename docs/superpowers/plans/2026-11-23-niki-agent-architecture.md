@@ -17,7 +17,7 @@
 - Keep the existing client/server ownership split: the client owns input, approvals, and presentation; the managed server owns graph execution, tools, workspace policy, and checkpoints. ACP remains a distinct adapter until its behavior is covered by the shared contracts.
 - Keep this as a modular monolith with explicit ports; do not introduce microservices or a second event-sourced database for features the current server/checkpointer already owns.
 - Use LangGraph as the current graph/runtime engine and LangChain integrations for model providers. Keep both behind outer adapters; do not make domain or application code depend on either framework.
-- Keep `deepagents_code.domain` and `deepagents_code.application` importable without importing Textual, Rich, Deep Agents, LangChain, or LangGraph.
+- Keep `niki_agent.domain` and `niki_agent.application` importable without importing Textual, Rich, Deep Agents, LangChain, or LangGraph.
 - Reuse the existing session/checkpoint, provider, workspace, MCP, hooks, skills, memory, goals, subagent, and QuickJS implementations where they already meet the contract. Do not create a second source of truth or reimplement an existing capability without a failing behavior test.
 - Treat coding quality as an evaluated product requirement: capture the current baseline before changing runtime behavior, keep benchmark tasks/configuration fixed during a comparison, and require deterministic safety and recovery checks alongside model-based task scores.
 - Architecture patterns are constraints in service of working behavior, not a reason to add layers by default. Keep the modular monolith and add an abstraction only when it removes a demonstrated dependency or makes a tested capability easier to change.
@@ -79,11 +79,11 @@ flowchart TB
 
 The plan introduces only the seams needed to separate ownership. Existing feature modules remain the implementation source until an adapter migration proves behavior parity.
 
-- `libs/code/deepagents_code/domain/` — framework-free session, permission, and event types.
-- `libs/code/deepagents_code/application/` — run/session use cases and port protocols; no Textual or LangChain imports.
-- `libs/code/deepagents_code/adapters/runtime/` — adapters around the existing `RemoteAgent`/LangGraph stream and ACP execution path.
-- `libs/code/deepagents_code/adapters/workspace/` — adapters to the existing filesystem backends, command execution, and sandbox registry.
-- `libs/code/deepagents_code/niki/` — Niki entry point, product presentation, command palette, run summary, and UI defaults.
+- `libs/code/niki_agent/domain/` — framework-free session, permission, and event types.
+- `libs/code/niki_agent/application/` — run/session use cases and port protocols; no Textual or LangChain imports.
+- `libs/code/niki_agent/adapters/runtime/` — adapters around the existing `RemoteAgent`/LangGraph stream and ACP execution path.
+- `libs/code/niki_agent/adapters/workspace/` — adapters to the existing filesystem backends, command execution, and sandbox registry.
+- `libs/code/niki_agent/niki/` — Niki entry point, product presentation, command palette, run summary, and UI defaults.
 - Existing ownership stays in place initially: `agent.py` and `server_graph.py` assemble the graph; `client/remote_client.py`, `client/non_interactive.py`, and `tui/textual_adapter.py` handle current stream surfaces; `sessions.py` and LangGraph checkpointers own persistence; `server_graph.py` composes `model_config.py`, `mcp_*`, `hooks/`, `skills/`, `goal_*`, and `langchain_quickjs` without exposing another model/tool execution path.
 - `docs/niki/EVALUATION.md` — benchmark protocol, baseline, metrics, and Python/Rust readiness thresholds; reuse `libs/evals` and its Harbor workflows rather than creating a parallel evaluator.
 - `docs/niki/evaluations/BASELINE.md` — immutable record of the pre-change model, harness, task set, run IDs, scores, costs, and known failures.
@@ -142,13 +142,13 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 1: Establish the Python architecture contracts
 
 **Files:**
-- Create: `libs/code/deepagents_code/domain/__init__.py`
-- Create: `libs/code/deepagents_code/domain/events.py`
-- Create: `libs/code/deepagents_code/domain/session.py`
-- Create: `libs/code/deepagents_code/application/__init__.py`
-- Create: `libs/code/deepagents_code/application/ports/__init__.py`
-- Create: `libs/code/deepagents_code/application/ports/sessions.py`
-- Create: `libs/code/deepagents_code/application/ports/runtime.py`
+- Create: `libs/code/niki_agent/domain/__init__.py`
+- Create: `libs/code/niki_agent/domain/events.py`
+- Create: `libs/code/niki_agent/domain/session.py`
+- Create: `libs/code/niki_agent/application/__init__.py`
+- Create: `libs/code/niki_agent/application/ports/__init__.py`
+- Create: `libs/code/niki_agent/application/ports/sessions.py`
+- Create: `libs/code/niki_agent/application/ports/runtime.py`
 - Create: `docs/niki/ARCHITECTURE.md`
 - Modify: `libs/code/tests/unit_tests/test_architecture_imports.py` (currently untracked in the checkout; preserve its existing assertions)
 - Test: `libs/code/tests/unit_tests/test_niki_runtime_contract.py`
@@ -165,7 +165,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 
 - [ ] **Step 1: Add failing contract tests**
 
-  Add `test_run_event_json_round_trip` asserting that an event with `schema_version=1`, `sequence=1`, kind `text_delta`, and payload `{"text": "hello"}` encodes and decodes to the same `RunEvent`. Add `test_run_event_rejects_invalid_envelope` asserting unsupported schema versions, negative sequence numbers, and non-JSON payload values raise `ValueError`; add `test_run_event_rejects_oversized_payload` asserting an encoded envelope over `65,536` UTF-8 bytes raises `ValueError`. Keep `test_domain_and_application_import_no_heavy_deps` and extend it to include `deepagents_code.application.ports`.
+  Add `test_run_event_json_round_trip` asserting that an event with `schema_version=1`, `sequence=1`, kind `text_delta`, and payload `{"text": "hello"}` encodes and decodes to the same `RunEvent`. Add `test_run_event_rejects_invalid_envelope` asserting unsupported schema versions, negative sequence numbers, and non-JSON payload values raise `ValueError`; add `test_run_event_rejects_oversized_payload` asserting an encoded envelope over `65,536` UTF-8 bytes raises `ValueError`. Keep `test_domain_and_application_import_no_heavy_deps` and extend it to include `niki_agent.application.ports`.
 
 - [ ] **Step 2: Run the focused tests and confirm the missing-contract failures**
 
@@ -186,14 +186,14 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [ ] **Step 5: Commit the architecture boundary**
 
   ```bash
-  git add libs/code/deepagents_code/domain libs/code/deepagents_code/application docs/niki/ARCHITECTURE.md libs/code/tests/unit_tests/test_architecture_imports.py libs/code/tests/unit_tests/test_niki_runtime_contract.py
+  git add libs/code/niki_agent/domain libs/code/niki_agent/application docs/niki/ARCHITECTURE.md libs/code/tests/unit_tests/test_architecture_imports.py libs/code/tests/unit_tests/test_niki_runtime_contract.py
   git commit -m "feat(code): define Niki runtime contracts"
   ```
 
 ### Task 2: Add the application run coordinator
 
 **Files:**
-- Create: `libs/code/deepagents_code/application/run_turn.py`
+- Create: `libs/code/niki_agent/application/run_turn.py`
 - Test: `libs/code/tests/unit_tests/test_application_run_turn.py`
 - Modify: `libs/code/tests/unit_tests/test_architecture_imports.py`
 
@@ -226,19 +226,19 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [ ] **Step 5: Commit the application seam**
 
   ```bash
-  git add libs/code/deepagents_code/application/run_turn.py libs/code/tests/unit_tests/test_application_run_turn.py libs/code/tests/unit_tests/test_architecture_imports.py
+  git add libs/code/niki_agent/application/run_turn.py libs/code/tests/unit_tests/test_application_run_turn.py libs/code/tests/unit_tests/test_architecture_imports.py
   git commit -m "feat(code): coordinate validated agent turns"
   ```
 
 ### Task 3: Adapt the current LangGraph stream to the runtime contract
 
 **Files:**
-- Create: `libs/code/deepagents_code/adapters/__init__.py`
-- Create: `libs/code/deepagents_code/adapters/runtime/__init__.py`
-- Create: `libs/code/deepagents_code/adapters/runtime/langgraph_remote.py`
-- Create: `libs/code/deepagents_code/adapters/persistence/__init__.py`
-- Create: `libs/code/deepagents_code/adapters/persistence/session_history.py`
-- Modify: `libs/code/deepagents_code/client/remote_client.py`
+- Create: `libs/code/niki_agent/adapters/__init__.py`
+- Create: `libs/code/niki_agent/adapters/runtime/__init__.py`
+- Create: `libs/code/niki_agent/adapters/runtime/langgraph_remote.py`
+- Create: `libs/code/niki_agent/adapters/persistence/__init__.py`
+- Create: `libs/code/niki_agent/adapters/persistence/session_history.py`
+- Modify: `libs/code/niki_agent/client/remote_client.py`
 - Test: `libs/code/tests/unit_tests/test_runtime_adapters.py`
 - Test: `libs/code/tests/unit_tests/test_session_history_adapter.py`
 - Test: `libs/code/tests/unit_tests/test_remote_client.py`
@@ -272,7 +272,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [ ] **Step 5: Commit the LangGraph adapter**
 
   ```bash
-  git add libs/code/deepagents_code/adapters libs/code/deepagents_code/client/remote_client.py libs/code/tests/unit_tests/test_runtime_adapters.py libs/code/tests/unit_tests/test_session_history_adapter.py libs/code/tests/unit_tests/test_remote_client.py
+  git add libs/code/niki_agent/adapters libs/code/niki_agent/client/remote_client.py libs/code/tests/unit_tests/test_runtime_adapters.py libs/code/tests/unit_tests/test_session_history_adapter.py libs/code/tests/unit_tests/test_remote_client.py
   git commit -m "feat(code): adapt LangGraph streams to runtime events"
   ```
 
@@ -283,7 +283,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 #### Task 4a: Implement checkpointed ACP runtime events — complete
 
 **Files:**
-- Create: `libs/code/deepagents_code/adapters/runtime/acp.py`
+- Create: `libs/code/niki_agent/adapters/runtime/acp.py`
 - Modify: `libs/code/tests/unit_tests/test_niki_entrypoints.py`
 - Modify: `docs/niki/UPSTREAM_DIFF.md`
 
@@ -297,10 +297,10 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 #### Task 4b: Route Niki headless turns through the managed runtime — complete
 
 **Files:**
-- Create: `libs/code/deepagents_code/niki/runtime_mode.py`
-- Modify: `libs/code/deepagents_code/niki/entry.py`
-- Modify: `libs/code/deepagents_code/client/non_interactive.py`
-- Modify: `libs/code/deepagents_code/adapters/runtime/langgraph_remote.py`
+- Create: `libs/code/niki_agent/niki/runtime_mode.py`
+- Modify: `libs/code/niki_agent/niki/entry.py`
+- Modify: `libs/code/niki_agent/client/non_interactive.py`
+- Modify: `libs/code/niki_agent/adapters/runtime/langgraph_remote.py`
 - Modify: `libs/code/tests/unit_tests/test_runtime_adapters.py`
 - Modify: `libs/code/tests/unit_tests/test_non_interactive.py`
 - Modify: `docs/niki/UPSTREAM_DIFF.md`
@@ -319,8 +319,8 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 #### Task 4c: Route Niki TUI turns through the managed runtime — complete
 
 **Files:**
-- Create: `libs/code/deepagents_code/application/native_stream.py`
-- Modify: `libs/code/deepagents_code/tui/textual_adapter.py`
+- Create: `libs/code/niki_agent/application/native_stream.py`
+- Modify: `libs/code/niki_agent/tui/textual_adapter.py`
 - Test: `libs/code/tests/unit_tests/test_application_native_stream.py`
 - Modify: `libs/code/tests/unit_tests/tui/test_textual_adapter.py`
 - Modify: `libs/code/tests/unit_tests/test_architecture_imports.py`
@@ -353,14 +353,14 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 5: Put workspace and permission behavior behind explicit ports
 
 **Files:**
-- Create: `libs/code/deepagents_code/application/ports/workspace.py`
-- Create: `libs/code/deepagents_code/application/ports/permissions.py`
-- Create: `libs/code/deepagents_code/adapters/permissions/__init__.py`
-- Create: `libs/code/deepagents_code/adapters/permissions/hitl.py`
-- Create: `libs/code/deepagents_code/adapters/workspace/__init__.py`
-- Create: `libs/code/deepagents_code/adapters/workspace/deepagents_backend.py`
-- Modify: `libs/code/deepagents_code/server_graph.py`
-- Modify: `libs/code/deepagents_code/agent.py`
+- Create: `libs/code/niki_agent/application/ports/workspace.py`
+- Create: `libs/code/niki_agent/application/ports/permissions.py`
+- Create: `libs/code/niki_agent/adapters/permissions/__init__.py`
+- Create: `libs/code/niki_agent/adapters/permissions/hitl.py`
+- Create: `libs/code/niki_agent/adapters/workspace/__init__.py`
+- Create: `libs/code/niki_agent/adapters/workspace/deepagents_backend.py`
+- Modify: `libs/code/niki_agent/server_graph.py`
+- Modify: `libs/code/niki_agent/agent.py`
 - Modify: `docs/niki/UPSTREAM_DIFF.md`
 - Test: `libs/code/tests/unit_tests/test_workspace_ports.py`
 - Test: `libs/code/tests/unit_tests/test_server_graph.py`
@@ -393,7 +393,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit workspace and permission ports**
 
   ```bash
-  git add libs/code/deepagents_code/application/ports libs/code/deepagents_code/adapters/permissions libs/code/deepagents_code/adapters/workspace libs/code/deepagents_code/server_graph.py libs/code/deepagents_code/agent.py docs/niki/UPSTREAM_DIFF.md libs/code/tests/unit_tests/test_workspace_ports.py libs/code/tests/unit_tests/test_server_graph.py
+  git add libs/code/niki_agent/application/ports libs/code/niki_agent/adapters/permissions libs/code/niki_agent/adapters/workspace libs/code/niki_agent/server_graph.py libs/code/niki_agent/agent.py docs/niki/UPSTREAM_DIFF.md libs/code/tests/unit_tests/test_workspace_ports.py libs/code/tests/unit_tests/test_server_graph.py
   git commit -m "feat(code): define workspace and permission ports"
   ```
 
@@ -407,8 +407,8 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - Modify: `libs/partners/quickjs/langchain_quickjs/_prompt.py`
 - Modify: `libs/partners/quickjs/langchain_quickjs/middleware.py`
 - Modify: `libs/partners/quickjs/langchain_quickjs/__init__.py`
-- Modify: `libs/code/deepagents_code/agent.py`
-- Modify: `libs/code/deepagents_code/system_prompt.md`
+- Modify: `libs/code/niki_agent/agent.py`
+- Modify: `libs/code/niki_agent/system_prompt.md`
 - Test: `libs/code/tests/unit_tests/test_agent.py`
 - Modify: `libs/partners/quickjs/tests/unit_tests/test_ptc.py`
 - Test: `libs/partners/quickjs/tests/unit_tests/test_prompt_modes.py`
@@ -446,7 +446,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit Code Mode changes**
 
   ```bash
-  git add libs/partners/quickjs/langchain_quickjs/__init__.py libs/partners/quickjs/langchain_quickjs/_repl.py libs/partners/quickjs/langchain_quickjs/_ptc.py libs/partners/quickjs/langchain_quickjs/_prompt.py libs/partners/quickjs/langchain_quickjs/middleware.py libs/partners/quickjs/tests/unit_tests/test_ptc.py libs/partners/quickjs/tests/unit_tests/test_prompt_modes.py libs/code/tests/unit_tests/test_agent.py libs/code/deepagents_code/agent.py libs/code/deepagents_code/system_prompt.md
+  git add libs/partners/quickjs/langchain_quickjs/__init__.py libs/partners/quickjs/langchain_quickjs/_repl.py libs/partners/quickjs/langchain_quickjs/_ptc.py libs/partners/quickjs/langchain_quickjs/_prompt.py libs/partners/quickjs/langchain_quickjs/middleware.py libs/partners/quickjs/tests/unit_tests/test_ptc.py libs/partners/quickjs/tests/unit_tests/test_prompt_modes.py libs/code/tests/unit_tests/test_agent.py libs/code/niki_agent/agent.py libs/code/niki_agent/system_prompt.md
   git commit -m "fix(quickjs): enforce approval policy for PTC calls"
   ```
 
@@ -455,12 +455,12 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 7: Add explicit Agent Team task coordination
 
 **Files:**
-- Create: `libs/code/deepagents_code/domain/team.py`
-- Create: `libs/code/deepagents_code/application/ports/agents.py`
-- Create: `libs/code/deepagents_code/application/orchestration/__init__.py`
-- Create: `libs/code/deepagents_code/application/orchestration/team.py`
-- Modify: `libs/code/deepagents_code/tui/widgets/subagent_panel.py`
-- Modify: `libs/code/deepagents_code/tui/textual_adapter.py`
+- Create: `libs/code/niki_agent/domain/team.py`
+- Create: `libs/code/niki_agent/application/ports/agents.py`
+- Create: `libs/code/niki_agent/application/orchestration/__init__.py`
+- Create: `libs/code/niki_agent/application/orchestration/team.py`
+- Modify: `libs/code/niki_agent/tui/widgets/subagent_panel.py`
+- Modify: `libs/code/niki_agent/tui/textual_adapter.py`
 - Test: `libs/code/tests/unit_tests/test_team_orchestration.py`
 - Test: `libs/code/tests/unit_tests/tui/widgets/test_subagent_panel.py`
 
@@ -494,19 +494,19 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit Agent Team coordination**
 
   ```bash
-  git add libs/code/deepagents_code/domain/team.py libs/code/deepagents_code/application/ports/agents.py libs/code/deepagents_code/application/orchestration libs/code/deepagents_code/tui/widgets/subagent_panel.py libs/code/deepagents_code/tui/textual_adapter.py libs/code/tests/unit_tests/test_team_orchestration.py libs/code/tests/unit_tests/tui/widgets/test_subagent_panel.py
+  git add libs/code/niki_agent/domain/team.py libs/code/niki_agent/application/ports/agents.py libs/code/niki_agent/application/orchestration libs/code/niki_agent/tui/widgets/subagent_panel.py libs/code/niki_agent/tui/textual_adapter.py libs/code/tests/unit_tests/test_team_orchestration.py libs/code/tests/unit_tests/tui/widgets/test_subagent_panel.py
   git commit -m "feat(code): coordinate agent team tasks"
   ```
 
 ### Task 8: Add reusable staged workflows
 
 **Files:**
-- Create: `libs/code/deepagents_code/domain/workflow.py`
-- Create: `libs/code/deepagents_code/application/workflows.py`
-- Create: `libs/code/deepagents_code/application/ports/workflows.py`
-- Modify: `libs/code/deepagents_code/sessions.py`
-- Modify: `libs/code/deepagents_code/command_registry.py`
-- Modify: `libs/code/deepagents_code/app.py`
+- Create: `libs/code/niki_agent/domain/workflow.py`
+- Create: `libs/code/niki_agent/application/workflows.py`
+- Create: `libs/code/niki_agent/application/ports/workflows.py`
+- Modify: `libs/code/niki_agent/sessions.py`
+- Modify: `libs/code/niki_agent/command_registry.py`
+- Modify: `libs/code/niki_agent/app.py`
 - Test: `libs/code/tests/unit_tests/test_workflows.py`
 
 **Interfaces:**
@@ -539,7 +539,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit staged workflows**
 
   ```bash
-  git add libs/code/deepagents_code/domain/workflow.py libs/code/deepagents_code/application/workflows.py libs/code/deepagents_code/application/ports/workflows.py libs/code/deepagents_code/sessions.py libs/code/deepagents_code/command_registry.py libs/code/deepagents_code/app.py libs/code/tests/unit_tests/test_workflows.py
+  git add libs/code/niki_agent/domain/workflow.py libs/code/niki_agent/application/workflows.py libs/code/niki_agent/application/ports/workflows.py libs/code/niki_agent/sessions.py libs/code/niki_agent/command_registry.py libs/code/niki_agent/app.py libs/code/tests/unit_tests/test_workflows.py
   git commit -m "feat(code): add resumable staged workflows"
   ```
 
@@ -551,12 +551,12 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 9: Connect goals and context management to lifecycle events
 
 **Files:**
-- Modify: `libs/code/deepagents_code/domain/events.py`
-- Modify: `libs/code/deepagents_code/adapters/runtime/langgraph_remote.py`
-- Modify: `libs/code/deepagents_code/goal_tools.py`
-- Modify: `libs/code/deepagents_code/app.py`
-- Modify: `libs/code/deepagents_code/tui/textual_adapter.py`
-- Modify: `libs/code/deepagents_code/tui/widgets/goal_status.py`
+- Modify: `libs/code/niki_agent/domain/events.py`
+- Modify: `libs/code/niki_agent/adapters/runtime/langgraph_remote.py`
+- Modify: `libs/code/niki_agent/goal_tools.py`
+- Modify: `libs/code/niki_agent/app.py`
+- Modify: `libs/code/niki_agent/tui/textual_adapter.py`
+- Modify: `libs/code/niki_agent/tui/widgets/goal_status.py`
 - Modify: `libs/code/tests/unit_tests/test_goal_tools.py`
 - Modify: `libs/code/tests/unit_tests/test_runtime_adapters.py`
 - Create: `libs/code/tests/unit_tests/test_context_compaction.py`
@@ -593,7 +593,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit goal lifecycle integration**
 
   ```bash
-  git add libs/code/deepagents_code/domain/events.py libs/code/deepagents_code/adapters/runtime/langgraph_remote.py libs/code/deepagents_code/goal_tools.py libs/code/deepagents_code/app.py libs/code/deepagents_code/tui/textual_adapter.py libs/code/deepagents_code/tui/widgets/goal_status.py libs/code/tests/unit_tests/test_goal_tools.py libs/code/tests/unit_tests/test_runtime_adapters.py libs/code/tests/unit_tests/test_context_compaction.py libs/code/tests/unit_tests/niki/test_goal_status.py
+  git add libs/code/niki_agent/domain/events.py libs/code/niki_agent/adapters/runtime/langgraph_remote.py libs/code/niki_agent/goal_tools.py libs/code/niki_agent/app.py libs/code/niki_agent/tui/textual_adapter.py libs/code/niki_agent/tui/widgets/goal_status.py libs/code/tests/unit_tests/test_goal_tools.py libs/code/tests/unit_tests/test_runtime_adapters.py libs/code/tests/unit_tests/test_context_compaction.py libs/code/tests/unit_tests/niki/test_goal_status.py
   git commit -m "feat(code): project verified goal lifecycle events"
   ```
 
@@ -606,12 +606,12 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 10: Keep provider, tool, and plugin behavior behind the active runtime boundary
 
 **Files:**
-- Delete: `libs/code/deepagents_code/application/ports/models.py` (unused generic generation protocol)
-- Delete: `libs/code/deepagents_code/application/ports/tools.py` (unused generic tool registry protocol)
+- Delete: `libs/code/niki_agent/application/ports/models.py` (unused generic generation protocol)
+- Delete: `libs/code/niki_agent/application/ports/tools.py` (unused generic tool registry protocol)
 - Modify: `docs/niki/ARCHITECTURE.md`
 - Modify: `libs/code/tests/unit_tests/test_integration_ports.py`
 - Modify: `libs/code/tests/unit_tests/skills/test_skill_trust.py`
-- Verify unchanged: `libs/code/deepagents_code/adapters/runtime/langgraph_remote.py`, `libs/code/deepagents_code/mcp_tools.py`, `libs/code/deepagents_code/skills/load.py`, `libs/code/deepagents_code/skills/trust.py`, `libs/code/deepagents_code/plugins/adapters/skills.py`, `libs/code/deepagents_code/plugins/adapters/hooks.py`
+- Verify unchanged: `libs/code/niki_agent/adapters/runtime/langgraph_remote.py`, `libs/code/niki_agent/mcp_tools.py`, `libs/code/niki_agent/skills/load.py`, `libs/code/niki_agent/skills/trust.py`, `libs/code/niki_agent/plugins/adapters/skills.py`, `libs/code/niki_agent/plugins/adapters/hooks.py`
 - Test: `libs/code/tests/unit_tests/test_model_config.py`, `libs/code/tests/unit_tests/hooks/test_engine.py`, `libs/code/tests/unit_tests/test_architecture_imports.py`
 
 **Interfaces:**
@@ -641,7 +641,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit the runtime boundary correction**
 
   ```bash
-  git add docs/niki/ARCHITECTURE.md docs/superpowers/plans/2026-11-23-niki-agent-architecture.md libs/code/deepagents_code/application/ports/models.py libs/code/deepagents_code/application/ports/tools.py libs/code/tests/unit_tests/test_integration_ports.py libs/code/tests/unit_tests/skills/test_skill_trust.py
+  git add docs/niki/ARCHITECTURE.md docs/superpowers/plans/2026-11-23-niki-agent-architecture.md libs/code/niki_agent/application/ports/models.py libs/code/niki_agent/application/ports/tools.py libs/code/tests/unit_tests/test_integration_ports.py libs/code/tests/unit_tests/skills/test_skill_trust.py
   git commit -m "refactor(code): keep provider and tools behind runtime boundary"
   ```
 
@@ -650,13 +650,13 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 ### Task 11: Finish the Niki terminal experience and performance gates
 
 **Files:**
-- Create: `libs/code/deepagents_code/niki/command_palette.py`
-- Create: `libs/code/deepagents_code/niki/turn_summary.py`
-- Modify: `libs/code/deepagents_code/niki/app.py`
-- Modify: `libs/code/deepagents_code/adapters/runtime/langgraph_remote.py`
-- Modify: `libs/code/deepagents_code/tui/textual_adapter.py`
-- Modify: `libs/code/deepagents_code/niki/keymap.py`
-- Modify: `libs/code/deepagents_code/niki/niki.tcss`
+- Create: `libs/code/niki_agent/niki/command_palette.py`
+- Create: `libs/code/niki_agent/niki/turn_summary.py`
+- Modify: `libs/code/niki_agent/niki/app.py`
+- Modify: `libs/code/niki_agent/adapters/runtime/langgraph_remote.py`
+- Modify: `libs/code/niki_agent/tui/textual_adapter.py`
+- Modify: `libs/code/niki_agent/niki/keymap.py`
+- Modify: `libs/code/niki_agent/niki/niki.tcss`
 - Modify: `libs/code/tests/unit_tests/niki/test_keymap.py`
 - Modify: `libs/code/tests/unit_tests/niki/test_goal_status.py`
 - Modify: `libs/code/tests/unit_tests/test_runtime_adapters.py`
@@ -700,7 +700,7 @@ The plan introduces only the seams needed to separate ownership. Existing featur
 - [x] **Step 5: Commit terminal UX updates**
 
   ```bash
-  git add libs/code/deepagents_code/niki libs/code/tests/unit_tests/niki docs/niki/OWNER_VERIFY.md
+  git add libs/code/niki_agent/niki libs/code/tests/unit_tests/niki docs/niki/OWNER_VERIFY.md
   git commit -m "feat(code): complete Niki terminal workflows"
   ```
 

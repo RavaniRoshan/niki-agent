@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.application.native_stream import stream_native_chunks
-from deepagents_code.application.run_turn import RunTurnCoordinator
-from deepagents_code.domain.events import (
+from niki_agent.application.native_stream import stream_native_chunks
+from niki_agent.application.run_turn import RunTurnCoordinator
+from niki_agent.domain.events import (
     ResumeRequest,
     RunEvent,
     RunEventKind,

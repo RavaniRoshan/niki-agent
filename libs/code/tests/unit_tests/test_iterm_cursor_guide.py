@@ -5,8 +5,8 @@ from __future__ import annotations
 import io
 from unittest.mock import MagicMock, patch
 
-from deepagents_code import iterm_cursor_guide
-from deepagents_code.iterm_cursor_guide import (
+from niki_agent import iterm_cursor_guide
+from niki_agent.iterm_cursor_guide import (
     _ITERM_CURSOR_GUIDE_OFF,
     _ITERM_CURSOR_GUIDE_ON,
     _disable_iterm_cursor_guide,

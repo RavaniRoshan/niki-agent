@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from deepagents_code.config import get_glyphs
-from deepagents_code.tui.widgets.thread_agent_switch import (
+from niki_agent.config import get_glyphs
+from niki_agent.tui.widgets.thread_agent_switch import (
     ThreadAgentSwitchChoice,
     ThreadAgentSwitchPromptScreen,
 )

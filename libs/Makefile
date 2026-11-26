@@ -1,17 +1,16 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-LIB_PACKAGE_DIRS := $(patsubst %/,%,$(dir $(patsubst $(MAKEFILE_DIR)%,%,$(wildcard $(MAKEFILE_DIR)*/Makefile $(MAKEFILE_DIR)partners/*/Makefile))))
-EXAMPLE_PACKAGE_DIRS := $(patsubst %/,%,$(patsubst $(MAKEFILE_DIR)%,%,$(dir $(wildcard $(MAKEFILE_DIR)../examples/*/pyproject.toml))))
-PACKAGE_DIRS := $(sort $(LIB_PACKAGE_DIRS) $(EXAMPLE_PACKAGE_DIRS))
+# Niki Agent is a single package. The remaining upstream packages live in
+# `archive/` and are not built.
+LIB_PACKAGE_DIRS := code
+PACKAGE_DIRS := code
 
-# Map package dirs to their required Python version
-# acp requires 3.14, everything else uses 3.12
-python_version = $(if $(filter acp,$1),3.14,3.12)
+python_version = 3.12
 
 .PHONY: help lock no-cache lock-bump lock-check lint format bench-all
 
 LOCK_ARGS := $(if $(filter no-cache,$(MAKECMDGOALS)),--no-cache,)
 
-BENCH_PACKAGES := deepagents code
+BENCH_PACKAGES := code
 
 .DEFAULT_GOAL := help
 

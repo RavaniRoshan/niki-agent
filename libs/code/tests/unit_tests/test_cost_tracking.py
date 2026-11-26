@@ -18,8 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
-from deepagents.backends import StateBackend
-from deepagents.middleware import SubAgentMiddleware
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.agents.middleware.human_in_the_loop import ApproveDecision
@@ -47,15 +45,15 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolRuntime  # noqa: TC002  # Runtime tool injection.
 from langgraph.types import Command, Overwrite
 
-from deepagents_code import cost_tracking
-from deepagents_code._fake_models import _ToolBindingFakeModel
-from deepagents_code._session_stats import (
+from niki_agent import cost_tracking
+from niki_agent._fake_models import _ToolBindingFakeModel
+from niki_agent._session_stats import (
     SessionStats,
     finalize_recorded_requests,
     record_message_usage,
     record_model_usage_event,
 )
-from deepagents_code.cost_tracking import (
+from niki_agent.cost_tracking import (
     _CONFIGURED_PROVIDER_METADATA_KEY,
     _MODEL_INVOCATION_METADATA_KEY,
     _RECORDER_VAR,
@@ -68,7 +66,9 @@ from deepagents_code.cost_tracking import (
     _set_configured_model_metadata,
     estimate_cost,
 )
-from deepagents_code.model_retry import CodeModelRetryMiddleware
+from niki_agent.model_retry import CodeModelRetryMiddleware
+from niki_agent.sdk.backends import StateBackend
+from niki_agent.sdk.middleware import SubAgentMiddleware
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
@@ -505,7 +505,7 @@ class TestPriceOverrides:
         # primary pricing path's own imports.
         monkeypatch.delattr(genai_prices.types, "_providers_from_raw")
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.cost_tracking"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.cost_tracking"):
             assert estimate_cost(_usage(), _OVERRIDE_MODEL, "dcode-test") is None
             assert estimate_cost(_usage(), _OVERRIDE_MODEL, "dcode-test") is None
 
@@ -561,12 +561,12 @@ class TestPriceUpdater:
     def _reset_updater_guard(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Isolate the process-wide updater state between tests.
 
-        `DEEPAGENTS_CODE_OFFLINE` is cleared because the suite-wide
+        `NIKI_OFFLINE` is cleared because the suite-wide
         `_skip_managed_tool_downloads` fixture sets it, and it now suppresses
         this updater too -- leaving it set would make every test here pass
         vacuously. The test that covers the offline gate sets it back.
         """
-        from deepagents_code._env_vars import OFFLINE
+        from niki_agent._env_vars import OFFLINE
 
         monkeypatch.delenv(OFFLINE, raising=False)
         monkeypatch.setattr(cost_tracking, "_PRICE_UPDATER_ATTEMPTED", False)
@@ -575,7 +575,7 @@ class TestPriceUpdater:
         # The opt-out gate reads the user's real `config.toml` unless the
         # read is stubbed, so a local `[update].prices_auto_update = false`
         # would silently disable the updater under test.
-        monkeypatch.setattr("deepagents_code.config_manifest.load_config_toml", dict)
+        monkeypatch.setattr("niki_agent.config_manifest.load_config_toml", dict)
 
     def _patch_updater(
         self, monkeypatch: pytest.MonkeyPatch, instance: MagicMock
@@ -594,7 +594,7 @@ class TestPriceUpdater:
     @staticmethod
     def _enable_auto_update(monkeypatch: pytest.MonkeyPatch) -> None:
         """Clear the conftest opt-out so the updater under test may start."""
-        from deepagents_code._env_vars import PRICES_AUTO_UPDATE
+        from niki_agent._env_vars import PRICES_AUTO_UPDATE
 
         monkeypatch.delenv(PRICES_AUTO_UPDATE, raising=False)
 
@@ -625,11 +625,11 @@ class TestPriceUpdater:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A truthy env var wins over a persisted TOML opt-out."""
-        from deepagents_code._env_vars import PRICES_AUTO_UPDATE
+        from niki_agent._env_vars import PRICES_AUTO_UPDATE
 
         monkeypatch.setenv(PRICES_AUTO_UPDATE, "1")
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.load_config_toml",
+            "niki_agent.config_manifest.load_config_toml",
             lambda: {"update": {"prices_auto_update": False}},
         )
         factory = self._patch_updater(monkeypatch, self._autospec_updater())
@@ -1246,7 +1246,7 @@ class TestCostTrackingMiddleware:
         expected_delta: float | None,
     ) -> None:
         """Generic callback metadata must not replace the configured provider."""
-        from deepagents_code import cost_tracking
+        from niki_agent import cost_tracking
 
         priced_providers: list[str] = []
 
@@ -1299,7 +1299,7 @@ class TestCostTrackingMiddleware:
         expected_delta: float,
     ) -> None:
         """Only the main response inherits its provider from `_model_spec`."""
-        from deepagents_code import cost_tracking
+        from niki_agent import cost_tracking
 
         pricing_targets: list[tuple[str, str]] = []
 
@@ -2354,10 +2354,10 @@ async def test_side_question_cost_is_durable_without_another_turn(
 ) -> None:
     from httpx import ASGITransport, AsyncClient
 
-    from deepagents_code import offload_api
-    from deepagents_code.btw import BtwOperation
-    from deepagents_code.btw_cost import load_cost
-    from deepagents_code.client.remote_client import RemoteAgent
+    from niki_agent import offload_api
+    from niki_agent.btw import BtwOperation
+    from niki_agent.btw_cost import load_cost
+    from niki_agent.client.remote_client import RemoteAgent
 
     agent = create_agent(
         model=_fake_model(
@@ -2380,7 +2380,7 @@ async def test_side_question_cost_is_durable_without_another_turn(
     server = SimpleNamespace(backend=SimpleNamespace(_dcode_btw=operation))
     threads = SimpleNamespace(get_state=AsyncMock(return_value={"values": before}))
     with (
-        patch("deepagents_code.btw_api.require_thread_workspace", new=AsyncMock()),
+        patch("niki_agent.btw_api.require_thread_workspace", new=AsyncMock()),
         patch.object(offload_api, "get_server_runtime", AsyncMock(return_value=server)),
         patch.object(
             offload_api, "_thread_client", return_value=SimpleNamespace(threads=threads)
@@ -2458,9 +2458,9 @@ async def test_side_question_cost_completeness_from_serialized_history(
 ) -> None:
     from httpx import ASGITransport, AsyncClient
 
-    from deepagents_code import offload_api
-    from deepagents_code.btw import BtwOperation
-    from deepagents_code.btw_cost import load_cost
+    from niki_agent import offload_api
+    from niki_agent.btw import BtwOperation
+    from niki_agent.btw_cost import load_cost
 
     messages = [HumanMessage("Main question").model_dump()]
     if history != "new":
@@ -2475,7 +2475,7 @@ async def test_side_question_cost_completeness_from_serialized_history(
     server = SimpleNamespace(backend=SimpleNamespace(_dcode_btw=operation))
     threads = SimpleNamespace(get_state=AsyncMock(return_value={"values": values}))
     with (
-        patch("deepagents_code.btw_api.require_thread_workspace", new=AsyncMock()),
+        patch("niki_agent.btw_api.require_thread_workspace", new=AsyncMock()),
         patch.object(offload_api, "get_server_runtime", AsyncMock(return_value=server)),
         patch.object(
             offload_api, "_thread_client", return_value=SimpleNamespace(threads=threads)
@@ -2503,7 +2503,7 @@ async def test_side_question_cost_completeness_from_serialized_history(
 @pytest.fixture
 def side_cost_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Use a real, isolated sessions database for side-question accounting."""
-    from deepagents_code import btw_cost
+    from niki_agent import btw_cost
 
     path = tmp_path / "sessions.db"
     monkeypatch.setattr(btw_cost, "_database_path", lambda: path)
@@ -2518,8 +2518,8 @@ async def test_thread_deletion_erases_cost_and_discards_late_settlements(
     *,
     saved_before_deletion: bool,
 ) -> None:
-    from deepagents_code import btw_cost, sessions
-    from deepagents_code.btw import BtwOperation
+    from niki_agent import btw_cost, sessions
+    from niki_agent.btw import BtwOperation
 
     monkeypatch.setattr(sessions, "get_db_path", lambda: side_cost_db)
     operation = BtwOperation(_repeating_fake_model("answer"), "system", None)
@@ -2562,8 +2562,8 @@ async def test_failed_side_costs_remain_retryable(
     *,
     retry_with_answer: bool,
 ) -> None:
-    from deepagents_code import btw_cost
-    from deepagents_code.btw import BtwOperation
+    from niki_agent import btw_cost
+    from niki_agent.btw import BtwOperation
 
     await _fake_model(_message(_usage(), message_id="main")).ainvoke(
         [HumanMessage("main")], config={"metadata": {"thread_id": THREAD_ID}}
@@ -2619,8 +2619,8 @@ async def test_failed_side_costs_release_conversation(
     monkeypatch: pytest.MonkeyPatch,
     failure_stage: str,
 ) -> None:
-    from deepagents_code import btw_cost
-    from deepagents_code.btw import BtwOperation
+    from niki_agent import btw_cost
+    from niki_agent.btw import BtwOperation
 
     operation = BtwOperation(_fake_model(_message(_usage())), "system", None)
     message = AIMessage("Earlier conversation with potentially large attachments")
@@ -2663,8 +2663,8 @@ async def test_failed_side_costs_release_conversation(
 async def test_concurrent_side_costs_do_not_claim_main_run_usage(
     recorder: _SessionCostRecorder, side_cost_db: Path
 ) -> None:
-    from deepagents_code.btw import BtwOperation
-    from deepagents_code.btw_cost import answer_with_cost, load_cost
+    from niki_agent.btw import BtwOperation
+    from niki_agent.btw_cost import answer_with_cost, load_cost
 
     await _fake_model(_message(_usage(), message_id="main")).ainvoke(
         [HumanMessage("main")], config={"metadata": {"thread_id": THREAD_ID}}
@@ -2694,9 +2694,9 @@ async def test_concurrent_side_costs_do_not_claim_main_run_usage(
 async def test_cancelling_side_answer_finishes_started_cost_write(
     recorder: _SessionCostRecorder, side_cost_db: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code import btw_cost
-    from deepagents_code.btw import BtwOperation
-    from deepagents_code.btw_cost import answer_with_cost, load_cost
+    from niki_agent import btw_cost
+    from niki_agent.btw import BtwOperation
+    from niki_agent.btw_cost import answer_with_cost, load_cost
 
     started = threading.Event()
     release = threading.Event()
@@ -2740,8 +2740,8 @@ async def test_cancelling_side_answer_finishes_started_cost_write(
 async def test_streamed_side_answer_persists_completed_usage(
     recorder: _SessionCostRecorder,
 ) -> None:
-    from deepagents_code.btw import BtwOperation
-    from deepagents_code.btw_cost import answer_with_cost, load_cost
+    from niki_agent.btw import BtwOperation
+    from niki_agent.btw_cost import answer_with_cost, load_cost
 
     operation = BtwOperation(_ResponsesStyleStreamingModel(), "system", None)
     on_text = AsyncMock()

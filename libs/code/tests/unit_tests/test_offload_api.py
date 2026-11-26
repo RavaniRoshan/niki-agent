@@ -16,13 +16,13 @@ from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 import pytest
 from blockbuster import blockbuster_ctx
 
-from deepagents_code.offload_middleware import OffloadExecution, OffloadResult
+from niki_agent.offload_middleware import OffloadExecution, OffloadResult
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
     from pathlib import Path
 
-    from deepagents_code.offload_middleware import _PendingArchive
+    from niki_agent.offload_middleware import _PendingArchive
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +33,7 @@ def _reset_offload_globals() -> Iterator[None]:
     request leaks a connection pool). Tests patch `get_client`, so the cache has
     to be dropped or the first test's mock would serve every later one.
     """
-    from deepagents_code import offload_api
+    from niki_agent import offload_api
 
     offload_api._client = None
     offload_api._active_operations.clear()
@@ -61,8 +61,8 @@ async def _workspace_route_client(
     """
     from httpx import ASGITransport, AsyncClient
 
-    from deepagents_code import offload_api
-    from deepagents_code._server_config import ServerConfig
+    from niki_agent import offload_api
+    from niki_agent._server_config import ServerConfig
 
     with (
         patch.object(ServerConfig, "from_env", return_value=ServerConfig()),
@@ -93,9 +93,7 @@ async def _workspace_route_client(
 class TestWorkspaceRoute:
     @pytest.fixture(autouse=True)
     def workspace_database(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv(
-            "DEEPAGENTS_CODE_SERVER_DB_PATH", str(tmp_path / "sessions.db")
-        )
+        monkeypatch.setenv("NIKI_SERVER_DB_PATH", str(tmp_path / "sessions.db"))
 
     @pytest.mark.parametrize("cached", [False, True])
     @pytest.mark.parametrize("git_workspace", [False, True])
@@ -104,9 +102,9 @@ class TestWorkspaceRoute:
     ) -> None:
         from httpx import ASGITransport, AsyncClient
 
-        from deepagents_code import offload_api, server_graph
-        from deepagents_code._server_config import ServerConfig
-        from deepagents_code.workspace import require_thread_workspace
+        from niki_agent import offload_api, server_graph
+        from niki_agent._server_config import ServerConfig
+        from niki_agent.workspace import require_thread_workspace
 
         root = tmp_path / "project"
         workdir = root / "workdir"
@@ -172,9 +170,9 @@ class TestWorkspaceRoute:
     ) -> None:
         from httpx import ASGITransport, AsyncClient
 
-        from deepagents_code import offload_api
-        from deepagents_code._server_config import ServerConfig
-        from deepagents_code.workspace import get_thread_workspace
+        from niki_agent import offload_api
+        from niki_agent._server_config import ServerConfig
+        from niki_agent.workspace import get_thread_workspace
 
         launch = tmp_path / "launch"
         other = tmp_path / "other"
@@ -191,7 +189,7 @@ class TestWorkspaceRoute:
                 return_value=SimpleNamespace(threads=threads),
             ),
             patch(
-                "deepagents_code.extensions.trust.is_project_extensions_trusted",
+                "niki_agent.extensions.trust.is_project_extensions_trusted",
                 return_value=initial_trust,
             ) as trust,
         ):
@@ -223,8 +221,8 @@ class TestWorkspaceRoute:
     async def test_server_supplies_policy_when_client_omits_claim(
         self, tmp_path
     ) -> None:
-        from deepagents_code import offload_api
-        from deepagents_code._server_config import ServerConfig
+        from niki_agent import offload_api
+        from niki_agent._server_config import ServerConfig
 
         request = SimpleNamespace(
             path_params={"thread_id": "thread-1"},
@@ -284,8 +282,8 @@ class TestWorkspaceRoute:
 
     async def test_validation_does_not_bind_or_update_thread(self, tmp_path) -> None:
         """A hostability check neither builds a runtime nor changes thread state."""
-        from deepagents_code import offload_api, server_graph
-        from deepagents_code._server_config import ServerConfig
+        from niki_agent import offload_api, server_graph
+        from niki_agent._server_config import ServerConfig
 
         threads = SimpleNamespace(create=AsyncMock(), update=AsyncMock())
         runtime = AsyncMock()
@@ -330,7 +328,7 @@ class TestWorkspaceRoute:
         self, tmp_path, validate_only: bool
     ) -> None:
         """Workspace preflight reports a conflict before a streamed run starts."""
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent.workspace import WorkspaceConflictError
 
         detail = "Cannot host this workspace because the sandbox is already owned."
         async with _workspace_route_client(WorkspaceConflictError(detail)) as (
@@ -350,8 +348,8 @@ class TestWorkspaceRoute:
         self, tmp_path
     ) -> None:
         """A diagnosed conflict adds a `diagnostics` key; the detail is unchanged."""
-        from deepagents_code.workspace import WorkspaceConflictError
-        from deepagents_code.workspace_diagnostics import (
+        from niki_agent.workspace import WorkspaceConflictError
+        from niki_agent.workspace_diagnostics import (
             FieldChange,
             WorkspaceDiagnostics,
         )
@@ -391,7 +389,7 @@ class TestWorkspaceRoute:
 
     def test_conflict_diagnostics_parse_from_sdk_error(self) -> None:
         """The client extracts diagnostics from an SDK 409 body."""
-        from deepagents_code.client.remote_client import (
+        from niki_agent.client.remote_client import (
             workspace_conflict_diagnostics,
         )
 
@@ -458,8 +456,8 @@ class TestWorkspaceRoute:
 
     async def test_rejects_client_policy_mismatch(self, tmp_path) -> None:
         """A caller cannot choose privileged runtime configuration."""
-        from deepagents_code import offload_api
-        from deepagents_code._server_config import ServerConfig
+        from niki_agent import offload_api
+        from niki_agent._server_config import ServerConfig
 
         request = SimpleNamespace(
             path_params={"thread_id": "thread-1"},
@@ -481,8 +479,8 @@ class TestWorkspaceRoute:
         from_env.assert_called_once_with()
 
     async def test_rejects_client_project_policy_claim(self, tmp_path) -> None:
-        from deepagents_code import offload_api
-        from deepagents_code._server_config import ServerConfig
+        from niki_agent import offload_api
+        from niki_agent._server_config import ServerConfig
 
         config = ServerConfig()
         claim = config.to_session_workspace_claim()
@@ -507,7 +505,7 @@ class TestWorkspaceRoute:
         )
 
     async def test_rejects_unknown_workspace_request_field(self, tmp_path) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         request = SimpleNamespace(
             path_params={"thread_id": "thread-1"},
@@ -523,8 +521,8 @@ class TestWorkspaceRoute:
 
     async def test_malformed_policy_is_a_client_error(self, tmp_path) -> None:
         """A non-object policy returns 422 instead of escaping as a 500."""
-        from deepagents_code import offload_api
-        from deepagents_code._server_config import ServerConfig
+        from niki_agent import offload_api
+        from niki_agent._server_config import ServerConfig
 
         request = SimpleNamespace(
             path_params={"thread_id": "thread-1"},
@@ -572,7 +570,7 @@ class TestOperationPayload:
         These keys would route the server's credentialed provider calls to a
         client-chosen destination.
         """
-        from deepagents_code.offload_api import _operation_payload
+        from niki_agent.offload_api import _operation_payload
 
         _, context, _, _ = _operation_payload(
             {
@@ -600,7 +598,7 @@ class TestOperationPayload:
         """
         import logging
 
-        from deepagents_code.offload_api import _operation_payload
+        from niki_agent.offload_api import _operation_payload
 
         with caplog.at_level(logging.WARNING):
             _operation_payload(
@@ -668,8 +666,8 @@ def _result(
 class TestExecuteOffload:
     async def test_missing_workspace_binding_is_rejected(self) -> None:
         """Offload never falls back to the process-global runtime."""
-        from deepagents_code import offload_api
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent import offload_api
+        from niki_agent.workspace import WorkspaceConflictError
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -703,8 +701,8 @@ class TestExecuteOffload:
 
     async def test_runtime_workspace_conflict_is_rejected(self) -> None:
         """Runtime conflicts use the same offload 409 path as binding conflicts."""
-        from deepagents_code import offload_api
-        from deepagents_code.workspace import WorkspaceConflictError
+        from niki_agent import offload_api
+        from niki_agent.workspace import WorkspaceConflictError
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -751,7 +749,7 @@ class TestExecuteOffload:
         threads.update_state.assert_not_awaited()
 
     async def test_missing_workspace_context_is_rejected(self) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -792,7 +790,7 @@ class TestExecuteOffload:
         """A subsequent offload receives a message object in its prior event."""
         from langchain_core.messages import HumanMessage
 
-        from deepagents_code.offload_api import _hydrate_state
+        from niki_agent.offload_api import _hydrate_state
 
         state = _hydrate_state(
             {
@@ -816,7 +814,7 @@ class TestExecuteOffload:
         assert event["summary_message"].content == "Prior summary."
 
     async def test_commits_event_and_cost_without_messages(self) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         calls: list[str] = []
@@ -934,16 +932,16 @@ class TestExecuteOffload:
         self, archived: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Run the real summary operation and commit only cost to the source."""
-        from deepagents.backends import FilesystemBackend
-        from deepagents.middleware.summarization import SummarizationMiddleware
         from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-        from deepagents_code import offload_api
-        from deepagents_code.hooks.server_middleware import _PRE_TOOL_STATE_KEY
-        from deepagents_code.offload_middleware import (
+        from niki_agent import offload_api
+        from niki_agent.hooks.server_middleware import _PRE_TOOL_STATE_KEY
+        from niki_agent.offload_middleware import (
             CLICompactionMiddleware,
             OffloadOperation,
         )
+        from niki_agent.sdk.backends import FilesystemBackend
+        from niki_agent.sdk.middleware.summarization import SummarizationMiddleware
 
         backend = FilesystemBackend(root_dir=tmp_path, virtual_mode=True)
         summarization = SummarizationMiddleware(
@@ -1000,7 +998,7 @@ class TestExecuteOffload:
 
             # Deletion must reach the real handoff file even with retention off
             # and no remaining checkpoints, as after an interrupted deletion.
-            from deepagents_code import offload, sessions
+            from niki_agent import offload, sessions
 
             monkeypatch.setattr(offload, "_offload_fallback_root", lambda: tmp_path)
             monkeypatch.setattr(offload, "_history_retention_days", lambda: 0)
@@ -1021,7 +1019,7 @@ class TestExecuteOffload:
 
     async def test_failed_archive_link_restores_the_append(self) -> None:
         """A failed follow-up checkpoint cannot leave duplicate history."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         unlinked = _thread_state("reserved")
@@ -1085,7 +1083,7 @@ class TestExecuteOffload:
 
     async def test_cancellation_waits_for_checkpoint_archive_settlement(self) -> None:
         """A reserved commit must settle before cancellation becomes terminal."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1142,7 +1140,7 @@ class TestExecuteOffload:
 
     async def test_request_transport_cannot_replace_checkpointed_model(self) -> None:
         """Offload uses the model settings from the target thread checkpoint."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1179,7 +1177,7 @@ class TestExecuteOffload:
 
     async def test_legacy_thread_reuses_startup_summarizer(self) -> None:
         """A thread without model metadata ignores request model selection."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         values = cast("dict[str, object]", before["values"])
@@ -1214,7 +1212,7 @@ class TestExecuteOffload:
         assert "model_params" not in runtime.context
 
     async def test_checkpoint_change_fails_without_state_commit(self) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -1274,7 +1272,7 @@ class TestExecuteOffload:
     async def test_thread_with_work_in_flight_is_rejected_before_operation(
         self, status: str
     ) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": status}),
@@ -1310,7 +1308,7 @@ class TestExecuteOffload:
         in-flight work is caught separately by the `next`/`tasks`/`interrupts`
         check against the checkpoint.
         """
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         class _ReachedStateReadError(Exception):
             """Sentinel proving control passed the thread-status gate."""
@@ -1382,7 +1380,7 @@ class TestExecuteOffload:
         that actually carries one. `todos` covers the allowlist itself: a
         `messages`-only check would let every other channel through.
         """
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1419,7 +1417,7 @@ class TestExecuteOffload:
 
     async def test_empty_update_still_releases_claimed_cost_records(self) -> None:
         """A prepare with nothing to write must not silently eat its records."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         noop_result = {**_result(), "status": "noop"}
@@ -1449,7 +1447,7 @@ class TestExecuteOffload:
 
     async def test_write_failure_without_advance_restores_cost(self) -> None:
         """A write that provably did not land returns its records to the recorder."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1489,7 +1487,7 @@ class TestExecuteOffload:
 
     async def test_write_failure_after_advance_keeps_cost_claimed(self) -> None:
         """An indeterminate write must not re-queue records and double-charge."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -1547,7 +1545,7 @@ class TestExecuteOffload:
         """
         import logging
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1601,7 +1599,7 @@ class TestExecuteOffload:
         re-delivering cancellation while the handler unwinds -- would take both
         branches off the table and lose the records with no trace.
         """
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         before = _thread_state()
         threads = SimpleNamespace(
@@ -1644,7 +1642,7 @@ class TestExecuteOffload:
         self,
     ) -> None:
         """Cancellation must propagate so the task actually observes it."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -1693,14 +1691,14 @@ class TestExecuteOffload:
         from pathlib import Path
         from uuid import uuid4
 
-        from deepagents_code.hooks.models.domain import (
+        from niki_agent.hooks.models.domain import (
             ApprovalMode,
             HookContext,
             HookEvent,
             PreToolUseEvent,
             ToolCallData,
         )
-        from deepagents_code.hooks.models.transport import (
+        from niki_agent.hooks.models.transport import (
             HookInvocation,
             HookInvocationRequest,
         )
@@ -1735,9 +1733,9 @@ class TestExecuteOffload:
         escapes to Starlette as a raw 500 for every user with a `PreCompact` or
         `PreToolUse` hook configured, and nothing else in the suite notices.
         """
-        from deepagents_code import offload_api
-        from deepagents_code.hooks.interrupt import is_hook_interrupt_payload
-        from deepagents_code.hooks.server_middleware import (
+        from niki_agent import offload_api
+        from niki_agent.hooks.interrupt import is_hook_interrupt_payload
+        from niki_agent.hooks.server_middleware import (
             HookTransportInterruptError,
         )
 
@@ -1780,8 +1778,8 @@ class TestExecuteOffload:
         would re-raise the same invocation forever and the client would die at
         its round limit, so assert the mapping is actually installed.
         """
-        from deepagents_code import offload_api
-        from deepagents_code.hooks.server_middleware import operation_hook_responses
+        from niki_agent import offload_api
+        from niki_agent.hooks.server_middleware import operation_hook_responses
 
         seen: list[object] = []
 
@@ -1789,7 +1787,7 @@ class TestExecuteOffload:
             *_args: object, **_kwargs: object
         ) -> OffloadExecution:
             # Read the context var the way the hook transport does.
-            from deepagents_code.hooks import server_middleware
+            from niki_agent.hooks import server_middleware
 
             seen.append(server_middleware._HOOK_RESPONSES.get())
             return OffloadExecution(
@@ -1840,7 +1838,7 @@ class TestExecuteOffload:
         import httpx
         from langgraph_sdk.errors import NotFoundError
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         request = httpx.Request("GET", "http://localhost/threads/thread-1")
         not_found = NotFoundError(
@@ -1882,7 +1880,7 @@ class TestExecuteOffload:
         graceful `empty` branch reachable over HTTP. Without it the user is told
         the operation failed for a thread that simply has nothing to compact.
         """
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -1914,7 +1912,7 @@ class TestExecuteOffload:
 
     async def test_missing_checkpoint_with_messages_is_rejected(self) -> None:
         """State with messages but no checkpoint cannot be written against."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "idle"}),
@@ -1979,7 +1977,7 @@ class TestCheckpointModelContext:
     """
 
     def test_request_model_selection_is_replaced_by_checkpointed_values(self) -> None:
-        from deepagents_code.offload_api import _checkpoint_model_context
+        from niki_agent.offload_api import _checkpoint_model_context
 
         trusted = _checkpoint_model_context(
             {"model": "evil:model", "model_params": {"base_url": "http://attacker"}},
@@ -1998,7 +1996,7 @@ class TestCheckpointModelContext:
         summary spec to substitute, so the operation falls back to the server's
         own launch configuration.
         """
-        from deepagents_code.offload_api import _checkpoint_model_context
+        from niki_agent.offload_api import _checkpoint_model_context
 
         trusted = _checkpoint_model_context(
             {"summarization_model": "attacker-provider:model"},
@@ -2009,7 +2007,7 @@ class TestCheckpointModelContext:
 
     def test_summarization_model_is_dropped_without_a_model_checkpoint(self) -> None:
         """Threads predating model checkpointing must not become a bypass."""
-        from deepagents_code.offload_api import _checkpoint_model_context
+        from niki_agent.offload_api import _checkpoint_model_context
 
         trusted = _checkpoint_model_context(
             {"summarization_model": "attacker-provider:model"}, {}
@@ -2019,7 +2017,7 @@ class TestCheckpointModelContext:
         assert "model" not in trusted
 
     def test_unrelated_context_survives(self) -> None:
-        from deepagents_code.offload_api import _checkpoint_model_context
+        from niki_agent.offload_api import _checkpoint_model_context
 
         trusted = _checkpoint_model_context(
             {"thread_id": "t1", "profile_overrides": {"max_input_tokens": 1}},
@@ -2040,14 +2038,14 @@ class TestValidateContext:
         without a type check the client gets a field that quietly does nothing
         rather than an error naming it.
         """
-        from deepagents_code.offload_api import _validate_context
+        from niki_agent.offload_api import _validate_context
 
         with pytest.raises(TypeError, match=re.escape("context.summarization_model")):
             _validate_context({"summarization_model": 7})
 
     @pytest.mark.parametrize("value", [None, "provider:model"])
     def test_accepts_a_string_or_null(self, value: str | None) -> None:
-        from deepagents_code.offload_api import _validate_context
+        from niki_agent.offload_api import _validate_context
 
         _validate_context({"summarization_model": value})
 
@@ -2059,7 +2057,7 @@ class TestLifespan:
         """The flush happens on shutdown, not on startup."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         client = _flush_client()
         with patch.object(run_trees, "_CLIENT", client):
@@ -2072,7 +2070,7 @@ class TestLifespan:
         """A crashing app still flushes without replacing its exception."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         client = _flush_client()
 
@@ -2093,7 +2091,7 @@ class TestLifespan:
         """The blocking flush runs on a daemon worker, not the event loop."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         flush_threads: list[int] = []
         client = _flush_client()
@@ -2111,7 +2109,7 @@ class TestLifespan:
         import langsmith
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         def forbidden(*_args: object, **_kwargs: object) -> None:
             msg = "shutdown must not construct a LangSmith client"
@@ -2130,7 +2128,7 @@ class TestLifespan:
         """A hung flush is abandoned after the external deadline."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         release = threading.Event()
         client = _flush_client()
@@ -2163,7 +2161,7 @@ class TestLifespan:
         """A telemetry failure cannot turn into a failed shutdown."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         client = _flush_client()
         client.flush.side_effect = RuntimeError("flush failed")
@@ -2183,7 +2181,7 @@ class TestLifespan:
         """A non-Exception failure still releases the shutdown waiter."""
         from langsmith import run_trees
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         client = _flush_client()
         client.flush.side_effect = SystemExit(1)
@@ -2211,8 +2209,8 @@ class TestRouteRegistration:
     def test_offload_and_cancel_paths_are_registered(self) -> None:
         from starlette.testclient import TestClient
 
-        from deepagents_code import offload_api
-        from deepagents_code.offload_middleware import unchanged_offload_result
+        from niki_agent import offload_api
+        from niki_agent.offload_middleware import unchanged_offload_result
 
         calls: list[tuple[str, str]] = []
 
@@ -2254,8 +2252,8 @@ class TestRouteRegistration:
     ) -> None:
         from starlette.testclient import TestClient
 
-        from deepagents_code import offload_api
-        from deepagents_code.offload_middleware import unchanged_offload_result
+        from niki_agent import offload_api
+        from niki_agent.offload_middleware import unchanged_offload_result
 
         execute = AsyncMock(
             return_value={
@@ -2288,7 +2286,7 @@ class TestRouteRegistration:
     def test_cancel_path_is_registered(self) -> None:
         from starlette.testclient import TestClient
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         with TestClient(offload_api.app) as client:
             response = client.post(
@@ -2310,7 +2308,7 @@ class TestThreadLock:
     """
 
     def test_each_thread_gets_its_own_lock(self) -> None:
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         first = offload_api._thread_lock("thread-1")
 
@@ -2324,7 +2322,7 @@ class TestThreadLock:
         remove it, or key it on `operation_id` instead of `thread_id`, and the
         operation reads state immediately.
         """
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "busy"}),
@@ -2358,7 +2356,7 @@ class TestThreadLock:
 
     async def test_a_different_thread_is_not_blocked(self) -> None:
         """The lock is per thread, so unrelated threads must not serialize."""
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         threads = SimpleNamespace(
             get=AsyncMock(return_value={"status": "busy"}),
@@ -2408,7 +2406,7 @@ class TestOffloadRoute:
         """The cancel response is sent only after the operation task exits."""
         import json
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         started = asyncio.Event()
         stopped = asyncio.Event()
@@ -2441,7 +2439,7 @@ class TestOffloadRoute:
         """A reordered cancel closes the disconnect-before-register race."""
         import json
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         cancel = await offload_api.cancel_offload(self._cancel_request())  # ty: ignore[invalid-argument-type]
         execute = AsyncMock()
@@ -2465,7 +2463,7 @@ class TestOffloadRoute:
         """
         import json
 
-        from deepagents_code import offload_api
+        from niki_agent import offload_api
 
         with patch.object(
             offload_api,

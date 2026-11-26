@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from deepagents_code.mcp_config import resolve_mcp_server_env
+from niki_agent.mcp_config import resolve_mcp_server_env
 
 if TYPE_CHECKING:
     import pytest

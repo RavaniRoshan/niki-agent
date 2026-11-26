@@ -1,7 +1,7 @@
 """Hatchling build hook that stamps the release commit into the package.
 
-When `DEEPAGENTS_CODE_BUILD_COMMIT` is set (CI release builds), this writes
-`deepagents_code/_build_info.py` so `dcode doctor` can report the exact commit
+When `NIKI_BUILD_COMMIT` is set (CI release builds), this writes
+`niki_agent/_build_info.py` so `dcode doctor` can report the exact commit
 a wheel was built from. Editable and local builds leave the env var unset, so
 no file is generated and `dcode doctor` falls back to a live `git` probe of the
 working tree.
@@ -18,9 +18,9 @@ from hatchling.builders.hooks.plugin.interface import (  # ty: ignore[unresolved
     BuildHookInterface,
 )
 
-_COMMIT_ENV = "DEEPAGENTS_CODE_BUILD_COMMIT"
+_COMMIT_ENV = "NIKI_BUILD_COMMIT"
 _COMMIT_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
-_TARGET = Path("deepagents_code") / "_build_info.py"
+_TARGET = Path("niki_agent") / "_build_info.py"
 
 
 class CustomBuildHook(BuildHookInterface):

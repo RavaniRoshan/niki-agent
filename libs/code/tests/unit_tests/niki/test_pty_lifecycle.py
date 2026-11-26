@@ -9,7 +9,7 @@ the installed console script under a real pty and read the output through `pyte`
 a terminal emulator, so what is asserted on is the rendered screen rather than
 the raw byte stream.
 
-Every run gets its own `DEEPAGENTS_HOME` under tmp_path, so nothing here reads
+Every run gets its own `NIKI_HOME` under tmp_path, so nothing here reads
 or writes the developer's real `~/.deepagents`. No API key is used and no
 network is required: the lifecycle rows are all about start-up and exit.
 
@@ -35,8 +35,8 @@ DCODE = str(VENV_BIN / "dcode")
 def _env(home: Path) -> dict[str, str]:
     """Environment for a child process isolated to `home`."""
     env = dict(os.environ)
-    env["DEEPAGENTS_HOME"] = str(home)
-    env["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] = "1"
+    env["NIKI_HOME"] = str(home)
+    env["NIKI_NO_UPDATE_CHECK"] = "1"
     env["TERM"] = "xterm-256color"
     env.pop("COLUMNS", None)
     env.pop("LINES", None)
@@ -71,7 +71,7 @@ def test_version_exits_cleanly_in_a_real_pty(home: Path) -> None:
     child.close()
 
     assert child.exitstatus == 0, f"`dcode -v` exited {child.exitstatus}"
-    assert "deepagents-code" in output, "version banner missing"
+    assert "niki-agent" in output, "version banner missing"
 
 
 def test_non_tty_run_emits_no_escape_sequences(home: Path) -> None:
@@ -79,7 +79,7 @@ def test_non_tty_run_emits_no_escape_sequences(home: Path) -> None:
     import subprocess
 
     result = subprocess.run(
-        [sys.executable, "-c", "import deepagents_code, sys; sys.exit(0)"],
+        [sys.executable, "-c", "import niki_agent, sys; sys.exit(0)"],
         capture_output=True,
         text=True,
         env=_env(home),
@@ -186,7 +186,7 @@ def test_real_process_first_paint_is_under_the_startup_budget(home: Path) -> Non
             "-c",
             (
                 "import sys; sys.argv[0] = 'niki'; "
-                "from deepagents_code.niki.entry import niki_main; niki_main()"
+                "from niki_agent.niki.entry import niki_main; niki_main()"
             ),
         ],
         env=env,

@@ -28,10 +28,10 @@ from pathlib import Path
 import pytest
 from textual.app import App
 
-import deepagents_code
-from deepagents_code.niki import theme as niki_theme
+import niki_agent
+from niki_agent.niki import theme as niki_theme
 
-PACKAGE_ROOT = Path(deepagents_code.__file__).parent
+PACKAGE_ROOT = Path(niki_agent.__file__).parent
 NIKI_ROOT = PACKAGE_ROOT / "niki"
 
 #: Upstream files that legitimately contain hex colors. Recorded at BASE_SHA;
@@ -57,7 +57,7 @@ def test_niki_writes_colors_only_in_its_theme_module() -> None:
     offenders = _files_with_color_literals(NIKI_ROOT) - {"theme.py"}
     assert not offenders, (
         f"color literals outside the Niki theme module: {sorted(offenders)}. "
-        "Add a token to deepagents_code/niki/theme.py and reference it instead."
+        "Add a token to niki_agent/niki/theme.py and reference it instead."
     )
 
 
@@ -83,7 +83,7 @@ async def test_nothing_writes_to_stdout_or_stderr_while_the_tui_is_live() -> Non
     """L3: a mounted screen and any stray write cannot coexist."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="niki-lint")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -111,7 +111,7 @@ async def test_no_warning_escapes_while_the_tui_is_live() -> None:
     """L3: a library warning mid-frame corrupts the screen, so it must fail loudly."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="niki-warn")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -175,8 +175,8 @@ async def test_niki_stylesheet_actually_applies() -> None:
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import NIKI_DARK
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import NIKI_DARK
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-css")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -234,7 +234,7 @@ def test_the_palette_is_not_a_copy(palette_name: str) -> None:
     because the harness lint rule forbids colour literals in test code -- and
     that rule should not be weakened to make this test expressible.
     """
-    from deepagents_code.niki.theme import NIKI_DARK, NIKI_LIGHT
+    from niki_agent.niki.theme import NIKI_DARK, NIKI_LIGHT
 
     palette = {"NIKI_DARK": NIKI_DARK, "NIKI_LIGHT": NIKI_LIGHT}[palette_name]
     mine = {value.upper() for value in palette.values()}
@@ -258,7 +258,7 @@ def test_every_registered_variant_clears_its_contrast_floor(palette_name: str) -
     A variant that fails its own contrast rule is worse than no variant: the
     user picks it precisely because they need it to be legible.
     """
-    from deepagents_code.niki.theme import NIKI_PALETTES, contrast_violations
+    from niki_agent.niki.theme import NIKI_PALETTES, contrast_violations
 
     assert palette_name in NIKI_PALETTES, f"{palette_name} is not registered"
     violations = contrast_violations(NIKI_PALETTES[palette_name])
@@ -270,7 +270,7 @@ def test_every_registered_variant_clears_its_contrast_floor(palette_name: str) -
 
 def test_every_variant_defines_the_same_tokens() -> None:
     """A variant missing a token would render a default colour mid-UI."""
-    from deepagents_code.niki.theme import NIKI_PALETTES
+    from niki_agent.niki.theme import NIKI_PALETTES
 
     reference = set(NIKI_PALETTES["niki"])
     for name, palette in NIKI_PALETTES.items():
@@ -284,8 +284,8 @@ async def test_every_variant_is_registered_and_switchable() -> None:
     """`/theme` must offer them and the app must actually apply one."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import NIKI_PALETTES
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import NIKI_PALETTES
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-variants")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]

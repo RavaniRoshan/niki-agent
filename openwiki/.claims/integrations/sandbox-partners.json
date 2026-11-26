@@ -42,14 +42,14 @@
     },
     {
       "id": "claim_0cbb851ab32b41a48a863ecaf8a32d1b",
-      "statement": "dcode's SandboxRegistry merges curated built-ins, third-party providers advertised through the deepagents_code.sandbox_providers entry-point group, and config-declared providers; name collisions resolve config first, then entry point, then built-in.",
+      "statement": "dcode's SandboxRegistry merges curated built-ins, third-party providers advertised through the niki_agent.sandbox_providers entry-point group, and config-declared providers; name collisions resolve config first, then entry point, then built-in.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_registry.py#L2-L13",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_registry.py#L2-L13",
           "version": "repo-lines-v1:sha256:b676ba75da3fe9b4ac0bf9f10ecbdcbf9bd38980118cd2e0da66d29191fb654e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMDQ5ZGMyNzJhYTZiYzJhNDNlYjhkMjBiNzk2NzI1OWE4NDllNzY3MzcwYWRiNTQ1NDA4YmUxNDM2M2NhMDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoxLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMGY5ZGM4Nzg5ZDc2YWZhMTkyNjZmZGQwODc5MzVjOGVhM2Y5ZjhhMjQ4NmY5ZWIwNjVkYjQyYjc4MDBhOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhYWY3NjM3Y2I2ZTdlNWRiODVkNjM0Mjc0NjAxNGRmMDQxY2NkNTU4YTkyMGIyOWViNmFjNzE5ZDdiYWY1YzIifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_registry.py#L259-L295",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_registry.py#L259-L295",
           "version": "repo-lines-v1:sha256:fbb84fc638a469c02be11d740f873d2ff1e6a654eae525263ed9d2c9d1f778c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4ZGQ2Y2E4ZmVhNTRmZWZlNDcyNTVjNjZhMTI1NmEzNDFjNmRhZTM4N2QwMzJhZThhYjgxMWZlMDU4MGU3MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWUzYmZlZjJjZDZhZjhhZTUyYmYxYzNiYjllM2NiYTViYmYwZDI4ZDg1MTBlM2YzYWFjZGI2MWM4ZGJhNWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmZjcwYTM5ODMyMzk5OTgzMmYyMmUyNTIzMmY3NzQ0YzFhOWQxYzE0OTNjZGE2OTIwYTQzOGIwODk5ZmMyMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzZWFlNGQ2NzhlM2UzZDE5ODI2ZDcwYjBkMDllNDRjMDA1YWFmYjYxOTBjYTZiMzBkYmRkZGZjMzU5ZmM1NDYifQ"
         }
       ]
@@ -59,11 +59,11 @@
       "statement": "dcode create_sandbox validates provider snapshot capabilities and forbids combining a snapshot with an attached ID, runs an optional setup script after creation with workspace-environment expansion, deletes only newly-created sandboxes at context exit, and reports cleanup failure without masking the original error.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_factory.py#L44-L81",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_factory.py#L44-L81",
           "version": "repo-lines-v1:sha256:1599dc4405cdccce17795f6b031d0f05fb4483f4b13e5f00b84af3859350b130:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3YzE5ZjMyMjU2MDA1ZDE0ZmRiMjMwMmE0MTc0NDMzYjlkNDQwNTNhZTRiYTRjNmFmZWU1ZTNiNTUwNTU1YWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkYmJlM2U0MWE2YTcwOWJmMTY4YWYzNzIxMTg0MWIyMmExMjVjNGQ2NjczMDBmNGNmNzgyOWZjYWE4MTQ5YmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMzJlZTg3YzQ4NjlmZDQ4ZDk0NDVkMzJhZTE2MmRmNTQ5MmY5YmJhMWJmZWEzYzZiOTc0NTEwYjIzOGViNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlYjNmNDQzZmZhZDQ5ZDFjMzhmY2JiMmI0NjA1ODI2NjhkNjJlMWI1ZmNiYzI4ZTAzZjYzMmM3Y2Q1N2UxZDQifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_factory.py#L86-L182",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_factory.py#L86-L182",
           "version": "repo-lines-v1:sha256:86e01d9460ca42e10237bb81d52d5d4919e6ee8c9d2d9b9d0610b27bf56e2690:eyJzZWxlY3RlZExpbmVDb3VudCI6OTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MWYzM2MxMzI1NjlhNzQ5NDZiMmZjZjU0NmNhM2M0NDI1ZGEwY2E1Y2Y2YjY4NmMyNjA5MGZhYTlkMTEyYjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxMDM0ODFjNTdkMGYwZGMwZjc2Y2QyY2M4YjM2MDRjNGU4Mjk2ZGE0MTIyYWRkMTllODE3NDVkYzdlMzMxYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxYjhmNWFkODc3NTRkZjkzNWJiNzg5M2YyZjZkMGNlYzcwYmI1NDEwMzJiMDhlOWEzMzUxMDllNzliMzE1OTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkYWQwMzExYWIzMTU3NjI3Y2ZjY2NmZmEzYmVhOWI1M2UyYTkyZGIzZWM0MmQwZGMwMzU2MTc4YzczYzE5MGEifQ"
         }
       ]
@@ -73,15 +73,15 @@
       "statement": "A dcode server keeps the sandbox context open for the server-process lifetime and caches runtime construction so sandbox creation and cleanup registration occur once; it reserves that process-wide sandbox for the first workspace and rejects another workspace rather than sharing it.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/server_graph.py#L484-L507",
+          "resource": "repo://libs/code/niki_agent/server_graph.py#L484-L507",
           "version": "repo-lines-v1:sha256:53b6a98cdb118c2a50ccb69cd5e76ea445a6e2415a6047dbc6198c367092100e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYTM3NjIyN2JkODNkMzk5ZjUxNWQzOTJiNWVhNzAyOGI0ZjJjZjY0OTM5NDNjY2FhZGJjNzkzMDE2NmM1ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0YTM3NjBkZTE2MWY3MmFhOGM1NWM2ZWIzMTRhMDExMDRkM2NiMWVlMzM4ZGI1YTFkNzNjM2ZjYzdhOGM1ZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM2ZjZjYzJjY2QxNjAyNGRkN2U2ZGNmMDhjNjg5ZmM0MzlmMDg5MzJmNjhkZjQxYTg1ZGE2MTNmZGM3ZTI3NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5ODIxYjNiZTM1MDE1NTg4MWQ0ZDQ4MTkzZTc5ZDg3ZmYwZWIwMzZiMjMzNjBjMWZjYzI1YWIzN2MyMWFmOTcifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/server_graph.py#L652-L700",
+          "resource": "repo://libs/code/niki_agent/server_graph.py#L652-L700",
           "version": "repo-lines-v1:sha256:9285106d0fe2d58492c5d3893a9940df0924957a276ee21818141d7f21291e54:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlY2ExN2U4MGFiOThiMGU1YTY5YjBjNGNlMTk0YTgxYWJiNGM2MTVkNDNlMDIzZTlhZjk0MjMyZmU0ZjA5MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNjIwY2JkNTRlMjdiMGM3NmVjNGI0YjVjMGRiODNiMWFhOWYzZWYxMGYzMTZkNTZiZTFhZTZjYjJiZDgzNTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZWZkOWUxNzJlNTE2NDhjYzY1N2RiZWEwNDYxM2ZiNzc5M2Q2ZjZjYmViOTIyZjE2YWVkYTZmZDRhMTlmNTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNGE5ZjFkMzJmMWIxYjQ3NjE1YjExYWIxYzQwYTJmNjBjYTRkZTVkMWFkN2ZmNzdhMTQyNGFmYTU0Njk4ZTgifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/server_graph.py#L731-L817",
+          "resource": "repo://libs/code/niki_agent/server_graph.py#L731-L817",
           "version": "repo-lines-v1:sha256:4e68fb46dd695020f360a877456f2632ad2bdb42ca5b233865967352ab2078ed:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5NTU5ZDFjNWNlMTBiODFkNWI2ZDRmYzE1NGEzZWU4MjdkYjA0YjQ1ZWM2YjliNDk5Njg1ZjJiMjZhMzkzOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5Yzk0YWZhYmU1ZmY0YWE2Mjk3NDM2ZDlkOTgwOGEzZTc4YmUyYzJiZDAwZjAzMjhhNTc3MWEwNGYxMDhlOWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyZWUzZTFjYTNmNDk3MTc4ZmQ1MGNkYjc4NDllZThiZjIzNzNjYjE4NjRmNTg1ZjFmNmJmODJhMDM4MTgwMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3Yjk4NzhhMjIzNzA1NzUzODliNjdiMzQwOWQ0OWVkYzRkNDhjNzZlN2NjMGQ3OGM2YzU0OGExZDIzNjU0ZjkifQ"
         }
       ]
@@ -91,11 +91,11 @@
       "statement": "SandboxProviderMetadata permits discovery and installation guidance without constructing credential-dependent providers, while SandboxProvider supplies synchronous lifecycle methods and asyncio.to_thread async wrappers.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_provider.py#L14-L63",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_provider.py#L14-L63",
           "version": "repo-lines-v1:sha256:7d0e07ab071aa5d4c96cfd03479aa2d2b6efcaa4961d0c9973874aa39e0114b8:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTcxNTI1NzJlZTg0ZjEwOTA2Yzc0YjlmMmE5MjQzNGRkYWIwZTNjNDI4MTNiMDRlNTk3ZWZjZWM5NTFiMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyOWJjM2ViMDdmOTQ1NmNkZGNiM2VlYTNjNWM2OTkwZjkwYmRkNDFmNmNjZjZmYWNmNzhhMGI0OWEwOGVlMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2NGUyMTgwZTY0N2IzMjRjODVhZWM5YTQzYWY4NmIyMjU1ZGIxZWIyYzg5NzNhNTk3NjNkYzg4ZGJmMGNkNTYifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_provider.py#L79-L137",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_provider.py#L79-L137",
           "version": "repo-lines-v1:sha256:d2cc85fc571c75c1d31756dd59cdd829090202732c90f7acb44b34be5f637420:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1NjlmNmRlZDFkZDdlY2I3ZTA1ZGU2ODJkMzQ0OTAzZTUwZTViZjcwMGE4NmNjNjVlODE5NmVlMDhmZjRmNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3MDdlYjM2NGVmODU0ZTk1MGJhNWM2YzA2YjVkMzcxMGQzNzA1Nzk4MDQ1NmJlZGU0NDAzZDBhMTJiZGIwNTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5MDk3NTUzNzhlMGE0MmE1OWUxNDMxNDMxZTYxZjJlNzVkNTA2YTQzMDM3MzE2Y2FjYWRhNDA1NmM2MjM5MmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
@@ -105,7 +105,7 @@
       "statement": "Sandbox configuration's default provider is applied only after the user explicitly enables sandbox mode, so setting [sandboxes].default does not implicitly enable sandbox execution.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/integrations/sandbox_config.py#L78-L103",
+          "resource": "repo://libs/code/niki_agent/integrations/sandbox_config.py#L78-L103",
           "version": "repo-lines-v1:sha256:ea6e769bb41b0966b1d545df66ceff2e6327ed73143c583330a5924ff1bf38a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2OWExMzk3NWMyNTZlYzgzMjBlMjAxNjA4M2M5NmRmNjM3Y2EzZDM1YmViZGUyMzE0YmVlM2E0NzExYjU2Y2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTcxNTI1NzJlZTg0ZjEwOTA2Yzc0YjlmMmE5MjQzNGRkYWIwZTNjNDI4MTNiMDRlNTk3ZWZjZWM5NTFiMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3NGQzM2E3MjJhYTJhMTk1NmMyMTg1ZmMwNzAyNjljOWJjZjQ4YTNkOWFlYjQ5OThlMzIyNDk5YmJjODVjYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3MDQxOWJkOTI2NTJlMmVlYzBlOWRmODdkYTAzNDAxZTFjOWFmOGFhYzA3ZjYwOTc3ZGY4YjI5NzFmNjVkMTAifQ"
         }
       ]

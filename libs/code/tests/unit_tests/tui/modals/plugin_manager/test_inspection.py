@@ -10,18 +10,18 @@ from unittest.mock import MagicMock
 import pytest
 from textual.widgets import OptionList, Static
 
-from deepagents_code._env_vars import OFFLINE
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.plugins import discovery, store
-from deepagents_code.plugins.marketplace import MarketplaceError
-from deepagents_code.plugins.models import (
+from niki_agent._env_vars import OFFLINE
+from niki_agent.app import DeepAgentsApp
+from niki_agent.plugins import discovery, store
+from niki_agent.plugins.marketplace import MarketplaceError
+from niki_agent.plugins.models import (
     MarketplacePluginEntry,
     PluginMarketplace,
     UrlPluginSource,
 )
-from deepagents_code.tui.modals import plugin_manager
-from deepagents_code.tui.modals.plugin_manager import state
-from deepagents_code.tui.modals.plugin_manager.models import (
+from niki_agent.tui.modals import plugin_manager
+from niki_agent.tui.modals.plugin_manager import state
+from niki_agent.tui.modals.plugin_manager.models import (
     _ManagerState,
     _MarketplaceRow,
     _PluginRow,
@@ -54,7 +54,7 @@ def source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         metadata={},
         plugins=(entry,),
     )
-    monkeypatch.setenv("DEEPAGENTS_CODE_PLUGIN_CACHE_DIR", str(tmp_path / "store"))
+    monkeypatch.setenv("NIKI_PLUGIN_CACHE_DIR", str(tmp_path / "store"))
     monkeypatch.setattr(
         discovery, "_resolve_marketplace_and_entry", lambda _: (marketplace, entry)
     )

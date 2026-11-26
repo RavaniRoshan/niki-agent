@@ -38,13 +38,13 @@ CONFIG = {
 
 def test_matching_scope_files_pass() -> None:
     """A package scope that covers the touched package dir is clean."""
-    changed = ["libs/code/deepagents_code/app.py"]
+    changed = ["libs/code/niki_agent/app.py"]
     assert find_offenders("fix(code): repair startup", changed, CONFIG) == []
 
 
 def test_sdk_scope_with_code_files_blocks() -> None:
     """`fix(sdk):` does not cover files under `libs/code/`."""
-    changed = ["libs/code/deepagents_code/app.py"]
+    changed = ["libs/code/niki_agent/app.py"]
     assert find_offenders("fix(sdk): repair startup", changed, CONFIG) == [
         {"package": "dcode", "dirs": ["libs/code/"]}
     ]
@@ -54,7 +54,7 @@ def test_multi_scope_title_covers_multiple_package_dirs() -> None:
     """Comma-separated scopes cover every matching package label."""
     changed = [
         "libs/evals/deepagents_evals/main.py",
-        "libs/code/deepagents_code/app.py",
+        "libs/code/niki_agent/app.py",
     ]
     assert find_offenders("feat(evals,code): share option", changed, CONFIG) == []
 
@@ -63,7 +63,7 @@ def test_multi_scope_title_blocks_uncovered_package_dir() -> None:
     """A third package remains an offender when absent from a multi-scope title."""
     changed = [
         "libs/evals/deepagents_evals/main.py",
-        "libs/code/deepagents_code/app.py",
+        "libs/code/niki_agent/app.py",
         "libs/deepagents/deepagents/graph.py",
     ]
     assert find_offenders("feat(evals,code): share option", changed, CONFIG) == [
@@ -84,7 +84,7 @@ def test_unscoped_title_type_and_non_package_paths_pass() -> None:
     assert (
         find_offenders(
             "ci(infra): tune package job",
-            ["libs/code/deepagents_code/app.py"],
+            ["libs/code/niki_agent/app.py"],
             CONFIG,
         )
         == []
@@ -104,7 +104,7 @@ def test_package_scope_aliases_resolve_to_same_package_label() -> None:
     assert (
         find_offenders(
             "fix(deepagents-code): repair startup",
-            ["libs/code/deepagents_code/app.py"],
+            ["libs/code/niki_agent/app.py"],
             CONFIG,
         )
         == []
@@ -122,7 +122,7 @@ def test_parse_title_scopes_variants() -> None:
 def test_changed_packages_returns_touched_package_dirs_only() -> None:
     """Only `libs/**` prefix rules are treated as package dirs."""
     assert changed_packages(
-        ["libs/code/deepagents_code/app.py", ".github/workflows/ci.yml"], CONFIG
+        ["libs/code/niki_agent/app.py", ".github/workflows/ci.yml"], CONFIG
     ) == {"dcode": ["libs/code/"]}
 
 
@@ -139,7 +139,7 @@ def test_changed_packages_ignores_prefix_collision() -> None:
 def test_breaking_change_title_still_detects_offender() -> None:
     """A breaking-change `!` title parses its scope for offender detection."""
     assert find_offenders(
-        "feat(sdk)!: drop option", ["libs/code/deepagents_code/app.py"], CONFIG
+        "feat(sdk)!: drop option", ["libs/code/niki_agent/app.py"], CONFIG
     ) == [{"package": "dcode", "dirs": ["libs/code/"]}]
 
 
@@ -157,7 +157,7 @@ def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
         find_offenders(
             "release(deepagents-code): 0.1.22",
             [
-                "libs/code/deepagents_code/_version.py",
+                "libs/code/niki_agent/_version.py",
                 "libs/deepagents/deepagents/_version.py",
             ],
             CONFIG,
@@ -170,7 +170,7 @@ def test_release_title_with_source_change_still_blocks_mismatch() -> None:
     """An author-controlled release title cannot hide ordinary package edits."""
     assert find_offenders(
         "release(sdk): anything",
-        ["libs/code/deepagents_code/app.py"],
+        ["libs/code/niki_agent/app.py"],
         CONFIG,
     ) == [{"package": "dcode", "dirs": ["libs/code/"]}]
 
@@ -181,16 +181,16 @@ def test_release_pr_change_requires_release_files_only() -> None:
     assert is_release_file("libs/code/CHANGELOG.md")
     assert is_release_file("libs/code/pyproject.toml")
     assert is_release_file("libs/code/uv.lock")
-    assert is_release_file("libs/code/deepagents_code/_version.py")
+    assert is_release_file("libs/code/niki_agent/_version.py")
     assert is_release_file("libs/partners/daytona/langchain_daytona/_version.py")
-    assert not is_release_file("libs/code/deepagents_code/app.py")
+    assert not is_release_file("libs/code/niki_agent/app.py")
     assert not is_release_file("libs/code/docs/CHANGELOG.md")
-    assert not is_release_file("libs/code/deepagents_code/nested/_version.py")
+    assert not is_release_file("libs/code/niki_agent/nested/_version.py")
     # The manifest match is anchored to the repo root, not matched by name.
     assert not is_release_file("libs/code/.release-please-manifest.json")
     assert not is_release_pr_change(
         "release(sdk): anything",
-        ["libs/code/deepagents_code/app.py"],
+        ["libs/code/niki_agent/app.py"],
     )
     assert not is_release_pr_change("release(sdk): anything", [])
 
@@ -202,8 +202,8 @@ def test_release_file_covers_partner_generated_files() -> None:
     assert is_release_file("libs/partners/daytona/uv.lock")
     # A non-partner package's CHANGELOG/pyproject live at the package root
     # (depth 3), so the same names at depth 4 are not generated-file locations.
-    assert not is_release_file("libs/code/deepagents_code/pyproject.toml")
-    assert not is_release_file("libs/code/deepagents_code/CHANGELOG.md")
+    assert not is_release_file("libs/code/niki_agent/pyproject.toml")
+    assert not is_release_file("libs/code/niki_agent/CHANGELOG.md")
 
 
 def test_unmanaged_package_artifacts_do_not_trigger_release_bypass() -> None:
@@ -243,7 +243,7 @@ def test_release_pr_change_fails_closed_on_malformed_release_config(tmp_path) ->
     with pytest.raises(ValueError, match="no non-empty 'packages' map"):
         is_release_pr_change(
             "release(deepagents-code): 0.1.22",
-            ["libs/code/deepagents_code/_version.py"],
+            ["libs/code/niki_agent/_version.py"],
             release_config_path=bad,
         )
 
@@ -276,7 +276,7 @@ def test_main_malformed_release_config_fails_closed_and_attributes_correctly(
 
     rc = main(
         "release(deepagents-code): 0.1.22",
-        ["libs/code/deepagents_code/_version.py"],
+        ["libs/code/niki_agent/_version.py"],
         config_path=labeler,
         release_config_path=release,
     )
@@ -339,7 +339,7 @@ def test_release_title_ignores_lockfile_churn_for_other_package_dirs() -> None:
         ".github/RELEASING.md",
         "libs/code/AGENTS.md",
         "libs/code/CHANGELOG.md",
-        "libs/code/deepagents_code/_version.py",
+        "libs/code/niki_agent/_version.py",
         "libs/code/pyproject.toml",
         "libs/code/uv.lock",
         "libs/evals/uv.lock",
@@ -353,7 +353,7 @@ def test_release_title_ignores_lockfile_churn_for_other_package_dirs() -> None:
 
 def test_release_title_with_mixed_files_does_not_bypass() -> None:
     """A release artifact cannot launder an accompanying source edit."""
-    changed = ["libs/code/CHANGELOG.md", "libs/code/deepagents_code/app.py"]
+    changed = ["libs/code/CHANGELOG.md", "libs/code/niki_agent/app.py"]
     assert not is_release_pr_change("release(sdk): 0.1.22", changed)
     assert find_offenders("release(sdk): 0.1.22", changed, CONFIG) == [
         {"package": "dcode", "dirs": ["libs/code/"]}
@@ -470,7 +470,7 @@ def test_main_stdout_is_json_array(capsys, tmp_path) -> None:
 
     rc = main(
         "fix(sdk): repair startup",
-        ["libs/code/deepagents_code/app.py"],
+        ["libs/code/niki_agent/app.py"],
         config_path=config_path,
     )
     captured = capsys.readouterr()
@@ -573,6 +573,6 @@ def test_real_config_has_package_scope_and_dir_mappings() -> None:
     assert changed_packages(["libs/deepagents/deepagents/graph.py"], config) == {
         "package:deepagents": ["libs/deepagents/"]
     }
-    assert changed_packages(["libs/code/deepagents_code/app.py"], config) == {
+    assert changed_packages(["libs/code/niki_agent/app.py"], config) == {
         "package:dcode": ["libs/code/"]
     }

@@ -6,19 +6,19 @@ import shlex
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from deepagents.backends.protocol import ExecuteResponse, ReadResult, WriteResult
 
-from deepagents_code.adapters.permissions.hitl import DefaultApprovalPolicy
-from deepagents_code.adapters.workspace.deepagents_backend import (
+from niki_agent.adapters.permissions.hitl import DefaultApprovalPolicy
+from niki_agent.adapters.workspace.deepagents_backend import (
     DeepAgentsWorkspaceAdapter,
     InMemoryWorkspaceAdapter,
 )
-from deepagents_code.application.ports.permissions import (
+from niki_agent.application.ports.permissions import (
     ApprovalDecision,
     ToolAction,
 )
-from deepagents_code.application.ports.workspace import WorkspacePort
-from deepagents_code.approval_mode import ApprovalMode
+from niki_agent.application.ports.workspace import WorkspacePort
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.sdk.backends.protocol import ExecuteResponse, ReadResult, WriteResult
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -10,7 +10,6 @@ const REPO_ROOT = path.resolve(__dirname, '../../../..');
 const PR_LABELER_YML = path.join(REPO_ROOT, '.github/workflows/pr_labeler.yml');
 const REQUIRE_ISSUE_LINK_YML = path.join(REPO_ROOT, '.github/workflows/require_issue_link.yml');
 const TAG_EXTERNAL_ISSUES_YML = path.join(REPO_ROOT, '.github/workflows/tag-external-issues.yml');
-const BACKFILL_YML = path.join(REPO_ROOT, '.github/workflows/pr_labeler_backfill.yml');
 
 // `core` is supplied by actions/github-script at runtime; init() refuses to
 // run without one, so stub the two methods the helpers touch.
@@ -216,20 +215,15 @@ test('workflows that cannot read the config still name the configured tier label
     `require_issue_link.yml must skip on ${trusted}; its literal no longer matches the config`,
   );
 
-  // These run inside github-script and read the helper, so assert they do not
+  // This runs inside github-script and reads the helper, so assert it does not
   // reintroduce a literal instead.
-  for (const [file, yml] of [
-    ['tag-external-issues.yml', TAG_EXTERNAL_ISSUES_YML],
-    ['pr_labeler_backfill.yml', BACKFILL_YML],
-  ]) {
-    const body = fs.readFileSync(yml, 'utf8');
-    assert.match(body, /h\.tierLabelsByTier\./, `${file} should read tier labels from the helper`);
-    for (const name of Object.values(config.tierLabels)) {
-      assert.ok(
-        !body.includes(`'${name}'`),
-        `${file} hardcodes ${name} — use h.tierLabelsByTier instead`,
-      );
-    }
+  const body = fs.readFileSync(TAG_EXTERNAL_ISSUES_YML, 'utf8');
+  assert.match(body, /h\.tierLabelsByTier\./, 'tag-external-issues.yml should read tier labels from the helper');
+  for (const name of Object.values(config.tierLabels)) {
+    assert.ok(
+      !body.includes(`'${name}'`),
+      `tag-external-issues.yml hardcodes ${name} — use h.tierLabelsByTier instead`,
+    );
   }
 });
 
@@ -306,8 +300,8 @@ function labelerApi(title, labels, files = [{ filename: 'libs/code/example.py', 
   const github = { rest: { issues, pulls }, paginate: (method, options) => method(options) };
   const h = prLabeler.loadAndInit(github, 'owner', 'repo', core).h;
   // `tierKnown` mirrors the real helper: an internal contributor has no tier
-  // to look up, so it is always known. Omitting it would make the backfill's
-  // unknown-tier guard fire and fail every run.
+  // to look up, so it is always known. Omitting it would make the unknown-tier
+  // guard fire and fail every run.
   h.getContributorInfo = async () => ({ isExternal: false, tierKnown: true });
   return { assigned, known, pr, github, h };
 }
@@ -324,10 +318,7 @@ async function runLabeler(mode, api, {
   warning = message => { throw new Error(message); },
 } = {}) {
   if (mode === 'release helper') return api.h.labelPR(api.pr.number);
-  const [filename, stepName] = mode === 'live'
-    ? ['pr_labeler.yml', 'Apply PR labels']
-    : ['pr_labeler_backfill.yml', 'Backfill labels on open PRs'];
-  const script = workflowScript(filename, stepName);
+  const script = workflowScript('pr_labeler.yml', 'Apply PR labels');
   // The script is checked-in workflow code; PR titles remain data in context.
   await vm.runInNewContext(`(async () => { ${script}\n })()`, {
     github: api.github,
@@ -362,7 +353,7 @@ test('live title labels use the corrected title from scope renaming', async () =
 // `edited` skips the file block, so the path signal needs a push-like action.
 test('live topics come from the changed modules', async () => {
   const api = labelerApi('fix(code): correct behavior', [], [
-    { filename: 'libs/code/deepagents_code/mcp_tools.py', additions: 1, deletions: 0 },
+    { filename: 'libs/code/niki_agent/mcp_tools.py', additions: 1, deletions: 0 },
   ]);
   await runLabeler('live', api, { action: 'synchronize' });
   assert.ok(api.assigned.has('topic:mcp'), 'a touched module must contribute its topic');
@@ -370,7 +361,7 @@ test('live topics come from the changed modules', async () => {
   assert.ok(api.assigned.has('package:dcode'));
 });
 
-for (const mode of ['live', 'backfill', 'release helper']) {
+for (const mode of ['live', 'release helper']) {
   test(`${mode} replaces stale types and breaking labels after a title edit`, async () => {
     const api = labelerApi('refactor(code): simplify the implementation', [
       'type:feature', 'type:breaking', 'package:dcode', 'priority:high',
@@ -433,8 +424,7 @@ test('inlined workflow label colors belong to the configured palette', () => {
   const { config } = prLabeler.loadAndInit({}, 'o', 'r', core);
   const known = new Set(Object.values(config.labelColors));
   for (const rel of ['.github/workflows/sync_priority_labels.yml',
-                     '.github/workflows/require_issue_link.yml',
-                     '.github/workflows/auto-label-by-package.yml']) {
+                     '.github/workflows/require_issue_link.yml']) {
     const body = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
     for (const hit of body.match(/color: ['"]([0-9a-f]{6})['"]/g) || []) {
       const hex = hit.match(/([0-9a-f]{6})/)[1];
@@ -443,20 +433,18 @@ test('inlined workflow label colors belong to the configured palette', () => {
   }
 });
 
-// Scripts that CAN require the helper must not carry their own hex.
+// A script that CAN require the helper must not carry its own hex.
 test('label-creating scripts resolve colors from the config', () => {
-  for (const rel of ['.github/scripts/labeling/close-old-prs.js',
-                     '.github/scripts/release/normalize-release-labels.js']) {
-    const body = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
-    const hits = body.match(/color: ['"][0-9a-f]{6}['"]/g) || [];
-    assert.deepEqual(hits, [], `${rel} hardcodes ${hits.join(', ')}`);
-    // A second copy of the prefix rule drifts from this one; a hex-only check
-    // would not notice, because a copy resolves from the config too.
-    assert.ok(
-      !/function colorFor\b/.test(body),
-      `${rel} defines its own colorFor instead of using the exported resolver`,
-    );
-  }
+  const rel = '.github/scripts/labeling/close-old-prs.js';
+  const body = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+  const hits = body.match(/color: ['"][0-9a-f]{6}['"]/g) || [];
+  assert.deepEqual(hits, [], `${rel} hardcodes ${hits.join(', ')}`);
+  // A second copy of the prefix rule drifts from this one; a hex-only check
+  // would not notice, because a copy resolves from the config too.
+  assert.ok(
+    !/function colorFor\b/.test(body),
+    `${rel} defines its own colorFor instead of using the exported resolver`,
+  );
 });
 
 test('topic labels come from the modules a PR touched', () => {
@@ -466,10 +454,10 @@ test('topic labels come from the modules a PR touched', () => {
     ['libs/deepagents/deepagents/middleware/subagents.py', ['topic:middleware', 'topic:subagents']],
     ['libs/deepagents/deepagents/middleware/async_subagents.py', ['topic:async-subagents', 'topic:middleware']],
     ['libs/deepagents/deepagents/backends/sandbox.py', ['topic:backends', 'topic:sandboxes']],
-    ['libs/code/deepagents_code/mcp_tools.py', ['topic:mcp']],
-    ['libs/code/deepagents_code/skills/index.py', ['topic:skills']],
+    ['libs/code/niki_agent/mcp_tools.py', ['topic:mcp']],
+    ['libs/code/niki_agent/skills/index.py', ['topic:skills']],
     ['libs/deepagents/deepagents/profiles/harness/base.py', []],
-    ['libs/code/deepagents_code/_tracing.py', ['topic:tracing']],
+    ['libs/code/niki_agent/_tracing.py', ['topic:tracing']],
     ['README.md', []],
     ['libs/deepagents/pyproject.toml', []],
   ];

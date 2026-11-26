@@ -11,11 +11,11 @@ import pytest
 from textual.containers import Vertical
 from textual.widgets import Input, OptionList, Static
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.config import get_glyphs
-from deepagents_code.plugins.models import PluginMarketplace
-from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
-from deepagents_code.tui.modals.plugin_manager.content import (
+from niki_agent.app import DeepAgentsApp
+from niki_agent.config import get_glyphs
+from niki_agent.plugins.models import PluginMarketplace
+from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
+from niki_agent.tui.modals.plugin_manager.content import (
     _installed_details_options,
     _installed_plugin_details_content,
     _load_state_label,
@@ -25,7 +25,7 @@ from deepagents_code.tui.modals.plugin_manager.content import (
     _plugin_prompt,
     _status_lines,
 )
-from deepagents_code.tui.modals.plugin_manager.models import (
+from niki_agent.tui.modals.plugin_manager.models import (
     _ManagerState,
     _MarketplaceRow,
     _PluginRow,
@@ -231,7 +231,7 @@ async def test_plugin_manager_check_timeout_closes_with_check_failed(
 ) -> None:
     """A stalled check cannot hold the manager open with its keys locked out."""
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager._CLOSE_CHECK_TIMEOUT_SECONDS",
+        "niki_agent.tui.modals.plugin_manager._CLOSE_CHECK_TIMEOUT_SECONDS",
         0.01,
     )
     release = asyncio.Event()
@@ -872,7 +872,7 @@ async def test_refresh_state_clears_search_query(
         errors=(),
     )
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager._load_manager_state",
+        "niki_agent.tui.modals.plugin_manager._load_manager_state",
         lambda _info, **_kwargs: fresh,
     )
 
@@ -925,7 +925,7 @@ async def test_connection_refresh_preserves_search_query(
         errors=(),
     )
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager._load_manager_state",
+        "niki_agent.tui.modals.plugin_manager._load_manager_state",
         lambda _info, **_kwargs: fresh,
     )
 
@@ -985,10 +985,10 @@ async def test_connection_refresh_waits_for_initial_refresh(
         return settled_state
 
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager._load_manager_state", load_state
+        "niki_agent.tui.modals.plugin_manager._load_manager_state", load_state
     )
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager.plugin_auto_update_setting",
+        "niki_agent.tui.modals.plugin_manager.plugin_auto_update_setting",
         lambda: (False, "default"),
     )
     monkeypatch.setattr(screen, "_refresh_view", MagicMock())
@@ -1066,7 +1066,7 @@ async def test_connection_refresh_failure_is_surfaced(
             raise OSError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.tui.modals.plugin_manager._load_manager_state", _boom
+            "niki_agent.tui.modals.plugin_manager._load_manager_state", _boom
         )
         screen.update_connection_state([], mcp_connecting=False)
         await pilot.pause()
@@ -1096,7 +1096,7 @@ async def test_connection_refresh_retires_its_own_error(
             raise OSError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.tui.modals.plugin_manager._load_manager_state", _boom
+            "niki_agent.tui.modals.plugin_manager._load_manager_state", _boom
         )
         screen.update_connection_state([], mcp_connecting=False)
         await pilot.pause()
@@ -1104,7 +1104,7 @@ async def test_connection_refresh_retires_its_own_error(
         assert screen._error is not None
 
         monkeypatch.setattr(
-            "deepagents_code.tui.modals.plugin_manager._load_manager_state",
+            "niki_agent.tui.modals.plugin_manager._load_manager_state",
             lambda _info, **_kwargs: empty,
         )
         screen.update_connection_state([], mcp_connecting=False)
@@ -1572,11 +1572,11 @@ async def test_install_keeps_manager_open(
         display_name="Linear",
     )
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager.install_plugin",
+        "niki_agent.tui.modals.plugin_manager.install_plugin",
         lambda _plugin_id: object(),
     )
     monkeypatch.setattr(
-        "deepagents_code.plugins.adapters.mcp.plugin_mcp_server_entries",
+        "niki_agent.plugins.adapters.mcp.plugin_mcp_server_entries",
         lambda _instance: (),
     )
     monkeypatch.setattr(screen, "_refresh_state", AsyncMock())
@@ -1602,11 +1602,11 @@ async def test_install_preserves_mcp_login_guidance(
         display_name="Linear",
     )
     monkeypatch.setattr(
-        "deepagents_code.tui.modals.plugin_manager.install_plugin",
+        "niki_agent.tui.modals.plugin_manager.install_plugin",
         lambda _plugin_id: object(),
     )
     monkeypatch.setattr(
-        "deepagents_code.plugins.adapters.mcp.plugin_mcp_server_entries",
+        "niki_agent.plugins.adapters.mcp.plugin_mcp_server_entries",
         lambda _instance: (("linear", "plugin__linear_tools__linear", True),),
     )
     monkeypatch.setattr(screen, "_refresh_state", AsyncMock())

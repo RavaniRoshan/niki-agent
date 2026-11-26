@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.tui.widgets.chat_input import ChatInput
+from niki_agent.tui.widgets.chat_input import ChatInput
 
 if TYPE_CHECKING:
     from textual.app import App
@@ -36,7 +36,7 @@ HISTORY = [
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-k9")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -100,7 +100,7 @@ async def test_k9_search_survives_an_empty_history() -> None:
 @pytest.mark.parametrize("query", ["refactor", "cache", "imports"])
 def test_k9_filter_narrows_the_result_set(query: str) -> None:
     """K9: the filter must actually filter, not just echo the query."""
-    from deepagents_code.tui.widgets.prompt_search import filter_prompts
+    from niki_agent.tui.widgets.prompt_search import filter_prompts
 
     matches = filter_prompts(tuple(HISTORY), query)
 
@@ -121,7 +121,7 @@ def test_k9_the_window_stays_inside_the_history() -> None:
     of this test asserted a 5-row strip; the actual window is wider, and
     asserting the wrong width would have passed by coincidence.
     """
-    from deepagents_code.tui.widgets.prompt_search import _window_bounds
+    from niki_agent.tui.widgets.prompt_search import _window_bounds
 
     total = 100
     seen_starts = set()

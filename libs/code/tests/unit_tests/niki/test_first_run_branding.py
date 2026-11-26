@@ -16,11 +16,11 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code.niki.product import PRODUCT_NAME
+from niki_agent.niki.product import PRODUCT_NAME
 
 LAUNCH_INIT = (
     Path(__file__).resolve().parents[3]
-    / "deepagents_code"
+    / "niki_agent"
     / "tui"
     / "widgets"
     / "launch_init.py"
@@ -55,7 +55,7 @@ def test_no_user_visible_upstream_name_survives_in_the_tui() -> None:
     """
     import ast
 
-    tui = Path(__file__).resolve().parents[3] / "deepagents_code" / "tui"
+    tui = Path(__file__).resolve().parents[3] / "niki_agent" / "tui"
     offenders: list[str] = []
 
     for path in sorted(tui.rglob("*.py")):
@@ -83,7 +83,7 @@ def test_no_user_visible_upstream_name_survives_in_the_tui() -> None:
 
 def test_the_product_name_is_shared_not_restated() -> None:
     """The onboarding and the version line must not be able to disagree."""
-    from deepagents_code.niki import branding
+    from niki_agent.niki import branding
 
     assert branding.PRODUCT_NAME == PRODUCT_NAME, (
         "the product name is defined twice with different values; it must have one home"

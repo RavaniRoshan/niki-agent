@@ -12,7 +12,43 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 ACTION_PATH = ROOT / "action.yml"
-MAIN_PATH = ROOT / "libs" / "code" / "deepagents_code" / "main.py"
+MAIN_PATH = ROOT / "libs" / "code" / "niki_agent" / "main.py"
+
+
+def _real_jq() -> str | None:
+    """Return a genuine jq binary, skipping wrappers that need another runtime.
+
+    The action validates ``model_params`` with ``jq``. A local shim (for example
+    a Python script named ``jq`` earlier on ``PATH``) reports the wrong result,
+    so prefer any candidate whose ``--version`` looks like real jq.
+    """
+    candidates = dict.fromkeys(
+        [
+            shutil.which("jq"),
+            "/usr/bin/jq",
+            "/bin/jq",
+            "/usr/local/bin/jq",
+            "/opt/homebrew/bin/jq",
+        ]
+    )
+    for candidate in candidates:
+        if not candidate or not os.access(candidate, os.X_OK):
+            continue
+        try:
+            proc = subprocess.run(
+                [candidate, "--version"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            continue
+        if proc.stdout.startswith("jq-"):
+            return candidate
+    return None
+
+
+REAL_JQ = _real_jq()
 
 EXPECTED_DCODE_INPUT_FLAGS = {
     "agent_name": ("--agent",),
@@ -179,6 +215,8 @@ def _run_setup(**overrides: str) -> tuple[int, list[str]]:
     if shutil.which("bash") is None:
         pytest.skip("bash is required for action.yml tests")
     env = {**os.environ, **_BASE_INPUTS, **overrides}
+    if REAL_JQ is not None:
+        env["PATH"] = f"{Path(REAL_JQ).parent}{os.pathsep}{env['PATH']}"
     proc = subprocess.run(
         ["bash", "-c", "set -eo pipefail\n" + _action_setup_script()],
         env=env,
@@ -217,9 +255,12 @@ def _run_full(
 
     gh_output = tmp_path / "github_output"
     gh_output.write_text("")
+    jq_dir = f"{Path(REAL_JQ).parent}{os.pathsep}" if REAL_JQ is not None else ""
     env = {
         **os.environ,
-        "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}",
+        # The stubs come first; a real jq is inserted after them so the action
+        # validates JSON while `uvx`/`timeout` stay stubbed.
+        "PATH": f"{bindir}{os.pathsep}{jq_dir}{os.environ['PATH']}",
         "GITHUB_OUTPUT": str(gh_output),
         **_BASE_INPUTS,
         **overrides,
@@ -375,7 +416,7 @@ def test_version_pinning_in_assembled_command() -> None:
     assert "dcode" in cmd
 
 
-@pytest.mark.skipif(shutil.which("jq") is None, reason="jq not installed")
+@pytest.mark.skipif(REAL_JQ is None, reason="genuine jq not installed")
 @pytest.mark.parametrize(
     ("value", "should_pass"),
     [

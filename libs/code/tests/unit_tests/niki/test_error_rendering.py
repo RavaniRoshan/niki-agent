@@ -34,7 +34,7 @@ RECOVERY_URL = "https://example.invalid/docs/retry"
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-v14")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -51,7 +51,7 @@ def _rendered(app: App) -> str:  # type: ignore[type-arg]
 
 async def test_v14_an_error_renders_inline_in_the_transcript() -> None:
     """V14: the error belongs in the conversation, not in a modal."""
-    from deepagents_code.tui.widgets.messages import ErrorMessage
+    from niki_agent.tui.widgets.messages import ErrorMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -75,7 +75,7 @@ async def test_v14_an_error_carries_its_recovery_action() -> None:
     """V14: when a recovery exists, the user must be able to see and reach it."""
     from textual.content import Content
 
-    from deepagents_code.tui.widgets.messages import ErrorMessage
+    from niki_agent.tui.widgets.messages import ErrorMessage
 
     body = Content.assemble(
         "Rate limited.",
@@ -103,7 +103,7 @@ async def test_v14_a_traceback_body_never_becomes_an_escape_sequence() -> None:
     or a clipboard write into a terminal. This asserts the rendered output
     carries no ESC byte and that the body survives verbatim.
     """
-    from deepagents_code.tui.widgets.messages import ErrorMessage
+    from niki_agent.tui.widgets.messages import ErrorMessage
 
     traceback = (
         "Traceback (most recent call last):\n"
@@ -138,7 +138,7 @@ async def test_v14_the_error_colour_is_themed_rather_than_hardcoded() -> None:
     What matters is the property the brief states -- colours come from theme
     tokens -- and that is exactly what a two-theme comparison proves.
     """
-    from deepagents_code.tui.widgets.messages import ErrorMessage
+    from niki_agent.tui.widgets.messages import ErrorMessage
 
     async def rule_under(theme_name: str) -> str:
         app = _app()

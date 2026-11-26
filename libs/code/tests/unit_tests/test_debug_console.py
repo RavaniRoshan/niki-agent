@@ -11,13 +11,13 @@ from textual.app import App, ComposeResult
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Select, Static
 
-import deepagents_code.tui.modals.cost_breakdown as cost_breakdown_mod
-import deepagents_code.tui.widgets.debug_console as debug_console_mod
-from deepagents_code._debug_buffer import InMemoryLogRecord, get_log_buffer
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.cost_tracking import _empty_cost_breakdown
-from deepagents_code.tui.modals.cost_breakdown import CostBreakdownScreen
-from deepagents_code.tui.widgets.debug_console import (
+import niki_agent.tui.modals.cost_breakdown as cost_breakdown_mod
+import niki_agent.tui.widgets.debug_console as debug_console_mod
+from niki_agent._debug_buffer import InMemoryLogRecord, get_log_buffer
+from niki_agent.app import DeepAgentsApp
+from niki_agent.cost_tracking import _empty_cost_breakdown
+from niki_agent.tui.modals.cost_breakdown import CostBreakdownScreen
+from niki_agent.tui.widgets.debug_console import (
     DebugConsoleScreen,
     SnapshotField,
     _DebugLogView,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from textual.strip import Strip
 
 
-logger = logging.getLogger("deepagents_code._test_console")
+logger = logging.getLogger("niki_agent._test_console")
 
 
 def _widget_text(widget: Static) -> str:
@@ -46,7 +46,7 @@ def _log_record(
         timestamp="12:00:00",
         level=level,
         levelno=levelno,
-        logger="deepagents_code._test_console",
+        logger="niki_agent._test_console",
         message=message,
     )
 
@@ -136,7 +136,7 @@ class TestDebugConsoleScreen:
         )
 
         with caplog.at_level(
-            logging.DEBUG, logger="deepagents_code.tui.widgets.debug_console"
+            logging.DEBUG, logger="niki_agent.tui.widgets.debug_console"
         ):
             for _ in range(3):
                 screen._poll_snapshot()
@@ -582,13 +582,13 @@ class TestDebugConsoleToggle:
     async def test_build_snapshot_experimental_off_when_env_falsy(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A present-but-falsy `DEEPAGENTS_CODE_EXPERIMENTAL` reads as `off`.
+        """A present-but-falsy `NIKI_EXPERIMENTAL` reads as `off`.
 
         Locks the truthy gate (`is_env_truthy`) against a regression to a bare
         presence check (`EXPERIMENTAL in os.environ`), which the unset and
         truthy cases would both pass.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_EXPERIMENTAL", "0")
+        monkeypatch.setenv("NIKI_EXPERIMENTAL", "0")
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         async with app.run_test():
             snapshot = _snapshot_dict(app._build_debug_snapshot())
@@ -597,7 +597,7 @@ class TestDebugConsoleToggle:
     async def test_build_snapshot_editable_install_path_is_copyable(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(
             config_mod,
@@ -617,7 +617,7 @@ class TestDebugConsoleToggle:
     async def test_build_snapshot_omits_non_editable_install_path(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(config_mod, "_get_editable_install_path", lambda: None)
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
@@ -628,7 +628,7 @@ class TestDebugConsoleToggle:
     async def test_build_snapshot_debug_log_path_is_copyable(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import deepagents_code._debug as debug_mod
+        import niki_agent._debug as debug_mod
 
         monkeypatch.setattr(
             debug_mod, "installed_debug_log_path", lambda: "/tmp/custom-debug.log"
@@ -646,10 +646,10 @@ class TestDebugConsoleToggle:
     async def test_build_snapshot_in_memory_log_is_not_copyable(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import deepagents_code._debug as debug_mod
+        import niki_agent._debug as debug_mod
 
         monkeypatch.setattr(debug_mod, "installed_debug_log_path", lambda: None)
-        monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG", raising=False)
+        monkeypatch.delenv("NIKI_DEBUG", raising=False)
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         async with app.run_test():
             field = next(

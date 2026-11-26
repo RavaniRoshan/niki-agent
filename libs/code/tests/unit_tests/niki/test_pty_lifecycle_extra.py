@@ -30,8 +30,8 @@ DCODE = str(VENV_BIN / "dcode")
 
 def _env(home: Path) -> dict[str, str]:
     env = dict(os.environ)
-    env["DEEPAGENTS_HOME"] = str(home)
-    env["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] = "1"
+    env["NIKI_HOME"] = str(home)
+    env["NIKI_NO_UPDATE_CHECK"] = "1"
     env["TERM"] = "xterm-256color"
     env.pop("COLUMNS", None)
     env.pop("LINES", None)
@@ -56,7 +56,7 @@ def _run_to_composer(home: Path, *, timeout: int = 60) -> pexpect.spawn:
             "-c",
             (
                 "import sys; sys.argv[0] = 'niki'; "
-                "from deepagents_code.niki.entry import niki_main; niki_main()"
+                "from niki_agent.niki.entry import niki_main; niki_main()"
             ),
         ],
         env=env,
@@ -127,12 +127,12 @@ def test_l5_the_file_handler_needs_a_known_thread(tmp_path: Path, home: Path) ->
     r"""L5: CHARACTERISED -- the debug file handler does not attach here.
 
     `libs/code/AGENTS.md` is explicit: "the **file** handler only attaches when
-    `DEEPAGENTS_CODE_DEBUG` is truthy **and the active thread is known**". The
+    `NIKI_DEBUG` is truthy **and the active thread is known**". The
     thread is only known once the real CLI has started the app, so a bare script
     -- and therefore any headless test -- attaches only the in-memory ring
     buffer.
 
-    Measured: with `DEEPAGENTS_CODE_DEBUG=1` and a real `DEBUG_DIRECTORY`, the
+    Measured: with `NIKI_DEBUG=1` and a real `DEBUG_DIRECTORY`, the
     package logger's handlers are exactly `[InMemoryLogBuffer]` and **no file is
     written**, even when an exception is logged with a full traceback.
 
@@ -151,22 +151,22 @@ def test_l5_the_file_handler_needs_a_known_thread(tmp_path: Path, home: Path) ->
     debug_dir = tmp_path / "debug"
     debug_dir.mkdir()
     env = _env(home)
-    env["DEEPAGENTS_CODE_DEBUG"] = "1"
-    env["DEEPAGENTS_CODE_DEBUG_DIRECTORY"] = str(debug_dir)
+    env["NIKI_DEBUG"] = "1"
+    env["NIKI_DEBUG_DIRECTORY"] = str(debug_dir)
 
     script = (
         "import logging\n"
-        "from deepagents_code._debug import configure_debug_logging\n"
-        "configure_debug_logging(logging.getLogger('deepagents_code'))\n"
-        "log = logging.getLogger('deepagents_code.niki')\n"
+        "from niki_agent._debug import configure_debug_logging\n"
+        "configure_debug_logging(logging.getLogger('niki_agent'))\n"
+        "log = logging.getLogger('niki_agent.niki')\n"
         "try:\n"
         "    raise RuntimeError('synthetic agent failure')\n"
         "except RuntimeError:\n"
         "    log.exception('agent task failed')\n"
-        "for h in logging.getLogger('deepagents_code').handlers:\n"
+        "for h in logging.getLogger('niki_agent').handlers:\n"
         "    h.flush()\n"
         "print([type(h).__name__ for h in "
-        "logging.getLogger('deepagents_code').handlers])\n"
+        "logging.getLogger('niki_agent').handlers])\n"
     )
     result = subprocess.run(
         [sys.executable, "-c", script],

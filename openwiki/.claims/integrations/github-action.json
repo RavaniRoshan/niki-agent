@@ -89,15 +89,15 @@
       "statement": "In dcode headless mode, a missing shell allow list disables shell access, a restrictive list enables and gates shell commands, and `all` permits unrestricted shell commands and auto-approves tools; project MCP trust defaults to false and governs project stdio MCP loading.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/client/non_interactive.py#L2602-L2613",
+          "resource": "repo://libs/code/niki_agent/client/non_interactive.py#L2602-L2613",
           "version": "repo-lines-v1:sha256:703bf11c24fbb7df2d838a490cb7dec0889d643c7253c84256e0d116ef7071f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTY0Yjk0NWNkYWRjOWIwZjI5NDc2ZjhlN2FiM2MyMTIwOTBhMTcxNTA3ZmY2ODY1MjNmZWYxYzE2NGI3MmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1NzkzM2FhZTE1YWRmMTNkYjE1ZWFkZjQxYjA3YTVjOTY5YTU4ZTNmNDM1MWQxODIyNTNhYmM1OTdlNzdlN2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzMmE5MWM5ZWExZTQ3ZWU5MzIwZTFkMGFjMjBmMzNmOTVjZWJiMDc4NWRkYzI1NTVjZDNhNWY2ZjllNzJjNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1ODE5MDQ1NGYwMGNiZjRiNzU5MGVjNTgxOGEzZWU2MzE2NTkyNTg1OThjMDZlNjBiZGI0YzA0Y2NjM2YzN2QifQ"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/client/non_interactive.py#L2657-L2662",
+          "resource": "repo://libs/code/niki_agent/client/non_interactive.py#L2657-L2662",
           "version": "repo-lines-v1:sha256:ad6a585197fbf0ce8f75f81d3a39e48b95a2d1fa9ab990b3185fcb60ff0452df:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2QxY2Y4MzU2MGVmNGI5ZmI0NWIxZjc4MmY5Y2U2NmQxMzdmZjhhZGE3NjIxNWI3MDY1Njk1YjBjMjJlZjhhZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ0YmVhYTM5MGM5NGZmMzE3NjYzOGU4OTZjZjM0MmJiZDA5ZjMyMWZmOTU2NjBjZWQwNjliOTUyMmY4M2JhZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDkzZDU5M2RmOThiZGU0Y2RkYjlhZTViMTEyNjljNDkyYjgwYmM5N2RkNzZlZGZkYTQ3YWFhZWMwMWIyZmZlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODkyMjBlMWU5ZmMwODNhZTc4YTI5OGFmYjE3N2NkODNmNGUxMGVlZThkMDhjY2I0YzE1ZDcyZDA5MTA0N2QxMyJ9"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/client/non_interactive.py#L2855-L2871",
+          "resource": "repo://libs/code/niki_agent/client/non_interactive.py#L2855-L2871",
           "version": "repo-lines-v1:sha256:ba406178bfd506ac03ddb8d3bc3d17485f61569b56b25092e5aef2a8f19a11f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjZmNiNWVlYzNhYzdiNWVjMzI5NGRlZmUyOTkyMzllNWE5NTRiZmU3NDI1MWVjZjQ1OGIwZjU4ZjE5ZmRkYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2NjgxM2Y0OTdkZmMwYjdiMDYyY2M5YjFiMDU3YzQ1NjVmZmRmYzExMmNhZTI1MTEwMjY0MjU5NjMxM2ZkYzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMDlhZjM5MzRmMmM5NTI3OGYyMWFlZWU4NmU5NzYxNjNiNmViMjI5ODVhMTg0NjY1YzZhMWUwZDliYjJlYjQifQ"
         }
       ]
@@ -181,11 +181,11 @@
       "statement": "dcode treats an explicit MCP config path as a highest-precedence layer over auto-discovered MCP configuration, while `no_mcp` disables MCP tool loading and project stdio MCP remains disabled without trust.",
       "evidence": [
         {
-          "resource": "repo://libs/code/deepagents_code/client/non_interactive.py#L2657-L2662",
+          "resource": "repo://libs/code/niki_agent/client/non_interactive.py#L2657-L2662",
           "version": "repo-lines-v1:sha256:ad6a585197fbf0ce8f75f81d3a39e48b95a2d1fa9ab990b3185fcb60ff0452df:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2QxY2Y4MzU2MGVmNGI5ZmI0NWIxZjc4MmY5Y2U2NmQxMzdmZjhhZGE3NjIxNWI3MDY1Njk1YjBjMjJlZjhhZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ0YmVhYTM5MGM5NGZmMzE3NjYzOGU4OTZjZjM0MmJiZDA5ZjMyMWZmOTU2NjBjZWQwNjliOTUyMmY4M2JhZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDkzZDU5M2RmOThiZGU0Y2RkYjlhZTViMTEyNjljNDkyYjgwYmM5N2RkNzZlZGZkYTQ3YWFhZWMwMWIyZmZlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODkyMjBlMWU5ZmMwODNhZTc4YTI5OGFmYjE3N2NkODNmNGUxMGVlZThkMDhjY2I0YzE1ZDcyZDA5MTA0N2QxMyJ9"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/client/non_interactive.py#L2838-L2850",
+          "resource": "repo://libs/code/niki_agent/client/non_interactive.py#L2838-L2850",
           "version": "repo-lines-v1:sha256:610f3a8419dbe4925275a42046a6665239c31adac5e8ddf20c96f7a67eb54f30:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiZDQ5ZDQ3Nzc0ZTQwYWM4NThiYmU4N2UxNjk3OGNkYjIyN2NmMDA0NzM3YWMzZGVkZTQ2MzM3ZmNjZjhlYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmZGFmYzA4YzlhZWRhZTYzMzkzMzAwNTRjYTQ5ODM2MTEwZTVjZmVkZmVkYzc4ZDJkZmMyNjNmYjBiZWY2YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5OWUzNmRmZThlOTUwYzBhODUxYTVmZGVmZjAzODJmMGY5MzYyZGMwNTMyY2M0ZWJlZTIyMTQxYzNiYTk3OGIifQ"
         }
       ]

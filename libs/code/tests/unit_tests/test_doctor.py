@@ -1,4 +1,4 @@
-"""Unit tests for the `dcode doctor` command."""
+"""Unit tests for the `niki doctor` command."""
 
 import argparse
 import io
@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from rich.console import Console
 
-from deepagents_code.doctor import (
+from niki_agent.doctor import (
     DiagnosticItem,
     DiagnosticSection,
     _build_commit,
@@ -20,6 +20,7 @@ from deepagents_code.doctor import (
     collect_sections,
     run_doctor_command,
 )
+from niki_agent.extras_info import collect_version_report
 
 
 class TestDoctorArgs:
@@ -35,18 +36,18 @@ class TestCollectSections:
 
     def test_diagnostics_reports_version(self) -> None:
         """The Diagnostics section reports the running CLI version."""
-        from deepagents_code._version import __version__
+        from niki_agent._version import __version__
 
         # Isolate the SDK requirement check so the workspace pin cannot inject a
         # mismatch annotation into the CLI value under test. Editable installs
         # resolve the pin through `_sdk_requirement_for_cli`.
         with patch(
-            "deepagents_code.extras_info._sdk_requirement_for_cli",
+            "niki_agent.extras_info._sdk_requirement_for_cli",
             return_value=None,
         ):
             diagnostics = collect_sections()[0]
         labels = {item.label: item.value for item in diagnostics.items}
-        assert labels["deepagents-code"] == __version__
+        assert labels["niki-agent"] == __version__
         assert "Commit hash" in labels
         assert labels["Commit hash"]
         assert "Platform" in labels
@@ -54,158 +55,21 @@ class TestCollectSections:
 
 
 class TestDiagnosticsVersionReport:
-    """Tests for how the Diagnostics section renders version-report facts."""
+    """The vendored SDK has no install-time diagnostics."""
 
-    def _diagnostics(self, report: object) -> dict[str, DiagnosticItem]:
-        from deepagents_code.doctor import _collect_diagnostics
-
-        with (
-            patch(
-                "deepagents_code.extras_info.collect_version_report",
-                return_value=report,
-            ),
-            patch("deepagents_code.doctor._commit_hash", return_value="abc1234"),
-        ):
-            section = _collect_diagnostics()
-        return {item.label: item for item in section.items}
-
-    def test_sdk_requirement_mismatch_is_unhealthy(self) -> None:
-        """An unsatisfied declared SDK requirement makes the SDK item unhealthy."""
-        from packaging.requirements import Requirement
-
-        from deepagents_code._version import __version__
-        from deepagents_code.extras_info import DistributionVersion, VersionReport
-
-        report = VersionReport(
-            cli=DistributionVersion(
-                "deepagents-code", __version__, __version__, True, "~/src", "resolved"
-            ),
-            sdk=DistributionVersion(
-                "deepagents", "0.6.12", "0.6.12", True, "~/src/sdk", "resolved"
-            ),
-            sdk_requirement=Requirement("deepagents>=0.7,<0.8"),
-            sdk_requirement_satisfied=False,
-        )
-        items = self._diagnostics(report)
-        sdk = items["deepagents (SDK)"]
-        assert sdk.ok is False
-        assert "required by deepagents-code: <0.8,>=0.7 — mismatch" in sdk.value
-
-    def test_newer_exact_sdk_pin_is_informational_for_editable_sdk(self) -> None:
-        """A newer exact dcode pin is healthy for an editable main SDK checkout."""
-        from packaging.requirements import Requirement
-
-        from deepagents_code._version import __version__
-        from deepagents_code.extras_info import DistributionVersion, VersionReport
-
-        report = VersionReport(
-            cli=DistributionVersion(
-                "deepagents-code",
-                __version__,
-                __version__,
-                True,
-                "/repo/libs/code",
-                "resolved",
-            ),
-            sdk=DistributionVersion(
-                "deepagents",
-                "0.6.12",
-                "0.6.12",
-                True,
-                "/repo/libs/deepagents",
-                "resolved",
-            ),
-            sdk_requirement=Requirement("deepagents==0.7.0a8"),
-            sdk_requirement_satisfied=True,
-        )
-        items = self._diagnostics(report)
-        sdk = items["deepagents (SDK)"]
-        assert sdk.ok is True
-        assert sdk.value == ("0.7.0a8+editable (workspace HEAD; source marker: 0.6.12)")
-
-    def test_source_metadata_drift_is_informational(self) -> None:
-        """Source/metadata drift annotates the values but stays healthy."""
-        from packaging.requirements import Requirement
-
-        from deepagents_code._version import __version__
-        from deepagents_code.extras_info import DistributionVersion, VersionReport
-
-        report = VersionReport(
-            cli=DistributionVersion(
-                "deepagents-code", __version__, "0.1.40", True, "~/src", "resolved"
-            ),
-            sdk=DistributionVersion(
-                "deepagents", "0.6.13", "0.6.12", True, "~/src/sdk", "resolved"
-            ),
-            sdk_requirement=Requirement("deepagents>=0.6"),
-            sdk_requirement_satisfied=True,
-        )
-        items = self._diagnostics(report)
-        cli = items["deepagents-code"]
-        sdk = items["deepagents (SDK)"]
-        assert cli.ok is True
-        assert cli.value == f"{__version__} (installed metadata: 0.1.40)"
-        assert sdk.ok is True
-        assert "installed metadata: 0.6.12" in sdk.value
-
-    def test_invalid_editable_sdk_source_version_is_unhealthy(self) -> None:
-        """Stale metadata cannot make a broken editable SDK look healthy."""
-        from packaging.requirements import Requirement
-
-        from deepagents_code._version import __version__
-        from deepagents_code.extras_info import DistributionVersion, VersionReport
-
-        report = VersionReport(
-            cli=DistributionVersion(
-                "deepagents-code",
-                __version__,
-                __version__,
-                True,
-                "/repo/libs/code",
-                "resolved",
-            ),
-            sdk=DistributionVersion(
-                "deepagents",
-                None,
-                "0.6.12",
-                True,
-                "/repo/libs/deepagents",
-                "resolved",
-            ),
-            sdk_requirement=Requirement("deepagents==0.7.0a8"),
-            sdk_requirement_satisfied=False,
-        )
-        sdk = self._diagnostics(report)["deepagents (SDK)"]
-        assert sdk.ok is False
-        assert "invalid source marker: unavailable" in sdk.value
-
-    def test_sdk_not_installed_is_unhealthy(self) -> None:
-        """A missing SDK is reported as not installed and unhealthy."""
-        from deepagents_code._version import __version__
-        from deepagents_code.extras_info import DistributionVersion, VersionReport
-
-        report = VersionReport(
-            cli=DistributionVersion(
-                "deepagents-code", __version__, __version__, False, None, "resolved"
-            ),
-            sdk=DistributionVersion(
-                "deepagents", None, None, False, None, "not_installed"
-            ),
-            sdk_requirement=None,
-            sdk_requirement_satisfied=None,
-        )
-        items = self._diagnostics(report)
-        sdk = items["deepagents (SDK)"]
-        assert sdk.ok is False
-        assert sdk.value == "not installed"
+    def test_bundled_sdk_reports_its_version(self) -> None:
+        report = collect_version_report()
+        assert report.sdk.status == "resolved"
+        assert report.sdk.metadata_version
+        assert report.sdk_requirement is None
 
 
 class TestCollectTracing:
     """Tests for the Tracing diagnostic section."""
 
     def _section(self, **kwargs: object) -> DiagnosticSection:
-        from deepagents_code.config import TracingStatus
-        from deepagents_code.doctor import _collect_tracing
+        from niki_agent.config import TracingStatus
+        from niki_agent.doctor import _collect_tracing
 
         defaults: dict[str, object] = {
             "enabled": False,
@@ -220,18 +84,18 @@ class TestCollectTracing:
         # `defaults` is intentionally heterogeneous (`dict[str, object]`), so the
         # unpack can't be statically matched to each field's type.
         status = TracingStatus(**defaults)  # ty: ignore[invalid-argument-type]
-        with patch("deepagents_code.config.get_tracing_status", return_value=status):
+        with patch("niki_agent.config.get_tracing_status", return_value=status):
             return _collect_tracing()
 
     def test_not_configured_is_healthy(self) -> None:
         """An unconfigured, keyless setup is informational, not a failure."""
-        section = self._section(enabled=False, project="deepagents-code")
+        section = self._section(enabled=False, project="niki-agent")
         assert section.title == "Tracing"
         assert section.ok is True
         labels = {item.label: item.value for item in section.items}
         assert labels["Tracing"] == "not configured"
         assert labels["Credentials"] == "not set"
-        assert labels["Project"] == "deepagents-code"
+        assert labels["Project"] == "niki-agent"
 
     def test_explicitly_disabled_reads_disabled(self) -> None:
         """An explicit opt-out reads `disabled`, not `not configured`."""
@@ -352,7 +216,7 @@ class TestEndpointGatewayState:
 
     def test_suffix_lookalike_host_is_not_gateway(self) -> None:
         """A host containing the domain as a substring is not the gateway."""
-        from deepagents_code.doctor import _endpoint_gateway_state
+        from niki_agent.doctor import _endpoint_gateway_state
 
         assert (
             _endpoint_gateway_state("https://smith.langchain.com.evil.example") == "no"
@@ -376,26 +240,26 @@ class TestCollectUpdates:
         section flows through the genuine reader and the epoch -> ISO ->
         relative-time conversion, not a stub.
         """
-        from deepagents_code.doctor import _collect_updates
+        from niki_agent.doctor import _collect_updates
 
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=editable,
             ),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=checks_enabled,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=cached,
             ),
-            patch("deepagents_code.update_check.CACHE_FILE", cache_file),
+            patch("niki_agent.update_check.CACHE_FILE", cache_file),
         ):
             section = _collect_updates()
         return {item.label: item.value for item in section.items}
@@ -484,8 +348,8 @@ class TestCommitHash:
     def test_baked_commit_preferred_over_git(self) -> None:
         """A build-stamped commit wins for a wheel and skips the live git probe."""
         with (
-            patch("deepagents_code.doctor._build_commit", return_value="deadbee"),
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.doctor._build_commit", return_value="deadbee"),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch("shutil.which") as which,
             patch("subprocess.run") as run,
         ):
@@ -497,8 +361,8 @@ class TestCommitHash:
     def test_editable_install_ignores_baked_commit(self) -> None:
         """An editable install ignores a (possibly stale) stamp and probes git."""
         with (
-            patch("deepagents_code.doctor._build_commit", return_value="deadbee"),
-            patch("deepagents_code.config._is_editable_install", return_value=True),
+            patch("niki_agent.doctor._build_commit", return_value="deadbee"),
+            patch("niki_agent.config._is_editable_install", return_value=True),
             patch("shutil.which", return_value=None),
             patch("subprocess.run") as run,
         ):
@@ -508,20 +372,20 @@ class TestCommitHash:
 
     def test_build_commit_missing_module(self) -> None:
         """No generated module (editable/dev install) yields `None`."""
-        with patch.dict(sys.modules, {"deepagents_code._build_info": None}):
+        with patch.dict(sys.modules, {"niki_agent._build_info": None}):
             assert _build_commit() is None
 
     def test_build_commit_reads_stamped_value(self) -> None:
         """A generated module exposes its stamped commit."""
         stub = SimpleNamespace(BUILD_COMMIT="abc1234")
-        with patch.dict(sys.modules, {"deepagents_code._build_info": stub}):
+        with patch.dict(sys.modules, {"niki_agent._build_info": stub}):
             assert _build_commit() == "abc1234"
 
     @pytest.mark.parametrize("value", ["", "   ", None])
     def test_build_commit_blank_value_is_none(self, value: str | None) -> None:
         """A present module with a blank stamp yields `None` (falls back to git)."""
         stub = SimpleNamespace(BUILD_COMMIT=value)
-        with patch.dict(sys.modules, {"deepagents_code._build_info": stub}):
+        with patch.dict(sys.modules, {"niki_agent._build_info": stub}):
             assert _build_commit() is None
 
     def test_build_commit_corrupt_module_returns_none(self) -> None:
@@ -532,7 +396,7 @@ class TestCommitHash:
                 msg = "corrupt stamp"
                 raise ValueError(msg)
 
-        with patch.dict(sys.modules, {"deepagents_code._build_info": _Corrupt()}):
+        with patch.dict(sys.modules, {"niki_agent._build_info": _Corrupt()}):
             assert _build_commit() is None
 
 
@@ -545,7 +409,7 @@ class TestConfigurationSection:
     """
 
     def _labels(self) -> list[str]:
-        from deepagents_code.doctor import _collect_configuration
+        from niki_agent.doctor import _collect_configuration
 
         return [item.label for item in _collect_configuration().items]
 
@@ -560,12 +424,10 @@ class TestConfigurationSection:
         """A security check that stopped running must not be silent."""
         from dataclasses import replace
 
-        from deepagents_code._paths import PATHS
-        from deepagents_code.doctor import _collect_configuration
+        from niki_agent._paths import PATHS
+        from niki_agent.doctor import _collect_configuration
 
-        with patch(
-            "deepagents_code._paths.PATHS", replace(PATHS, home_check_skipped=True)
-        ):
+        with patch("niki_agent._paths.PATHS", replace(PATHS, home_check_skipped=True)):
             items = {item.label: item for item in _collect_configuration().items}
 
         assert "Profile safety check" in items
@@ -581,7 +443,7 @@ class TestRunDoctorCommand:
             file=buf, force_terminal=force_terminal, highlight=False, width=200
         )
         args = argparse.Namespace(output_format="text")
-        with patch("deepagents_code.config.console", test_console):
+        with patch("niki_agent.config.console", test_console):
             code = run_doctor_command(args)
         return code, buf.getvalue()
 
@@ -592,7 +454,7 @@ class TestRunDoctorCommand:
         # not make the section unhealthy; the mismatch path has dedicated
         # coverage. Editable installs resolve via `_sdk_requirement_for_cli`.
         with patch(
-            "deepagents_code.extras_info._sdk_requirement_for_cli",
+            "niki_agent.extras_info._sdk_requirement_for_cli",
             return_value=None,
         ):
             code, output = self._run_text()
@@ -601,7 +463,7 @@ class TestRunDoctorCommand:
         assert "Updates" in output
         assert "Tracing" in output
         assert "Configuration" in output
-        assert "deepagents-code" in output
+        assert "niki-agent" in output
         assert "dcode config" in output
         assert "dcode config get <key>" in output
         assert "dcode --version" in output
@@ -609,18 +471,18 @@ class TestRunDoctorCommand:
 
     def test_commit_hash_renders_as_link(self) -> None:
         """Text output links the hash to GitHub."""
-        with patch("deepagents_code.doctor._commit_hash", return_value="abc1234"):
+        with patch("niki_agent.doctor._commit_hash", return_value="abc1234"):
             _, output = self._run_text(force_terminal=True)
 
-        assert "https://github.com/langchain-ai/deepagents/commit/abc1234" in output
+        assert "https://github.com/RavaniRoshan/niki-agent/commit/abc1234" in output
 
     def test_invalid_commit_hash_renders_without_link(self) -> None:
         """Text output leaves an invalid hash unlinked."""
-        with patch("deepagents_code.doctor._commit_hash", return_value="not-a-sha"):
+        with patch("niki_agent.doctor._commit_hash", return_value="not-a-sha"):
             _, output = self._run_text(force_terminal=True)
 
         assert "not-a-sha" in output
-        assert "https://github.com/langchain-ai/deepagents/commit/" not in output
+        assert "https://github.com/RavaniRoshan/niki-agent/commit/" not in output
 
 
 class TestPathStatus:
@@ -630,7 +492,7 @@ class TestPathStatus:
         """An unreadable path is flagged as a genuine problem (`ok=False`)."""
         from pathlib import Path
 
-        from deepagents_code.doctor import _path_status
+        from niki_agent.doctor import _path_status
 
         def _raise(self: Path) -> object:  # noqa: ARG001  # must match Path.stat signature
             msg = "permission denied"
@@ -658,7 +520,7 @@ class TestFallbackLocationReporting:
         self, tmp_path: Path
     ) -> None:
         """Lazily created directories must not be reported as unwritable."""
-        from deepagents_code.doctor import _writable_path_status
+        from niki_agent.doctor import _writable_path_status
 
         item = _writable_path_status("Managed binaries", tmp_path / "absent")
 

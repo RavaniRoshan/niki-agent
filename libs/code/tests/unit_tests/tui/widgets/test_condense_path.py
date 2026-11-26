@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 from rich.cells import cell_len
 
-from deepagents_code.config import reset_glyphs_cache
-from deepagents_code.tui.widgets._condense_path import condense_path
+from niki_agent.config import reset_glyphs_cache
+from niki_agent.tui.widgets._condense_path import condense_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-LONG = "/home/user/projects/deepagents/libs/code/deepagents_code/tui/widgets"
+LONG = "/home/user/projects/deepagents/libs/code/niki_agent/tui/widgets"
 
 
 @pytest.fixture(autouse=True)
@@ -65,9 +65,9 @@ class TestCondensation:
         widths = [50, 40, 30, 20, 12]
         results = [condense_path(LONG, width) for width in widths]
         assert results == [
-            "/home/user/…/code/deepagents_code/tui/widgets",
-            "/home/user/…/deepagents_code/tui/widgets",
-            "/home/…/tui/widgets",
+            "/home/user/projects/…/code/niki_agent/tui/widgets",
+            "/home/user/…/code/niki_agent/tui/widgets",
+            "/home/…/niki_agent/tui/widgets",
             "/home/…/tui/widgets",
             "/…/widgets",
         ]
@@ -109,7 +109,7 @@ class TestNarrowWidths:
 
     def test_single_component_path(self) -> None:
         """A one-component path drops its root before truncating."""
-        assert condense_path("/deepagents_code", 12) == "deepagents_…"
+        assert condense_path("/niki_agent_tui", 12) == "niki_agent_…"
 
     def test_ascii_charset_uses_ascii_ellipsis(
         self, monkeypatch: pytest.MonkeyPatch

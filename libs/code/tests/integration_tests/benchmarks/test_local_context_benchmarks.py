@@ -17,11 +17,9 @@ import subprocess
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from deepagents.backends import LocalShellBackend
-from deepagents.backends.protocol import ExecuteResponse
 from langchain.agents.middleware.types import AgentState, ModelRequest
 
-from deepagents_code.local_context import (
+from niki_agent.local_context import (
     _DETECT_SCRIPT_TIMEOUT,
     DETECT_CONTEXT_SCRIPT,
     LocalContextMiddleware,
@@ -29,7 +27,9 @@ from deepagents_code.local_context import (
     _section_files,
     _section_makefile,
 )
-from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
+from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+from niki_agent.sdk.backends import LocalShellBackend
+from niki_agent.sdk.backends.protocol import ExecuteResponse
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -285,7 +285,7 @@ def test_compose_model_request(benchmark: BenchmarkFixture) -> None:
     middleware = LocalContextMiddleware(
         _StaticBackend(""),
         mcp_server_info=servers,
-        tracing_project="shared-deepagents-code",
+        tracing_project="shared-niki-agent",
         user_tracing_project="user-project",
     )
     local_context = "## Local Context\n\n" + "context detail\n" * 600

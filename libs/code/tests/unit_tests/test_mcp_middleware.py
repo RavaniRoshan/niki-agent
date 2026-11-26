@@ -12,7 +12,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import ToolException
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
-from deepagents_code.mcp_middleware import mcp_tool_middleware
+from niki_agent.mcp_middleware import mcp_tool_middleware
 
 
 class _ReauthMessage:
@@ -23,8 +23,8 @@ class _ReauthMessage:
 def _request() -> ToolCallRequest:
     tool = SimpleNamespace(
         metadata={
-            "_deepagents_code_mcp": True,
-            "_deepagents_code_mcp_server": "linear",
+            "_niki_agent_mcp": True,
+            "_niki_agent_mcp_server": "linear",
         },
         args_schema={},
         name="linear_get_issue",
@@ -85,7 +85,7 @@ async def test_reauth_error_is_translated() -> None:
         raise RuntimeError(message)
 
     with patch(
-        "deepagents_code.mcp_auth.find_reauth_required",
+        "niki_agent.mcp_auth.find_reauth_required",
         return_value=_ReauthMessage(),
     ):
         result = await mcp_tool_middleware(1).awrap_tool_call(_request(), handler)

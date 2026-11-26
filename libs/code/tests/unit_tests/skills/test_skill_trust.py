@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from deepagents_code.skills.trust import (
+from niki_agent.skills.trust import (
     RevokeResult,
     clear_trusted_skill_dirs,
     is_skill_dir_trusted,
@@ -35,7 +35,7 @@ class TestSkillTrustStore:
 
     def test_untrusted_skill_requires_workspace_trust(self, tmp_path: Path) -> None:
         """Only a trusted root can authorize loading external skill content."""
-        from deepagents_code.skills.load import load_skill_content
+        from niki_agent.skills.load import load_skill_content
 
         store = tmp_path / "skill_trust.json"
         built_in_skills = tmp_path / "built-in-skills"
@@ -198,7 +198,7 @@ class TestSkillTrustStore:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The default store path lives under DEFAULT_STATE_DIR."""
-        import deepagents_code.model_config as mc
+        import niki_agent.model_config as mc
 
         monkeypatch.setattr(mc, "DEFAULT_STATE_DIR", tmp_path)
         target = tmp_path / "shared"
@@ -268,7 +268,7 @@ class TestSkillTrustStoreRobustness:
         The read/modify/write must not rebuild the store from `{}` on a
         transient `OSError`; doing so would drop every prior approval.
         """
-        import deepagents_code.skills.trust as trust_mod
+        import niki_agent.skills.trust as trust_mod
 
         store = tmp_path / "skill_trust.json"
         first = tmp_path / "first"
@@ -399,7 +399,7 @@ class TestSkillTrustStoreRobustness:
         path: a strict-read failure must map to `ERROR` and leave the store
         byte-for-byte unchanged, never rebuild it from `{}` and drop siblings.
         """
-        import deepagents_code.skills.trust as trust_mod
+        import niki_agent.skills.trust as trust_mod
 
         store = tmp_path / "skill_trust.json"
         a = tmp_path / "a"
@@ -421,7 +421,7 @@ class TestSkillTrustStoreRobustness:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A failed write returns `ERROR`, not a false `REMOVED`."""
-        import deepagents_code.skills.trust as trust_mod
+        import niki_agent.skills.trust as trust_mod
 
         store = tmp_path / "skill_trust.json"
         a = tmp_path / "a"
@@ -480,7 +480,7 @@ class TestSkillTrustStoreRobustness:
         link = tmp_path / "link"
         link.symlink_to(real, target_is_directory=True)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.skills.trust"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.skills.trust"):
             # `link` expanduser()s to itself but resolve()s to `real`, so it is
             # non-canonical and should trip the boundary warning.
             assert trust_skill_dir(link, store_path=store)

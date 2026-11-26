@@ -12,7 +12,7 @@ sources:
   - id: openwiki-source-96d0addee4aedab20d360121
     resource: repo://action.yml
   - id: openwiki-source-ecf20e7a2684ba0d2ae7d701
-    resource: repo://libs/code/deepagents_code/client/non_interactive.py
+    resource: repo://libs/code/niki_agent/client/non_interactive.py
 generated: { by: "openwiki/0.4.2", at: "2026-09-18T16:46:37.183Z" }
 ---
 

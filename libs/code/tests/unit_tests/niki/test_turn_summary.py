@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from deepagents_code.domain.events import RunEvent, RunEventKind
-from deepagents_code.niki.turn_summary import TurnSummary, TurnSummaryData
+from niki_agent.domain.events import RunEvent, RunEventKind
+from niki_agent.niki.turn_summary import TurnSummary, TurnSummaryData
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -123,7 +123,7 @@ async def test_niki_app_renders_summary_after_a_runtime_turn():
     """Runtime events dispatch one plain summary message through Niki's hook."""
     from unittest.mock import AsyncMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     class SummaryProbe(NikiApp):
         def __init__(self) -> None:
@@ -172,7 +172,7 @@ async def test_niki_app_renders_summary_after_a_runtime_turn():
     app.scheduled[0]()
     await app._captured_workers[0]
 
-    from deepagents_code.tui.widgets.messages import AppMessage
+    from niki_agent.tui.widgets.messages import AppMessage
 
     mount = app._mount_message
     assert isinstance(mount, AsyncMock)

@@ -50,58 +50,28 @@ Use separate workspace-scoped service keys for tracing and Gateway invocation. T
 
 ### `labeling`
 
-Create this environment for the `label-by-package` job in
-`auto-label-by-package.yml`.
+This environment is selected by `.github/workflows/sync_topic_labels.yml`
+for the scheduled topic-label sync.
 
 | Secret | Purpose |
 | --- | --- |
 | `GROQ_API_KEY` | Classify issue titles and bodies into topic labels. |
 
 Provision a dedicated Groq inference key for labeling, separate from any
-benchmarking credential, with model and spending limits where supported. Store it only in
-this environment; the issue workflow injects it only into its classification step.
-Do not require reviewers, so automatic labeling can run unattended. Restrict
-deployments to the default branch, which the issue workflow uses.
+other credential, with model and spending limits where supported. Store it
+only in this environment; the workflow injects it only into its
+classification step. Do not require reviewers, so labeling can run
+unattended. Restrict deployments to the default branch.
 
-### `integration-tests`
+### Retired environments
 
-This environment is intentionally uncredentialed. `.github/workflows/integration_tests.yml` retains package-scoped `secrets.*` references, but absent environment credentials resolve to empty strings.
-
-Will expand as needed.
-
-### `release-bot`
-
-This environment supports curated release-note drafting for every release-please
-managed package.
-
-| Secret | Condition | Purpose |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | `RELEASE_BOT_MODEL` starts with `openai:` | Draft structured release notes with OpenAI. |
-
-| Actions variable | Value | Type | Purpose |
-| --- | --- | --- | --- |
-| `RELEASE_BOT_MODEL` | Variable | Environment | Model used for changelog generation (`provider:model`). Must support JSON Schema structured output and a 32,768-token output ceiling. For `openai:…`, use a Chat Completions model. See [RELEASING.md](RELEASING.md) for the exact list. |
-| `RELEASE_BOT_ID` | - | Repository | GitHub App bot account user ID. |
-| `RELEASE_BOT_LOGIN` | `langchain-oss-automated-triage[bot]` | Repository | Login ID. |
-
-Of the model-provider credentials, only the credential for the configured provider is required. Prefer a provider project or service-account key limited to model inference, with model allowlists and spend limits where supported. The workflow also uses the repository GitHub App credentials for repository mutations.
-
-### `release`
-
-The environment is retained for release protections and possible future release-time integration coverage. It intentionally has no provider credentials while the `Run integration tests` step in `.github/workflows/release.yml` is disabled with `if: false`.
-
-The disabled step preserves package-scoped wiring so a future re-enablement has an explicit credential contract:
-
-| Release package | Credentials if re-enabled |
-| --- | --- |
-| `deepagents` | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `LANGSMITH_API_KEY` |
-| `langchain-quickjs` | `ANTHROPIC_API_KEY` |
-| `langchain-daytona` | `DAYTONA_API_KEY` |
-| `langchain-modal` | `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET` |
-| `langchain-runloop` | `RUNLOOP_API_KEY` |
-| `langchain-vercel-sandbox` | `VERCEL_TOKEN` plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID` Actions variables |
-
-The disabled Vercel step currently references only `VERCEL_TOKEN`; its access-token authentication contract is incomplete. Add the two variables above, or deliberately adopt and document Vercel OIDC, before re-enabling that package's integration test.
+`integration-tests`, `release-bot`, and `release` belonged to the upstream
+monorepo's release automation. That automation (`release.yml`,
+`release_please*.yml`, `check_sdk_pin.yml`, `check_release_deps.yml`,
+`release_notes_check.yml`, `integration_tests.yml`) was removed with the
+independence work, and `niki-release.yml` needs nothing beyond `GITHUB_TOKEN`.
+Archive the environments in GitHub if they still exist; nothing here reads
+them.
 
 ## LangSmith permission caveats
 
@@ -123,10 +93,10 @@ organization members: read
 repository contents: write
 issues: write
 pull requests: write
-actions: write
 ```
 
-`actions: write` is required by `release.yml`'s `bump-code-sdk-pin` job to dispatch `bump_code_sdk_pin.yml` after a `deepagents` publish. It was added to the App installation as part of [PR #5298](https://github.com/langchain-ai/deepagents/pull/5298).
+`actions: write` is no longer required: the `release.yml` job that dispatched
+`bump_code_sdk_pin.yml` left with the upstream release automation.
 
 The App's actual installed permissions are external configuration and must be verified separately. Workflow-level `permissions` restrict `GITHUB_TOKEN`; they do not restrict a separately minted GitHub App installation token.
 

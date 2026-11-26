@@ -11,17 +11,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.loading import project_hooks_path
-from deepagents_code.hooks.manager import HookSessionIdentity, HooksManager
-from deepagents_code.hooks.models.domain import (
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.loading import project_hooks_path
+from niki_agent.hooks.manager import HookSessionIdentity, HooksManager
+from niki_agent.hooks.models.domain import (
     HookContext,
     HookEvent,
     HookInvocation,
     StopEvent,
 )
-from deepagents_code.hooks.runtime import HooksRuntime
-from deepagents_code.hooks.trust import (
+from niki_agent.hooks.runtime import HooksRuntime
+from niki_agent.hooks.trust import (
     WorkspaceTrust,
     is_project_hooks_trusted,
     trust_project_hooks,
@@ -30,7 +30,7 @@ from deepagents_code.hooks.trust import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
 
 def _write_project_hooks(
@@ -235,8 +235,8 @@ def test_non_git_workspace_without_hooks_skips_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks import trust
-    from deepagents_code.main import _check_project_hooks_trust
+    from niki_agent.hooks import trust
+    from niki_agent.main import _check_project_hooks_trust
 
     # No .git or project hooks exist anywhere under tmp_path.
     monkeypatch.chdir(tmp_path)
@@ -244,7 +244,7 @@ def test_non_git_workspace_without_hooks_skips_prompt(
         trust, "_default_store_path", lambda: tmp_path / "state" / "hooks_trust.json"
     )
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda *_args, **_kwargs: pytest.fail("prompt ran without project hooks"),
     )
 
@@ -257,12 +257,12 @@ def test_explicit_trust_allows_non_git_project_hooks(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.main import _check_project_hooks_trust
+    from niki_agent.main import _check_project_hooks_trust
 
     root = _write_project_hooks(tmp_path / "project", git=False)
     monkeypatch.chdir(root)
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda *_args, **_kwargs: pytest.fail("prompt ran despite explicit trust"),
     )
 
@@ -275,8 +275,8 @@ def test_user_hooks_path_collision_skips_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks import loading, trust
-    from deepagents_code.main import _check_project_hooks_trust
+    from niki_agent.hooks import loading, trust
+    from niki_agent.main import _check_project_hooks_trust
 
     home = _write_project_hooks(tmp_path / "home", git=False)
     monkeypatch.chdir(home)
@@ -285,7 +285,7 @@ def test_user_hooks_path_collision_skips_prompt(
         trust, "_default_store_path", lambda: tmp_path / "state" / "hooks_trust.json"
     )
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda *_args, **_kwargs: pytest.fail("prompt ran for user hooks"),
     )
 
@@ -299,8 +299,8 @@ def test_prompt_renders_paths_containing_markup(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from deepagents_code.hooks import trust
-    from deepagents_code.main import _check_project_hooks_trust, _TrustAction
+    from niki_agent.hooks import trust
+    from niki_agent.main import _check_project_hooks_trust, _TrustAction
 
     # Rich consumes `[bold]` as a style tag, so an unescaped path would render
     # as "projx" — silently wrong in the prompt the trust decision rests on.
@@ -311,7 +311,7 @@ def test_prompt_renders_paths_containing_markup(
         trust, "_default_store_path", lambda: tmp_path / "state" / "hooks_trust.json"
     )
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda *_args, **_kwargs: _TrustAction.REMEMBER,
     )
 
@@ -333,15 +333,15 @@ def test_interactive_prompt_applies_selected_action(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks import trust
-    from deepagents_code.main import _check_project_hooks_trust, _TrustAction
+    from niki_agent.hooks import trust
+    from niki_agent.main import _check_project_hooks_trust, _TrustAction
 
     root = _write_project_hooks(tmp_path / "project")
     store = tmp_path / "state" / "hooks_trust.json"
     monkeypatch.chdir(root)
     monkeypatch.setattr(trust, "_default_store_path", lambda: store)
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda _console, **_kwargs: _TrustAction[action],
     )
 
@@ -355,8 +355,8 @@ def test_persisted_trust_skips_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks import trust
-    from deepagents_code.main import _check_project_hooks_trust
+    from niki_agent.hooks import trust
+    from niki_agent.main import _check_project_hooks_trust
 
     root = _write_project_hooks(tmp_path / "project")
     store = tmp_path / "state" / "hooks_trust.json"
@@ -364,7 +364,7 @@ def test_persisted_trust_skips_prompt(
     monkeypatch.setattr(trust, "_default_store_path", lambda: store)
     assert trust_project_hooks(root, store_path=store)
     monkeypatch.setattr(
-        "deepagents_code.main._select_trust_action",
+        "niki_agent.main._select_trust_action",
         lambda *_args, **_kwargs: pytest.fail("prompt ran despite persisted trust"),
     )
 
@@ -377,7 +377,7 @@ async def test_textual_app_forwards_hook_trust(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     root = _write_project_hooks(tmp_path / "project")
     monkeypatch.chdir(root)
@@ -387,7 +387,7 @@ async def test_textual_app_forwards_hook_trust(
         hook_trust=WorkspaceTrust.for_session(root, granted=True),
     )
     with patch(
-        "deepagents_code.hooks.runtime.HooksRuntime.create",
+        "niki_agent.hooks.runtime.HooksRuntime.create",
         return_value=MagicMock(project_hooks_loaded=False),
     ) as create:
         await app._init_session_state()
@@ -399,8 +399,8 @@ async def test_textual_app_defaults_to_untrusted_without_a_policy(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.hooks import trust
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.hooks import trust
 
     root = _write_project_hooks(tmp_path / "project")
     monkeypatch.chdir(root)
@@ -409,7 +409,7 @@ async def test_textual_app_defaults_to_untrusted_without_a_policy(
     )
     app = DeepAgentsApp(agent=MagicMock(), thread_id="thread")
     with patch(
-        "deepagents_code.hooks.runtime.HooksRuntime.create",
+        "niki_agent.hooks.runtime.HooksRuntime.create",
         return_value=MagicMock(project_hooks_loaded=False),
     ) as create:
         await app._init_session_state()
@@ -421,9 +421,9 @@ def _isolate_hook_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     """Point user hooks and transcripts at `tmp_path` instead of the real home."""
     user_dir = tmp_path / "user"
     user_dir.mkdir()
-    monkeypatch.setattr("deepagents_code.hooks.loading.DEFAULT_CONFIG_DIR", user_dir)
+    monkeypatch.setattr("niki_agent.hooks.loading.DEFAULT_CONFIG_DIR", user_dir)
     monkeypatch.setattr(
-        "deepagents_code.hooks.runtime.DEFAULT_CONFIG_DIR", tmp_path / "state"
+        "niki_agent.hooks.runtime.DEFAULT_CONFIG_DIR", tmp_path / "state"
     )
 
 
@@ -439,7 +439,7 @@ def test_manager_rejects_project_hooks_changed_after_trust_check(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.hooks import trust as trust_module
+    from niki_agent.hooks import trust as trust_module
 
     _isolate_hook_config(tmp_path, monkeypatch)
     root = _write_project_hooks(tmp_path / "project")
@@ -524,7 +524,7 @@ def test_headless_manager_ignores_persisted_trust(
 
 
 async def _textual_app(cwd: Path, trust: WorkspaceTrust) -> DeepAgentsApp:
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     app = DeepAgentsApp(
         agent=MagicMock(),
@@ -563,7 +563,7 @@ async def test_launch_cwd_retarget_updates_policy_before_session_state_exists(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     _isolate_hook_config(tmp_path, monkeypatch)
     target = _write_project_hooks(tmp_path / "target")

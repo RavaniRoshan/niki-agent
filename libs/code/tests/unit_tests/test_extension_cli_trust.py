@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code._env_vars import EXPERIMENTAL
-from deepagents_code.extensions.settings import ExtensionSettings, TrustPolicy
-from deepagents_code.main import _check_project_extensions_trust, parse_args
+from niki_agent._env_vars import EXPERIMENTAL
+from niki_agent.extensions.settings import ExtensionSettings, TrustPolicy
+from niki_agent.main import _check_project_extensions_trust, parse_args
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +41,7 @@ def test_extension_flags_require_experimental_mode(
 def test_never_policy_overrides_explicit_flag() -> None:
     """A configured hard stop wins over the CLI flag."""
     with patch(
-        "deepagents_code.extensions.settings.load_extension_settings",
+        "niki_agent.extensions.settings.load_extension_settings",
         return_value=ExtensionSettings(trust=TrustPolicy.NEVER),
     ):
         assert not _check_project_extensions_trust(trust_flag=True)

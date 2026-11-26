@@ -24,7 +24,7 @@ from collections.abc import (
 from typing import TYPE_CHECKING, Any, Literal
 
 import pytest
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool

@@ -24,11 +24,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code import _paths, update_check
-from deepagents_code._version import __version__
-from deepagents_code.extras_info import ExtrasIntrospectionError, installed_extra_names
-from deepagents_code.update_check import (
+from niki_agent import _paths, update_check
+from niki_agent._version import __version__
+from niki_agent.extras_info import ExtrasIntrospectionError, installed_extra_names
+from niki_agent.update_check import (
     CACHE_TTL,
+    INSTALL_SCRIPT_COMMAND,
     ExtraInstallOutcome,
     InstallMethod,
     ShadowedDcode,
@@ -89,11 +90,13 @@ from deepagents_code.update_check import (
 )
 from unit_tests.conftest import redirect_managed_config
 
+_INSTALL_SCRIPT_PREFIX = INSTALL_SCRIPT_COMMAND.removesuffix("| bash").rstrip()
+
 
 @pytest.fixture(autouse=True)
 def isolated_installation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep migration lock creation away from the test runner's installation."""
-    with patch.object(sys, "prefix", str(tmp_path / "tools" / "deepagents-code")):
+    with patch.object(sys, "prefix", str(tmp_path / "tools" / "niki-agent")):
         snapshot = _paths._capture_paths(
             str(tmp_path / "profile"), launch_home=tmp_path
         )
@@ -104,7 +107,7 @@ def isolated_installation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 def cache_file(tmp_path):
     """Override CACHE_FILE to use a temporary directory."""
     path = tmp_path / "latest_version.json"
-    with patch("deepagents_code.update_check.CACHE_FILE", path):
+    with patch("niki_agent.update_check.CACHE_FILE", path):
         yield path
 
 
@@ -112,7 +115,7 @@ def cache_file(tmp_path):
 def update_log_dir(tmp_path):
     """Override UPDATE_LOG_DIR to use a temporary directory."""
     path = tmp_path / "update_logs"
-    with patch("deepagents_code.update_check.UPDATE_LOG_DIR", path):
+    with patch("niki_agent.update_check.UPDATE_LOG_DIR", path):
         yield path
 
 
@@ -206,8 +209,8 @@ class TestReadInstalledDistributionVersion:
 
     def test_reads_dist_info_from_disk(self, tmp_path, monkeypatch) -> None:
         """The version comes from the dist-info directory, not `__version__`."""
-        self._fake_tool_env(tmp_path, monkeypatch, "deepagents_code-2.0.1.dist-info")
-        with patch("deepagents_code.update_check.__version__", "1.0.0"):
+        self._fake_tool_env(tmp_path, monkeypatch, "niki_agent-2.0.1.dist-info")
+        with patch("niki_agent.update_check.__version__", "1.0.0"):
             assert read_installed_distribution_version() == "2.0.1"
 
     def test_missing_dist_info_returns_none(self, tmp_path, monkeypatch) -> None:
@@ -218,17 +221,15 @@ class TestReadInstalledDistributionVersion:
         self._fake_tool_env(
             tmp_path,
             monkeypatch,
-            "deepagents_code-2.0.0.dist-info",
-            "deepagents_code-2.0.1.dist-info",
+            "niki_agent-2.0.0.dist-info",
+            "niki_agent-2.0.1.dist-info",
         )
         assert read_installed_distribution_version() is None
 
     def test_unparseable_dist_info_version_returns_none(
         self, tmp_path, monkeypatch
     ) -> None:
-        self._fake_tool_env(
-            tmp_path, monkeypatch, "deepagents_code-not.a.version.dist-info"
-        )
+        self._fake_tool_env(tmp_path, monkeypatch, "niki_agent-not.a.version.dist-info")
         assert read_installed_distribution_version() is None
 
     def test_unreadable_site_packages_returns_none(self, tmp_path, monkeypatch) -> None:
@@ -246,7 +247,7 @@ class TestReadInstalledDistributionVersion:
         """
         site_packages = tmp_path / "Lib" / "site-packages"
         site_packages.mkdir(parents=True)
-        (site_packages / "deepagents_code-2.0.1.dist-info").mkdir()
+        (site_packages / "niki_agent-2.0.1.dist-info").mkdir()
         monkeypatch.setattr(sysconfig, "get_path", lambda _key: str(site_packages))
         assert read_installed_distribution_version() == "2.0.1"
 
@@ -545,10 +546,10 @@ class TestPrereleaseConstraintsFile:
     def test_cleanup_error_is_swallowed(self, caplog) -> None:
         """A failing unlink is logged, not raised — it can't mask a result."""
         captured: Path | None = None
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.update_check"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.update_check"):
             with (
                 patch(
-                    "deepagents_code.update_check.Path.unlink",
+                    "niki_agent.update_check.Path.unlink",
                     side_effect=OSError("busy"),
                 ),
                 _prerelease_constraints_file(["deepagents==0.7.0a7"]) as path,
@@ -585,11 +586,11 @@ class TestPrereleaseConstraintsFile:
 
         with (
             patch(
-                "deepagents_code.update_check.tempfile.mkstemp",
+                "niki_agent.update_check.tempfile.mkstemp",
                 side_effect=_tracking_mkstemp,
             ),
             patch(
-                "deepagents_code.update_check.os.fdopen",
+                "niki_agent.update_check.os.fdopen",
                 side_effect=OSError("disk full"),
             ),
             pytest.raises(OSError, match="disk full"),
@@ -710,7 +711,7 @@ class TestReleasePrereleasePins:
             ),
         ) as get_mock:
             assert release_prerelease_pins("1.1.0") == ["deepagents==0.7.0a2"]
-        assert get_mock.call_args.args[0].endswith("/deepagents-code/1.1.0/json")
+        assert get_mock.call_args.args[0].endswith("/niki-agent/1.1.0/json")
         data = json.loads(cache_file.read_text())
         assert data["release_prerelease_pins"]["1.1.0"] == ["deepagents==0.7.0a2"]
 
@@ -759,7 +760,7 @@ class TestReleasePrereleasePins:
 class TestIsUpdateAvailable:
     def test_invalid_installed_version(self) -> None:
         """Non-PEP 440 installed version disables update check gracefully."""
-        with patch("deepagents_code.update_check.__version__", "not-a-version"):
+        with patch("niki_agent.update_check.__version__", "not-a-version"):
             available, latest = is_update_available()
 
         assert available is False
@@ -809,17 +810,17 @@ class TestIsInstallationStale:
     def test_seven_day_threshold(self, days: int, expected: bool) -> None:
         """The persistent warning begins when the installed release is a week old."""
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "2.0.0"),
             ),
             patch(
-                "deepagents_code.update_check.installed_days_old",
+                "niki_agent.update_check.installed_days_old",
                 return_value=days,
             ),
         ):
@@ -828,7 +829,7 @@ class TestIsInstallationStale:
     def test_false_when_editable_check_raises(self, cache_file) -> None:  # noqa: ARG002
         """A raising editable check degrades to `False`, never aborting startup."""
         with patch(
-            "deepagents_code.config._is_editable_install",
+            "niki_agent.config._is_editable_install",
             side_effect=PermissionError("direct_url.json unreadable"),
         ):
             assert is_installation_stale() is False
@@ -913,7 +914,7 @@ class TestDetectShadowedDcode:
         """A uv-style symlink shim under the user bin dir is NOT a shadow.
 
         On a healthy uv tool install, `~/.local/bin/dcode` is a symlink to
-        `~/.local/share/uv/tools/deepagents-code/bin/dcode`. If we followed
+        `~/.local/share/uv/tools/niki-agent/bin/dcode`. If we followed
         that symlink the parent would be the tool venv's internal bin dir,
         which differs from uv's user-facing bin dir and would make every
         healthy install look shadowed. The detector must compare the
@@ -921,7 +922,7 @@ class TestDetectShadowedDcode:
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        tool_internal_bin = tmp_path / "tools" / "deepagents-code" / "bin"
+        tool_internal_bin = tmp_path / "tools" / "niki-agent" / "bin"
         tool_internal_bin.mkdir(parents=True)
         real_entry_point = tool_internal_bin / "dcode"
         real_entry_point.write_text("")
@@ -930,7 +931,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -960,7 +961,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -995,7 +996,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -1021,11 +1022,11 @@ class TestDetectShadowedDcode:
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        tool_internal_bin = tmp_path / "tools" / "deepagents-code" / "bin"
+        tool_internal_bin = tmp_path / "tools" / "niki-agent" / "bin"
         tool_internal_bin.mkdir(parents=True)
         other_bin = tmp_path / "usr-local-bin"
         other_bin.mkdir()
-        for name in ("dcode", "deepagents-code"):
+        for name in ("dcode", "niki-agent"):
             real_entry_point = tool_internal_bin / name
             real_entry_point.write_text("")
             (uv_bin / name).symlink_to(real_entry_point)
@@ -1037,7 +1038,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -1063,14 +1064,14 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(
                 os.environ,
                 {"UV_TOOL_BIN_DIR": str(uv_bin), "PATHEXT": ".exe;.cmd"},
             ),
-            patch("deepagents_code.update_check._is_windows", return_value=True),
+            patch("niki_agent.update_check._is_windows", return_value=True),
             patch("shutil.which", side_effect=_which),
         ):
             assert detect_shadowed_dcode() is None
@@ -1108,7 +1109,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -1126,7 +1127,7 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -1134,31 +1135,31 @@ class TestDetectShadowedDcode:
         ):
             assert detect_shadowed_dcode() is None
 
-    def test_falls_back_to_deepagents_code_binary_name(self, tmp_path) -> None:
-        """The `deepagents-code` binary is checked when `dcode` is missing.
+    def test_falls_back_to_niki_agent_binary_name(self, tmp_path) -> None:
+        """The `niki-agent` binary is checked when `dcode` is missing.
 
         Mirrors the install-script verification loop so an install that only
-        exposes `deepagents-code` (e.g. an older `uv tool install` that
+        exposes `niki-agent` (e.g. an older `uv tool install` that
         predates the `dcode` entry point) still gets shadow-checked.
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        (uv_bin / "deepagents-code").write_text("")
+        (uv_bin / "niki-agent").write_text("")
         stale_bin = tmp_path / "stale-bin"
         stale_bin.mkdir()
-        stale = stale_bin / "deepagents-code"
+        stale = stale_bin / "niki-agent"
         stale.write_text("")
 
         def _which(name: str) -> str | None:
             if name == "dcode":
                 return None
-            if name == "deepagents-code":
+            if name == "niki-agent":
                 return str(stale)
             return None
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch.dict(os.environ, {"UV_TOOL_BIN_DIR": str(uv_bin)}),
@@ -1207,7 +1208,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch.dict(os.environ, {"PATHEXT": ".exe;.cmd"}),
-            patch("deepagents_code.update_check._is_windows", return_value=True),
+            patch("niki_agent.update_check._is_windows", return_value=True),
         ):
             assert shadow.upgraded_bin == upgraded_shim
 
@@ -1230,7 +1231,7 @@ class TestDetectShadowedDcode:
 
         with (
             patch.dict(os.environ, {"PATHEXT": ".exe;.cmd"}),
-            patch("deepagents_code.update_check._is_windows", return_value=True),
+            patch("niki_agent.update_check._is_windows", return_value=True),
         ):
             assert shadow.upgraded_bin == uv_bin / "dcode"
         assert shadow.upgraded_bin != project_shim
@@ -1259,21 +1260,19 @@ class TestDetectShadowedDcode:
             upgraded_bin_dir=tmp_path / "uv $dcode's $(bin)",
         )
 
-        with patch("deepagents_code.update_check.os.name", "nt"):
+        with patch("niki_agent.update_check.os.name", "nt"):
             command = format_shadowed_dcode_fix_command(shadow)
 
         quoted_bin_dir = str(shadow.upgraded_bin_dir).replace("'", "''")
         assert command == f"$env:PATH = '{quoted_bin_dir};' + $env:PATH"
 
-    def test_canonicalize_failure_continues_to_deepagents_code_name(
-        self, tmp_path
-    ) -> None:
+    def test_canonicalize_failure_continues_to_niki_agent_name(self, tmp_path) -> None:
         """A `resolve()` failure on `dcode` must not hide another shadow.
 
-        The detector deliberately `continue`s to the `deepagents-code` name
+        The detector deliberately `continue`s to the `niki-agent` name
         when canonicalizing `dcode`'s PATH directory raises, rather than
         returning `None` (which would silently report "no shadow"). This pins
-        that fall-through: `dcode`'s directory raises, but `deepagents-code`
+        that fall-through: `dcode`'s directory raises, but `niki-agent`
         resolves to a stale directory and is still reported as the shadow. A
         regression that turned the `continue` into `return None` would
         re-introduce the exact silent-hide bug the inline comment warns about.
@@ -1285,14 +1284,14 @@ class TestDetectShadowedDcode:
         (bad_dir / "dcode").write_text("")
         stale_bin = tmp_path / "stale-bin"
         stale_bin.mkdir()
-        stale_deepagents_code = stale_bin / "deepagents-code"
-        stale_deepagents_code.write_text("")
+        stale_niki_agent = stale_bin / "niki-agent"
+        stale_niki_agent.write_text("")
 
         def _which(name: str) -> str | None:
             if name == "dcode":
                 return str(bad_dir / "dcode")
-            if name == "deepagents-code":
-                return str(stale_deepagents_code)
+            if name == "niki-agent":
+                return str(stale_niki_agent)
             return None
 
         real_resolve = Path.resolve
@@ -1307,11 +1306,11 @@ class TestDetectShadowedDcode:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check._uv_tool_bin_dir",
+                "niki_agent.update_check._uv_tool_bin_dir",
                 return_value=uv_bin,
             ),
             patch("shutil.which", side_effect=_which),
@@ -1320,7 +1319,7 @@ class TestDetectShadowedDcode:
             shadow = detect_shadowed_dcode()
 
         assert shadow is not None
-        assert shadow.shadowing_bin == stale_deepagents_code
+        assert shadow.shadowing_bin == stale_niki_agent
         assert shadow.upgraded_bin_dir == uv_bin
 
 
@@ -1336,7 +1335,7 @@ class TestDetectShadowedDcodeSafe:
 class TestUpdateLogs:
     def test_format_log_follow_command_escapes_powershell_quotes(self) -> None:
         """PowerShell escapes a literal single quote by doubling it."""
-        with patch("deepagents_code.update_check.sys.platform", "win32"):
+        with patch("niki_agent.update_check.sys.platform", "win32"):
             assert format_log_follow_command("C:\\o'brien.log") == (
                 "Get-Content -Wait -LiteralPath 'C:\\o''brien.log'"
             )
@@ -1369,14 +1368,14 @@ class TestUpdateLogs:
 
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             # Stub the receipt-aware command builder so the test doesn't
             # depend on a real `uv-receipt.toml`; the assertion is about
             # log-creation failure surfacing through.
             patch(
-                "deepagents_code.update_check.upgrade_install_command",
+                "niki_agent.update_check.upgrade_install_command",
                 return_value="printf 'ok\\n'",
             ),
         ):
@@ -1395,17 +1394,17 @@ class TestUpdateLogs:
         command rather than refusing the upgrade outright.
         """
         with (
-            patch("deepagents_code.update_check.__version__", "1.0.0"),
+            patch("niki_agent.update_check.__version__", "1.0.0"),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.extras_info.installed_extra_names",
+                "niki_agent.extras_info.installed_extra_names",
                 side_effect=ExtrasIntrospectionError("metadata unreadable"),
             ),
             patch(
-                "deepagents_code.update_check._run_install_subprocess",
+                "niki_agent.update_check._run_install_subprocess",
                 new_callable=AsyncMock,
                 return_value=(True, ""),
             ) as run_mock,
@@ -1416,16 +1415,16 @@ class TestUpdateLogs:
         run_mock.assert_awaited_once()
         await_args = run_mock.await_args
         assert await_args is not None
-        assert await_args.args[0] == "uv tool install -U deepagents-code"
+        assert await_args.args[0] == "uv tool install -U niki-agent"
 
     def test_dependency_refresh_dry_run_ignores_phantom_metadata_extras(
         self, tmp_path, monkeypatch
     ) -> None:
         """Base dependencies must not add unselected extras to the preview."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset({"media", "nvidia"}),
         ):
             command = dependency_refresh_dry_run_command(
@@ -1434,7 +1433,7 @@ class TestUpdateLogs:
 
         assert command == (
             "uv pip install --dry-run --python /opt/dcode/bin/python "
-            "-U deepagents-code==1.2.3"
+            "-U niki-agent==1.2.3"
         )
 
 
@@ -1445,19 +1444,19 @@ class TestUpdateInstallLock:
     def lock_file(self, tmp_path):
         """Override UPDATE_LOCK_FILE to use a temporary path."""
         path = tmp_path / "state" / "update.lock"
-        with patch("deepagents_code.update_check.UPDATE_LOCK_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_LOCK_FILE", path):
             yield path
 
     @pytest.fixture
     def legacy_lock_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         """Model a lock file left behind by an older session."""
-        root = tmp_path / "tools" / "deepagents-code"
+        root = tmp_path / "tools" / "niki-agent"
         monkeypatch.setattr(sys, "prefix", str(root))
         snapshot = _paths._capture_paths(
             str(tmp_path / "profile"), launch_home=tmp_path
         )
         monkeypatch.setattr(update_check, "PATHS", snapshot)
-        legacy = root.parent / f".{root.name}.deepagents-code-locks" / "update.lock"
+        legacy = root.parent / f".{root.name}.niki-agent-locks" / "update.lock"
         legacy.parent.mkdir(parents=True)
         legacy.touch()
         return legacy
@@ -1702,8 +1701,8 @@ class TestUpdateInstallLock:
         somewhere per-process would exclude nothing.
         """
         probe = (
-            "from deepagents_code._paths import PATHS\n"
-            "from deepagents_code.update_check import UPDATE_LOCK_FILE\n"
+            "from niki_agent._paths import PATHS\n"
+            "from niki_agent.update_check import UPDATE_LOCK_FILE\n"
             "print(UPDATE_LOCK_FILE == PATHS.installation.locks_dir / 'update.lock')\n"
         )
         result = subprocess.run(
@@ -1719,13 +1718,13 @@ class TestUpdateInstallLock:
     def test_profiles_share_the_same_update_lock(self, tmp_path: Path) -> None:
         """Two profile homes using this tool environment contend on one lock."""
         probe = (
-            "from deepagents_code.update_check import UPDATE_LOCK_FILE\n"
+            "from niki_agent.update_check import UPDATE_LOCK_FILE\n"
             "print(UPDATE_LOCK_FILE)\n"
         )
         paths = []
         for profile in (tmp_path / "first", tmp_path / "second"):
             env = os.environ.copy()
-            env["DEEPAGENTS_HOME"] = str(profile)
+            env["NIKI_HOME"] = str(profile)
             result = subprocess.run(
                 [sys.executable, "-c", probe],
                 env=env,
@@ -1744,7 +1743,7 @@ class TestUpdateInstallLock:
         """A world-writable state dir would let any local user wedge updates."""
         lock_path = tmp_path / "state" / "update.lock"
         with (
-            patch("deepagents_code.update_check.UPDATE_LOCK_FILE", lock_path),
+            patch("niki_agent.update_check.UPDATE_LOCK_FILE", lock_path),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1764,14 +1763,14 @@ class TestUpdateInstallLock:
         fallback_blocker.write_text("not a directory", encoding="utf-8")
         with (
             patch(
-                "deepagents_code.update_check.UPDATE_LOCK_FILE",
+                "niki_agent.update_check.UPDATE_LOCK_FILE",
                 blocker / "update.lock",
             ),
             patch(
-                "deepagents_code.update_check.FALLBACK_UPDATE_LOCK_FILE",
+                "niki_agent.update_check.FALLBACK_UPDATE_LOCK_FILE",
                 fallback_blocker / "update.lock",
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1787,7 +1786,7 @@ class TestUpdateInstallLock:
         """
         with (
             patch.object(Path, "chmod", side_effect=PermissionError("read-only")),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1811,7 +1810,7 @@ class TestUpdateInstallLock:
                 "filelock.FileLock.acquire",
                 side_effect=PermissionError("flock refused"),
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1835,7 +1834,7 @@ class TestUpdateInstallLock:
                 "filelock.FileLock.release",
                 side_effect=OSError("unlock failed"),
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1851,7 +1850,7 @@ class TestUpdateInstallLock:
         """
         with (
             patch.dict(sys.modules, {"filelock": None}),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
             update_install_lock() as holding,
         ):
             assert holding is True
@@ -1878,40 +1877,37 @@ class TestUpgradeInstallCommand:
         because clearing a stale receipt pin is the entire point of routing
         `/update` through this builder.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset(),
         ):
-            assert upgrade_install_command() == "uv tool install -U deepagents-code"
+            assert upgrade_install_command() == "uv tool install -U niki-agent"
 
     def test_pins_target_version_when_requested(self, tmp_path, monkeypatch) -> None:
         """Target pins prevent prerelease dependency mode from floating the app."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.update_check._uv_tool_selected_extras",
+            "niki_agent.update_check._uv_tool_selected_extras",
             return_value=frozenset({"openai"}),
         ):
             assert upgrade_install_command(
                 version="1.1.0",
                 include_prereleases=True,
-            ) == (
-                "uv tool install -U 'deepagents-code[openai]==1.1.0' --prerelease allow"
-            )
+            ) == ("uv tool install -U 'niki-agent[openai]==1.1.0' --prerelease allow")
 
     def test_preserves_extras_and_prerelease(self, tmp_path, monkeypatch) -> None:
         """Installed extras survive the unpinned reinstall; prerelease opt-in too."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.update_check._uv_tool_selected_extras",
+            "niki_agent.update_check._uv_tool_selected_extras",
             return_value=frozenset({"quickjs", "nvidia"}),
         ):
             assert upgrade_install_command(include_prereleases=True) == (
-                "uv tool install -U 'deepagents-code[nvidia,quickjs]' "
-                "--prerelease allow"
+                "uv tool install -U 'niki-agent[nvidia,quickjs]' --prerelease allow"
             )
 
     def test_targeted_flags_take_precedence_over_global_allow(
@@ -1925,10 +1921,10 @@ class TestUpgradeInstallCommand:
         supplied constraints file and strategy must emit the scoped form and
         never a global `--prerelease allow`.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset(),
         ):
             cmd = upgrade_install_command(
@@ -1947,11 +1943,11 @@ class TestUpgradeInstallCommand:
         no spaces, so a dropped `shlex.quote` would only surface on a temp dir
         containing a space. Lock it explicitly.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         spaced = tmp_path / "dir with space" / "pins.txt"
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset(),
         ):
             cmd = upgrade_install_command(
@@ -1966,18 +1962,18 @@ class TestUpgradeInstallCommand:
         _write_uv_receipt(
             tmp_path,
             (
-                '{ name = "deepagents-code" }, '
+                '{ name = "niki-agent" }, '
                 '{ name = "langchain-custom" }, '
                 '{ name = "langchain.another_provider" }'
             ),
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset(),
         ):
             assert upgrade_install_command() == (
-                "uv tool install -U deepagents-code "
+                "uv tool install -U niki-agent "
                 "--with langchain-custom --with langchain.another_provider"
             )
 
@@ -1990,17 +1986,17 @@ class TestUpgradeInstallCommand:
         """
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code" }, { name = "langchain-custom" }',
+            '{ name = "niki-agent" }, { name = "langchain-custom" }',
             python="/opt/Python 3.13/bin/python",
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with patch(
-            "deepagents_code.extras_info.installed_extra_names",
+            "niki_agent.extras_info.installed_extra_names",
             return_value=frozenset(),
         ):
             assert upgrade_install_command() == (
                 "uv tool install -U --python '/opt/Python 3.13/bin/python' "
-                "deepagents-code --with langchain-custom"
+                "niki-agent --with langchain-custom"
             )
 
     def test_propagates_extras_introspection_error(self, tmp_path, monkeypatch) -> None:
@@ -2010,15 +2006,15 @@ class TestUpgradeInstallCommand:
         the builder itself must surface the failure so that decision stays at
         the caller, matching the docstring's documented contract.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with (
             patch(
-                "deepagents_code.update_check._uv_tool_receipt_data",
+                "niki_agent.update_check._uv_tool_receipt_data",
                 return_value={},
             ),
             patch(
-                "deepagents_code.update_check._uv_tool_selected_extras",
+                "niki_agent.update_check._uv_tool_selected_extras",
                 side_effect=ExtrasIntrospectionError("metadata unreadable"),
             ),
             pytest.raises(ExtrasIntrospectionError),
@@ -2037,15 +2033,15 @@ class TestUpgradeInstallCommand:
         handles it through its typed fallback rather than relying on a broad
         `ValueError` catch that could also mask an unrelated builder bug.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with (
             patch(
-                "deepagents_code.update_check._uv_tool_receipt_data",
+                "niki_agent.update_check._uv_tool_receipt_data",
                 return_value={},
             ),
             patch(
-                "deepagents_code.update_check._uv_tool_selected_extras",
+                "niki_agent.update_check._uv_tool_selected_extras",
                 return_value=frozenset({"not a valid extra"}),
             ),
             pytest.raises(ExtrasIntrospectionError),
@@ -2084,27 +2080,26 @@ class TestInstallExtraCommand:
         """Display-only commands tolerate missing distribution metadata."""
         assert (
             install_extra_command("quickjs", distribution_name="missing-dcode-test")
-            == "curl -LsSf https://langch.in/dcode | "
-            "DEEPAGENTS_CODE_EXTRAS=quickjs bash"
+            == f"{_INSTALL_SCRIPT_PREFIX} | NIKI_EXTRAS=quickjs bash"
         )
 
     def test_no_installed_extras_from_clean_metadata(
         self, tmp_path, monkeypatch
     ) -> None:
         """Clean metadata with no installed optional deps is distinct from failure."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
         _write_dist_info(
             tmp_path,
-            "deepagents-code",
+            "niki-agent",
             requires=('definitely-absent-dcode-test-quickjs-xyz; extra == "quickjs"',),
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
-        assert installed_extra_names("deepagents-code") == set()
+        assert installed_extra_names("niki-agent") == set()
         assert (
-            install_extra_command("quickjs") == "curl -LsSf https://langch.in/dcode | "
-            "DEEPAGENTS_CODE_EXTRAS=quickjs bash"
+            install_extra_command("quickjs")
+            == f"{_INSTALL_SCRIPT_PREFIX} | NIKI_EXTRAS=quickjs bash"
         )
 
     def test_install_extra_command_preserves_detected_extras(
@@ -2114,7 +2109,7 @@ class TestInstallExtraCommand:
         _write_dist_info(tmp_path, "definitely-present-dcode-test-nvidia")
         _write_dist_info(
             tmp_path,
-            "deepagents-code",
+            "niki-agent",
             requires=(
                 'definitely-present-dcode-test-nvidia; extra == "nvidia"',
                 'definitely-absent-dcode-test-quickjs-xyz; extra == "quickjs"',
@@ -2122,10 +2117,10 @@ class TestInstallExtraCommand:
         )
         monkeypatch.syspath_prepend(str(tmp_path))
 
-        assert installed_extra_names("deepagents-code") == {"nvidia"}
+        assert installed_extra_names("niki-agent") == {"nvidia"}
         assert (
-            install_extra_command("quickjs") == "curl -LsSf https://langch.in/dcode | "
-            "DEEPAGENTS_CODE_EXTRAS=nvidia,quickjs bash"
+            install_extra_command("quickjs")
+            == f"{_INSTALL_SCRIPT_PREFIX} | NIKI_EXTRAS=nvidia,quickjs bash"
         )
 
     def test_recovery_command_preserves_uv_receipt_context(
@@ -2134,18 +2129,18 @@ class TestInstallExtraCommand:
         """UV recovery guidance matches the automatic context-preserving install."""
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["nvidia"] }, '
+            '{ name = "niki-agent", extras = ["nvidia"] }, '
             '{ name = "langchain-custom" }',
             python="/opt/Python 3.13/bin/python",
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.setattr(
-            "deepagents_code.update_check.detect_install_method", lambda: "uv"
+            "niki_agent.update_check.detect_install_method", lambda: "uv"
         )
 
         assert install_extra_recovery_command("quickjs") == (
             "uv tool install --reinstall -U --python '/opt/Python 3.13/bin/python' "
-            f"'deepagents-code[nvidia,quickjs]=={__version__}' "
+            f"'niki-agent[nvidia,quickjs]=={__version__}' "
             "--with langchain-custom --prerelease allow"
         )
 
@@ -2153,46 +2148,46 @@ class TestInstallExtraCommand:
         self, tmp_path, monkeypatch
     ) -> None:
         """Unsupported install recovery does not require uv receipt introspection."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }, "bad"')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }, "bad"')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.setattr(
-            "deepagents_code.update_check.detect_install_method", lambda: "other"
+            "niki_agent.update_check.detect_install_method", lambda: "other"
         )
         monkeypatch.setattr(
-            "deepagents_code.extras_info.installed_extra_names",
-            lambda _distribution_name="deepagents-code": set(),
+            "niki_agent.extras_info.installed_extra_names",
+            lambda _distribution_name="niki-agent": set(),
         )
 
         assert install_extra_recovery_command("quickjs") == (
-            "curl -LsSf https://langch.in/dcode | DEEPAGENTS_CODE_EXTRAS=quickjs bash"
+            f"{_INSTALL_SCRIPT_PREFIX} | NIKI_EXTRAS=quickjs bash"
         )
 
     def test_uv_install_extra_command_preserves_installed_extras(
         self, tmp_path, monkeypatch
     ) -> None:
         """Installing a new extra keeps already-selected extras selected."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code", extras = ["nvidia"] }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent", extras = ["nvidia"] }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         assert _install_extra_uv_tool_command(
-            "baseten", distribution_name="deepagents-code"
+            "baseten", distribution_name="niki-agent"
         ) == (
             "uv tool install --reinstall -U "
-            f"'deepagents-code[baseten,nvidia]=={__version__}' --prerelease allow"
+            f"'niki-agent[baseten,nvidia]=={__version__}' --prerelease allow"
         )
 
     def test_uv_install_extra_command_dedupes_existing_extra(
         self, tmp_path, monkeypatch
     ) -> None:
         """Installing an already-selected extra does not duplicate it."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code", extras = ["nvidia"] }')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent", extras = ["nvidia"] }')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         assert _install_extra_uv_tool_command(
-            "nvidia", distribution_name="deepagents-code"
+            "nvidia", distribution_name="niki-agent"
         ) == (
             "uv tool install --reinstall -U "
-            f"'deepagents-code[nvidia]=={__version__}' --prerelease allow"
+            f"'niki-agent[nvidia]=={__version__}' --prerelease allow"
         )
 
     def test_uv_install_extra_command_preserves_receipt_python_and_with_packages(
@@ -2201,27 +2196,27 @@ class TestInstallExtraCommand:
         """Installing an extra preserves the uv tool interpreter and `--with` deps."""
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["nvidia"] }, '
+            '{ name = "niki-agent", extras = ["nvidia"] }, '
             '{ name = "langchain-custom" }',
             python="/opt/Python 3.13/bin/python",
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         command = _install_extra_uv_tool_command(
-            "baseten", distribution_name="deepagents-code"
+            "baseten", distribution_name="niki-agent"
         )
 
         assert command == (
             "uv tool install --reinstall -U --python '/opt/Python 3.13/bin/python' "
-            f"'deepagents-code[baseten,nvidia]=={__version__}' "
+            f"'niki-agent[baseten,nvidia]=={__version__}' "
             "--with langchain-custom --prerelease allow"
         )
 
     def test_sorts_extras_deterministically(self) -> None:
         assert (
             install_extras_command({"quickjs", "baseten", "nvidia"})
-            == "curl -LsSf https://langch.in/dcode | "
-            "DEEPAGENTS_CODE_EXTRAS=baseten,nvidia,quickjs bash"
+            == f"{_INSTALL_SCRIPT_PREFIX} "
+            "| NIKI_EXTRAS=baseten,nvidia,quickjs bash"
         )
 
     def test_uv_install_extra_command_preserves_composite_extras(
@@ -2236,15 +2231,15 @@ class TestInstallExtraCommand:
         """
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["all-providers"] }',
+            '{ name = "niki-agent", extras = ["all-providers"] }',
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         assert _install_extra_uv_tool_command(
-            "daytona", distribution_name="deepagents-code"
+            "daytona", distribution_name="niki-agent"
         ) == (
             "uv tool install --reinstall -U "
-            f"'deepagents-code[all-providers,daytona]=={__version__}' "
+            f"'niki-agent[all-providers,daytona]=={__version__}' "
             "--prerelease allow"
         )
 
@@ -2255,18 +2250,16 @@ class TestInstallExtraCommand:
 
         The selected set drives the rebuilt requirement, so an unreadable
         receipt has to fail closed rather than silently reinstall a plain
-        `deepagents-code` and deselect everything the user asked for.
+        `niki-agent` and deselect everything the user asked for.
         """
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["not a valid extra"] }',
+            '{ name = "niki-agent", extras = ["not a valid extra"] }',
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         with pytest.raises(ToolRequirementIntrospectionError, match="invalid extras"):
-            _install_extra_uv_tool_command(
-                "quickjs", distribution_name="deepagents-code"
-            )
+            _install_extra_uv_tool_command("quickjs", distribution_name="niki-agent")
 
 
 class TestSafeInstallExtraRecoveryCommand:
@@ -2274,7 +2267,7 @@ class TestSafeInstallExtraRecoveryCommand:
 
     def test_returns_recovery_command_on_success(self, monkeypatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.update_check.install_extra_recovery_command",
+            "niki_agent.update_check.install_extra_recovery_command",
             lambda _extra: "uv tool install recovery",
         )
         assert (
@@ -2284,7 +2277,7 @@ class TestSafeInstallExtraRecoveryCommand:
 
     def test_falls_back_on_value_error(self, monkeypatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.update_check.install_extra_recovery_command",
+            "niki_agent.update_check.install_extra_recovery_command",
             MagicMock(side_effect=ValueError("bad extra")),
         )
         assert (
@@ -2294,7 +2287,7 @@ class TestSafeInstallExtraRecoveryCommand:
 
     def test_falls_back_on_introspection_error(self, monkeypatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.update_check.install_extra_recovery_command",
+            "niki_agent.update_check.install_extra_recovery_command",
             MagicMock(side_effect=ExtrasIntrospectionError("metadata unreadable")),
         )
         assert (
@@ -2305,7 +2298,7 @@ class TestSafeInstallExtraRecoveryCommand:
     def test_falls_back_on_unexpected_error(self, monkeypatch) -> None:
         """Unexpected recovery errors must not escape the helper."""
         monkeypatch.setattr(
-            "deepagents_code.update_check.install_extra_recovery_command",
+            "niki_agent.update_check.install_extra_recovery_command",
             MagicMock(side_effect=RuntimeError("metadata broken")),
         )
         assert (
@@ -2320,7 +2313,7 @@ class TestEditableExtraHint:
     def test_contains_uv_command_and_bracketed_extra(self) -> None:
         hint = editable_extra_hint("quickjs")
         assert "uv tool install --editable" in hint
-        assert "--with 'deepagents-code[quickjs]'" in hint
+        assert "--with 'niki-agent[quickjs]'" in hint
 
     def test_extra_is_interpolated_into_brackets(self) -> None:
         # The bracket fragment is load-bearing — Rich-markup call sites
@@ -2338,19 +2331,19 @@ class TestInstallPackageCommand:
         """Adding a package keeps uv receipt interpreter and `--with` packages."""
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["nvidia"] }, '
+            '{ name = "niki-agent", extras = ["nvidia"] }, '
             '{ name = "langchain-first" }',
             python="/opt/Python 3.13/bin/python",
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         command = install_package_command(
-            "langchain-second", distribution_name="deepagents-code"
+            "langchain-second", distribution_name="niki-agent"
         )
 
         assert command == (
             "uv tool install --reinstall -U --python '/opt/Python 3.13/bin/python' "
-            f"'deepagents-code[nvidia]=={__version__}' --with langchain-first "
+            f"'niki-agent[nvidia]=={__version__}' --with langchain-first "
             "--with langchain-second --prerelease allow"
         )
 
@@ -2360,36 +2353,36 @@ class TestInstallPackageCommand:
         """Reinstalling an existing package does not emit duplicate `--with` args."""
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code" }, { name = "langchain-custom" }',
+            '{ name = "niki-agent" }, { name = "langchain-custom" }',
         )
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
         command = install_package_command(
-            "LangChain_Custom", distribution_name="deepagents-code"
+            "LangChain_Custom", distribution_name="niki-agent"
         )
 
         assert command == (
             "uv tool install --reinstall -U "
-            f"deepagents-code=={__version__} --with langchain-custom "
+            f"niki-agent=={__version__} --with langchain-custom "
             "--prerelease allow"
         )
 
     def test_pins_prerelease_app_version(self, tmp_path, monkeypatch) -> None:
         """Adding a package to a pre-release install keeps that exact app version."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
-        with patch("deepagents_code.update_check.__version__", "1.0.0a1"):
+        with patch("niki_agent.update_check.__version__", "1.0.0a1"):
             command = install_package_command(
-                "langchain-custom", distribution_name="deepagents-code"
+                "langchain-custom", distribution_name="niki-agent"
             )
 
         assert command == (
-            "uv tool install --reinstall -U deepagents-code==1.0.0a1 "
+            "uv tool install --reinstall -U niki-agent==1.0.0a1 "
             "--with langchain-custom --prerelease allow"
         )
 
@@ -2397,18 +2390,18 @@ class TestInstallPackageCommand:
         self, tmp_path, monkeypatch
     ) -> None:
         """A stable app reinstall keeps the app pinned while allowing rc deps."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
-        with patch("deepagents_code.update_check.__version__", "1.0.0"):
+        with patch("niki_agent.update_check.__version__", "1.0.0"):
             command = install_package_command(
-                "langchain-custom", distribution_name="deepagents-code"
+                "langchain-custom", distribution_name="niki-agent"
             )
 
         assert command == (
-            "uv tool install --reinstall -U deepagents-code==1.0.0 "
+            "uv tool install --reinstall -U niki-agent==1.0.0 "
             "--with langchain-custom --prerelease allow"
         )
 
@@ -2425,19 +2418,19 @@ class TestInstallPackageCommand:
         """
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code" }, { name = "langchain-zeta" }',
+            '{ name = "niki-agent" }, { name = "langchain-zeta" }',
         )
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
         command = install_package_command(
-            "langchain-alpha", distribution_name="deepagents-code"
+            "langchain-alpha", distribution_name="niki-agent"
         )
 
         assert command == (
             "uv tool install --reinstall -U "
-            f"deepagents-code=={__version__} --with langchain-zeta "
+            f"niki-agent=={__version__} --with langchain-zeta "
             "--with langchain-alpha --prerelease allow"
         )
 
@@ -2454,10 +2447,9 @@ class TestInstallPackageCommand:
         """
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code" }, '
-            '{ name = "langchain-custom", editable = true }',
+            '{ name = "niki-agent" }, { name = "langchain-custom", editable = true }',
         )
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         monkeypatch.syspath_prepend(str(tmp_path))
 
@@ -2465,22 +2457,18 @@ class TestInstallPackageCommand:
             ToolRequirementIntrospectionError,
             match="cannot be preserved automatically",
         ):
-            install_package_command(
-                "langchain-new", distribution_name="deepagents-code"
-            )
+            install_package_command("langchain-new", distribution_name="niki-agent")
 
     def test_refuses_invalid_receipt_extras(self, tmp_path, monkeypatch) -> None:
         """A malformed receipt must not drop selected extras."""
         _write_uv_receipt(
             tmp_path,
-            '{ name = "deepagents-code", extras = ["not a valid extra"] }',
+            '{ name = "niki-agent", extras = ["not a valid extra"] }',
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
 
         with pytest.raises(ToolRequirementIntrospectionError, match="invalid extras"):
-            install_package_command(
-                "langchain-custom", distribution_name="deepagents-code"
-            )
+            install_package_command("langchain-custom", distribution_name="niki-agent")
 
     def test_refuses_missing_receipt(self, tmp_path, monkeypatch) -> None:
         """Reinstalls must not drop extras when the receipt is unavailable."""
@@ -2489,9 +2477,7 @@ class TestInstallPackageCommand:
         with pytest.raises(
             ToolRequirementIntrospectionError, match="receipt not found"
         ):
-            install_package_command(
-                "langchain-custom", distribution_name="deepagents-code"
-            )
+            install_package_command("langchain-custom", distribution_name="niki-agent")
 
 
 class TestPerformInstallExtra:
@@ -2512,25 +2498,28 @@ class TestPerformInstallExtra:
         monkeypatch,
     ) -> None:
         """Unsupported install guidance wins over uv receipt introspection errors."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }, "bad"')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }, "bad"')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         # Isolate from the host's installed extras so the script command is
         # deterministic — install_extra_command merges real distribution
         # metadata, which would otherwise leak the dev env's extras in.
         monkeypatch.setattr(
-            "deepagents_code.extras_info.installed_extra_names",
-            lambda _distribution_name="deepagents-code": set(),
+            "niki_agent.extras_info.installed_extra_names",
+            lambda _distribution_name="niki-agent": set(),
         )
         with patch(
-            "deepagents_code.update_check.detect_install_method",
+            "niki_agent.update_check.detect_install_method",
             return_value=method,
         ):
             success, output, _safe = await perform_install_extra("quickjs")
         assert success is False
         assert needle in output
         assert "ToolRequirementIntrospectionError" not in output
-        assert "curl -LsSf https://langch.in/dcode" in output
-        assert "DEEPAGENTS_CODE_EXTRAS=quickjs bash" in output
+        assert (
+            "curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent"
+            in output
+        )
+        assert "NIKI_EXTRAS=quickjs bash" in output
 
     async def test_uv_install_runs(self, tmp_path) -> None:
         """`uv` method runs the subprocess and returns success."""
@@ -2539,15 +2528,15 @@ class TestPerformInstallExtra:
         # subprocess actually exits 0 without touching the environment.
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.update_check._install_extra_uv_tool_command",
+                "niki_agent.update_check._install_extra_uv_tool_command",
                 return_value="printf 'ok\\n'",
             ),
         ):
@@ -2559,19 +2548,19 @@ class TestPerformInstallExtra:
 
     async def test_uv_receipt_failure_is_reported(self, tmp_path, monkeypatch) -> None:
         """A malformed uv receipt is reported instead of dropping install context."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }, "bad"')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }, "bad"')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.extras_info.installed_extra_names",
+                "niki_agent.extras_info.installed_extra_names",
                 return_value=frozenset(),
             ),
         ):
@@ -2586,22 +2575,22 @@ class TestPerformInstallExtra:
         run = AsyncMock()
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.update_check.update_install_lock",
+                "niki_agent.update_check.update_install_lock",
                 return_value=nullcontext(False),
             ),
             patch(
-                "deepagents_code.update_check._install_extra_uv_tool_command",
+                "niki_agent.update_check._install_extra_uv_tool_command",
                 command,
             ),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             outcome = await perform_install_extra("quickjs")
 
@@ -2635,19 +2624,19 @@ class TestPerformInstallExtra:
         run = AsyncMock(side_effect=run_subprocess)
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
-            patch("deepagents_code.update_check.update_install_lock", lock),
+            patch("niki_agent.update_check.update_install_lock", lock),
             patch(
-                "deepagents_code.update_check._install_extra_uv_tool_command",
+                "niki_agent.update_check._install_extra_uv_tool_command",
                 side_effect=command,
             ),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             success, output, _safe = await perform_install_extra("quickjs")
 
@@ -2661,7 +2650,7 @@ class TestIsValidPackageName:
     def test_rejects_option_injection_leading_dash(self) -> None:
         """A leading dash would smuggle uv options into `--with <name>`.
 
-        The command is `uv tool install --reinstall -U deepagents-code==<version>
+        The command is `uv tool install --reinstall -U niki-agent==<version>
         --with <name>`; a name
         like `-rreqs.txt` or `--editable` would be parsed by uv as a flag, not a
         package. The validator must reject these regardless of `--force`/`--yes`.
@@ -2685,15 +2674,15 @@ class TestPerformInstallPackage:
         # subprocess actually exits 0 without touching the environment.
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.update_check.install_package_command",
+                "niki_agent.update_check.install_package_command",
                 return_value="printf 'ok\\n'",
             ),
         ):
@@ -2715,22 +2704,22 @@ class TestPerformInstallPackage:
         """
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.update_check._uv_tool_receipt_data",
+                "niki_agent.update_check._uv_tool_receipt_data",
                 return_value={},
             ),
             patch(
-                "deepagents_code.update_check._uv_tool_selected_extras",
+                "niki_agent.update_check._uv_tool_selected_extras",
                 side_effect=ExtrasIntrospectionError("metadata unreadable"),
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
         ):
             success, output = await perform_install_package("langchain-custom")
         assert success is False
@@ -2749,22 +2738,22 @@ class TestPerformInstallPackage:
         than let it escape unhandled — narrowing back to `except
         ExtrasIntrospectionError` would let the error crash the caller.
         """
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }, "bad"')
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }, "bad"')
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.extras_info.installed_extra_names",
+                "niki_agent.extras_info.installed_extra_names",
                 return_value=frozenset(),
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
         ):
             success, output = await perform_install_package("langchain-custom")
         assert success is False
@@ -2774,24 +2763,24 @@ class TestPerformInstallPackage:
 
     async def test_invalid_app_version_is_reported(self, tmp_path, monkeypatch) -> None:
         """A malformed app version pin is reported instead of escaping."""
-        _write_uv_receipt(tmp_path, '{ name = "deepagents-code" }')
-        _write_dist_info(tmp_path, "deepagents-code")
+        _write_uv_receipt(tmp_path, '{ name = "niki-agent" }')
+        _write_dist_info(tmp_path, "niki-agent")
         monkeypatch.setattr("sys.prefix", str(tmp_path))
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
-            patch("deepagents_code.update_check.__version__", "not-a-version"),
+            patch("niki_agent.update_check.__version__", "not-a-version"),
         ):
             success, output = await perform_install_package("langchain-custom")
         assert success is False
         assert "ValueError" in output
-        assert "Invalid deepagents-code version" in output
+        assert "Invalid niki-agent version" in output
 
     async def test_contended_lock_skips_receipt_read_and_subprocess(self) -> None:
         """A concurrent mutation wins before this install reads the receipt."""
@@ -2799,19 +2788,19 @@ class TestPerformInstallPackage:
         run = AsyncMock()
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
             patch(
-                "deepagents_code.update_check.update_install_lock",
+                "niki_agent.update_check.update_install_lock",
                 return_value=nullcontext(False),
             ),
-            patch("deepagents_code.update_check.install_package_command", command),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check.install_package_command", command),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             success, output = await perform_install_package("langchain-custom")
 
@@ -2843,19 +2832,19 @@ class TestPerformInstallPackage:
         run = AsyncMock(side_effect=run_subprocess)
         with (
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
             patch(
-                "deepagents_code.update_check.shutil.which",
+                "niki_agent.update_check.shutil.which",
                 return_value="/usr/bin/uv",
             ),
-            patch("deepagents_code.update_check.update_install_lock", lock),
+            patch("niki_agent.update_check.update_install_lock", lock),
             patch(
-                "deepagents_code.update_check.install_package_command",
+                "niki_agent.update_check.install_package_command",
                 side_effect=command,
             ),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             success, output = await perform_install_package("langchain-custom")
 
@@ -2882,7 +2871,7 @@ class TestRunInstallSubprocessFailureModes:
             start_new_session=True,
         )
         with patch(
-            "deepagents_code.update_check.os.killpg",
+            "niki_agent.update_check.os.killpg",
             side_effect=PermissionError,
         ):
             await _terminate_install_process(proc)
@@ -2964,7 +2953,7 @@ class TestSetAutoUpdate:
     def config_path(self, tmp_path):
         """Override DEFAULT_CONFIG_PATH to use a temporary file."""
         path = tmp_path / "config.toml"
-        with patch("deepagents_code.update_check.DEFAULT_CONFIG_PATH", path):
+        with patch("niki_agent.update_check.DEFAULT_CONFIG_PATH", path):
             yield path
 
 
@@ -2973,7 +2962,7 @@ class TestIsAutoUpdateEnabled:
     def config_path(self, tmp_path):
         """Override DEFAULT_CONFIG_PATH to use a temporary file."""
         path = tmp_path / "config.toml"
-        with patch("deepagents_code.update_check.DEFAULT_CONFIG_PATH", path):
+        with patch("niki_agent.update_check.DEFAULT_CONFIG_PATH", path):
             yield path
 
     def test_corrupt_config_fails_closed(
@@ -2988,10 +2977,10 @@ class TestIsAutoUpdateEnabled:
         the default.
         """
         config_path.write_text("this = is not [valid toml", encoding="utf-8")
-        monkeypatch.delenv("DEEPAGENTS_CODE_AUTO_UPDATE", raising=False)
+        monkeypatch.delenv("NIKI_AUTO_UPDATE", raising=False)
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
         ):
             assert is_auto_update_enabled() is False
         assert "disabling auto-update" in caplog.text
@@ -3001,10 +2990,10 @@ class TestIsAutoUpdateEnabled:
     ) -> None:
         """A non-table `update` value disables auto-update without raising."""
         config_path.write_text("update = false\n", encoding="utf-8")
-        monkeypatch.delenv("DEEPAGENTS_CODE_AUTO_UPDATE", raising=False)
+        monkeypatch.delenv("NIKI_AUTO_UPDATE", raising=False)
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            caplog.at_level(logging.WARNING, logger="niki_agent.update_check"),
         ):
             assert is_auto_update_enabled() is False
         assert "disabling auto-update" in caplog.text
@@ -3024,10 +3013,10 @@ class TestIsAutoUpdateEnabled:
         higher_source,
     ) -> None:
         """A broken user layer cannot override a higher-priority opt-in."""
-        from deepagents_code.configuration import service
+        from niki_agent.configuration import service
 
         config_path.write_text(user_toml, encoding="utf-8")
-        monkeypatch.delenv("DEEPAGENTS_CODE_AUTO_UPDATE", raising=False)
+        monkeypatch.delenv("NIKI_AUTO_UPDATE", raising=False)
         if higher_source == "managed":
             managed = tmp_path / "managed.toml"
             managed.write_text(
@@ -3037,9 +3026,9 @@ class TestIsAutoUpdateEnabled:
             redirect_managed_config(monkeypatch, managed)
             service.invalidate_config_sources()
         else:
-            monkeypatch.setenv("DEEPAGENTS_CODE_AUTO_UPDATE", "1")
+            monkeypatch.setenv("NIKI_AUTO_UPDATE", "1")
 
-        with patch("deepagents_code.config._is_editable_install", return_value=False):
+        with patch("niki_agent.config._is_editable_install", return_value=False):
             assert is_auto_update_enabled() is True
 
 
@@ -3048,7 +3037,7 @@ class TestUpdateCheckEnvPresence:
     def config_path(self, tmp_path):
         """Override DEFAULT_CONFIG_PATH to use a temporary file."""
         path = tmp_path / "config.toml"
-        with patch("deepagents_code.update_check.DEFAULT_CONFIG_PATH", path):
+        with patch("niki_agent.update_check.DEFAULT_CONFIG_PATH", path):
             yield path
 
     @pytest.mark.parametrize(
@@ -3067,7 +3056,7 @@ class TestUpdateCheckEnvPresence:
     ) -> None:
         """A declared presence variable disables checks; a blank one does not."""
         config_path.write_text("", encoding="utf-8")
-        monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", raw)
+        monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", raw)
 
         assert is_update_check_enabled() is expected
 
@@ -3084,9 +3073,9 @@ class TestUpdateCheckEnvPresence:
         treats it as unset, which only stays safe if the rejection is surfaced.
         """
         config_path.write_text("", encoding="utf-8")
-        monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "   ")
+        monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "   ")
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.update_check"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.update_check"):
             assert is_update_check_enabled() is True
 
         assert any("whitespace-only" in record.message for record in caplog.records), (
@@ -3099,21 +3088,21 @@ class TestAutoUpdateDefaultMigration:
     def config_path(self, tmp_path):
         """Override DEFAULT_CONFIG_PATH to use a temporary file."""
         path = tmp_path / "config.toml"
-        with patch("deepagents_code.update_check.DEFAULT_CONFIG_PATH", path):
+        with patch("niki_agent.update_check.DEFAULT_CONFIG_PATH", path):
             yield path
 
     @pytest.fixture
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary file."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_implicit_default_announces_once(self, config_path, state_file) -> None:  # noqa: ARG002
         """With no explicit choice, the migration notice fires exactly once."""
         import os
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         assert is_auto_update_explicitly_set() is False
         assert should_announce_auto_update_default() is True
         mark_auto_update_default_acknowledged()
@@ -3128,7 +3117,7 @@ class TestAutoUpdateDefaultMigration:
         """
         import os
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         state_file.write_text("{ not valid json", encoding="utf-8")
         assert should_announce_auto_update_default() is True
 
@@ -3142,7 +3131,7 @@ class TestAutoUpdateDefaultMigration:
         """
         import os
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         config_path.write_text("not [ valid toml", encoding="utf-8")
         assert is_auto_update_explicitly_set() is False
 
@@ -3158,7 +3147,7 @@ class TestAutoUpdateDefaultMigration:
         """
         import os
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         assert should_announce_auto_update_default() is True
         _note_install_baseline()
         assert should_announce_auto_update_default() is False
@@ -3171,7 +3160,7 @@ class TestAutoUpdateDefaultMigration:
         than file existence) keeps the test robust to unrelated state another
         code path might write to the same file.
         """
-        with patch.dict("os.environ", {"DEEPAGENTS_CODE_AUTO_UPDATE": "1"}):
+        with patch.dict("os.environ", {"NIKI_AUTO_UPDATE": "1"}):
             _note_install_baseline()
         if state_file.exists():
             state = json.loads(state_file.read_text(encoding="utf-8"))
@@ -3185,14 +3174,12 @@ class TestAutoUpdateDefaultMigration:
         """
         import os
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         # Point the state file beneath an existing *file* so the parent
         # `mkdir`/write raises `OSError`, simulating an unwritable state dir.
         blocker = tmp_path / "blocker"
         blocker.write_text("not a directory", encoding="utf-8")
-        with patch(
-            "deepagents_code.update_check.UPDATE_STATE_FILE", blocker / "state.json"
-        ):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", blocker / "state.json"):
             _note_install_baseline()  # must not raise
 
     def test_mark_tolerates_write_failure(self, config_path, tmp_path) -> None:  # noqa: ARG002
@@ -3205,9 +3192,7 @@ class TestAutoUpdateDefaultMigration:
         # `mkdir`/write raises `OSError`, simulating an unwritable state dir.
         blocker = tmp_path / "blocker"
         blocker.write_text("not a directory", encoding="utf-8")
-        with patch(
-            "deepagents_code.update_check.UPDATE_STATE_FILE", blocker / "state.json"
-        ):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", blocker / "state.json"):
             assert mark_auto_update_default_acknowledged() is False
 
 
@@ -3216,29 +3201,29 @@ class TestStartupAutoUpdateFailureCooldown:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary file."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_recent_same_version_skips(self, state_file) -> None:  # noqa: ARG002
         """A recent startup auto-update failure suppresses the same version."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             assert mark_startup_auto_update_failed("2.0.0") is True
-        with patch("deepagents_code.update_check.time.time", return_value=101.0):
+        with patch("niki_agent.update_check.time.time", return_value=101.0):
             assert should_skip_startup_auto_update_after_failure("2.0.0") is True
 
     def test_different_version_does_not_skip(self, state_file) -> None:  # noqa: ARG002
         """A failure marker is scoped to the failed target version."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             mark_startup_auto_update_failed("2.0.0")
-        with patch("deepagents_code.update_check.time.time", return_value=101.0):
+        with patch("niki_agent.update_check.time.time", return_value=101.0):
             assert should_skip_startup_auto_update_after_failure("2.0.1") is False
 
     def test_expired_failure_does_not_skip(self, state_file) -> None:  # noqa: ARG002
         """The startup failure cooldown expires after the configured window."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             mark_startup_auto_update_failed("2.0.0")
         with patch(
-            "deepagents_code.update_check.time.time",
+            "niki_agent.update_check.time.time",
             return_value=100.0 + CACHE_TTL + 1,
         ):
             assert should_skip_startup_auto_update_after_failure("2.0.0") is False
@@ -3283,12 +3268,12 @@ class TestResumeAutoUpdateGracePeriod:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary file."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_first_resume_starts_grace_period(self, state_file) -> None:
         """The first resumed launch records and uses the grace period."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             assert should_defer_startup_auto_update_for_resume() is True
 
         data = json.loads(state_file.read_text(encoding="utf-8"))
@@ -3296,9 +3281,9 @@ class TestResumeAutoUpdateGracePeriod:
 
     def test_repeated_resume_does_not_extend_grace_period(self, state_file) -> None:
         """Repeated resumes preserve the first deferral timestamp."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             should_defer_startup_auto_update_for_resume()
-        with patch("deepagents_code.update_check.time.time", return_value=200.0):
+        with patch("niki_agent.update_check.time.time", return_value=200.0):
             assert should_defer_startup_auto_update_for_resume() is True
 
         data = json.loads(state_file.read_text(encoding="utf-8"))
@@ -3306,33 +3291,33 @@ class TestResumeAutoUpdateGracePeriod:
 
     def test_expired_grace_period_runs_update_path(self, state_file) -> None:  # noqa: ARG002
         """Resume-only use stops bypassing startup updates after seven days."""
-        from deepagents_code.update_check import RESUME_AUTO_UPDATE_GRACE_PERIOD
+        from niki_agent.update_check import RESUME_AUTO_UPDATE_GRACE_PERIOD
 
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             should_defer_startup_auto_update_for_resume()
         with patch(
-            "deepagents_code.update_check.time.time",
+            "niki_agent.update_check.time.time",
             return_value=100.0 + RESUME_AUTO_UPDATE_GRACE_PERIOD,
         ):
             assert should_defer_startup_auto_update_for_resume() is False
 
     def test_normal_launch_resets_grace_period(self, state_file) -> None:
         """A normal launch lets a later resume begin a fresh grace period."""
-        with patch("deepagents_code.update_check.time.time", return_value=100.0):
+        with patch("niki_agent.update_check.time.time", return_value=100.0):
             should_defer_startup_auto_update_for_resume()
 
         clear_resume_auto_update_deferral()
 
         data = json.loads(state_file.read_text(encoding="utf-8"))
         assert "resume_auto_update_deferred_at" not in data
-        with patch("deepagents_code.update_check.time.time", return_value=200.0):
+        with patch("niki_agent.update_check.time.time", return_value=200.0):
             assert should_defer_startup_auto_update_for_resume() is True
 
     def test_unwritable_marker_does_not_bypass_update(self, tmp_path) -> None:
         """A persistence failure cannot create an unbounded resume bypass."""
         state_file = tmp_path / "missing" / "update_state.json"
         with (
-            patch("deepagents_code.update_check.UPDATE_STATE_FILE", state_file),
+            patch("niki_agent.update_check.UPDATE_STATE_FILE", state_file),
             patch("pathlib.Path.mkdir", side_effect=OSError("read-only")),
         ):
             assert should_defer_startup_auto_update_for_resume() is False
@@ -3343,7 +3328,7 @@ class TestShouldNotifyUpdate:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary directory."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_corrupt_json(self, state_file) -> None:
@@ -3357,13 +3342,13 @@ class TestMarkUpdateNotified:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary directory."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_write_failure_does_not_raise(self, state_file) -> None:
         """Write failure is absorbed gracefully."""
         with patch(
-            "deepagents_code.update_check.UPDATE_STATE_FILE",
+            "niki_agent.update_check.UPDATE_STATE_FILE",
             type(state_file)("/nonexistent/readonly/path/state.json"),
         ):
             mark_update_notified("2.0.0")  # should not raise
@@ -3374,7 +3359,7 @@ class TestGetSeenVersion:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary directory."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_corrupt_json_returns_none(self, state_file) -> None:
@@ -3388,7 +3373,7 @@ class TestShouldShowWhatsNew:
     def state_file(self, tmp_path):
         """Override UPDATE_STATE_FILE to use a temporary directory."""
         path = tmp_path / "update_state.json"
-        with patch("deepagents_code.update_check.UPDATE_STATE_FILE", path):
+        with patch("niki_agent.update_check.UPDATE_STATE_FILE", path):
             yield path
 
     def test_first_run_returns_false_and_marks(
@@ -3401,9 +3386,9 @@ class TestShouldShowWhatsNew:
         Injects `config_path` so the first-run baseline's explicit-preference
         check reads a clean temp config instead of the developer's real one.
         """
-        from deepagents_code.update_check import should_show_whats_new
+        from niki_agent.update_check import should_show_whats_new
 
-        with patch("deepagents_code.update_check.__version__", "1.0.0"):
+        with patch("niki_agent.update_check.__version__", "1.0.0"):
             assert should_show_whats_new() is False
         assert state_file.exists()
         data = json.loads(state_file.read_text())
@@ -3421,11 +3406,11 @@ class TestShouldShowWhatsNew:
         """
         import os
 
-        from deepagents_code.update_check import should_show_whats_new
+        from niki_agent.update_check import should_show_whats_new
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         assert should_announce_auto_update_default() is True
-        with patch("deepagents_code.update_check.__version__", "1.0.0"):
+        with patch("niki_agent.update_check.__version__", "1.0.0"):
             assert should_show_whats_new() is False
         assert should_announce_auto_update_default() is False
         # The baseline write must not clobber the adjacent `seen_version` write;
@@ -3445,11 +3430,11 @@ class TestShouldShowWhatsNew:
         """
         import os
 
-        from deepagents_code.update_check import should_show_whats_new
+        from niki_agent.update_check import should_show_whats_new
 
-        os.environ.pop("DEEPAGENTS_CODE_AUTO_UPDATE", None)
+        os.environ.pop("NIKI_AUTO_UPDATE", None)
         mark_version_seen("1.0.0")
-        with patch("deepagents_code.update_check.__version__", "2.0.0"):
+        with patch("niki_agent.update_check.__version__", "2.0.0"):
             assert should_show_whats_new() is True
         assert should_announce_auto_update_default() is True
 
@@ -3457,7 +3442,7 @@ class TestShouldShowWhatsNew:
     def config_path(self, tmp_path):
         """Override DEFAULT_CONFIG_PATH so explicit-preference checks are clean."""
         path = tmp_path / "config.toml"
-        with patch("deepagents_code.update_check.DEFAULT_CONFIG_PATH", path):
+        with patch("niki_agent.update_check.DEFAULT_CONFIG_PATH", path):
             yield path
 
 
@@ -3611,7 +3596,7 @@ class TestUpdateLockLocationFallback:
         monkeypatch.setattr(
             update_check, "UPDATE_LOCK_FILE", installation.locks_dir / "update.lock"
         )
-        legacy = tool_dir / ".deepagents-code.deepagents-code-locks"
+        legacy = tool_dir / ".niki-agent.niki-agent-locks"
         for _ in range(2):
             with update_install_lock() as acquired:
                 assert acquired
@@ -3649,14 +3634,14 @@ class TestUpdateLockLocationFallback:
     ) -> None:
         """Migration retains the shared inode and leaves other legacy entries alone."""
         tool_dir = tmp_path / "tools"
-        monkeypatch.setattr(sys, "prefix", str(tool_dir / "deepagents-code"))
+        monkeypatch.setattr(sys, "prefix", str(tool_dir / "niki-agent"))
         snapshot = _paths._capture_paths(
             str(tmp_path / "profile"), launch_home=tmp_path
         )
         monkeypatch.setattr(update_check, "PATHS", snapshot)
         lock = snapshot.installation.locks_dir / "update.lock"
         monkeypatch.setattr(update_check, "UPDATE_LOCK_FILE", lock)
-        legacy = tool_dir / ".deepagents-code.deepagents-code-locks"
+        legacy = tool_dir / ".niki-agent.niki-agent-locks"
         tool_dir.mkdir()
         target = tmp_path / "symlink-target"
         if legacy_entry == "symlink":

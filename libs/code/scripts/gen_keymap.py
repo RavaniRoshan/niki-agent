@@ -17,12 +17,12 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from deepagents_code.niki.keymap import KeymapEntry
+    from niki_agent.niki.keymap import KeymapEntry
 
 HEADER = """# Niki Agent -- Keymap
 
 Generated from the live binding registry by
-`libs/code/deepagents_code/niki/keymap.py`. **Do not edit by hand.**
+`libs/code/niki_agent/niki/keymap.py`. **Do not edit by hand.**
 
 Regenerate with:
 
@@ -45,8 +45,8 @@ async def render_document() -> str:
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.keymap import build_keymap, render_markdown
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.keymap import build_keymap, render_markdown
 
     app = NikiApp(agent=MagicMock(), thread_id="keymap-doc")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]

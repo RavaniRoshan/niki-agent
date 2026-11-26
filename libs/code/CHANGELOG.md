@@ -287,7 +287,7 @@
 
 - Added `/context-doctor` for inspecting and troubleshooting context issues ([#5830](https://github.com/langchain-ai/deepagents/issues/5830)).
 - Added warning when switching models mid-session ([#5829](https://github.com/langchain-ai/deepagents/issues/5829)).
-- Added support for `DEEPAGENTS_HOME` ([#5773](https://github.com/langchain-ai/deepagents/issues/5773)).
+- Added support for `NIKI_HOME` ([#5773](https://github.com/langchain-ai/deepagents/issues/5773)).
 - (Re-)Enabled secret redaction by default ([#5816](https://github.com/langchain-ai/deepagents/issues/5816)).
 - Improved update visibility by showing cached updates in version output ([#5817](https://github.com/langchain-ai/deepagents/issues/5817)).
 - Improved prompts and pickers: the stale editable-deps prompt now defaults to `Refresh environment now`, and the model picker shows an Escape hint ([#5810](https://github.com/langchain-ai/deepagents/issues/5810), [#5775](https://github.com/langchain-ai/deepagents/issues/5775)).

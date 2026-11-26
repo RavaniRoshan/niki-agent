@@ -3,18 +3,18 @@
 from pathlib import Path
 
 import pytest
-from deepagents.backends import (
-    FilesystemBackend,
-    LocalShellBackend,
-    StateBackend,
-)
 from langchain_core.tools import tool
 
-from deepagents_code.extensions.hosting import validate_backend_route
-from deepagents_code.extensions.registry import (
+from niki_agent.extensions.hosting import validate_backend_route
+from niki_agent.extensions.registry import (
     ExtensionError,
     RegisteredUnit,
     SourceInfo,
+)
+from niki_agent.sdk.backends import (
+    FilesystemBackend,
+    LocalShellBackend,
+    StateBackend,
 )
 
 

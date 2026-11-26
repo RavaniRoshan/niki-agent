@@ -1,4 +1,4 @@
-"""Unit tests for the deepagents_code._git module."""
+"""Unit tests for the niki_agent._git module."""
 
 import subprocess
 from collections.abc import Iterator
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from deepagents_code._git import (
+from niki_agent._git import (
     _git_dir_cache,
     _parse_git_dir_pointer,
     find_git_common_dir,

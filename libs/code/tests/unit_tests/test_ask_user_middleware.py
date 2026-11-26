@@ -17,7 +17,7 @@ from langgraph.prebuilt.tool_node import (
 from langgraph.types import Command
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from deepagents_code._ask_user_types import (
+from niki_agent._ask_user_types import (
     ASK_USER_AUTHORIZATION_METADATA_KEY,
     MAX_ASK_USER_AUTHORIZATION_ANSWER_CHARS,
     Question,
@@ -25,7 +25,7 @@ from deepagents_code._ask_user_types import (
     decode_multi_select_answer,
     encode_multi_select_answer,
 )
-from deepagents_code.ask_user import (
+from niki_agent.ask_user import (
     AskUserMiddleware,
     _parse_answers,
 )
@@ -369,7 +369,7 @@ class TestMultiSelectEncoding:
 
 
 def _turn_state(turn_id: str) -> dict[str, object]:
-    from deepagents_code.auto_mode import USER_PROMPT_METADATA_KEY
+    from niki_agent.auto_mode import USER_PROMPT_METADATA_KEY
 
     return {
         "messages": [
@@ -399,7 +399,7 @@ class TestAskUserTool:
         )
 
         with patch(
-            "deepagents_code.ask_user.interrupt",
+            "niki_agent.ask_user.interrupt",
             return_value={"answers": ["Rebase my commit"]},
         ):
             command = ask_tool.func(
@@ -456,7 +456,7 @@ class TestAskUserTool:
     ) -> None:
         ask_tool = cast("Any", AskUserMiddleware().tools[0])
         with patch(
-            "deepagents_code.ask_user.interrupt",
+            "niki_agent.ask_user.interrupt",
             return_value={"answers": ["yes"]},
         ):
             command = ask_tool.func(
@@ -553,7 +553,7 @@ class TestToolArgumentValidation:
         the rest of this class green.
         """
         with patch(
-            "deepagents_code.ask_user.interrupt",
+            "niki_agent.ask_user.interrupt",
             return_value={"answers": ["Rebase"]},
         ):
             result = _invoke_ask_user_raw(
@@ -628,7 +628,7 @@ class TestBodyFaultsStayFatal:
     def test_body_raised_value_error_is_fatal(self) -> None:
         with (
             patch(
-                "deepagents_code.ask_user.interrupt",
+                "niki_agent.ask_user.interrupt",
                 side_effect=ValueError("bad resume payload"),
             ),
             pytest.raises(ValueError, match="bad resume payload"),
@@ -638,7 +638,7 @@ class TestBodyFaultsStayFatal:
     def test_non_value_error_is_fatal(self) -> None:
         with (
             patch(
-                "deepagents_code.ask_user.interrupt",
+                "niki_agent.ask_user.interrupt",
                 side_effect=RuntimeError("boom"),
             ),
             pytest.raises(RuntimeError, match="boom"),
@@ -663,7 +663,7 @@ class TestBodyFaultsStayFatal:
 
         with (
             patch(
-                "deepagents_code.ask_user.interrupt",
+                "niki_agent.ask_user.interrupt",
                 side_effect=_raise_validation_error,
             ),
             pytest.raises(RuntimeError, match="not a model-authored error") as excinfo,

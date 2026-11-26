@@ -53,7 +53,7 @@ uv add deepagents
 ```
 
 ```python
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 
 agent = create_deep_agent(
     model="openai:gpt-6-astra",

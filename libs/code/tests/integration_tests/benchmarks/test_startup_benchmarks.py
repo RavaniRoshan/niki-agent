@@ -19,7 +19,7 @@ If a test fails
     when it shouldn't be. Move the offending import inside the function that
     needs it (see `main.cli_main` for examples of deferred imports).
 - **Timing failure** — an import or CLI command exceeded its threshold.
-    Profile with `python -X importtime -c "import deepagents_code.main"`
+    Profile with `python -X importtime -c "import niki_agent.main"`
     to find the slow import.
 - **Deferred-import failure** — a heavy module was *not* loaded when it
     should have been. The deferred import is likely wired incorrectly; check
@@ -59,15 +59,15 @@ HEAVY_MODULES = frozenset(
         "langchain_anthropic",
         "langgraph",
         # CLI runtime modules (deferred to agent.py)
-        "deepagents_code.agent",
-        "deepagents_code.sessions",
-        "deepagents_code.integrations.sandbox_factory",
-        "deepagents_code.tools",
+        "niki_agent.agent",
+        "niki_agent.sessions",
+        "niki_agent.integrations.sandbox_factory",
+        "niki_agent.tools",
         # Deferred from config.py module level to lazy local imports
         "dotenv",
         "dotenv.main",
-        "deepagents_code.model_config",
-        "deepagents_code.project_utils",
+        "niki_agent.model_config",
+        "niki_agent.project_utils",
     }
 )
 
@@ -146,7 +146,7 @@ class TestCLIStartupTime:
 
     @staticmethod
     def _time_cli_command(args: str) -> float:
-        """Return wall-clock seconds to run `python -m deepagents_code <args>`.
+        """Return wall-clock seconds to run `python -m niki_agent <args>`.
 
         Args:
             args: CLI arguments string (e.g., `"--help"`).
@@ -158,7 +158,7 @@ class TestCLIStartupTime:
             import time, subprocess, sys
             start = time.perf_counter()
             subprocess.run(
-                [sys.executable, "-m", "deepagents_code", {args!r}],
+                [sys.executable, "-m", "niki_agent", {args!r}],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -203,11 +203,11 @@ class TestImportTiming:
     @pytest.mark.parametrize(
         "module",
         [
-            "deepagents_code.main",
-            "deepagents_code.ui",
-            "deepagents_code.config",
-            "deepagents_code.skills.commands",
-            "deepagents_code.tool_display",
+            "niki_agent.main",
+            "niki_agent.ui",
+            "niki_agent.config",
+            "niki_agent.skills.commands",
+            "niki_agent.tool_display",
         ],
         ids=[
             "main",
@@ -254,24 +254,24 @@ class TestDeferredImportsWork:
     """
 
     def test_agent_import_loads_langchain(self) -> None:
-        """Importing `deepagents_code.agent` should pull in langchain."""
-        loaded = _get_loaded_modules("import deepagents_code.agent")
+        """Importing `niki_agent.agent` should pull in langchain."""
+        loaded = _get_loaded_modules("import niki_agent.agent")
         langchain_modules = {m for m in loaded if m.startswith("langchain")}
         assert langchain_modules, (
-            "`deepagents_code.agent` should transitively load `langchain` modules"
+            "`niki_agent.agent` should transitively load `langchain` modules"
         )
 
     def test_sessions_import_available(self) -> None:
-        """`deepagents_code.sessions` should be importable."""
-        result = _run_python("import deepagents_code.sessions")
+        """`niki_agent.sessions` should be importable."""
+        result = _run_python("import niki_agent.sessions")
         assert result.returncode == 0, (
-            f"Cannot import `deepagents_code.sessions`:\n{result.stderr}"
+            f"Cannot import `niki_agent.sessions`:\n{result.stderr}"
         )
 
     def test_configurable_model_middleware_loads_langchain(self) -> None:
         """Accessing `ConfigurableModelMiddleware` should trigger langchain import."""
         loaded = _get_loaded_modules(
-            "from deepagents_code.configurable_model import ConfigurableModelMiddleware"
+            "from niki_agent.configurable_model import ConfigurableModelMiddleware"
         )
         langchain_modules = {m for m in loaded if m.startswith("langchain")}
         assert langchain_modules, (
@@ -281,7 +281,7 @@ class TestDeferredImportsWork:
     def test_ask_user_middleware_loads_langchain(self) -> None:
         """Accessing `AskUserMiddleware` should trigger langchain import."""
         loaded = _get_loaded_modules(
-            "from deepagents_code.ask_user import AskUserMiddleware"
+            "from niki_agent.ask_user import AskUserMiddleware"
         )
         langchain_modules = {m for m in loaded if m.startswith("langchain")}
         assert langchain_modules, (

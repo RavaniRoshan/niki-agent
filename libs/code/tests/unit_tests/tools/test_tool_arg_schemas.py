@@ -11,11 +11,11 @@ from langchain_core.tools import BaseTool, StructuredTool, tool
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import Field
 
-from deepagents_code.ask_user import AskUserMiddleware
-from deepagents_code.auto_mode import AutoModeHITLMiddleware
-from deepagents_code.goal_tools import GoalToolsMiddleware
-from deepagents_code.offload_middleware import CLICompactionMiddleware
-from deepagents_code.tools import fetch_url, get_current_thread_id, web_search
+from niki_agent.ask_user import AskUserMiddleware
+from niki_agent.auto_mode import AutoModeHITLMiddleware
+from niki_agent.goal_tools import GoalToolsMiddleware
+from niki_agent.offload_middleware import CLICompactionMiddleware
+from niki_agent.tools import fetch_url, get_current_thread_id, web_search
 
 if TYPE_CHECKING:
     from pathlib import Path

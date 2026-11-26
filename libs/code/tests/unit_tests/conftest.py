@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 import pytest
 
 # Select a synthetic launch profile before pytest imports any test module (and
-# therefore before any `deepagents_code` module can freeze `PATHS`). Function-
+# therefore before any `niki_agent` module can freeze `PATHS`). Function-
 # scoped fixtures are too late for this launch-time setting. Keep the temporary
 # directory alive for the worker process; its contents are synthetic fixtures,
 # never the developer's real profile or dotenv files.
-_TEST_PROFILE_HOME = tempfile.TemporaryDirectory(prefix="deepagents-code-tests-")
-os.environ["DEEPAGENTS_HOME"] = _TEST_PROFILE_HOME.name
+_TEST_PROFILE_HOME = tempfile.TemporaryDirectory(prefix="niki-agent-tests-")
+os.environ["NIKI_HOME"] = _TEST_PROFILE_HOME.name
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator, Iterator, Mapping
@@ -26,9 +26,9 @@ if TYPE_CHECKING:
     from textual.pilot import Pilot
     from textual.screen import Screen
 
-    from deepagents_code._paths import DeepAgentsPathSnapshot
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.config_manifest import ConfigOption
+    from niki_agent._paths import DeepAgentsPathSnapshot
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.config_manifest import ConfigOption
 
 
 class DrainModalCommands(Protocol):
@@ -62,8 +62,8 @@ def btw_app(monkeypatch: pytest.MonkeyPatch) -> tuple[DeepAgentsApp, MagicMock]:
     """Build an app with an existing conversation and an isolated side-answer client."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.client.remote_client import RemoteAgent
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.client.remote_client import RemoteAgent
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="btw-test")
     monkeypatch.setattr(app, "_post_paint_init", AsyncMock())
@@ -100,12 +100,12 @@ def _warm_model_caches() -> Generator[None, None, None]:
     Tests that explicitly need a clean cache (e.g. `test_model_config.py`) use
     their own function-scoped `clear_caches()` fixture which overrides this.
     """
-    discovery_var = "DEEPAGENTS_CODE_OLLAMA_DISCOVERY"
+    discovery_var = "NIKI_OLLAMA_DISCOVERY"
     original = os.environ.get(discovery_var)
     os.environ[discovery_var] = "0"
     try:
         with contextlib.suppress(Exception):
-            from deepagents_code.model_config import (
+            from niki_agent.model_config import (
                 get_available_models,
                 get_model_profiles,
             )
@@ -129,7 +129,7 @@ def _restore_os_environ() -> Generator[None, None, None]:
     test clears a variable with `monkeypatch.delenv(name, raising=False)` that
     was already absent, monkeypatch records no undo entry — so a later direct
     write by that code survives teardown and leaks into subsequent tests (e.g.
-    a dotenv-reload test leaking `DEEPAGENTS_CODE_OPENAI_API_KEY` into a gateway
+    a dotenv-reload test leaking `NIKI_OPENAI_API_KEY` into a gateway
     key-mismatch test). Defined before the other autouse fixtures so it tears
     down last, leaving `os.environ` pristine no matter how a key was set.
 
@@ -165,7 +165,7 @@ def _restore_dotenv_loader_state() -> Generator[None, None, None]:
     test that swaps one out with `monkeypatch.setattr` (whose teardown runs
     first) still gets the real map restored.
     """
-    import deepagents_code.config as config_mod
+    import niki_agent.config as config_mod
 
     loaded = dict(config_mod._dotenv_loaded_values)
     provenance = dict(config_mod._dotenv_provenance)
@@ -193,7 +193,7 @@ def _restore_runtime_state() -> Generator[None, None, None]:
     Reads `_runtime_state_instance` rather than the `runtime_state` proxy so a
     test that never touches the state does not construct it.
     """
-    import deepagents_code.config as config_mod
+    import niki_agent.config as config_mod
 
     state = config_mod._runtime_state_instance
     snapshot = (
@@ -225,7 +225,7 @@ def _restore_runtime_state() -> Generator[None, None, None]:
 def _clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent LangSmith env vars loaded from .env from leaking into tests.
 
-    `deepagents_code.config` loads dotenv lazily on first `credentials` access
+    `niki_agent.config` loads dotenv lazily on first `credentials` access
     (via `_ensure_bootstrap()` / `_load_dotenv()`, which reads values with
     `dotenv.dotenv_values()`) and may inject `LANGSMITH_*` variables from a
     local `.env` file. Because those mutations persist in `os.environ`, they
@@ -236,7 +236,7 @@ def _clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
     Each test that *needs* LangSmith variables should set them explicitly via
     `monkeypatch.setenv` or `patch.dict("os.environ", ...)`.
     """
-    import deepagents_code.config as config_mod
+    import niki_agent.config as config_mod
 
     monkeypatch.setattr(config_mod, "_reconciled_tracing_values", {})
     for key in (
@@ -247,12 +247,12 @@ def _clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "LANGSMITH_ENDPOINT",
         "LANGCHAIN_ENDPOINT",
         "LANGSMITH_PROJECT",
-        "DEEPAGENTS_CODE_LANGSMITH_PROJECT",
-        "DEEPAGENTS_CODE_LANGSMITH_REDACT",
-        "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
-        "DEEPAGENTS_CODE_LANGCHAIN_API_KEY",
-        "DEEPAGENTS_CODE_LANGSMITH_TRACING",
-        "DEEPAGENTS_CODE_LANGCHAIN_TRACING_V2",
+        "NIKI_LANGSMITH_PROJECT",
+        "NIKI_LANGSMITH_REDACT",
+        "NIKI_LANGSMITH_API_KEY",
+        "NIKI_LANGCHAIN_API_KEY",
+        "NIKI_LANGSMITH_TRACING",
+        "NIKI_LANGCHAIN_TRACING_V2",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -286,7 +286,7 @@ def _clear_tavily_env(monkeypatch: pytest.MonkeyPatch) -> None:
     Each test that *needs* a Tavily key should set it explicitly via
     `monkeypatch.setenv` or patch `credentials.has_tavily`.
     """
-    for key in ("TAVILY_API_KEY", "DEEPAGENTS_CODE_TAVILY_API_KEY"):
+    for key in ("TAVILY_API_KEY", "NIKI_TAVILY_API_KEY"):
         monkeypatch.delenv(key, raising=False)
 
 
@@ -295,7 +295,7 @@ def _clear_project_mcp_trust_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent developer MCP trust decisions from changing unit-test behavior.
 
     These may already be present in `os.environ` before any fixture runs:
-    `deepagents_code.config` loads dotenv lazily on first `credentials` access
+    `niki_agent.config` loads dotenv lazily on first `credentials` access
     (via `_ensure_bootstrap()` / `_load_dotenv()`) and injects them from the
     developer's global `~/.deepagents/.env`. The dangerous allowlist adds
     project-agnostic trust decisions, so leaving it set changes trust-list and
@@ -305,9 +305,9 @@ def _clear_project_mcp_trust_env(monkeypatch: pytest.MonkeyPatch) -> None:
     prevents a later dotenv reread (e.g. via `/reload`) from restoring them.
     """
     for key in (
-        "DEEPAGENTS_CODE_DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS",
-        "DEEPAGENTS_CODE_DISABLED_PROJECT_MCP_SERVERS",
-        "DEEPAGENTS_CODE_ENABLED_PROJECT_MCP_SERVERS",
+        "NIKI_DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS",
+        "NIKI_DISABLED_PROJECT_MCP_SERVERS",
+        "NIKI_ENABLED_PROJECT_MCP_SERVERS",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -336,10 +336,10 @@ def _isolate_user_hooks_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     loader's parse cache in case it already holds real entries. Tests needing
     hook config patch these explicitly, which still wins inside the test body.
     """
-    for module in ("deepagents_code.hooks.loading", "deepagents_code.hooks.runtime"):
+    for module in ("niki_agent.hooks.loading", "niki_agent.hooks.runtime"):
         monkeypatch.setattr(f"{module}.DEFAULT_CONFIG_DIR", tmp_path)
 
-    import deepagents_code.hooks.legacy as hooks_legacy
+    import niki_agent.hooks.legacy as hooks_legacy
 
     monkeypatch.setattr(hooks_legacy, "_hooks_config", None)
 
@@ -348,15 +348,15 @@ def _isolate_user_hooks_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
 def _clear_debug_notifications_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent the debug-notifications override from changing suppression tests.
 
-    `DEEPAGENTS_CODE_DEBUG_NOTIFICATIONS` may be loaded from the developer's
-    global `~/.deepagents/.env` when `deepagents_code.config` loads dotenv
+    `NIKI_DEBUG_NOTIFICATIONS` may be loaded from the developer's
+    global `~/.deepagents/.env` when `niki_agent.config` loads dotenv
     lazily on first `credentials` access, before fixtures run. When set, the
     notification suppression path skips persistence -- it removes the entry
     without calling `suppress_warning` -- so tests asserting that a suppression
     is persisted (or that a failed suppression keeps the row) break. Tests that
     exercise the debug path set it explicitly.
     """
-    monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG_NOTIFICATIONS", raising=False)
+    monkeypatch.delenv("NIKI_DEBUG_NOTIFICATIONS", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -365,7 +365,7 @@ def _clear_provider_base_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
     A developer machine provisioned with the LangSmith gateway exports
     `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`, which `get_base_url` now reads as
-    a fallback. Clear them (and the `DEEPAGENTS_CODE_` overrides) so base-URL
+    a fallback. Clear them (and the `NIKI_` overrides) so base-URL
     tests are deterministic. Tests that need a value set it explicitly.
     """
     for key in (
@@ -376,11 +376,11 @@ def _clear_provider_base_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "BASETEN_BASE_URL",
         "BASETEN_API_BASE",
         "GOOGLE_GEMINI_BASE_URL",
-        "DEEPAGENTS_CODE_OPENAI_BASE_URL",
-        "DEEPAGENTS_CODE_ANTHROPIC_BASE_URL",
-        "DEEPAGENTS_CODE_BASETEN_BASE_URL",
-        "DEEPAGENTS_CODE_BASETEN_API_BASE",
-        "DEEPAGENTS_CODE_GOOGLE_GEMINI_BASE_URL",
+        "NIKI_OPENAI_BASE_URL",
+        "NIKI_ANTHROPIC_BASE_URL",
+        "NIKI_BASETEN_BASE_URL",
+        "NIKI_BASETEN_API_BASE",
+        "NIKI_GOOGLE_GEMINI_BASE_URL",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -388,7 +388,7 @@ def _clear_provider_base_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def _clear_onboarding_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent local onboarding env overrides from affecting tests."""
-    monkeypatch.delenv("DEEPAGENTS_CODE_ONBOARDING", raising=False)
+    monkeypatch.delenv("NIKI_ONBOARDING", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -398,7 +398,7 @@ def _clear_splash_tips_env(monkeypatch: pytest.MonkeyPatch) -> None:
     A developer with this set locally would make every `not app.query(
     StartupTip)` assertion pass vacuously.
     """
-    monkeypatch.delenv("DEEPAGENTS_CODE_HIDE_SPLASH_TIPS", raising=False)
+    monkeypatch.delenv("NIKI_HIDE_SPLASH_TIPS", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -411,8 +411,8 @@ def _pin_invoked_name(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, 
     are deterministic, and drop the process-lifetime cache around every test so
     a test that varies the launch name cannot leak it into another.
     """
-    from deepagents_code._env_vars import INVOKED_AS
-    from deepagents_code._invocation import (
+    from niki_agent._env_vars import INVOKED_AS
+    from niki_agent._invocation import (
         DEFAULT_INVOKED_NAME,
         invoked_name,
         log_nonstandard_invoked_name,
@@ -439,7 +439,7 @@ def _disable_prices_auto_update(monkeypatch: pytest.MonkeyPatch) -> None:
     with an autospec and override this env var themselves, so the real thread
     never starts anywhere in the suite.
     """
-    from deepagents_code._env_vars import PRICES_AUTO_UPDATE
+    from niki_agent._env_vars import PRICES_AUTO_UPDATE
 
     monkeypatch.setenv(PRICES_AUTO_UPDATE, "0")
 
@@ -463,10 +463,10 @@ def _isolate_price_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     passing. `tmp_path` starts empty, so the default state is "user has no
     override file".
     """
-    import deepagents_code.model_config
-    from deepagents_code import cost_tracking
+    import niki_agent.model_config
+    from niki_agent import cost_tracking
 
-    monkeypatch.setattr(deepagents_code.model_config, "DEFAULT_CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(niki_agent.model_config, "DEFAULT_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(cost_tracking, "_PRICE_OVERRIDES", None)
     monkeypatch.setattr(cost_tracking, "_USER_OVERRIDE_ENTRIES", 0)
     monkeypatch.setattr(
@@ -484,11 +484,11 @@ def _clear_update_env(
 ) -> None:
     """Prevent update debug/loop-guard and toggle env vars from affecting tests.
 
-    `DEEPAGENTS_CODE_DEBUG_UPDATE` short-circuits the install path, and the
-    internal `DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE` sentinel suppresses
+    `NIKI_DEBUG_UPDATE` short-circuits the install path, and the
+    internal `NIKI_RESTARTED_AFTER_UPDATE` sentinel suppresses
     auto-update to break a restart loop. The sentinel can leak in not just from a
     developer shell but from a prior test exercising the production code that sets
-    it, so it is cleared unconditionally. `DEEPAGENTS_CODE_AUTO_UPDATE` is read
+    it, so it is cleared unconditionally. `NIKI_AUTO_UPDATE` is read
     directly from the environment by `is_auto_update_enabled`, so a developer who
     exports it would otherwise make auto-update tests fail or pass spuriously.
 
@@ -499,15 +499,15 @@ def _clear_update_env(
     behavior. Tests marked `self_managed_update_check` cover the update-check
     gate directly, so they opt out of this default below.
     """
-    monkeypatch.delenv("DEEPAGENTS_CODE_DEBUG_UPDATE", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_AUTO_UPDATE", raising=False)
-    monkeypatch.setenv("DEEPAGENTS_CODE_PLUGIN_AUTO_UPDATE", "0")
+    monkeypatch.delenv("NIKI_DEBUG_UPDATE", raising=False)
+    monkeypatch.delenv("NIKI_RESTARTED_AFTER_UPDATE", raising=False)
+    monkeypatch.delenv("NIKI_AUTO_UPDATE", raising=False)
+    monkeypatch.setenv("NIKI_PLUGIN_AUTO_UPDATE", "0")
 
     if _self_manages_update_check(request):
-        monkeypatch.delenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", raising=False)
+        monkeypatch.delenv("NIKI_NO_UPDATE_CHECK", raising=False)
     else:
-        monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+        monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
 
 
 @pytest.fixture(autouse=True)
@@ -523,7 +523,7 @@ def _disable_app_startup_update_checks(
     if _self_manages_update_check(request):
         return
     monkeypatch.setattr(
-        "deepagents_code.update_check.is_update_check_enabled",
+        "niki_agent.update_check.is_update_check_enabled",
         lambda: False,
     )
 
@@ -543,7 +543,7 @@ def _skip_managed_tool_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
     touching the network, and so subprocess tests inherit the same no-network
     behavior. Tests that cover the installer clear it themselves.
     """
-    from deepagents_code._env_vars import OFFLINE
+    from niki_agent._env_vars import OFFLINE
 
     monkeypatch.setenv(OFFLINE, "1")
 
@@ -552,17 +552,17 @@ def _skip_managed_tool_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
 def _clear_behavior_override_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent developer behavior overrides from changing default-path tests.
 
-    `DEEPAGENTS_HOME` is deliberately *not* cleared here. This module sets it
+    `NIKI_HOME` is deliberately *not* cleared here. This module sets it
     at collection time so nothing touches the developer's real profile, and any
     subprocess a test spawns inherits `os.environ`. Deleting it would send such
     a child back to `~/.deepagents`.
     """
     for key in (
-        "DEEPAGENTS_CODE_CURSOR_STYLE",
-        "DEEPAGENTS_CODE_EXPERIMENTAL",
-        "DEEPAGENTS_CODE_GOAL_AUTO_ACCEPT_CRITERIA",
-        "DEEPAGENTS_CODE_MEMORY_AUTO_SAVE",
-        "DEEPAGENTS_CODE_OPENAI_PROMPT_CACHE_KEY",
+        "NIKI_CURSOR_STYLE",
+        "NIKI_EXPERIMENTAL",
+        "NIKI_GOAL_AUTO_ACCEPT_CRITERIA",
+        "NIKI_MEMORY_AUTO_SAVE",
+        "NIKI_OPENAI_PROMPT_CACHE_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -570,8 +570,8 @@ def _clear_behavior_override_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def _clear_external_event_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent local alpha event-listener env vars from affecting tests."""
-    monkeypatch.delenv("DEEPAGENTS_CODE_EXTERNAL_EVENT_SOCKET", raising=False)
-    monkeypatch.delenv("DEEPAGENTS_CODE_EXTERNAL_EVENT_SOCKET_PATH", raising=False)
+    monkeypatch.delenv("NIKI_EXTERNAL_EVENT_SOCKET", raising=False)
+    monkeypatch.delenv("NIKI_EXTERNAL_EVENT_SOCKET_PATH", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -586,7 +586,7 @@ def _disable_terminal_escape(monkeypatch: pytest.MonkeyPatch) -> None:
     session. Opting out keeps the run inert. `test_terminal_escape.py` clears
     this var in its own fixture so its assertions still exercise the real path.
     """
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_TERMINAL_ESCAPE", "1")
+    monkeypatch.setenv("NIKI_NO_TERMINAL_ESCAPE", "1")
 
 
 @pytest.fixture(autouse=True)
@@ -600,7 +600,7 @@ def _register_theme_variables(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     from textual.app import App
 
-    from deepagents_code.theme import get_css_variable_defaults
+    from niki_agent.theme import get_css_variable_defaults
 
     original = App.get_theme_variable_defaults
     custom = get_css_variable_defaults(dark=True)
@@ -628,7 +628,7 @@ def _provide_app_context() -> Generator[None]:
     from textual.app import App
     from textual.theme import Theme
 
-    from deepagents_code import theme
+    from niki_agent import theme
 
     app = App()
     c = theme.DARK_COLORS
@@ -660,11 +660,11 @@ def _provide_app_context() -> Generator[None]:
 def _isolate_global_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the global dotenv path at a nonexistent temp file.
 
-    `deepagents_code.config._GLOBAL_DOTENV_PATH` defaults to the developer's
+    `niki_agent.config._GLOBAL_DOTENV_PATH` defaults to the developer's
     real `~/.deepagents/.env`. Code paths like `/reload` call
     `_load_dotenv(refresh_loaded=True)`, which rereads that file and can restore
     ambient variables the isolation fixtures cleared (e.g.
-    `DEEPAGENTS_CODE_EXPERIMENTAL` or the MCP trust vars). Redirecting it to a
+    `NIKI_EXPERIMENTAL` or the MCP trust vars). Redirecting it to a
     guaranteed-absent path under `tmp_path` makes dotenv rereads inert without
     touching production behavior. Tests that exercise global dotenv loading set
     this attribute explicitly after this fixture runs.
@@ -675,7 +675,7 @@ def _isolate_global_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     leak from the developer's environment need to be added there.
     """
     monkeypatch.setattr(
-        "deepagents_code.config._GLOBAL_DOTENV_PATH",
+        "niki_agent.config._GLOBAL_DOTENV_PATH",
         tmp_path / "nonexistent-global.env",
     )
 
@@ -689,8 +689,8 @@ def redirect_managed_config(monkeypatch: pytest.MonkeyPatch, path: Path) -> None
     developer's real host policy file — or, worse, silently reading nothing —
     so they are redirected together.
     """
-    from deepagents_code.configuration import paths, service
-    from deepagents_code.configuration.paths import ResolvedManagedPath
+    from niki_agent.configuration import paths, service
+    from niki_agent.configuration.paths import ResolvedManagedPath
 
     for module in (paths, service):
         monkeypatch.setattr(module, "managed_config_path", lambda **_kwargs: path)
@@ -712,14 +712,14 @@ def _isolate_managed_config(
     unrelated tests change behavior. The snapshot is cached process-wide, so it
     is also cleared on both sides of every test.
     """
-    from deepagents_code.configuration import service
+    from niki_agent.configuration import service
 
     absent = tmp_path / "absent-managed_config.toml"
     redirect_managed_config(monkeypatch, absent)
     # The "expected a table" dedup set is process-global. Left alone, the first
     # test to trip it decides what every later test sees, and the suite runs in
     # random order.
-    from deepagents_code import config_manifest
+    from niki_agent import config_manifest
 
     config_manifest._warned_non_table_paths.clear()
     service.invalidate_config_sources()
@@ -732,25 +732,25 @@ def _isolate_managed_config(
 def _isolate_state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Redirect app-managed state and config away from the developer's data."""
     state_dir = tmp_path / ".state"
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state_dir)
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+        "niki_agent.model_config.DEFAULT_CONFIG_PATH",
         tmp_path / "config.toml",
     )
-    monkeypatch.setattr("deepagents_code.onboarding.DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr("niki_agent.onboarding.DEFAULT_STATE_DIR", state_dir)
     # Installation-scoped and resolved at import time, so patching profile state
     # above does not move it. Left unpatched, update-path tests would contend
     # with this checkout's real tool-environment lock.
     monkeypatch.setattr(
-        "deepagents_code.update_check.UPDATE_LOCK_FILE",
+        "niki_agent.update_check.UPDATE_LOCK_FILE",
         state_dir / "update.lock",
     )
     # Keep ordinary create/amend goal tests free of the one-time preference
     # modal without writing files into `tmp_path` (that would pollute git and
     # empty-tree assertions). Dedicated prompt coverage clears this env var.
-    monkeypatch.setenv("DEEPAGENTS_CODE_GOAL_AUTO_ACCEPT_CRITERIA", "false")
+    monkeypatch.setenv("NIKI_GOAL_AUTO_ACCEPT_CRITERIA", "false")
 
-    from deepagents_code import sessions
+    from niki_agent import sessions
 
     monkeypatch.setattr(sessions, "_db_path", None)
     sessions._message_count_cache.clear()
@@ -767,7 +767,7 @@ def _isolate_history(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     entries that persist across test runs and branch switches.
     """
     monkeypatch.setattr(
-        "deepagents_code.tui.widgets.chat_input._default_history_path",
+        "niki_agent.tui.widgets.chat_input._default_history_path",
         lambda: tmp_path / "history.jsonl",
     )
 
@@ -782,7 +782,7 @@ def _clear_kitty_kbd_probe_cache() -> None:
     results deterministic regardless of file order or `pytest-xdist`
     sharding.
     """
-    from deepagents_code.terminal_capabilities import supports_kitty_keyboard_protocol
+    from niki_agent.terminal_capabilities import supports_kitty_keyboard_protocol
 
     supports_kitty_keyboard_protocol.cache_clear()
 
@@ -888,7 +888,7 @@ def _sweep_debug_handlers() -> None:
     """
     import logging
 
-    from deepagents_code._debug import _DEBUG_HANDLER_ATTR
+    from niki_agent._debug import _DEBUG_HANDLER_ATTR
 
     for name in list(logging.root.manager.loggerDict):
         target = logging.getLogger(name)
@@ -914,8 +914,8 @@ def sweep_debug_handlers() -> Callable[[], None]:
 def _close_leaked_debug_handlers() -> None:
     """Sweep debug-log file handlers installed before each test starts.
 
-    `deepagents_code.__init__` calls `configure_debug_logging` at import time,
-    so a `DEEPAGENTS_CODE_DEBUG` exported in the environment (a developer shell,
+    `niki_agent.__init__` calls `configure_debug_logging` at import time,
+    so a `NIKI_DEBUG` exported in the environment (a developer shell,
     or a CI runner configured that way) attaches a real file handler to the
     package logger before collection — and per-test checks then blame whichever
     test first clears that logger's handlers. `config._quiet_sdk_logging` is the
@@ -957,7 +957,7 @@ def resolve_option_for_test(
     Returns:
         The resolved value and its compatibility source label.
     """
-    from deepagents_code.config_manifest import (
+    from niki_agent.config_manifest import (
         _emit_ranked_diagnostics,
         _ranked_source,
         _resolve_option,
@@ -991,14 +991,14 @@ _PATHS_BINDING_MODULES: tuple[str, ...] = (
 )
 """Modules that bind `PATHS` with `from ... import PATHS` at import time.
 
-Those bindings are made once, so patching `deepagents_code._paths.PATHS` alone
+Those bindings are made once, so patching `niki_agent._paths.PATHS` alone
 does **not** reach them — only the late-bound `get_deepagents_home()` readers
 follow it. `install_profile_snapshot` patches every name here so a test does
 not have to know which binding style its subject uses.
 
 Do not maintain this by hand.
 `test_paths.TestPathsBindingModulesDrift` parses every module under
-`deepagents_code` and fails when this tuple does not match what it finds. A
+`niki_agent` and fails when this tuple does not match what it finds. A
 module missing here is the dangerous direction: `install_profile_snapshot`
 would silently not patch it, and the test using the fixture would read the
 developer's real profile and still pass.
@@ -1029,23 +1029,23 @@ def install_profile_snapshot(
     module that bound it at import.
 
     Returns:
-        A callable taking the configured `DEEPAGENTS_HOME` value (or `None` for
+        A callable taking the configured `NIKI_HOME` value (or `None` for
         the default profile) plus the launch home, returning the snapshot.
     """
     import sys
 
-    from deepagents_code._paths import _capture_paths
+    from niki_agent._paths import _capture_paths
 
     def _install(
         root: Path | str | None, *, launch_home: Path
     ) -> DeepAgentsPathSnapshot:
         configured = None if root is None else str(root)
         snapshot = _capture_paths(configured, launch_home=launch_home)
-        monkeypatch.setattr("deepagents_code._paths.PATHS", snapshot)
+        monkeypatch.setattr("niki_agent._paths.PATHS", snapshot)
         # Patch only what is already imported. Importing the rest would pull
         # `app`/`main` into every test that just needs a profile root.
         for name in _PATHS_BINDING_MODULES:
-            module = sys.modules.get(f"deepagents_code.{name}")
+            module = sys.modules.get(f"niki_agent.{name}")
             if module is not None:
                 monkeypatch.setattr(module, "PATHS", snapshot, raising=False)
         return snapshot

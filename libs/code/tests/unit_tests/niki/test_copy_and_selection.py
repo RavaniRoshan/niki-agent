@@ -68,7 +68,7 @@ def _capture(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 def test_m4_osc52_sequence_is_well_formed(monkeypatch: pytest.MonkeyPatch) -> None:
     """M4: the clipboard write must be a valid OSC 52 sequence."""
-    from deepagents_code.clipboard import _copy_osc52
+    from niki_agent.clipboard import _copy_osc52
 
     written = _capture(monkeypatch)
     _copy_osc52("hello niki")
@@ -86,7 +86,7 @@ def test_m4_osc52_is_wrapped_for_tmux(monkeypatch: pytest.MonkeyPatch) -> None:
     """M4: inside tmux the sequence must be DCS-wrapped or it is swallowed."""
     import os
 
-    from deepagents_code.clipboard import _copy_osc52
+    from niki_agent.clipboard import _copy_osc52
 
     written = _capture(monkeypatch)
     previous = os.environ.get("TMUX")
@@ -119,7 +119,7 @@ def test_m4_the_keymap_advertises_the_mouse_release() -> None:
     """M4: releasing the mouse must be a named key with a handler."""
     from textual.binding import Binding
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     entries = [
         binding
@@ -139,7 +139,7 @@ def test_m4_the_toggle_writes_the_terminals_mouse_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """M4: a release must disable reporting, and a second press restore it."""
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     writes: list[str] = []
 
@@ -176,7 +176,7 @@ def test_m4_osc52_handles_awkward_payloads(
     text: str, why: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """M4: whatever is selected must survive the base64 round trip."""
-    from deepagents_code.clipboard import _copy_osc52
+    from niki_agent.clipboard import _copy_osc52
 
     written = _capture(monkeypatch)
     _copy_osc52(text)
@@ -198,7 +198,7 @@ async def test_m4_selection_copy_reaches_the_clipboard(
     from textual.selection import Selection
     from textual.widgets import Static
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=None, thread_id="m4-selection")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -223,8 +223,8 @@ async def test_m4_selection_copy_reaches_the_clipboard(
 
 def test_m4_copy_is_wrapped_for_tmux(monkeypatch: pytest.MonkeyPatch) -> None:
     """M4: Textual's bare OSC 52 is swallowed by tmux, so the wrapped form goes too."""
-    from deepagents_code import clipboard
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent import clipboard
+    from niki_agent.niki.app import NikiApp
 
     written: list[str] = []
     monkeypatch.setattr(clipboard, "_copy_osc52", written.append)

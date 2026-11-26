@@ -37,7 +37,7 @@ def _write_model_config(home_dir: Path) -> None:
     (config_dir / "config.toml").write_text(
         """
 [models.providers.itest]
-class_path = "deepagents_code._testing_models:DeterministicIntegrationChatModel"
+class_path = "niki_agent._testing_models:DeterministicIntegrationChatModel"
 models = ["fake"]
 
 [models.providers.itest.profile]
@@ -77,7 +77,7 @@ def _build_long_prompt(turn: int) -> str:
 
 async def _run_turn(agent, *, thread_id: str, assistant_id: str, prompt: str) -> None:
     """Execute one real remote agent turn and drain the stream to completion."""
-    from deepagents_code.config import build_stream_config, runtime_state
+    from niki_agent.config import build_stream_config, runtime_state
 
     config = build_stream_config(thread_id, assistant_id)
     stream_input = {"messages": [{"role": "user", "content": prompt}]}
@@ -192,17 +192,17 @@ async def test_offload_runs_server_side_and_is_agent_readable(
     project_dir.mkdir()
 
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     monkeypatch.chdir(project_dir)
 
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.client.launch.server_manager import server_session
-    from deepagents_code.config import create_model
-    from deepagents_code.sessions import generate_thread_id
-    from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
+    from niki_agent import model_config
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.client.launch.server_manager import server_session
+    from niki_agent.config import create_model
+    from niki_agent.sessions import generate_thread_id
+    from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
     config_path = home_dir / ".deepagents" / "config.toml"
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_DIR", config_path.parent)
@@ -396,7 +396,7 @@ async def test_concurrent_run_during_offload_preserves_messages(
     gate_dir.mkdir()
 
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     # Reaches the server subprocess through `_build_server_env`'s
     # `os.environ.copy()`; gates only summary-generation model calls.
     monkeypatch.setenv("DCA_TEST_OFFLOAD_GATE_DIR", str(gate_dir))
@@ -404,10 +404,10 @@ async def test_concurrent_run_during_offload_preserves_messages(
 
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.client.launch.server_manager import server_session
-    from deepagents_code.config import create_model
-    from deepagents_code.sessions import generate_thread_id
+    from niki_agent import model_config
+    from niki_agent.client.launch.server_manager import server_session
+    from niki_agent.config import create_model
+    from niki_agent.sessions import generate_thread_id
 
     config_path = home_dir / ".deepagents" / "config.toml"
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_DIR", config_path.parent)
@@ -559,17 +559,17 @@ async def test_offload_route_respects_configured_auth(
     work_dir.mkdir()
 
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     monkeypatch.chdir(project_dir)
 
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.client.launch.server import (
+    from niki_agent import model_config
+    from niki_agent.client.launch.server import (
         ServerProcess,
         generate_langgraph_json,
     )
-    from deepagents_code.config import create_model
+    from niki_agent.config import create_model
 
     config_path = home_dir / ".deepagents" / "config.toml"
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_DIR", config_path.parent)
@@ -652,7 +652,7 @@ from pathlib import Path
 
 from langsmith import run_trees
 
-from deepagents_code.offload_api import app
+from niki_agent.offload_api import app
 
 
 class _MarkerClient:
@@ -692,19 +692,19 @@ async def test_server_shutdown_flushes_existing_tracers(
     work_dir.mkdir()
 
     monkeypatch.setenv("HOME", str(home_dir))
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "1")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
     monkeypatch.setenv("ITEST_TRACE_FLUSH_MARKER", str(marker))
     monkeypatch.chdir(project_dir)
     _write_model_config(home_dir)
 
-    from deepagents_code import model_config
-    from deepagents_code.client.launch.server import (
+    from niki_agent import model_config
+    from niki_agent.client.launch.server import (
         ServerProcess,
         generate_langgraph_json,
     )
-    from deepagents_code.config import create_model
+    from niki_agent.config import create_model
 
     config_path = home_dir / ".deepagents" / "config.toml"
     monkeypatch.setattr(model_config, "DEFAULT_CONFIG_DIR", config_path.parent)

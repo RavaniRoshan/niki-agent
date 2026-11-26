@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from deepagents_code.application.run_turn import RunProtocolError, RunTurnCoordinator
-from deepagents_code.domain.events import (
+from niki_agent.application.run_turn import RunProtocolError, RunTurnCoordinator
+from niki_agent.domain.events import (
     ResumeRequest,
     RunEvent,
     RunEventKind,

@@ -36,10 +36,10 @@ from textual import events
 from textual.containers import VerticalScroll
 from textual.widgets import Markdown, Static, TextArea
 
-from deepagents_code.btw import BtwOperation
-from deepagents_code.client.remote_client import RemoteAgent
-from deepagents_code.tui.modals.btw import BtwScreen, BtwTextArea
-from deepagents_code.tui.widgets.messages import AssistantMessage, UserMessage
+from niki_agent.btw import BtwOperation
+from niki_agent.client.remote_client import RemoteAgent
+from niki_agent.tui.modals.btw import BtwScreen, BtwTextArea
+from niki_agent.tui.widgets.messages import AssistantMessage, UserMessage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
     from langgraph.pregel import Pregel
 
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
 
 @pytest.fixture
@@ -65,11 +65,11 @@ type BtwServer = tuple[AsyncClient, BtwOperation, MagicMock]
 
 @pytest.fixture
 async def btw_server(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[BtwServer]:
-    from deepagents_code import offload_api
+    from niki_agent import offload_api
 
     operation = BtwOperation(FakeMessagesListChatModel(responses=[]), "system", None)
     threads = MagicMock(get_state=AsyncMock(return_value={"values": {}}))
-    monkeypatch.setattr("deepagents_code.btw_api.require_thread_workspace", AsyncMock())
+    monkeypatch.setattr("niki_agent.btw_api.require_thread_workspace", AsyncMock())
     monkeypatch.setattr(
         offload_api,
         "get_server_runtime",
@@ -315,7 +315,7 @@ async def test_side_context_filters_for_selected_model_before_budgeting(
         state["_model_spec"] = "test:text-only"
     before = deepcopy(state)
     with patch(
-        "deepagents_code.config.create_model",
+        "niki_agent.config.create_model",
         return_value=SimpleNamespace(model=active),
     ):
         await operation.answer("thread", state, "Why?")
@@ -442,13 +442,13 @@ async def test_side_context_keeps_session_profile_overrides(
 ) -> None:
     from langchain_core.messages.utils import count_tokens_approximately
 
-    from deepagents_code import server_graph
-    from deepagents_code._server_config import ServerConfig
-    from deepagents_code._testing_models import DeterministicIntegrationChatModel
-    from deepagents_code.btw import BTW_OPERATION_ATTR
+    from niki_agent import server_graph
+    from niki_agent._server_config import ServerConfig
+    from niki_agent._testing_models import DeterministicIntegrationChatModel
+    from niki_agent.btw import BTW_OPERATION_ATTR
 
     monkeypatch.setattr(
-        "deepagents_code.config._create_model_via_init",
+        "niki_agent.config._create_model_via_init",
         lambda *_args, **_kwargs: DeterministicIntegrationChatModel(
             profile={"max_input_tokens": 8000, "tool_calling": True}
         ),
@@ -704,7 +704,7 @@ async def test_effective_context_survives_restart_and_eviction(
 async def test_side_answer_honors_retry_budget(
     streaming: bool, retries: int, restart: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.config import MODEL_RETRIES_ATTR
+    from niki_agent.config import MODEL_RETRIES_ATTR
 
     model = FakeMessagesListChatModel(responses=[])
     setattr(model, MODEL_RETRIES_ATTR, retries)
@@ -733,9 +733,7 @@ async def test_side_answer_honors_retry_budget(
         replacement = FakeMessagesListChatModel(responses=[])
         setattr(replacement, MODEL_RETRIES_ATTR, 1 - retries)
         operation = BtwOperation(replacement, "system", None)
-    monkeypatch.setattr(
-        "deepagents_code.model_retry._compute_backoff_delay", lambda _: 0
-    )
+    monkeypatch.setattr("niki_agent.model_retry._compute_backoff_delay", lambda _: 0)
     attempts = 0
     closed: list[int] = []
     fragments: list[str] = []
@@ -782,7 +780,7 @@ async def test_side_answer_honors_retry_budget(
 async def test_stream_never_retries_after_visible_text(
     failure: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.config import MODEL_RETRIES_ATTR
+    from niki_agent.config import MODEL_RETRIES_ATTR
 
     model = FakeMessagesListChatModel(responses=[])
     setattr(model, MODEL_RETRIES_ATTR, 2)
@@ -824,7 +822,7 @@ async def test_stream_never_retries_after_visible_text(
 async def test_cancel_before_visible_text_stops_retries_and_closes_stream(
     phase: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.config import MODEL_RETRIES_ATTR
+    from niki_agent.config import MODEL_RETRIES_ATTR
 
     model = FakeMessagesListChatModel(responses=[])
     setattr(model, MODEL_RETRIES_ATTR, 2)
@@ -852,7 +850,7 @@ async def test_cancel_before_visible_text_stops_retries_and_closes_stream(
         finally:
             closed.set()
 
-    monkeypatch.setattr("deepagents_code.model_retry._compute_backoff_delay", delay)
+    monkeypatch.setattr("niki_agent.model_retry._compute_backoff_delay", delay)
     monkeypatch.setattr(FakeMessagesListChatModel, "astream", stream)
     on_text = AsyncMock()
     task = asyncio.create_task(operation.answer("thread", {}, "why", on_text=on_text))
@@ -871,7 +869,7 @@ async def test_cancel_before_visible_text_stops_retries_and_closes_stream(
 
 @pytest.fixture
 def instruction_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from deepagents_code import agent
+    from niki_agent import agent
 
     user = tmp_path / "user.md"
     project = tmp_path / "AGENTS.md"
@@ -897,13 +895,13 @@ async def test_side_instructions_survive_a_fresh_runtime(
 ) -> None:
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from deepagents_code._testing_models import DeterministicIntegrationChatModel
-    from deepagents_code.agent import create_cli_agent
-    from deepagents_code.btw import BTW_OPERATION_ATTR
+    from niki_agent._testing_models import DeterministicIntegrationChatModel
+    from niki_agent.agent import create_cli_agent
+    from niki_agent.btw import BTW_OPERATION_ATTR
 
     model = DeterministicIntegrationChatModel()
     monkeypatch.setattr(
-        "deepagents_code.config.create_model",
+        "niki_agent.config.create_model",
         lambda *_args, **_kwargs: SimpleNamespace(model=model),
     )
     saver = InMemorySaver()
@@ -1012,7 +1010,7 @@ async def test_constructor_tools_are_absent_from_provider_request(
         elif source == "checkpoint":
             state = {"_model_spec": "openai:test-model", "_model_params": params}
         with patch(
-            "deepagents_code.config.create_model",
+            "niki_agent.config.create_model",
             return_value=SimpleNamespace(model=model),
         ):
             assert await operation.answer("thread", state, "why") == "answer"
@@ -1096,7 +1094,7 @@ async def test_native_anthropic_mcp_is_absent_from_provider_request(
         elif source == "checkpoint":
             state = {"_model_spec": "anthropic:test-model", "_model_params": options}
             monkeypatch.setattr(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 lambda *_args, **_kwargs: SimpleNamespace(model=model),
             )
         assert await operation.answer("thread", state, "why") == "answer"
@@ -1116,10 +1114,10 @@ async def test_native_anthropic_mcp_is_absent_from_provider_request(
     ],
 )
 async def test_route_rejects_invalid_question(payload: object) -> None:
-    from deepagents_code import offload_api
+    from niki_agent import offload_api
 
     with patch(
-        "deepagents_code.btw_api.require_thread_workspace", new=AsyncMock()
+        "niki_agent.btw_api.require_thread_workspace", new=AsyncMock()
     ) as workspace:
         async with AsyncClient(
             transport=ASGITransport(app=offload_api.app), base_url="http://test"
@@ -1152,7 +1150,7 @@ async def test_route_reads_busy_thread_without_writes(
         "next": ["tools"],
     }
     with patch(
-        "deepagents_code.config.create_model",
+        "niki_agent.config.create_model",
         return_value=SimpleNamespace(model=saved),
     ) as create:
         result = await client.post(
@@ -1172,12 +1170,12 @@ async def test_route_reads_busy_thread_without_writes(
 
 
 async def test_route_rejects_wrong_workspace_before_reading() -> None:
-    from deepagents_code import offload_api
-    from deepagents_code.workspace import WorkspaceConflictError
+    from niki_agent import offload_api
+    from niki_agent.workspace import WorkspaceConflictError
 
     with (
         patch(
-            "deepagents_code.btw_api.require_thread_workspace",
+            "niki_agent.btw_api.require_thread_workspace",
             new=AsyncMock(side_effect=WorkspaceConflictError("wrong workspace")),
         ),
         patch.object(offload_api, "_thread_client") as client_factory,
@@ -1243,8 +1241,8 @@ async def test_follow_up_reaches_model_with_side_history_and_leaves_state_unchan
 async def test_checkpoint_reconciles_cost_when_accounting_fails(
     main_total: float, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     remote = RemoteAgent("http://test")
     graph = MagicMock()
@@ -1282,7 +1280,7 @@ async def test_checkpoint_reconciles_cost_when_accounting_fails(
 async def test_cached_cost_without_checkpoint_preserves_provisional_spend(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     remote = RemoteAgent("http://test")
     graph = MagicMock()
@@ -1309,8 +1307,8 @@ async def test_cached_cost_without_checkpoint_preserves_provisional_spend(
 async def test_side_cost_survives_main_cancellation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.cost_tracking import _empty_cost_breakdown
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.cost_tracking import _empty_cost_breakdown
 
     main_total = 2.0
     provisional = 0.2
@@ -1335,9 +1333,7 @@ async def test_side_cost_survives_main_cancellation(
         started.set()
         await asyncio.Event().wait()
 
-    monkeypatch.setattr(
-        "deepagents_code.tui.textual_adapter.execute_task_textual", execute
-    )
+    monkeypatch.setattr("niki_agent.tui.textual_adapter.execute_task_textual", execute)
     async with app.run_test() as pilot:
         app._connecting = False
         app._agent_running = True
@@ -1548,7 +1544,7 @@ async def test_side_history_is_separate_per_thread_and_clear_survives_reopening(
     btw_app: tuple[DeepAgentsApp, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.app import TextualSessionState
+    from niki_agent.app import TextualSessionState
 
     app, remote = btw_app
     app._session_state = TextualSessionState(thread_id="btw-test")
@@ -1820,7 +1816,7 @@ async def test_modal_rejects_oversized_expanded_paste() -> None:
     """The size limit uses the full pasted text and leaves it editable."""
     from textual.app import App
 
-    from deepagents_code.tui.modals.btw import BtwTextArea
+    from niki_agent.tui.modals.btw import BtwTextArea
 
     app = App()
     answer = AsyncMock(return_value="Side answer")

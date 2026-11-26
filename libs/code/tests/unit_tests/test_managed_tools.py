@@ -1,4 +1,4 @@
-"""Unit tests for `deepagents_code.managed_tools`."""
+"""Unit tests for `niki_agent.managed_tools`."""
 
 from __future__ import annotations
 
@@ -17,9 +17,9 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code import _paths, managed_tools
-from deepagents_code._env_vars import OFFLINE, RIPGREP_INSTALLER
-from deepagents_code.managed_tools import ManagedToolUnavailableError
+from niki_agent import _paths, managed_tools
+from niki_agent._env_vars import OFFLINE, RIPGREP_INSTALLER
+from niki_agent.managed_tools import ManagedToolUnavailableError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -655,7 +655,7 @@ class TestManagedBinDirFallback:
         with (
             patch.object(managed_tools, "BIN_DIR", first),
             patch.object(managed_tools, "FALLBACK_BIN_DIR", second),
-            caplog.at_level(logging.INFO, logger="deepagents_code._paths"),
+            caplog.at_level(logging.INFO, logger="niki_agent._paths"),
             pytest.raises(managed_tools._NoWritableBinDirError) as exc_info,
         ):
             managed_tools._resolve_install_bin_dir()
@@ -788,7 +788,7 @@ def test_the_permission_error_reaches_the_cli_caller(
     """The CLI path renders the message instead of the missing-tool hint."""
     from rich.console import Console
 
-    from deepagents_code.main import _auto_install_ripgrep_cli
+    from niki_agent.main import _auto_install_ripgrep_cli
 
     buffer = io.StringIO()
     console = Console(file=buffer, width=200, force_terminal=False)

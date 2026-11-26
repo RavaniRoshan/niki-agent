@@ -6,14 +6,14 @@ import pytest
 from langchain_core.messages import ToolMessage
 from pydantic import ValidationError
 
-from deepagents_code.approval_mode import ApprovalMode
-from deepagents_code.hooks.models.adapters import (
+from niki_agent.approval_mode import ApprovalMode
+from niki_agent.hooks.models.adapters import (
     HOOK_DECISION_ADAPTER,
     HOOK_WIRE_INPUT_ADAPTER,
     HOOK_WIRE_OUTPUT_ADAPTER,
     HOOKS_CONFIG_ADAPTER,
 )
-from deepagents_code.hooks.models.domain import (
+from niki_agent.hooks.models.domain import (
     HookContext,
     HookEvent,
     PermissionEffect,

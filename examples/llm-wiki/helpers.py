@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from deepagents import create_deep_agent
-from deepagents.backends import CompositeBackend, FilesystemBackend, LangSmithSandbox
-from deepagents.middleware.filesystem import FilesystemPermission
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.backends import CompositeBackend, FilesystemBackend, LangSmithSandbox
+from niki_agent.sdk.middleware.filesystem import FilesystemPermission
 import index as index_helpers
 import log as log_helpers
 from models import CliDeps, Mode, RunResult, RunnerConfig
@@ -24,7 +24,7 @@ from models import CliDeps, Mode, RunResult, RunnerConfig
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
 
-    from deepagents.backends.protocol import SandboxBackendProtocol
+    from niki_agent.sdk.backends.protocol import SandboxBackendProtocol
     from ingest import IngestResult
 
 

@@ -8,12 +8,12 @@ import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langgraph.types import Command
 
-from deepagents_code.adapters.runtime.langgraph_remote import (
+from niki_agent.adapters.runtime.langgraph_remote import (
     LangGraphEventEncoder,
     LangGraphRemoteRuntime,
 )
-from deepagents_code.application.run_turn import RunProtocolError, RunTurnCoordinator
-from deepagents_code.domain.events import (
+from niki_agent.application.run_turn import RunProtocolError, RunTurnCoordinator
+from niki_agent.domain.events import (
     JsonObject,
     ResumeRequest,
     RunEvent,

@@ -8,15 +8,15 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code._paths import PATHS
-from deepagents_code.agent import _apply_inherited_pythonpath
-from deepagents_code.client.launch.server import (
+from niki_agent._paths import PATHS
+from niki_agent.agent import _apply_inherited_pythonpath
+from niki_agent.client.launch.server import (
     _SERVER_ENV_DENYLIST,
     _build_server_cmd,
     _build_server_env,
     _server_env_with_overrides,
 )
-from deepagents_code.config import (
+from niki_agent.config import (
     _INHERITED_PYTHONPATH_ENV,
     _USER_LANGSMITH_ENV_CARRIER,
 )
@@ -70,7 +70,7 @@ class TestBuildServerEnv:
 
     def test_strips_values_injected_by_client_dotenv_loader(self) -> None:
         """A client project value does not become server launch state."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         config_mod._dotenv_loaded_values["WORKSPACE_VALUE"] = "first"
         try:
@@ -114,7 +114,7 @@ class TestBuildServerEnv:
         assert env[_INHERITED_PYTHONPATH_ENV] == ""
 
     def test_requires_captured_langsmith_environment(self) -> None:
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
         original_user = dict(config_mod._bootstrap_state.user_langsmith_env)
@@ -132,7 +132,7 @@ class TestBuildServerEnv:
 
     def test_names_the_swallowed_bootstrap_failure(self) -> None:
         """Bootstrap tolerates its own errors, so this must name the cause."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
         original_user = dict(config_mod._bootstrap_state.user_langsmith_env)
@@ -153,7 +153,7 @@ class TestBuildServerEnv:
     def test_overwrites_untrusted_langsmith_carrier(self) -> None:
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
         original_user = dict(config_mod._bootstrap_state.user_langsmith_env)
@@ -205,8 +205,8 @@ class TestLangSmithCarrierRoundTrip:
         self, monkeypatch: pytest.MonkeyPatch, user_key: str | None
     ) -> None:
         """The real server handoff restores user settings and removes agent ones."""
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import restore_user_langsmith_env
+        import niki_agent.config as config_mod
+        from niki_agent.config import restore_user_langsmith_env
 
         launch = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
         launch["LANGSMITH_API_KEY"] = user_key
@@ -223,7 +223,7 @@ class TestLangSmithCarrierRoundTrip:
         shell_env.update(
             LANGSMITH_API_KEY="agent-session-key",
             LANGSMITH_TRACING="true",
-            DEEPAGENTS_CODE_LANGSMITH_TRACING="true",
+            NIKI_LANGSMITH_TRACING="true",
         )
         restore_user_langsmith_env(shell_env)
 
@@ -235,7 +235,7 @@ class TestLangSmithCarrierRoundTrip:
         assert shell_env["LANGSMITH_PROFILE"] == "oauth"
         assert shell_env["LANGSMITH_CONFIG_FILE"] == "/tmp/ls.json"
         assert "LANGSMITH_TRACING" not in shell_env
-        assert "DEEPAGENTS_CODE_LANGSMITH_TRACING" not in shell_env
+        assert "NIKI_LANGSMITH_TRACING" not in shell_env
         assert _USER_LANGSMITH_ENV_CARRIER not in shell_env
 
 
@@ -248,13 +248,13 @@ class TestServerEnvProfilePinning:
     """
 
     def test_persistent_override_cannot_move_the_profile(self) -> None:
-        env = _server_env_with_overrides({"DEEPAGENTS_HOME": "/tmp/evil"}, {})
-        assert env["DEEPAGENTS_HOME"] == str(PATHS.profile.root)
+        env = _server_env_with_overrides({"NIKI_HOME": "/tmp/evil"}, {})
+        assert env["NIKI_HOME"] == str(PATHS.profile.root)
 
     def test_scoped_override_cannot_replace_langsmith_carrier(self) -> None:
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
         original_user = dict(config_mod._bootstrap_state.user_langsmith_env)

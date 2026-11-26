@@ -12,7 +12,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-import deepagents_code.hooks.legacy as hooks_mod
+import niki_agent.hooks.legacy as hooks_mod
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +38,7 @@ class TestLoadHooks:
         (tmp_path / "hooks.json").write_text("{}")
 
         with (
-            patch("deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path),
+            patch("niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path),
             patch("pathlib.Path.read_text", side_effect=OSError("permission denied")),
         ):
             result = hooks_mod._load_hooks()
@@ -51,7 +51,7 @@ class TestLoadHooks:
         # would write it.
         (tmp_path / "hooks.json").write_bytes(b'{"hooks": [{"command": ["caf\xe9"]}]}')
 
-        with patch("deepagents_code.model_config.DEFAULT_CONFIG_DIR", tmp_path):
+        with patch("niki_agent.model_config.DEFAULT_CONFIG_DIR", tmp_path):
             result = hooks_mod._load_hooks()
 
         assert result == []
@@ -69,7 +69,7 @@ class TestDispatchHook:
         """Event name is automatically added to the payload."""
         hooks_mod._hooks_config = [{"command": ["echo"]}]
 
-        with patch("deepagents_code.hooks.subprocess.run") as mock_run:
+        with patch("niki_agent.hooks.subprocess.run") as mock_run:
             await hooks_mod.dispatch_hook("task.complete", {})
 
         stdin_bytes = mock_run.call_args[1]["input"]
@@ -80,7 +80,7 @@ class TestDispatchHook:
         hooks_mod._hooks_config = [{"command": ["/not/executable"]}]
 
         with patch(
-            "deepagents_code.hooks.subprocess.run",
+            "niki_agent.hooks.subprocess.run",
             side_effect=PermissionError("not executable"),
         ):
             # Should not raise.
@@ -101,7 +101,7 @@ class TestDispatchHook:
                 msg = "fail"
                 raise FileNotFoundError(msg)
 
-        with patch("deepagents_code.hooks.subprocess.run", side_effect=side_effect):
+        with patch("niki_agent.hooks.subprocess.run", side_effect=side_effect):
             await hooks_mod.dispatch_hook("session.start", {})
 
         assert ["fail"] in calls

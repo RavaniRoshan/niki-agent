@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # Module-name prefixes to evict between benchmark iterations so each
 # run simulates a cold-start import.
 _EVICT_PREFIXES = (
-    "deepagents_code",
+    "niki_agent",
     "deepagents",
     "langchain",
     "langchain_core",
@@ -78,7 +78,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.app
+            import niki_agent.app
 
         benchmark(do_import)
 
@@ -87,7 +87,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.main
+            import niki_agent.main
 
         benchmark(do_import)
 
@@ -96,7 +96,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            from deepagents_code._cli_context import CLIContext
+            from niki_agent._cli_context import CLIContext
 
         benchmark(do_import)
 
@@ -105,7 +105,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code._ask_user_types
+            import niki_agent._ask_user_types
 
         benchmark(do_import)
 
@@ -114,7 +114,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.tui.textual_adapter
+            import niki_agent.tui.textual_adapter
 
         benchmark(do_import)
 
@@ -123,7 +123,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.tool_display
+            import niki_agent.tool_display
 
         benchmark(do_import)
 
@@ -132,7 +132,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.config
+            import niki_agent.config
 
         benchmark(do_import)
 
@@ -141,7 +141,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.ui
+            import niki_agent.ui
 
         benchmark(do_import)
 
@@ -150,7 +150,7 @@ class TestStartupPathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.file_ops
+            import niki_agent.file_ops
 
         benchmark(do_import)
 
@@ -171,7 +171,7 @@ class TestRuntimePathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.configurable_model
+            import niki_agent.configurable_model
 
         benchmark(do_import)
 
@@ -180,6 +180,6 @@ class TestRuntimePathBenchmarks:
 
         def do_import() -> None:
             _evict_modules()
-            import deepagents_code.ask_user
+            import niki_agent.ask_user
 
         benchmark(do_import)

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from deepagents_code._tool_stream import (
+from niki_agent._tool_stream import (
     INVALID_ARGS_PREVIEW_LIMIT,
     MAX_JSON_CONTAINER_DEPTH,
     ToolCallBuffer,
@@ -61,7 +61,7 @@ class TestNormalizeToolStatus:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """An unknown present status fails closed to error and is logged."""
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert normalize_tool_status("cancelled", "execute") == "error"
         assert any("Unexpected ToolMessage.status" in r.message for r in caplog.records)
 
@@ -103,7 +103,7 @@ class TestToolCallBufferParseArgs:
         over_closed = ToolCallBuffer()
         over_closed.ingest(name=None, tool_id=None, args='{"a": 1}')
         assert over_closed.parse_args() == {"a": 1}
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             over_closed.ingest(name=None, tool_id=None, args="}")
             assert over_closed.parse_args() is None
 
@@ -159,7 +159,7 @@ class TestToolCallBufferParseArgs:
         streaming, so dropping that term would warn on a healthy fragment.
         """
         buffer = ToolCallBuffer(args_parts=['{"a": 1} "x}'])
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is False
         assert not any(
@@ -187,7 +187,7 @@ class TestToolCallBufferParseArgs:
             buffer.ingest(name=None, tool_id=None, args="[")
         for _ in range(depth):
             buffer.ingest(name=None, tool_id=None, args="]")
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is True
 
@@ -204,7 +204,7 @@ class TestToolCallBufferParseArgs:
         buffer.ingest(name=None, tool_id=None, args='{"a": ')
         buffer.ingest(name=None, tool_id=None, args="1}")
         buffer.ingest(name=None, tool_id=None, args="}")
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is True
         assert any(
@@ -226,7 +226,7 @@ class TestToolCallBufferParseArgs:
         for _ in range(40):
             buffer.ingest(name=None, tool_id=None, args=filler)
         buffer.ingest(name=None, tool_id=None, args="}")
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
 
         (record,) = [
@@ -267,7 +267,7 @@ class TestToolCallBufferParseArgs:
         `warned` stays unset, and the next fragment can still complete it.
         """
         buffer = ToolCallBuffer(args_parts=['{"edits": [{"a": 1}'])
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is False
         assert not any(
@@ -290,7 +290,7 @@ class TestToolCallBufferParseArgs:
         brace as a real close.
         """
         buffer = ToolCallBuffer(args_parts=['{"content": "a } b}'])
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is False
         assert not any(
@@ -313,7 +313,7 @@ class TestToolCallBufferParseArgs:
         depth = 100_000
         nested = "[" * depth + "]" * depth
         buffer = ToolCallBuffer(args_parts=[nested])
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is True
         assert any(
@@ -333,7 +333,7 @@ class TestToolCallBufferParseArgs:
         warned once rather than mistaken for a still-open mid-stream fragment.
         """
         buffer = ToolCallBuffer(args_parts=['{"a": 1}}'])
-        with caplog.at_level("WARNING", logger="deepagents_code._tool_stream"):
+        with caplog.at_level("WARNING", logger="niki_agent._tool_stream"):
             assert buffer.parse_args() is None
         assert buffer.warned is True
         assert any(

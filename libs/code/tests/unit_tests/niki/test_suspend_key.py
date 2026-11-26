@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from deepagents_code.tui.widgets.chat_input import ChatTextArea
+from niki_agent.tui.widgets.chat_input import ChatTextArea
 from unit_tests.niki.turn_harness import make_app
 
 if TYPE_CHECKING:
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
 SIZE = (100, 32)
 

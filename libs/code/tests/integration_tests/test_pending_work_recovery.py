@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from langchain_core.runnables import RunnableConfig
 
-from deepagents_code.client.remote_client import RemoteAgent
+from niki_agent.client.remote_client import RemoteAgent
 
 
 class _State(TypedDict):

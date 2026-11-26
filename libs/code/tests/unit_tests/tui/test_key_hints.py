@@ -2,8 +2,8 @@
 
 import pytest
 
-from deepagents_code.config import ASCII_GLYPHS, UNICODE_GLYPHS, Glyphs
-from deepagents_code.tui.key_hints import modal_navigation_hint
+from niki_agent.config import ASCII_GLYPHS, UNICODE_GLYPHS, Glyphs
+from niki_agent.tui.key_hints import modal_navigation_hint
 
 
 @pytest.mark.parametrize(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import pytest
-from deepagents import create_deep_agent
+from niki_agent.sdk import create_deep_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 

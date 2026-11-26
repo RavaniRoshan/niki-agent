@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python `>=3.12,<4.0`; LangGraph; existing Niki runtime contracts and `RunTurnCoordinator`; Textual-independent ACP adapter; pytest, Ruff, and `ty`.
 
-**Spec:** `docs/superpowers/plans/2026-11-23-niki-agent-architecture.md` Task 4 ACP production-routing requirement; repository ACP protocol implementation in `libs/acp/deepagents_acp/server.py`; Niki ACP adapter in `libs/code/deepagents_code/acp.py`.
+**Spec:** `docs/superpowers/plans/2026-11-23-niki-agent-architecture.md` Task 4 ACP production-routing requirement; repository ACP protocol implementation in `libs/acp/deepagents_acp/server.py`; Niki ACP adapter in `libs/code/niki_agent/acp.py`.
 
 ## Global Constraints
 
@@ -32,7 +32,7 @@
 ### Task 1: Make the ACP runtime adapter configurable and observable
 
 **Files:**
-- Modify: `libs/code/deepagents_code/adapters/runtime/acp.py`
+- Modify: `libs/code/niki_agent/adapters/runtime/acp.py`
 - Test: `libs/code/tests/unit_tests/test_niki_entrypoints.py`
 
 **Interfaces:**
@@ -61,7 +61,7 @@ Expected: FAIL because `ACPAgentRuntime` does not yet accept execution options o
 
 - [x] **Step 3: Implement configurable ACP graph execution**
 
-Add the constructor options in `libs/code/deepagents_code/adapters/runtime/acp.py`. Pass the supplied graph input, full config with the request session ID enforced as `configurable.thread_id`, stream modes, subgraph setting, and extra graph kwargs to `agent.astream`. Invoke and await `on_chunk` before converting each graph chunk. Retain current defaults for existing callers.
+Add the constructor options in `libs/code/niki_agent/adapters/runtime/acp.py`. Pass the supplied graph input, full config with the request session ID enforced as `configurable.thread_id`, stream modes, subgraph setting, and extra graph kwargs to `agent.astream`. Invoke and await `on_chunk` before converting each graph chunk. Retain current defaults for existing callers.
 
 - [x] **Step 4: Add the approval-resume continuity test**
 
@@ -96,14 +96,14 @@ Run Ruff check/format and `ty check` for the changed adapter/tests; expected: PA
 - [x] **Step 7: Commit the adapter change**
 
 ```bash
-git add libs/code/deepagents_code/adapters/runtime/acp.py libs/code/tests/unit_tests/test_niki_entrypoints.py
+git add libs/code/niki_agent/adapters/runtime/acp.py libs/code/tests/unit_tests/test_niki_entrypoints.py
 git commit -m "feat(code): preserve ACP graph streams in runtime adapter"
 ```
 
 ### Task 2: Route Niki ACP prompts through the coordinator
 
 **Files:**
-- Modify: `libs/code/deepagents_code/acp.py`
+- Modify: `libs/code/niki_agent/acp.py`
 - Modify: `libs/code/tests/unit_tests/test_acp.py`
 - Modify: `docs/niki/UPSTREAM_DIFF.md`
 - Test: `libs/acp/tests/test_agent.py` (existing upstream ACP protocol regression suite)
@@ -129,11 +129,11 @@ Expected: FAIL because the Niki-scoped progress context and coordinator route ar
 
 - [x] **Step 3: Add ACP prompt-scoped runtime progress**
 
-In `deepagents_code/acp.py`, create a `ContextVar[_RuntimeProgress | None]`. In `AgentServerACP.prompt`, set it to a fresh UUID and `TurnStatus.created` only when `is_niki_runtime_enabled()`; restore the token with the existing `_prompt` context in `finally`. Keep legacy entrypoints on the direct path.
+In `niki_agent/acp.py`, create a `ContextVar[_RuntimeProgress | None]`. In `AgentServerACP.prompt`, set it to a fresh UUID and `TurnStatus.created` only when `is_niki_runtime_enabled()`; restore the token with the existing `_prompt` context in `finally`. Keep legacy entrypoints on the direct path.
 
 - [x] **Step 4: Route native ACP graph calls through the coordinator**
 
-In `_AutoGraph.astream`, preserve the existing Auto approval store update, prompt metadata, `CLIContextSchema`, and direct graph stream. When runtime progress is present, create `ACPAgentRuntime` over the underlying graph with the ACP input, config, `stream_mode`, `subgraphs`, and Auto context. Build `TurnRequest` for the initial message or `ResumeRequest` for `Command.resume`, using the same session/turn ID, current progress sequence/status, ACP text, and working directory. Stream native chunks through a one-item queue and `stream_native_chunks`; update progress from coordinator-validated events. Use the progress turn ID in `deepagents_code_user_prompt` metadata so runtime events and hook metadata share identity.
+In `_AutoGraph.astream`, preserve the existing Auto approval store update, prompt metadata, `CLIContextSchema`, and direct graph stream. When runtime progress is present, create `ACPAgentRuntime` over the underlying graph with the ACP input, config, `stream_mode`, `subgraphs`, and Auto context. Build `TurnRequest` for the initial message or `ResumeRequest` for `Command.resume`, using the same session/turn ID, current progress sequence/status, ACP text, and working directory. Stream native chunks through a one-item queue and `stream_native_chunks`; update progress from coordinator-validated events. Use the progress turn ID in `niki_agent_user_prompt` metadata so runtime events and hook metadata share identity.
 
 - [x] **Step 5: Add legacy-routing and resume compatibility tests**
 
@@ -160,7 +160,7 @@ Update `docs/niki/UPSTREAM_DIFF.md` to document that Niki ACP prompt graphs pass
 - [x] **Step 8: Commit the Niki ACP route**
 
 ```bash
-git add libs/code/deepagents_code/acp.py libs/code/tests/unit_tests/test_acp.py docs/niki/UPSTREAM_DIFF.md
+git add libs/code/niki_agent/acp.py libs/code/tests/unit_tests/test_acp.py docs/niki/UPSTREAM_DIFF.md
 git commit -m "feat(code): route Niki ACP prompts through runtime port"
 ```
 

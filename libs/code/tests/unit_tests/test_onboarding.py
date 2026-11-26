@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from deepagents_code.onboarding import (
+from niki_agent.onboarding import (
     ONBOARDING_MARKER_FILENAME,
     ONBOARDING_NAME_MEMORY_END,
     ONBOARDING_NAME_MEMORY_START,
@@ -97,7 +97,7 @@ class TestOnboardingState:
         marker back at `~/.deepagents/` would silently re-pollute the agent
         listing surface.
         """
-        from deepagents_code import onboarding as onboarding_module
+        from niki_agent import onboarding as onboarding_module
 
         fake_state_dir = tmp_path / ".deepagents" / ".state"
         monkeypatch.setattr(onboarding_module, "DEFAULT_STATE_DIR", fake_state_dir)

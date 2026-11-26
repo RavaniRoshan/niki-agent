@@ -1,11 +1,11 @@
 {
   "schemaVersion": "coding-agent-v1",
   "description": "Machine-readable contract for LangSmith coding-agent trace metadata. Set on run.extra.metadata. 'requirement' tiers: always = on every run; where_known = required when the runtime exposes the value, omit otherwise; contextual = optional. runTypes: root | llm | tool | subagent | interrupted.",
-  "integrations": ["claude-code", "openai-codex", "deepagents-code", "cursor", "pi"],
+  "integrations": ["claude-code", "openai-codex", "niki-agent", "cursor", "pi"],
   "runtimeNames": {
     "claude-code": "Claude Code",
     "openai-codex": "Codex",
-    "deepagents-code": "Deep Agents Code",
+    "niki-agent": "Niki Agent",
     "cursor": "Cursor",
     "pi": "Pi"
   },
@@ -22,7 +22,7 @@
       "key": "ls_integration",
       "appliesTo": ["root", "llm", "tool", "subagent", "interrupted"],
       "type": "string",
-      "allowedValues": ["claude-code", "openai-codex", "deepagents-code", "cursor", "pi"],
+      "allowedValues": ["claude-code", "openai-codex", "niki-agent", "cursor", "pi"],
       "requirement": "always",
       "requiredWhereKnown": false
     },
@@ -30,7 +30,7 @@
       "key": "ls_agent_runtime",
       "appliesTo": ["root", "llm", "tool", "subagent", "interrupted"],
       "type": "string",
-      "allowedValues": ["Claude Code", "Codex", "Deep Agents Code", "Cursor", "Pi"],
+      "allowedValues": ["Claude Code", "Codex", "Deep Agents Code", "Niki Agent", "Cursor", "Pi"],
       "requirement": "always",
       "requiredWhereKnown": false
     },
@@ -232,7 +232,7 @@
       "turn_id": "none -> use turnIndex as turn_number",
       "turn_number": "turnIndex (0-based) + 1"
     },
-    "deepagents-code": {
+    "niki-agent": {
       "thread_id": "configurable.thread_id",
       "turn_id": "add — uuid4 / msg-id per prompt",
       "turn_number": "add — counter on session_state"

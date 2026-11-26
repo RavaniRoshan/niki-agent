@@ -30,8 +30,8 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from deepagents import create_deep_agent
-from deepagents.middleware.async_subagents import AsyncSubAgent
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.middleware.async_subagents import AsyncSubAgent
 
 load_dotenv(Path(__file__).parent / ".env")
 

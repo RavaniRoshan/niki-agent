@@ -14,8 +14,8 @@ Managed server composition root (server_graph.py)
   -> LangGraph graph + provider models + tools + MCP + workspace policy
 ```
 
-- `deepagents_code.domain` and `deepagents_code.application` import only the standard library.
-- `AgentRuntime` is the active application boundary for complete streamed turns; its adapters live under `deepagents_code.adapters.runtime/`.
+- `niki_agent.domain` and `niki_agent.application` import only the standard library.
+- `AgentRuntime` is the active application boundary for complete streamed turns; its adapters live under `niki_agent.adapters.runtime/`.
 - `server_graph.py` is the managed server composition root. It owns graph execution and composes the current provider, tool, MCP, workspace, and checkpoint integrations.
 - Tool invocation and approval stay together on the server side; a client-side tool registry must not bypass that policy boundary.
 - Provider execution stays inside the LangGraph runtime so streamed text, tool calls, retries, usage metadata, and checkpoint resumes share one path.

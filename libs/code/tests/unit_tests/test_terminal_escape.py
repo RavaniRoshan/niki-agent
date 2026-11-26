@@ -1,4 +1,4 @@
-"""Tests for `deepagents_code.terminal_escape`."""
+"""Tests for `niki_agent.terminal_escape`."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import pytest
 if TYPE_CHECKING:
     from types import TracebackType
 
-from deepagents_code import terminal_escape
-from deepagents_code.terminal_escape import (
+from niki_agent import terminal_escape
+from niki_agent.terminal_escape import (
     TerminalProgressState,
     clear_terminal_progress,
     reset_terminal_background,

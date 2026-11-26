@@ -5,15 +5,15 @@ description: Explains dcode and Talon remote sandbox-provider discovery, provisi
 tags: [sandbox, providers, dcode, talon, execution-boundaries, quickjs]
 sources:
   - id: openwiki-source-9f207ab48c42b84dcfd05f43
-    resource: repo://libs/code/deepagents_code/integrations/sandbox_config.py
+    resource: repo://libs/code/niki_agent/integrations/sandbox_config.py
   - id: openwiki-source-bcf1f68e7989964d2fcec7aa
-    resource: repo://libs/code/deepagents_code/integrations/sandbox_factory.py
+    resource: repo://libs/code/niki_agent/integrations/sandbox_factory.py
   - id: openwiki-source-03e3942e51522a3aa485168d
-    resource: repo://libs/code/deepagents_code/integrations/sandbox_provider.py
+    resource: repo://libs/code/niki_agent/integrations/sandbox_provider.py
   - id: openwiki-source-668d65d09330d04370b47300
-    resource: repo://libs/code/deepagents_code/integrations/sandbox_registry.py
+    resource: repo://libs/code/niki_agent/integrations/sandbox_registry.py
   - id: openwiki-source-a9eb680bb6bdae179f52a3ac
-    resource: repo://libs/code/deepagents_code/server_graph.py
+    resource: repo://libs/code/niki_agent/server_graph.py
   - id: openwiki-source-7ba50bd13eb62341a2061ef9
     resource: repo://libs/code/pyproject.toml
   - id: openwiki-source-e3efb5f3e4a9e8517eb6d8f5
@@ -73,7 +73,7 @@ These helpers do not reduce `execute()` authority. Shell quoting in recursive de
 
 `SandboxProviderMetadata` supports provider discovery without creating credential-dependent clients: it advertises installation guidance, capability flags, working-directory information, and dependency probes. `SandboxProvider` owns synchronous create/attach/delete operations and supplies async wrappers through `asyncio.to_thread`.
 
-The registry merges curated providers, packages advertised through `deepagents_code.sandbox_providers`, and local `[sandboxes.providers]` declarations. A name resolves in this order: **configuration, entry point, built-in**. Treat a configured `class_path` as operator-trusted code. The `[sandboxes].default` selection is considered only after sandbox mode has been explicitly enabled, so declaring a default does not silently redirect normal execution.
+The registry merges curated providers, packages advertised through `niki_agent.sandbox_providers`, and local `[sandboxes.providers]` declarations. A name resolves in this order: **configuration, entry point, built-in**. Treat a configured `class_path` as operator-trusted code. The `[sandboxes].default` selection is considered only after sandbox mode has been explicitly enabled, so declaring a default does not silently redirect normal execution.
 
 The base `deepagents-code` distribution includes `langsmith[sandbox]`. The other curated remote providers are optional extras; install the extra matching `DEEPAGENTS_TALON_SANDBOX`, or install them all:
 

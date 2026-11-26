@@ -2,8 +2,8 @@ import argparse
 import os
 import sys
 
-from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
+from niki_agent.sdk import create_deep_agent
+from niki_agent.sdk.backends import FilesystemBackend
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_community.agent_toolkits import SQLDatabaseToolkit

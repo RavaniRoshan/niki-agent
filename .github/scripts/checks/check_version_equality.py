@@ -1,8 +1,6 @@
 """Check that pyproject.toml and _version.py versions stay in sync.
 
-Prevents releases with mismatched version numbers across the SDK and code
-packages. Used by the CI workflow in .github/workflows/check_versions.yml
-and as a pre-commit hook.
+Used by `make check` and the pre-commit hook.
 """
 
 import re
@@ -11,8 +9,7 @@ import tomllib
 from pathlib import Path
 
 PACKAGES = [
-    ("libs/deepagents/pyproject.toml", "libs/deepagents/deepagents/_version.py"),
-    ("libs/code/pyproject.toml", "libs/code/deepagents_code/_version.py"),
+    ("libs/code/pyproject.toml", "libs/code/niki_agent/_version.py"),
 ]
 
 _VERSION_RE = re.compile(r'^__version__\s*=\s*"([^"]+)"', re.MULTILINE)

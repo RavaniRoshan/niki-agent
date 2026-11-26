@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from deepagents_code.cold_cache import (
+from niki_agent.cold_cache import (
     _LOGGED_DIAGNOSTICS,
     CacheConfidence,
     CacheWriteBucket,
@@ -288,7 +288,7 @@ def test_cross_format_suppression_warns_when_endpoints_are_trusted(
     invisible at the default log level, and the only symptom is an unexplained
     absence of cold-cache warnings.
     """
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert (
             resolve_prompt_cache_policy(
                 "openai:anthropic/claude-opus-5",
@@ -310,7 +310,7 @@ def test_cross_format_suppression_is_reported_without_trust_configured(
     formatted message, so a shared string would let this `INFO` swallow the
     `WARNING` a user who later configures trust needs to see.
     """
-    with caplog.at_level(logging.INFO, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.INFO, logger="niki_agent.cold_cache"):
         assert (
             resolve_prompt_cache_policy(
                 "openai:anthropic/claude-opus-5",
@@ -331,7 +331,7 @@ def test_cross_format_trusted_warning_survives_an_earlier_untrusted_record(
     real sequence when a user edits `config.toml` mid-session.
     """
     spec = "openai:anthropic/claude-opus-5"
-    with caplog.at_level(logging.INFO, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.INFO, logger="niki_agent.cold_cache"):
         resolve_prompt_cache_policy(spec, base_url="https://gateway.example.com/v1")
         caplog.clear()
         resolve_prompt_cache_policy(
@@ -476,7 +476,7 @@ def test_load_trusted_cache_endpoints_rejects_and_logs_bad_entries(
 ) -> None:
     config = {"warnings": {"trusted_cache_endpoints": [entry]}}
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert load_trusted_cache_endpoints(config) == frozenset()
 
     assert "trusted_cache_endpoints" in caplog.text
@@ -492,7 +492,7 @@ def test_load_trusted_cache_endpoints_logs_a_non_table_section(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """`warnings = "off"` discards every option in the section, not just this one."""
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert load_trusted_cache_endpoints({"warnings": "off"}) == frozenset()
 
     assert "expected a table" in caplog.text
@@ -509,7 +509,7 @@ def test_load_trusted_cache_endpoints_confirms_a_good_set(
     """
     config = {"warnings": {"trusted_cache_endpoints": ["gateway.example.com"]}}
 
-    with caplog.at_level(logging.INFO, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.INFO, logger="niki_agent.cold_cache"):
         assert load_trusted_cache_endpoints(config) == frozenset(
             {"gateway.example.com"}
         )
@@ -526,7 +526,7 @@ def test_trusted_set_that_never_matches_is_reported(
     a healthy cache -- so it must reach the Debug Console at the default level
     rather than sitting in a debug record nobody sees.
     """
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert (
             resolve_prompt_cache_policy(
                 "openai:gpt-5.6",
@@ -548,7 +548,7 @@ def test_untrusted_custom_endpoint_stays_quiet(
     A custom endpoint with no trust list is the ordinary opt-out, so it must
     not produce a warning on every turn.
     """
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert (
             resolve_prompt_cache_policy(
                 "openai:gpt-5.6", base_url="https://proxy.example.com/v1"
@@ -565,7 +565,7 @@ def test_load_trusted_cache_endpoints_logs_a_non_list_value(
     """A bare string is the likeliest hand-edit and must not fail silently."""
     config = {"warnings": {"trusted_cache_endpoints": "smith.langchain.com"}}
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert load_trusted_cache_endpoints(config) == frozenset()
 
     assert "expected a list" in caplog.text
@@ -710,7 +710,7 @@ def test_load_trusted_cache_endpoints_keeps_good_entries_beside_bad(
         }
     }
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         assert load_trusted_cache_endpoints(config) == frozenset(
             {"good.example.com", "other.example.com"}
         )
@@ -730,7 +730,7 @@ def test_load_trusted_cache_endpoints_logs_each_rejection_once(
     """
     config = {"warnings": {"trusted_cache_endpoints": ["smith.langchain,com"]}}
 
-    with caplog.at_level(logging.WARNING, logger="deepagents_code.cold_cache"):
+    with caplog.at_level(logging.WARNING, logger="niki_agent.cold_cache"):
         for _ in range(5):
             assert load_trusted_cache_endpoints(config) == frozenset()
 
@@ -751,7 +751,7 @@ def test_load_trusted_cache_endpoints_reads_config_from_disk(
         '[warnings]\ntrusted_cache_endpoints = ["smith.langchain.com"]\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config_path)
 
     assert load_trusted_cache_endpoints() == frozenset({"smith.langchain.com"})
 
@@ -789,7 +789,7 @@ def test_load_trusted_cache_endpoints_survives_an_undecodable_config(
     """
     config_path = tmp_path / "config.toml"
     config_path.write_bytes(b"\xff\xfe[warnings]\n")
-    monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config_path)
 
     assert load_trusted_cache_endpoints() == frozenset()
 
@@ -800,7 +800,7 @@ def test_non_finite_price_is_reported_not_silently_skipped(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Corrupt pricing data warns instead of reading as "no price published"."""
-    from deepagents_code import cost_tracking
+    from niki_agent import cost_tracking
 
     monkeypatch.setattr(cost_tracking, "estimate_cost", lambda *_a, **_k: float("inf"))
 

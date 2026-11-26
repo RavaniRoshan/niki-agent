@@ -4,7 +4,7 @@ import html
 
 from textual.app import App
 
-from deepagents_code.tui.modals.resume_blocked import (
+from niki_agent.tui.modals.resume_blocked import (
     ResumeBlockedChoice,
     ResumeBlockedScreen,
 )

@@ -19,13 +19,13 @@ Rust slice by slice once the client has parity.
 
 | Slice | State | Evidence |
 | --- | --- | --- |
-| Phase 0 — delete the rig | in progress | deletions staged; `libs/code` check running |
-| Phase 1 — rename | not started | — |
-| Phase 1 — vendor SDK | not started | — |
-| Phase 1 — trim workspace | not started | — |
-| Phase 1 — brand gate | not started | — |
-| Phase 2 — accessibility | not started | — |
-| Phase 2 — parity rows | not started | — |
+| Phase 0 — delete the rig | done | `dba01031`; no Harbor path or workflow remains |
+| Phase 1 — rename | done | `niki_agent`, `niki-agent`, `NIKI_*`, `~/.niki` migration; `test_env_vars.py` drift guard green |
+| Phase 1 — vendor SDK | done | `niki_agent/sdk/` + `acp_sdk/` with `PROVENANCE.md`; no runtime import of an upstream distribution |
+| Phase 1 — trim workspace | done | `archive/` holds the former packages; `libs/code` is the only tested package |
+| Phase 1 — brand gate | done | `tests/unit_tests/niki/test_brand_gate.py` (6 rows) |
+| Phase 2 — accessibility | done | `test_theme_contrast.py`, `test_motion.py`, `test_screen_reader.py`, `test_keymap.py`, `test_snapshots.py` at 40/50/80/120/160 |
+| Phase 2 — parity rows | done | `docs/niki/UI_PARITY.md`; `#` memory added in `niki_agent/memory_note.py` |
 | Phase 3 — M0–M2 | not started | — |
 
 ## Owner decisions taken (2026-11-26)
@@ -90,7 +90,7 @@ The rename is mechanical; the decisions are what make it safe.
 
 | Surface | From | To | Compat |
 | --- | --- | --- | --- |
-| Import package | `deepagents_code` | `niki_agent` | none (internal) |
+| Import package | `niki_agent` | `niki_agent` | none (internal) |
 | Distribution | `deepagents-code` | `niki-agent` | one release with `Provides-Dist` note |
 | Console scripts | `dcode`, `deepagents-code`, `niki` | `niki` | aliases print one deprecation line |
 | Env vars (100) | `DEEPAGENTS_CODE_*` | `NIKI_*` | old names read as deprecated aliases, warn once |
@@ -137,7 +137,7 @@ and a GitHub release with the wheel plus checksums.
 
 **Gate:** `niki` installs from a clean clone under the new name, `readiness`
 passes, `make check` is green, the brand gate passes, and `grep -r
-deepagents_code libs/code/deepagents_code` finds nothing.
+niki_agent libs/code/niki_agent` finds nothing.
 
 ---
 

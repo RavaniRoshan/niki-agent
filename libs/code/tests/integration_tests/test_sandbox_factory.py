@@ -18,9 +18,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterator
 
 import pytest
-from deepagents.backends.protocol import SandboxBackendProtocol
 
-from deepagents_code.integrations.sandbox_factory import create_sandbox
+from niki_agent.integrations.sandbox_factory import create_sandbox
+from niki_agent.sdk.backends.protocol import SandboxBackendProtocol
 
 
 class BaseSandboxIntegrationTest(ABC):

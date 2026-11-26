@@ -3,7 +3,7 @@
 from textual.app import App
 from textual.widgets import Static
 
-from deepagents_code.tui.modals.session_cost import SessionCostWarningScreen
+from niki_agent.tui.modals.session_cost import SessionCostWarningScreen
 
 
 async def test_warning_copy_and_click_persistence() -> None:

@@ -13,15 +13,15 @@ import pytest
 from textual.app import App
 from textual.widgets import OptionList, Static
 
-from deepagents_code import model_config, reasoning_effort
-from deepagents_code.app import DeepAgentsApp, _EffortContext
-from deepagents_code.config import runtime_state
-from deepagents_code.reasoning_effort import (
+from niki_agent import model_config, reasoning_effort
+from niki_agent.app import DeepAgentsApp, _EffortContext
+from niki_agent.config import runtime_state
+from niki_agent.reasoning_effort import (
     current_effort_from_model_params,
     has_explicit_effort_model_params,
 )
-from deepagents_code.tui.widgets.effort_selector import EffortSelectorScreen
-from deepagents_code.tui.widgets.messages import ErrorMessage
+from niki_agent.tui.widgets.effort_selector import EffortSelectorScreen
+from niki_agent.tui.widgets.messages import ErrorMessage
 
 
 @pytest.fixture(autouse=True)

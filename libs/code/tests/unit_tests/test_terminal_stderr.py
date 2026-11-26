@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from deepagents_code._terminal_stderr import (
+from niki_agent._terminal_stderr import (
     TerminalStderrGuard,
     _stderr_targets_stdout,
     stdout_driver_class,
@@ -52,7 +52,7 @@ def test_install_preserves_redirected_stderr(tmp_path: Path) -> None:
     original_stderr = os.dup(2)
     try:
         os.dup2(output_fd, 2)
-        with patch("deepagents_code._terminal_stderr.sys.platform", "darwin"):
+        with patch("niki_agent._terminal_stderr.sys.platform", "darwin"):
             guard = TerminalStderrGuard.install()
         _write_stderr("visible while redirected\n")
         guard.close()
@@ -66,8 +66,8 @@ def test_install_preserves_redirected_stderr(tmp_path: Path) -> None:
 
 def test_install_is_noop_outside_macos() -> None:
     with (
-        patch("deepagents_code._terminal_stderr.sys.platform", "linux"),
-        patch("deepagents_code._terminal_stderr.os.isatty") as isatty,
+        patch("niki_agent._terminal_stderr.sys.platform", "linux"),
+        patch("niki_agent._terminal_stderr.os.isatty") as isatty,
     ):
         guard = TerminalStderrGuard.install()
 
@@ -77,11 +77,11 @@ def test_install_is_noop_outside_macos() -> None:
 
 def test_stdout_driver_class_declines_when_stdout_is_unusable() -> None:
     """A missing or closed stdout must not yield a driver that renders blind."""
-    with patch("deepagents_code._terminal_stderr.sys.__stdout__", None):
+    with patch("niki_agent._terminal_stderr.sys.__stdout__", None):
         assert stdout_driver_class() is None
 
     with patch(
-        "deepagents_code._terminal_stderr.sys.__stdout__",
+        "niki_agent._terminal_stderr.sys.__stdout__",
         SimpleNamespace(closed=True),
     ):
         assert stdout_driver_class() is None
@@ -113,13 +113,13 @@ def test_same_terminal_requires_matching_device_and_inode() -> None:
     same = SimpleNamespace(st_dev=1, st_ino=2)
     other = SimpleNamespace(st_dev=1, st_ino=3)
     with (
-        patch("deepagents_code._terminal_stderr.os.isatty", return_value=True),
-        patch("deepagents_code._terminal_stderr.os.fstat", side_effect=[same, other]),
+        patch("niki_agent._terminal_stderr.os.isatty", return_value=True),
+        patch("niki_agent._terminal_stderr.os.fstat", side_effect=[same, other]),
     ):
         assert _stderr_targets_stdout() is False
 
     with (
-        patch("deepagents_code._terminal_stderr.os.isatty", return_value=True),
-        patch("deepagents_code._terminal_stderr.os.fstat", side_effect=[same, same]),
+        patch("niki_agent._terminal_stderr.os.isatty", return_value=True),
+        patch("niki_agent._terminal_stderr.os.fstat", side_effect=[same, same]),
     ):
         assert _stderr_targets_stdout() is True

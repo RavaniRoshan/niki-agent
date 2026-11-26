@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from deepagents_code.adapters.persistence.session_history import SessionHistoryAdapter
-from deepagents_code.domain.session import SessionSummary
+from niki_agent.adapters.persistence.session_history import SessionHistoryAdapter
+from niki_agent.domain.session import SessionSummary
 
 
 def test_session_history_adapter_reads_existing_session_metadata():

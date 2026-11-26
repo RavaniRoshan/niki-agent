@@ -1,7 +1,7 @@
 # Niki Agent -- Keymap
 
 Generated from the live binding registry by
-`libs/code/deepagents_code/niki/keymap.py`. **Do not edit by hand.**
+`libs/code/niki_agent/niki/keymap.py`. **Do not edit by hand.**
 
 Regenerate with:
 

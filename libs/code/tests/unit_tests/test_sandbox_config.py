@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
-from deepagents_code.integrations.sandbox_config import SandboxConfig
+from niki_agent.integrations.sandbox_config import SandboxConfig
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -32,7 +32,7 @@ RESPOND_MS_CEILING = 1500.0
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-s6")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -77,7 +77,7 @@ async def test_s6_keys_still_land_while_a_tool_is_blocked() -> None:
 
 async def test_s6_scrolling_still_works_while_a_tool_is_blocked() -> None:
     """S6: the transcript must scroll during a long tool run."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:

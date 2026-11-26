@@ -60,18 +60,18 @@ def tmp_cwd(tmp_path: Path) -> Path:
 
 def _env(home: Path) -> dict[str, str]:
     env = dict(os.environ)
-    env["DEEPAGENTS_HOME"] = str(home)
-    env["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] = "1"
+    env["NIKI_HOME"] = str(home)
+    env["NIKI_NO_UPDATE_CHECK"] = "1"
     env["TERM"] = "xterm-256color"
     # These tests launch the app through `python -c`, not the `niki` console
     # script, so the launch name would otherwise rest on the child's `argv[0]`.
     # Pin what a `niki` launch resolves, the way the snapshot harness does, so
     # the chrome under test cannot depend on how the interpreter was invoked.
-    env["DEEPAGENTS_CODE_INVOKED_AS"] = "niki"
+    env["NIKI_INVOKED_AS"] = "niki"
     # A missing `rg` raises a startup notification that overlaps the first
     # frame and clips the very notice these tests read, so the suite supplies a
     # stub on PATH instead of inheriting whatever the runner happens to have.
-    # It must live outside `DEEPAGENTS_HOME`: `~/bin` there is the *managed*
+    # It must live outside `NIKI_HOME`: `~/bin` there is the *managed*
     # ripgrep location, and a stub found there reads as a stale managed install.
     rg_dir = home.parent / "rg-bin"
     rg_dir.mkdir(exist_ok=True)
@@ -123,7 +123,7 @@ def _spawn(home: Path, *, cwd: Path, timeout: int = 25) -> tuple[pexpect.spawn, 
             "-c",
             (
                 "import sys; sys.argv[0] = 'niki'; "
-                "from deepagents_code.niki.entry import niki_main; niki_main()"
+                "from niki_agent.niki.entry import niki_main; niki_main()"
             ),
         ],
         env=_env(home),

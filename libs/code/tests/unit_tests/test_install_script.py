@@ -28,7 +28,7 @@ _CTRL_D = "<ctrl-d>"
 # `mktemp -d` template in install.sh; kept here so the cleanup assertion looks
 # in the same place the script writes.
 _STAGE_ROOT = Path("/tmp")
-_STAGE_GLOB = "deepagents-code-install-log.*"
+_STAGE_GLOB = "niki-agent-install-log.*"
 
 # Root bypasses the permission bits several tests rely on. `hasattr` because
 # `os.geteuid` does not exist on Windows, where these tests are skipped whole.
@@ -59,7 +59,7 @@ def _clean_environ() -> dict[str, str]:
     `SHELL` is dropped for the same reason: it selects the candidate profile
     set, so a contributor whose login shell is fish would otherwise exercise a
     different code path than CI. Callers that care set it explicitly.
-    `DEEPAGENTS_CODE_*` is dropped so a developer's own installer settings
+    `NIKI_*` is dropped so a developer's own installer settings
     (an assumed-yes, a pinned version, an opt-out) can't leak into a run.
     """
     return {
@@ -67,14 +67,14 @@ def _clean_environ() -> dict[str, str]:
         for key, value in os.environ.items()
         if key
         not in {
-            "DEEPAGENTS_HOME",
+            "NIKI_HOME",
             "SHELL",
             "UV_TOOL_DIR",
             "XDG_CONFIG_HOME",
             "XDG_DATA_HOME",
             "ZDOTDIR",
         }
-        and not key.startswith("DEEPAGENTS_CODE_")
+        and not key.startswith("NIKI_")
     }
 
 
@@ -101,7 +101,7 @@ def _host_path_without_dcode() -> str:
         if not entry:
             continue
         directory = Path(entry)
-        if any((directory / name).exists() for name in ("dcode", "deepagents-code")):
+        if any((directory / name).exists() for name in ("niki", "dcode", "niki-agent")):
             continue
         kept.append(entry)
     return os.pathsep.join(kept)
@@ -141,16 +141,16 @@ def _write_fake_tools(
     home = tmp_path / "home"
     tools = tmp_path / "tools"
     bin_dir.mkdir()
-    # exist_ok: a test may seed `home/.cache/deepagents-code/install.log` before
+    # exist_ok: a test may seed `home/.cache/niki-agent/install.log` before
     # invoking, to assert what happens to a previous run's log.
     home.mkdir(exist_ok=True)
-    # exist_ok: a test may stage a uv tool receipt under `tools/deepagents-code`
+    # exist_ok: a test may stage a uv tool receipt under `tools/niki-agent`
     # before invoking, which creates `tools` as a side effect.
     tools.mkdir(exist_ok=True)
     if (
         stage_uv_receipt
         and installed_version is not None
-        and not (tools / "deepagents-code").exists()
+        and not (tools / "niki-agent").exists()
     ):
         _write_uv_receipt(tools, None)
 
@@ -185,12 +185,13 @@ if [ "${{1:-}}" = "tool" ] && [ "${{2:-}}" = "install" ]; then
     cat > "$tool_bin/dcode" <<'DCODE'
 #!/usr/bin/env bash
 if [ "${{1:-}}" = "-v" ]; then
-  printf 'deepagents-code %s\n' "${{FAKE_LOCAL_DCODE_VERSION:-0.2.0}}"
+  printf 'niki-agent %s\n' "${{FAKE_LOCAL_DCODE_VERSION:-0.2.0}}"
   exit 0
 fi
 exit 0
 DCODE
-    chmod +x "$tool_bin/dcode"
+    cp "$tool_bin/dcode" "$tool_bin/niki"
+    chmod +x "$tool_bin/dcode" "$tool_bin/niki"
   fi
   if [ -n "${{FAKE_UV_INSTALL_STDERR:-}}" ]; then
     printf '%s\n' "$FAKE_UV_INSTALL_STDERR" >&2
@@ -247,10 +248,9 @@ printf '%s' '{payload}'
         dcode = bin_dir / "dcode"
         tools_log = tmp_path / "dcode-tools.txt"
         verify_rc = 1 if dcode_verify_fails else 0
-        dcode.write_text(
-            f"""#!/usr/bin/env bash
+        script = f"""#!/usr/bin/env bash
 if [ "${{1:-}}" = "-v" ]; then
-  printf 'deepagents-code {installed_version}\\n'
+  printf 'niki-agent {installed_version}\\n'
   exit {verify_rc}
 fi
 if [ "${{1:-}}" = "tools" ]; then
@@ -264,8 +264,10 @@ if [ "${{1:-}}" = "tools" ]; then
 fi
 exit 0
 """
-        )
+        dcode.write_text(script)
+        (bin_dir / "niki").write_text(script)
         _make_executable(dcode)
+        _make_executable(bin_dir / "niki")
     return bin_dir, home, uv
 
 
@@ -299,7 +301,7 @@ def _env(
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{_host_path_without_dcode()}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
         **extra_env,
     }
 
@@ -569,11 +571,11 @@ def test_install_script_rejects_invalid_version(
     tmp_path: Path, bad_version: str
 ) -> None:
     """An invalid version fails before uv runs, so nothing is installed."""
-    proc, args_path = _invoke(tmp_path, {"DEEPAGENTS_CODE_VERSION": bad_version})
+    proc, args_path = _invoke(tmp_path, {"NIKI_VERSION": bad_version})
 
     assert proc.returncode != 0
     assert not args_path.exists()  # uv tool install was never invoked
-    assert "DEEPAGENTS_CODE_VERSION" in proc.stderr
+    assert "NIKI_VERSION" in proc.stderr
 
 
 def test_install_script_rejects_version_and_prerelease_together(
@@ -583,8 +585,8 @@ def test_install_script_rejects_version_and_prerelease_together(
     proc, args_path = _invoke(
         tmp_path,
         {
-            "DEEPAGENTS_CODE_VERSION": "0.1.0rc1",
-            "DEEPAGENTS_CODE_PRERELEASE": "allow",
+            "NIKI_VERSION": "0.1.0rc1",
+            "NIKI_PRERELEASE": "allow",
         },
     )
 
@@ -608,7 +610,7 @@ def test_install_script_rejects_invalid_positional_version(
 
     The positional arg is a brand-new untrusted input that flows into uv's argv;
     this pins the `^[A-Za-z0-9][A-Za-z0-9_.!+-]*$` guard that blocks metacharacter
-    and smuggled-flag payloads independently of the DEEPAGENTS_CODE_VERSION check.
+    and smuggled-flag payloads independently of the NIKI_VERSION check.
     """
     proc = _run_with_args(tmp_path, (bad_target,))
 
@@ -673,7 +675,7 @@ def test_install_script_uv_output_uses_cache_log_not_predictable_tmp(
     )
 
     assert proc.returncode == 0
-    assert (tmp_path / "home/.cache/deepagents-code/install.log").read_text() == (
+    assert (tmp_path / "home/.cache/niki-agent/install.log").read_text() == (
         "live log output\n"
     )
     script = SCRIPT.read_text(encoding="utf-8")
@@ -694,7 +696,7 @@ def test_install_script_live_log_is_not_world_readable(tmp_path: Path) -> None:
     )
 
     assert proc.returncode == 0
-    log_path = tmp_path / "home/.cache/deepagents-code/install.log"
+    log_path = tmp_path / "home/.cache/niki-agent/install.log"
     assert stat.S_IMODE(log_path.stat().st_mode) & 0o077 == 0
 
 
@@ -707,7 +709,7 @@ def test_install_script_symlinked_log_warns_and_offers_no_pointer(
     pointer — with no fallback to the staged publish, so staying silent would
     leave logging off on every future run with no way to discover why.
     """
-    log_dir = tmp_path / "home/.cache/deepagents-code"
+    log_dir = tmp_path / "home/.cache/niki-agent"
     log_dir.mkdir(parents=True)
     target = tmp_path / "elsewhere.log"
     target.write_text("pre-existing target\n")
@@ -735,7 +737,7 @@ def test_install_script_warns_when_live_log_ends_up_empty(tmp_path: Path) -> Non
     nothing, both `Full log:` pointers stay quiet (they require `-s`), so
     without this warning the loss of yesterday's diagnostics is invisible.
     """
-    log_path = tmp_path / "home/.cache/deepagents-code/install.log"
+    log_path = tmp_path / "home/.cache/niki-agent/install.log"
     log_path.parent.mkdir(parents=True)
     log_path.write_text("yesterday's traceback\n")
 
@@ -802,7 +804,7 @@ def test_install_script_attached_tty_eof_preserves_extras(tmp_path: Path) -> Non
 
     assert code == 0
     assert "No answer — declining prompt." in output
-    assert "Aborted. deepagents-code was left unchanged." in output
+    assert "Aborted. niki-agent was left unchanged." in output
     assert not args_path.exists()
 
 
@@ -860,16 +862,12 @@ def test_version_at_least(tmp_path: Path, have: str, want: str, expected: bool) 
 
 
 _FRESH_INSTALL_DIFF = (
-    " + agent-client-protocol==0.10.1\n + deepagents-code==0.1.19\n + zstandard==0.25.0"
+    " + agent-client-protocol==0.10.1\n + niki-agent==0.1.19\n + zstandard==0.25.0"
 )
 
-_UPGRADE_DIFF = (
-    " - deepagents-code==0.1.18\n + deepagents-code==0.1.19\n + brand-new-dep==1.0.0"
-)
+_UPGRADE_DIFF = " - niki-agent==0.1.18\n + niki-agent==0.1.19\n + brand-new-dep==1.0.0"
 
-_REMOVAL_DIFF = (
-    " - deepagents-code==0.1.18\n + deepagents-code==0.1.19\n - dropped-dep==2.0.0"
-)
+_REMOVAL_DIFF = " - niki-agent==0.1.18\n + niki-agent==0.1.19\n - dropped-dep==2.0.0"
 
 _DEPENDENCY_UPDATE_DIFF = " - boto3==1.43.33\n + boto3==1.43.34"
 
@@ -915,15 +913,15 @@ def test_install_script_same_version_with_dependency_updates_says_dependencies_u
 
     assert proc.returncode == 0
     assert (
-        "deepagents-code 0.1.8 was already up to date; dependencies were updated."
+        "niki-agent 0.1.8 was already up to date; dependencies were updated."
     ) in proc.stdout
-    assert "Full log: ~/.cache/deepagents-code/install.log" in proc.stdout
-    assert "deepagents-code 0.1.8 already up to date" not in proc.stdout
-    assert (tmp_path / "home/.cache/deepagents-code/install.log").read_text() == (
+    assert "Full log: ~/.cache/niki-agent/install.log" in proc.stdout
+    assert "niki-agent 0.1.8 already up to date" not in proc.stdout
+    assert (tmp_path / "home/.cache/niki-agent/install.log").read_text() == (
         f"{_DEPENDENCY_UPDATE_DIFF}\n"
     )
-    assert "✔ Dependencies updated. Run: dcode" in proc.stdout
-    assert "✔ Already installed. Run: dcode" not in proc.stdout
+    assert "✔ Dependencies updated. Run: niki" in proc.stdout
+    assert "✔ Already installed. Run: niki" not in proc.stdout
 
 
 def test_install_script_dependency_update_without_writable_log_omits_log_pointer(
@@ -951,7 +949,7 @@ def test_install_script_dependency_update_without_writable_log_omits_log_pointer
 
     assert proc.returncode == 0
     assert (
-        "deepagents-code 0.1.8 was already up to date; dependencies were updated."
+        "niki-agent 0.1.8 was already up to date; dependencies were updated."
         in proc.stdout
     )
     assert "Full log:" not in proc.stdout
@@ -975,7 +973,7 @@ def test_install_script_live_log_create_failure_keeps_prior_log(
     `mktemp_fails` closes the staged fallback so nothing writes a replacement
     log, leaving the prior one as the only thing that could still be there.
     """
-    log_dir = tmp_path / "home/.cache/deepagents-code"
+    log_dir = tmp_path / "home/.cache/niki-agent"
     log_dir.mkdir(parents=True)
     log_path = log_dir / "install.log"
     log_path.write_text("yesterday's traceback\n")
@@ -1012,7 +1010,7 @@ def test_install_script_interrupt_reports_replaced_live_log(tmp_path: Path) -> N
         f"{_extract_shell_function('warn_live_log_replaced')}\n"
         "UV_LIVE_LOG=true\n"
         f"INSTALL_LOG={str(log_path)!r}\n"
-        "INSTALL_LOG_DISPLAY='~/.cache/deepagents-code/install.log'\n"
+        "INSTALL_LOG_DISPLAY='~/.cache/niki-agent/install.log'\n"
         "warn_live_log_replaced\n"
         # The flag makes the notice fire once, so a run that already warned
         # after uv exited does not repeat itself from the EXIT trap.
@@ -1035,7 +1033,7 @@ def test_install_script_refuses_symlinked_log_dir(tmp_path: Path) -> None:
     """A pre-existing log-dir symlink disables the persistent install log."""
     cache = tmp_path / "cache"
     target = tmp_path / "target"
-    install_log_dir = cache / "deepagents-code"
+    install_log_dir = cache / "niki-agent"
     cache.mkdir()
     target.mkdir()
     install_log_dir.symlink_to(target, target_is_directory=True)
@@ -1052,7 +1050,7 @@ def test_install_script_refuses_symlinked_log_dir(tmp_path: Path) -> None:
 
     assert proc.returncode == 0
     assert (
-        "deepagents-code 0.1.8 was already up to date; dependencies were updated."
+        "niki-agent 0.1.8 was already up to date; dependencies were updated."
         in proc.stdout
     )
     assert "Full log:" not in proc.stdout
@@ -1069,7 +1067,7 @@ def _write_uv_receipt(
 
     The install script reads `uv-receipt.toml` to detect extras that a bare
     re-run would drop; the fake `uv tool dir` points at `tmp_path / "tools"`,
-    so the receipt belongs under `tools/deepagents-code/`. `parents=True`
+    so the receipt belongs under `tools/niki-agent/`. `parents=True`
     creates `tools` as a side effect, which is why `_write_fake_tools` tolerates
     a pre-existing `tools` — the two helpers may run in either order.
 
@@ -1081,23 +1079,23 @@ def _write_uv_receipt(
     `with_packages` maps supplemental `uv tool install --with` package names to
     their own extras. uv records these in the *same* `requirements` array as the
     tool itself, so a receipt with them is what distinguishes a parser scoped to
-    the `deepagents-code` entry from one that grabs any `extras = [...]`.
+    the `niki-agent` entry from one that grabs any `extras = [...]`.
 
     The `entrypoints` array is always emitted, and always includes the console
-    script literally named `deepagents-code` that this package declares. That
+    script literally named `niki-agent` that this package declares. That
     inline table's `name` matches the same pattern the requirements entry does
     but never carries extras, so omitting it from the fixture would hide a
     parser that matches it instead of the real requirement.
 
     Returns the receipt path so tests can mangle its permissions or contents.
     """
-    receipt_dir = tools / "deepagents-code"
+    receipt_dir = tools / "niki-agent"
     receipt_dir.mkdir(parents=True, exist_ok=True)
     if extras is None:
-        entries = ['{ name = "deepagents-code", specifier = "==0.1.0" }']
+        entries = ['{ name = "niki-agent", specifier = "==0.1.0" }']
     else:
         quoted = ", ".join(f'"{extra}"' for extra in extras)
-        entry = f'{{ name = "deepagents-code", extras = [{quoted}], '
+        entry = f'{{ name = "niki-agent", extras = [{quoted}], '
         entries = [entry + 'specifier = "==0.1.0" }']
     for name, pkg_extras in (with_packages or {}).items():
         pkg_quoted = ", ".join(f'"{extra}"' for extra in pkg_extras)
@@ -1108,10 +1106,10 @@ def _write_uv_receipt(
         "requirements = [" + ", ".join(entries) + "]\n"
         'python = "3.13"\n'
         "entrypoints = [\n"
-        '    { name = "dcode", install-path = "/h/bin/dcode",'
-        ' from = "deepagents-code" },\n'
-        '    { name = "deepagents-code",'
-        ' install-path = "/h/bin/deepagents-code", from = "deepagents-code" },\n'
+        '    { name = "niki-agent", install-path = "/h/bin/niki",'
+        ' from = "niki-agent" },\n'
+        '    { name = "niki-agent",'
+        ' install-path = "/h/bin/niki-agent", from = "niki-agent" },\n'
         "]\n"
     )
     return receipt
@@ -1127,8 +1125,8 @@ def test_install_script_upgrade_prints_full_log_pointer(tmp_path: Path) -> None:
     )
 
     assert proc.returncode == 0
-    assert "Full log: ~/.cache/deepagents-code/install.log" in proc.stdout
-    assert "Update log: tail -f ~/.cache/deepagents-code/install.log" in proc.stdout
+    assert "Full log: ~/.cache/niki-agent/install.log" in proc.stdout
+    assert "Update log: tail -f ~/.cache/niki-agent/install.log" in proc.stdout
 
 
 def test_install_script_receipt_extras_with_metacharacters_warns(
@@ -1136,7 +1134,7 @@ def test_install_script_receipt_extras_with_metacharacters_warns(
 ) -> None:
     """Shell metacharacters in receipt extras must not reach the printed hint.
 
-    The extras value is echoed inside a double-quoted `DEEPAGENTS_CODE_EXTRAS`
+    The extras value is echoed inside a double-quoted `NIKI_EXTRAS`
     suggestion the user may paste; a tampered receipt could otherwise smuggle
     `$(...)` into that paste. Anything outside `[A-Za-z0-9_,.-]` is treated as
     an unparseable receipt — the run warns and omits the paste-ready hint.
@@ -1149,7 +1147,7 @@ def test_install_script_receipt_extras_with_metacharacters_warns(
     receipt = _write_uv_receipt(tmp_path / "tools", [payload])
     # Keep the file plausible TOML but with the payload as the extra name.
     receipt.write_text(
-        '[tool]\nrequirements = [{ name = "deepagents-code",'
+        '[tool]\nrequirements = [{ name = "niki-agent",'
         f' extras = ["{payload}"], specifier = "==0.1.0" }}]\n'
     )
 
@@ -1162,7 +1160,7 @@ def test_install_script_receipt_extras_with_metacharacters_warns(
 
     assert proc.returncode == 0
     assert "Could not read" in proc.stderr
-    assert "DEEPAGENTS_CODE_EXTRAS=" not in proc.stderr
+    assert "NIKI_EXTRAS=" not in proc.stderr
     assert "$(touch" not in proc.stderr
     assert not sentinel.exists()
 
@@ -1177,7 +1175,7 @@ def test_install_script_warns_when_receipt_is_unparseable(tmp_path: Path) -> Non
     The `entrypoints` array is the trap here, and it is why this receipt is
     written out in full rather than mangling only the requirements line. uv
     records one entry per console script, and this package declares one named
-    `deepagents-code` — an inline table that matches the requirement pattern on
+    `niki-agent` — an inline table that matches the requirement pattern on
     a single line but carries no extras. A parser that isn't scoped to the
     `requirements` assignment matches it once the real requirement wraps, reads
     "no extras" off it, and drops the user's packages in total silence.
@@ -1185,12 +1183,12 @@ def test_install_script_warns_when_receipt_is_unparseable(tmp_path: Path) -> Non
     receipt = _write_uv_receipt(tmp_path / "tools", ["anthropic"])
     receipt.write_text(
         "[tool]\n"
-        'requirements = [\n    { name = "deepagents-code", extras = [\n'
+        'requirements = [\n    { name = "niki-agent", extras = [\n'
         '        "anthropic",\n    ] },\n]\n'
         'python = "3.13"\n'
         "entrypoints = [\n"
-        '    { name = "deepagents-code",'
-        ' install-path = "/h/bin/deepagents-code", from = "deepagents-code" },\n'
+        '    { name = "niki-agent",'
+        ' install-path = "/h/bin/niki-agent", from = "niki-agent" },\n'
         "]\n"
     )
 
@@ -1209,7 +1207,7 @@ def test_install_script_warns_when_receipt_is_unparseable(tmp_path: Path) -> Non
 def test_install_script_warns_when_upgrade_drops_receipt_extras(tmp_path: Path) -> None:
     """A bare re-run warns when the existing install was built with extras.
 
-    Without `DEEPAGENTS_CODE_EXTRAS`, `uv tool install -U deepagents-code`
+    Without `NIKI_EXTRAS`, `uv tool install -U niki-agent`
     rebuilds the environment against the bare package and silently removes the
     extras' packages. The script must read the extras off uv's receipt and warn
     (with the re-run hint) before that rebuild happens.
@@ -1228,10 +1226,7 @@ def test_install_script_warns_when_upgrade_drops_receipt_extras(tmp_path: Path) 
         "This install has extras that a bare re-run will remove: anthropic,openai"
         in proc.stderr
     )
-    assert (
-        'To keep them, re-run with: DEEPAGENTS_CODE_EXTRAS="anthropic,openai"'
-        in proc.stderr
-    )
+    assert 'To keep them, re-run with: NIKI_EXTRAS="anthropic,openai"' in proc.stderr
 
 
 def test_install_script_warns_when_receipt_read_races(tmp_path: Path) -> None:
@@ -1390,14 +1385,14 @@ def test_install_script_extras_interrupt_decline_aborts_before_uv(
 
     assert code == 0
     assert "Continue anyway and remove them?" in output
-    assert "Aborted. deepagents-code was left unchanged." in output
+    assert "Aborted. niki-agent was left unchanged." in output
     assert not args_path.exists()
 
 
 def test_install_script_extras_assume_yes_skips_interrupt_with_tty(
     tmp_path: Path,
 ) -> None:
-    """`DEEPAGENTS_CODE_YES=1` skips the extras prompt even on an attached TTY.
+    """`NIKI_YES=1` skips the extras prompt even on an attached TTY.
 
     The non-pty sibling below can't prove this: without a TTY `can_prompt` is
     already false, so it passes whether or not the `ASSUME_YES` half of the
@@ -1410,7 +1405,7 @@ def test_install_script_extras_assume_yes_skips_interrupt_with_tty(
 
     code, output, args_path = _invoke_interactive(
         tmp_path,
-        {"DEEPAGENTS_CODE_YES": "1"},
+        {"NIKI_YES": "1"},
         answer=[],
         installed_version="0.1.0",
         latest_version="0.2.0",
@@ -1423,19 +1418,19 @@ def test_install_script_extras_assume_yes_skips_interrupt_with_tty(
 
 
 def test_install_script_extras_assume_yes_skips_interrupt(tmp_path: Path) -> None:
-    """`DEEPAGENTS_CODE_YES=1` proceeds past the extras interrupt unattended."""
+    """`NIKI_YES=1` proceeds past the extras interrupt unattended."""
     _write_uv_receipt(tmp_path / "tools", ["anthropic", "openai"])
 
     proc, args_path = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_YES": "1"},
+        {"NIKI_YES": "1"},
         installed_version="0.1.0",
         latest_version="0.2.0",
     )
 
     assert proc.returncode == 0
     assert "extras that a bare re-run will remove" in proc.stderr
-    assert "Aborted. deepagents-code was left unchanged." not in proc.stderr
+    assert "Aborted. niki-agent was left unchanged." not in proc.stderr
     assert args_path.read_text().splitlines()[:3] == ["tool", "install", "-U"]
 
 
@@ -1466,7 +1461,7 @@ def test_install_script_unreadable_receipt_interrupt_decline_aborts_before_uv(
 
     assert code == 0
     assert "Continue anyway?" in output
-    assert "Aborted. deepagents-code was left unchanged." in output
+    assert "Aborted. niki-agent was left unchanged." in output
     assert not args_path.exists()
 
 
@@ -1474,14 +1469,14 @@ def test_install_script_unreadable_receipt_interrupt_decline_aborts_before_uv(
 def test_install_script_unreadable_receipt_assume_yes_skips_interrupt(
     tmp_path: Path,
 ) -> None:
-    """`DEEPAGENTS_CODE_YES=1` proceeds past the unreadable-receipt prompt."""
+    """`NIKI_YES=1` proceeds past the unreadable-receipt prompt."""
     receipt = _write_uv_receipt(tmp_path / "tools", ["anthropic"])
     receipt.chmod(0o000)
 
     try:
         proc, args_path = _invoke(
             tmp_path,
-            {"DEEPAGENTS_CODE_YES": "1"},
+            {"NIKI_YES": "1"},
             installed_version="0.1.0",
             latest_version="0.2.0",
         )
@@ -1490,14 +1485,14 @@ def test_install_script_unreadable_receipt_assume_yes_skips_interrupt(
 
     assert proc.returncode == 0
     assert "Could not read" in proc.stderr
-    assert "Aborted. deepagents-code was left unchanged." not in proc.stderr
+    assert "Aborted. niki-agent was left unchanged." not in proc.stderr
     assert args_path.read_text().splitlines()[:3] == ["tool", "install", "-U"]
 
 
 def test_install_script_refuses_symlinked_log_file(tmp_path: Path) -> None:
     """A pre-existing log-file symlink disables the persistent install log."""
     cache = tmp_path / "cache"
-    install_log_dir = cache / "deepagents-code"
+    install_log_dir = cache / "niki-agent"
     target = tmp_path / "target.log"
     install_log_dir.mkdir(parents=True)
     target.write_text("keep me\n")
@@ -1515,7 +1510,7 @@ def test_install_script_refuses_symlinked_log_file(tmp_path: Path) -> None:
 
     assert proc.returncode == 0
     assert (
-        "deepagents-code 0.1.8 was already up to date; dependencies were updated."
+        "niki-agent 0.1.8 was already up to date; dependencies were updated."
         in proc.stdout
     )
     assert "Full log:" not in proc.stdout
@@ -1865,7 +1860,7 @@ def test_install_script_log_path_outside_home_stays_absolute(tmp_path: Path) -> 
     )
 
     assert proc.returncode == 0
-    expected_log = external / "deepagents-code" / "install.log"
+    expected_log = external / "niki-agent" / "install.log"
     assert f"Full log: {expected_log}" in proc.stdout
     assert "Full log: ~/" not in proc.stdout
     assert expected_log.read_text() == f"{_DEPENDENCY_UPDATE_DIFF}\n"
@@ -1890,8 +1885,8 @@ def test_install_script_failed_install_points_to_log(tmp_path: Path) -> None:
 
     assert proc.returncode != 0
     assert "Failed to install" in proc.stderr
-    assert "Full log: ~/.cache/deepagents-code/install.log" in proc.stderr
-    assert (tmp_path / "home/.cache/deepagents-code/install.log").read_text() == (
+    assert "Full log: ~/.cache/niki-agent/install.log" in proc.stderr
+    assert (tmp_path / "home/.cache/niki-agent/install.log").read_text() == (
         f"{_DEPENDENCY_UPDATE_DIFF}\n"
     )
 
@@ -1994,7 +1989,7 @@ def test_install_script_lock_is_independent_of_deepagents_home(
         tmp_path, installed_version="0.0.1", latest_version="0.1.0"
     )
     configured = tmp_path / "custom-home"
-    legacy = tmp_path / "tools/.deepagents-code.deepagents-code-locks"
+    legacy = tmp_path / "tools/.niki-agent.niki-agent-locks"
     target = tmp_path / "symlink-target"
     if legacy_entry == "symlink":
         target.mkdir()
@@ -2011,8 +2006,8 @@ def test_install_script_lock_is_independent_of_deepagents_home(
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_HOME": str(configured),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_HOME": str(configured),
+        "NIKI_SKIP_OPTIONAL": "1",
     }
 
     proc = subprocess.run(
@@ -2034,7 +2029,7 @@ def test_install_script_lock_is_independent_of_deepagents_home(
     assert proc.returncode == 0, proc.stderr
     assert not configured.exists()
     assert not (home / ".deepagents").exists()
-    assert (tmp_path / ".tools.deepagents-code.deepagents-code-locks").is_dir()
+    assert (tmp_path / ".tools.niki-agent.niki-agent-locks").is_dir()
     assert legacy.is_dir()
     assert not (legacy / "install.lock.d").exists()
     if legacy_entry == "symlink":
@@ -2048,12 +2043,12 @@ def test_install_script_only_legacy_root_warns_in_uv_tool_list(
     tmp_path: Path, *, legacy_root: bool
 ) -> None:
     """Only the legacy root retained for waiting installers may trigger a warning."""
-    legacy = tmp_path / "tools/.deepagents-code.deepagents-code-locks"
+    legacy = tmp_path / "tools/.niki-agent.niki-agent-locks"
     if legacy_root:
         legacy.mkdir(parents=True)
     proc, args = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "1"},
+        {"NIKI_SKIP_OPTIONAL": "1"},
         installed_version=None,
         latest_version="0.1.0",
     )
@@ -2118,9 +2113,9 @@ def test_installer_serializes_with_legacy_mkdir_protocol(
     tmp_path: Path, older_installer_active: bool, interrupt: bool
 ) -> None:
     """Both generations exclude each other, and both locks release on exit."""
-    root = tmp_path / "tools" / "deepagents-code"
-    legacy = root.parent / ".deepagents-code.deepagents-code-locks" / "install.lock.d"
-    current = tmp_path / ".tools.deepagents-code.deepagents-code-locks/install.lock.d"
+    root = tmp_path / "tools" / "niki-agent"
+    legacy = root.parent / ".niki-agent.niki-agent-locks" / "install.lock.d"
+    current = tmp_path / ".tools.niki-agent.niki-agent-locks/install.lock.d"
     legacy.parent.mkdir(parents=True)
     if older_installer_active:
         legacy.mkdir()
@@ -2172,8 +2167,8 @@ def test_waiting_installer_acquires_lock_after_owner_exits(
     tmp_path: Path, interrupt: bool, legacy_root: bool
 ) -> None:
     """Releasing a lock must preserve the root a waiting installer references."""
-    root = tmp_path / "tools" / "deepagents-code"
-    legacy = root.parent / ".deepagents-code.deepagents-code-locks"
+    root = tmp_path / "tools" / "niki-agent"
+    legacy = root.parent / ".niki-agent.niki-agent-locks"
     if legacy_root:
         legacy.mkdir(parents=True)
     script = _installer_lock_harness(root)
@@ -2219,7 +2214,7 @@ def test_waiting_installer_acquires_lock_after_owner_exits(
                 if proc.poll() is None:
                     proc.kill()
                     proc.wait(timeout=10)
-    current = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    current = tmp_path / ".tools.niki-agent.niki-agent-locks"
     assert legacy.exists() is legacy_root
     for lock_root in (legacy, current) if legacy_root else (current,):
         assert lock_root.is_dir()
@@ -2230,25 +2225,23 @@ def test_install_script_releases_legacy_lock_when_current_root_is_unusable(
     tmp_path: Path,
 ) -> None:
     """Failure to acquire the second lock must not strand the first one."""
-    (tmp_path / "tools/.deepagents-code.deepagents-code-locks").mkdir(parents=True)
-    (tmp_path / ".tools.deepagents-code.deepagents-code-locks").touch()
+    (tmp_path / "tools/.niki-agent.niki-agent-locks").mkdir(parents=True)
+    (tmp_path / ".tools.niki-agent.niki-agent-locks").touch()
     proc, args = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "1"},
+        {"NIKI_SKIP_OPTIONAL": "1"},
         installed_version="0.0.1",
         latest_version="0.1.0",
     )
     assert proc.returncode == 1, proc.stderr
     assert not args.exists()
-    assert not (
-        tmp_path / "tools/.deepagents-code.deepagents-code-locks/install.lock.d"
-    ).exists()
+    assert not (tmp_path / "tools/.niki-agent.niki-agent-locks/install.lock.d").exists()
 
 
 @pytest.mark.skipif(_RUNNING_AS_ROOT, reason="root bypasses permission bits")
 def test_install_script_reports_unwritable_tool_parent(tmp_path: Path) -> None:
     """A custom writable tool directory may have an unwritable parent."""
-    env = _env(tmp_path, {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "1"}, latest_version="0.1.0")
+    env = _env(tmp_path, {"NIKI_SKIP_OPTIONAL": "1"}, latest_version="0.1.0")
     tmp_path.chmod(0o555)
     try:
         proc = subprocess.run(
@@ -2299,7 +2292,7 @@ def test_install_script_ignores_symlinked_legacy_lock_file(tmp_path: Path) -> No
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
     }
     proc = subprocess.run(
         ["bash", str(SCRIPT)],
@@ -2399,8 +2392,8 @@ def test_install_lock_fails_when_lock_root_cannot_create_child(
     tmp_path: Path,
 ) -> None:
     """An unwritable existing lock root fails instead of waiting forever."""
-    installation_root = tmp_path / "tools" / "deepagents-code"
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    installation_root = tmp_path / "tools" / "niki-agent"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_root.mkdir(parents=True)
     script = tmp_path / "unwritable_lock_harness.sh"
     script.write_text(
@@ -2463,8 +2456,8 @@ def test_install_script_reclaim_skips_new_lock_after_stale_check(
     called. A filesystem marker sequences the two calls: each runs in a `$(...)`
     subshell, so a shell-variable counter would not carry across them.
     """
-    installation_root = tmp_path / "tools" / "deepagents-code"
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    installation_root = tmp_path / "tools" / "niki-agent"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_dir = lock_root / "install.lock.d"
     lock_dir.mkdir(parents=True)
     (lock_dir / "pid").write_text(f"{_DEAD_PID}\n")
@@ -2531,8 +2524,8 @@ def test_install_script_reclaim_holds_guard_while_renaming_stale_lock(
     tmp_path: Path,
 ) -> None:
     """Stale reclaim renames the canonical lock only while peers are guarded."""
-    installation_root = tmp_path / "tools" / "deepagents-code"
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    installation_root = tmp_path / "tools" / "niki-agent"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_dir = lock_root / "install.lock.d"
     lock_dir.mkdir(parents=True)
     (lock_dir / "pid").write_text(f"{_DEAD_PID}\n")
@@ -2608,7 +2601,7 @@ def test_install_script_release_removes_lock_only_when_token_matches(
     owner now holds. The reclaim guard is left untouched here
     (INSTALL_LOCK_RECLAIM_TOKEN empty), so only the canonical lock is exercised.
     """
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_dir = lock_root / "install.lock.d"
     lock_dir.mkdir(parents=True)
     (lock_dir / "token").write_text(f"{on_disk_token}\n")
@@ -2649,8 +2642,8 @@ def test_install_script_aborts_when_lock_token_cannot_be_written(
     release) or the `exit` (install proceeds tokenless, so release never matches
     and the lock leaks permanently).
     """
-    installation_root = tmp_path / "tools" / "deepagents-code"
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    installation_root = tmp_path / "tools" / "niki-agent"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_root.mkdir(parents=True)
     script = tmp_path / "token_write_harness.sh"
     script.write_text(
@@ -2717,9 +2710,9 @@ def test_install_script_reclaims_stale_mkdir_lock(tmp_path: Path, legacy: bool) 
         tmp_path, installed_version="0.0.1", latest_version="0.1.0"
     )
     lock_root = tmp_path / (
-        "tools/.deepagents-code.deepagents-code-locks"
+        "tools/.niki-agent.niki-agent-locks"
         if legacy
-        else ".tools.deepagents-code.deepagents-code-locks"
+        else ".tools.niki-agent.niki-agent-locks"
     )
     lock_dir = lock_root / "install.lock.d"
     lock_dir.mkdir(parents=True)
@@ -2731,7 +2724,7 @@ def test_install_script_reclaims_stale_mkdir_lock(tmp_path: Path, legacy: bool) 
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
     }
     proc = subprocess.run(
         ["bash", str(SCRIPT)],
@@ -2770,7 +2763,7 @@ def test_install_script_aborts_on_unremovable_stale_lock(tmp_path: Path) -> None
     bin_dir, home, uv = _write_fake_tools(
         tmp_path, installed_version="0.0.1", latest_version="0.1.0"
     )
-    lock_root = tmp_path / ".tools.deepagents-code.deepagents-code-locks"
+    lock_root = tmp_path / ".tools.niki-agent.niki-agent-locks"
     lock_dir = lock_root / "install.lock.d"
     lock_dir.mkdir(parents=True)
     (lock_dir / "pid").write_text(f"{_DEAD_PID}\n")
@@ -2784,7 +2777,7 @@ def test_install_script_aborts_on_unremovable_stale_lock(tmp_path: Path) -> None
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
     }
     try:
         proc = subprocess.run(
@@ -2808,7 +2801,7 @@ def test_install_script_aborts_on_unremovable_stale_lock(tmp_path: Path) -> None
 def _path_without_dcode() -> str:
     """Return the host `PATH` with any directory that already provides dcode dropped.
 
-    The test venv installs a real `dcode`/`deepagents-code` on `PATH`. Tests that
+    The test venv installs a real `dcode`/`niki-agent` on `PATH`. Tests that
     need to exercise the `~/.local/bin` fallback must ensure neither resolves via
     `PATH`, while keeping the system directories the script's coreutils need.
     Filtering the real `PATH` is portable across hosts, unlike hardcoding
@@ -2819,7 +2812,7 @@ def _path_without_dcode() -> str:
         for entry in os.environ.get("PATH", "").split(os.pathsep)
         if entry
         and not any(
-            (Path(entry) / name).exists() for name in ("dcode", "deepagents-code")
+            (Path(entry) / name).exists() for name in ("niki", "dcode", "niki-agent")
         )
     ]
     return os.pathsep.join(kept)
@@ -2868,7 +2861,7 @@ def _invoke_with_os(
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
         **(extra_env or {}),
     }
     proc = subprocess.run(
@@ -3071,7 +3064,7 @@ def test_uv_cache_snapshot_precedes_install_lock() -> None:
 
 
 def test_install_uv_verbose_shows_installer_output(tmp_path: Path) -> None:
-    """`DEEPAGENTS_CODE_VERBOSE=1` opts back in to the uv installer's output."""
+    """`NIKI_VERBOSE=1` opts back in to the uv installer's output."""
     proc = _run_install_uv(tmp_path, verbose=True)
 
     assert proc.returncode == 0
@@ -3083,7 +3076,7 @@ def test_install_uv_surfaces_output_on_failure(tmp_path: Path) -> None:
 
     The surface-on-failure half of the gate (`uv_install_rc -ne 0`) is the only
     diagnostic the user gets when the upstream installer dies, so it must fire
-    regardless of `DEEPAGENTS_CODE_VERBOSE` and the script must exit non-zero.
+    regardless of `NIKI_VERBOSE` and the script must exit non-zero.
     """
     proc = _run_install_uv(tmp_path, verbose=False, fails=True)
 
@@ -3408,7 +3401,7 @@ def test_interrupt_shows_notice_without_failure_message(tmp_path: Path) -> None:
 
 def test_interrupt_removes_registered_staging_directory(tmp_path: Path) -> None:
     """An interrupted installer removes its registered log staging directory."""
-    stage_dir = tmp_path / "deepagents-code-install-log"
+    stage_dir = tmp_path / "niki-agent-install-log"
 
     proc = _run_signal_traps(tmp_path, interrupt=True, temp_dir=stage_dir)
 
@@ -3423,7 +3416,7 @@ def test_exit_trap_removes_registered_staging_directory(tmp_path: Path) -> None:
     file holds uv's full captured stderr — a failed install that leaves it
     behind is the same disclosure an interrupted one would be.
     """
-    stage_dir = tmp_path / "deepagents-code-install-log"
+    stage_dir = tmp_path / "niki-agent-install-log"
 
     proc = _run_signal_traps(tmp_path, interrupt=False, temp_dir=stage_dir)
 
@@ -3473,7 +3466,7 @@ def test_install_script_macos_skip_xcode_check_proceeds_without_clt(
         xcode_select_rc=2,
         installed_version="0.0.1",
         latest_version="0.2.0",
-        extra_env={"DEEPAGENTS_CODE_SKIP_XCODE_CHECK": "1"},
+        extra_env={"NIKI_SKIP_XCODE_CHECK": "1"},
     )
 
     assert proc.returncode == 0
@@ -3567,7 +3560,7 @@ def _invoke_with_local_uv_not_on_path(
         "HOME": str(home),
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{path_without_uv}",
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
         **(extra_env or {}),
     }
     proc = subprocess.run(
@@ -3622,8 +3615,8 @@ def test_install_script_custom_bin_from_sourced_uv_persists_path(
 
     assert proc.returncode == 0, proc.stderr
     assert uv_args.exists()
-    installed = tool_bin / "dcode"
-    exposed = tmp_path / "home/.local/bin/dcode"
+    installed = tool_bin / "niki"
+    exposed = tmp_path / "home/.local/bin/niki"
     assert installed.is_file()
     assert exposed.is_symlink()
     assert exposed.resolve() == installed.resolve()
@@ -3669,12 +3662,12 @@ def test_install_script_honors_uv_tool_bin_dir(tmp_path: Path) -> None:
 
     assert proc.returncode == 0, proc.stderr
     assert uv_args.exists()
-    installed = tool_bin / "dcode"
-    exposed = tmp_path / "home/.local/bin/dcode"
+    installed = tool_bin / "niki"
+    exposed = tmp_path / "home/.local/bin/niki"
     assert installed.is_file()
     assert exposed.is_symlink()
     assert exposed.resolve() == installed.resolve()
-    assert "deepagents-code 0.2.0 installed" in proc.stdout
+    assert "niki-agent 0.2.0 installed" in proc.stdout
     assert "command not found in PATH" not in proc.stderr
 
 
@@ -3701,8 +3694,8 @@ def test_install_script_old_uv_ignores_unsupported_tool_bin_override(
 
     assert proc.returncode == 0, proc.stderr
     assert uv_args.exists()
-    assert (legacy_bin / "dcode").is_file()
-    assert not (legacy_bin / "dcode").is_symlink()
+    assert (legacy_bin / "niki").is_file()
+    assert not (legacy_bin / "niki").is_symlink()
     assert not custom_bin.exists()
 
 
@@ -3723,11 +3716,11 @@ def test_install_script_does_not_replace_tool_bin_path_alias_with_symlink(
         installed_version=None,
     )
 
-    installed = home / ".local/bin/dcode"
+    installed = home / ".local/bin/niki"
     assert proc.returncode == 0, proc.stderr
     assert installed.is_file()
     assert not installed.is_symlink()
-    assert "deepagents-code 0.2.0 installed" in proc.stdout
+    assert "niki-agent 0.2.0 installed" in proc.stdout
 
 
 def test_install_script_root_custom_bin_leaves_path_to_mdm(tmp_path: Path) -> None:
@@ -3779,8 +3772,8 @@ def test_install_script_root_does_not_execute_existing_dcode_before_install(
         latest_version="0.2.0",
     )
     bin_dir = tmp_path / "bin"
-    marker = tmp_path / "pre-install-dcode-ran"
-    dcode = bin_dir / "dcode"
+    marker = tmp_path / "pre-install-niki-ran"
+    dcode = bin_dir / "niki"
     dcode.write_text(
         f"#!/usr/bin/env bash\nprintf 'ran\\n' > {str(marker)!r}\nexit 0\n"
     )
@@ -3845,10 +3838,10 @@ def _invoke_with_local_dcode_not_on_path(
 
     local_bin = home / ".local" / "bin"
     local_bin.mkdir(parents=True)
-    dcode = local_bin / "dcode"
+    dcode = local_bin / "niki"
     dcode.write_text(
         "#!/usr/bin/env bash\n"
-        'if [ "${1:-}" = "-v" ]; then printf "deepagents-code 0.1.0\\n"; exit 0; fi\n'
+        'if [ "${1:-}" = "-v" ]; then printf "niki-agent 0.1.0\\n"; exit 0; fi\n'
         "exit 0\n"
     )
     _make_executable(dcode)
@@ -3866,9 +3859,9 @@ def _invoke_with_local_dcode_not_on_path(
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{_path_without_dcode()}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
         "SHELL": shell,
-        **({"DEEPAGENTS_CODE_SKIP_XCODE_CHECK": "1"} if uname_os == "Darwin" else {}),
+        **({"NIKI_SKIP_XCODE_CHECK": "1"} if uname_os == "Darwin" else {}),
         **(extra_env or {}),
     }
     if answer is not None:
@@ -3946,8 +3939,8 @@ def test_root_install_chowns_only_exact_managed_leaves_with_optional_setup(
     env.update(
         {
             "CHOWN_LOG": str(chown_log),
-            "DEEPAGENTS_CODE_SKIP_OPTIONAL": "0",
-            "DEEPAGENTS_HOME": str(profile),
+            "NIKI_SKIP_OPTIONAL": "0",
+            "NIKI_HOME": str(profile),
             "FAKE_MANAGED_BIN_DIR": str(fallback_bin),
         }
     )
@@ -4000,7 +3993,7 @@ def test_root_install_skips_a_managed_bin_dir_outside_home(tmp_path: Path) -> No
     bin_dir = tmp_path / "bin"
     home = tmp_path / "home"
     profile = home / ".deepagents"
-    outside_bin = tmp_path / "opt/uv-tools/deepagents-code/share/deepagents-code/bin"
+    outside_bin = tmp_path / "opt/uv-tools/niki-agent/share/niki-agent/bin"
     chown_log = tmp_path / "chown-invocations.txt"
     for name, body in {
         "id": "printf '0\\n'\n",
@@ -4013,8 +4006,8 @@ def test_root_install_skips_a_managed_bin_dir_outside_home(tmp_path: Path) -> No
     env.update(
         {
             "CHOWN_LOG": str(chown_log),
-            "DEEPAGENTS_CODE_SKIP_OPTIONAL": "0",
-            "DEEPAGENTS_HOME": str(profile),
+            "NIKI_SKIP_OPTIONAL": "0",
+            "NIKI_HOME": str(profile),
             "FAKE_MANAGED_BIN_DIR": str(outside_bin),
         }
     )
@@ -4075,8 +4068,8 @@ def test_root_upgrade_still_chowns_a_preexisting_managed_bin_dir(
     env.update(
         {
             "CHOWN_LOG": str(chown_log),
-            "DEEPAGENTS_CODE_SKIP_OPTIONAL": "0",
-            "DEEPAGENTS_HOME": str(profile),
+            "NIKI_SKIP_OPTIONAL": "0",
+            "NIKI_HOME": str(profile),
             "FAKE_MANAGED_BIN_DIR": str(fallback_bin),
         }
     )
@@ -4119,18 +4112,18 @@ def test_install_script_adds_local_bin_when_dcode_installed_but_not_on_path(
 
     assert proc.returncode == 0
     combined = proc.stdout + proc.stderr
-    dcode = tmp_path / "home/.local/bin/dcode"
+    dcode = tmp_path / "home/.local/bin/niki"
     assert not dcode.is_symlink()
-    assert "deepagents-code 0.1.0" in dcode.read_text()
+    assert "niki-agent 0.1.0" in dcode.read_text()
     assert "Added ~/.local/bin to PATH" in combined
     assert "isn't on your PATH yet" not in combined
     # SHELL is zsh and HOME starts empty, so the candidate set is exactly
     # ~/.zshrc. Naming it beats `any(...)` over three files, which would still
     # pass if the block landed in the wrong one.
     zshrc = (tmp_path / "home/.zshrc").read_text()
-    assert "# >>> deepagents-code installer >>>" in zshrc
+    assert "# >>> niki-agent installer >>>" in zshrc
     assert 'export PATH="$HOME/.local/bin:$PATH"' in zshrc
-    assert "# <<< deepagents-code installer <<<" in zshrc
+    assert "# <<< niki-agent installer <<<" in zshrc
     assert "source ~/.local/bin/env" not in combined
 
 
@@ -4160,12 +4153,12 @@ def test_install_script_rewrites_fish_block_instead_of_duplicating(
     """
 
     def seed(home: Path) -> None:
-        conf = home / ".config/fish/conf.d/deepagents-code.fish"
+        conf = home / ".config/fish/conf.d/niki-agent.fish"
         conf.parent.mkdir(parents=True, exist_ok=True)
         conf.write_text(
-            "\n# >>> deepagents-code installer >>>\n"
+            "\n# >>> niki-agent installer >>>\n"
             "set -gx PATH /some/stale/entry $PATH\n"
-            "# <<< deepagents-code installer <<<\n"
+            "# <<< niki-agent installer <<<\n"
         )
 
     proc = _invoke_with_local_dcode_not_on_path(
@@ -4173,8 +4166,8 @@ def test_install_script_rewrites_fish_block_instead_of_duplicating(
     )
 
     assert proc.returncode == 0, proc.stderr
-    fish_conf = tmp_path / "home/.config/fish/conf.d/deepagents-code.fish"
-    assert fish_conf.read_text().count("# >>> deepagents-code installer >>>") == 1
+    fish_conf = tmp_path / "home/.config/fish/conf.d/niki-agent.fish"
+    assert fish_conf.read_text().count("# >>> niki-agent installer >>>") == 1
     assert "/some/stale/entry" not in fish_conf.read_text()
 
 
@@ -4194,9 +4187,9 @@ def test_install_script_preserves_symlinked_profile(tmp_path: Path) -> None:
         # that used to `mv` over the symlink.
         target.write_text(
             "# managed by dotfiles\n"
-            "# >>> deepagents-code installer >>>\n"
+            "# >>> niki-agent installer >>>\n"
             "export PATH=/stale/entry:$PATH\n"
-            "# <<< deepagents-code installer <<<\n"
+            "# <<< niki-agent installer <<<\n"
         )
         (home / ".zshrc").symlink_to(target)
 
@@ -4217,9 +4210,9 @@ def test_rewrite_managed_path_block_fixes_resolved_symlink_target_owner(
     target = tmp_path / "dotfiles/zshrc"
     target.parent.mkdir()
     target.write_text(
-        "# >>> deepagents-code installer >>>\n"
+        "# >>> niki-agent installer >>>\n"
         "export PATH=/stale/entry:$PATH\n"
-        "# <<< deepagents-code installer <<<\n"
+        "# <<< niki-agent installer <<<\n"
     )
     profile = tmp_path / ".zshrc"
     profile.symlink_to(target)
@@ -4267,9 +4260,9 @@ def test_install_script_follows_symlink_chain_to_final_target(tmp_path: Path) ->
         target = dotfiles / "zshrc"
         target.write_text(
             "# managed by dotfiles\n"
-            "# >>> deepagents-code installer >>>\n"
+            "# >>> niki-agent installer >>>\n"
             "export PATH=/stale/entry:$PATH\n"
-            "# <<< deepagents-code installer <<<\n"
+            "# <<< niki-agent installer <<<\n"
         )
         (links / "zshrc").symlink_to("../dotfiles/zshrc")
         (home / ".zshrc").symlink_to("links/zshrc")
@@ -4516,9 +4509,9 @@ def test_install_script_preserves_relative_symlinked_profile(tmp_path: Path) -> 
         target = dotfiles / "zshrc"
         target.write_text(
             "# managed by dotfiles\n"
-            "# >>> deepagents-code installer >>>\n"
+            "# >>> niki-agent installer >>>\n"
             "export PATH=/stale/entry:$PATH\n"
-            "# <<< deepagents-code installer <<<\n"
+            "# <<< niki-agent installer <<<\n"
         )
         (home / ".zshrc").symlink_to("dotfiles/zshrc")
 
@@ -4561,10 +4554,10 @@ def test_install_script_rewrites_existing_managed_path_block(tmp_path: Path) -> 
 
     local_bin = home / ".local" / "bin"
     local_bin.mkdir(parents=True)
-    dcode = local_bin / "dcode"
+    dcode = local_bin / "niki"
     dcode.write_text(
         "#!/usr/bin/env bash\n"
-        'if [ "${1:-}" = "-v" ]; then printf "deepagents-code 0.1.0\\n"; exit 0; fi\n'
+        'if [ "${1:-}" = "-v" ]; then printf "niki-agent 0.1.0\\n"; exit 0; fi\n'
         "exit 0\n"
     )
     _make_executable(dcode)
@@ -4572,9 +4565,9 @@ def test_install_script_rewrites_existing_managed_path_block(tmp_path: Path) -> 
     zshrc = home / ".zshrc"
     zshrc.write_text(
         "before\n"
-        "# >>> deepagents-code installer >>>\n"
+        "# >>> niki-agent installer >>>\n"
         'export PATH="$HOME/old-bin:$PATH"\n'
-        "# <<< deepagents-code installer <<<\n"
+        "# <<< niki-agent installer <<<\n"
         "after\n"
     )
 
@@ -4584,7 +4577,7 @@ def test_install_script_rewrites_existing_managed_path_block(tmp_path: Path) -> 
         "XDG_CACHE_HOME": str(home / ".cache"),
         "PATH": f"{bin_dir}{os.pathsep}{_path_without_dcode()}",
         "UV_BIN": str(uv),
-        "DEEPAGENTS_CODE_SKIP_OPTIONAL": "1",
+        "NIKI_SKIP_OPTIONAL": "1",
         "SHELL": "/bin/zsh",
     }
     proc = subprocess.run(
@@ -4599,7 +4592,7 @@ def test_install_script_rewrites_existing_managed_path_block(tmp_path: Path) -> 
 
     assert proc.returncode == 0
     profile = zshrc.read_text()
-    assert profile.count("# >>> deepagents-code installer >>>") == 1
+    assert profile.count("# >>> niki-agent installer >>>") == 1
     assert 'export PATH="$HOME/.local/bin:$PATH"' in profile
     assert "$HOME/old-bin" not in profile
     assert profile.startswith("before\n")
@@ -4635,10 +4628,10 @@ def test_install_script_current_uv_tool_repairs_shadowed_path(tmp_path: Path) ->
         latest_version="0.2.0",
     )
     tool_bin.mkdir(parents=True)
-    dcode = tool_bin / "dcode"
+    dcode = tool_bin / "niki"
     dcode.write_text(
         "#!/usr/bin/env bash\n"
-        'if [ "${1:-}" = "-v" ]; then printf "deepagents-code 0.2.0\\n"; fi\n'
+        'if [ "${1:-}" = "-v" ]; then printf "niki-agent 0.2.0\\n"; fi\n'
     )
     _make_executable(dcode)
 
@@ -4655,7 +4648,7 @@ def test_install_script_current_uv_tool_repairs_shadowed_path(tmp_path: Path) ->
     assert proc.returncode == 0, proc.stderr
     assert (tmp_path / "uv-args.txt").exists()
     assert "not selected on PATH" in proc.stdout
-    assert "Detected existing dcode" in proc.stderr
+    assert "Detected existing niki" in proc.stderr
 
 
 def test_install_script_no_path_warning_when_dcode_on_path(tmp_path: Path) -> None:
@@ -4671,7 +4664,7 @@ def test_install_script_managed_ripgrep_calls_tools_install(tmp_path: Path) -> N
     """Default (`managed`) mode eagerly runs `dcode tools install`."""
     proc, _ = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "0"},
+        {"NIKI_SKIP_OPTIONAL": "0"},
         installed_version="0.1.0",
         latest_version="0.2.0",
     )
@@ -4683,7 +4676,7 @@ def test_install_script_managed_ripgrep_calls_tools_install(tmp_path: Path) -> N
     combined = proc.stdout + proc.stderr
     assert "Setting up ripgrep..." not in combined
     assert "Using ripgrep already on PATH" not in combined
-    assert "opt out with DEEPAGENTS_CODE_RIPGREP_INSTALLER=system" not in combined
+    assert "opt out with NIKI_RIPGREP_INSTALLER=system" not in combined
 
 
 def test_install_script_managed_ripgrep_verbose_reports_tools_install(
@@ -4692,7 +4685,7 @@ def test_install_script_managed_ripgrep_verbose_reports_tools_install(
     """Verbose mode prints the otherwise quiet managed-ripgrep setup details."""
     proc, _ = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "0", "DEEPAGENTS_CODE_VERBOSE": "1"},
+        {"NIKI_SKIP_OPTIONAL": "0", "NIKI_VERBOSE": "1"},
         installed_version="0.1.0",
         latest_version="0.2.0",
     )
@@ -4704,12 +4697,12 @@ def test_install_script_managed_ripgrep_verbose_reports_tools_install(
 
 
 def test_install_script_system_ripgrep_skips_tools_install(tmp_path: Path) -> None:
-    """`DEEPAGENTS_CODE_RIPGREP_INSTALLER=system` keeps the package-manager path."""
+    """`NIKI_RIPGREP_INSTALLER=system` keeps the package-manager path."""
     proc, _ = _invoke(
         tmp_path,
         {
-            "DEEPAGENTS_CODE_SKIP_OPTIONAL": "0",
-            "DEEPAGENTS_CODE_RIPGREP_INSTALLER": "system",
+            "NIKI_SKIP_OPTIONAL": "0",
+            "NIKI_RIPGREP_INSTALLER": "system",
         },
         installed_version="0.1.0",
         latest_version="0.2.0",
@@ -4720,10 +4713,10 @@ def test_install_script_system_ripgrep_skips_tools_install(tmp_path: Path) -> No
 
 
 def test_install_script_skip_optional_skips_tools_install(tmp_path: Path) -> None:
-    """`DEEPAGENTS_CODE_SKIP_OPTIONAL=1` skips the managed install entirely."""
+    """`NIKI_SKIP_OPTIONAL=1` skips the managed install entirely."""
     proc, _ = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "1"},
+        {"NIKI_SKIP_OPTIONAL": "1"},
         installed_version="0.1.0",
         latest_version="0.2.0",
     )
@@ -4740,7 +4733,7 @@ def test_install_script_managed_ripgrep_failure_warns(tmp_path: Path) -> None:
     """
     proc, _ = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "0", "FAKE_DCODE_TOOLS_RC": "1"},
+        {"NIKI_SKIP_OPTIONAL": "0", "FAKE_DCODE_TOOLS_RC": "1"},
         installed_version="0.1.0",
         latest_version="0.2.0",
     )
@@ -4758,8 +4751,8 @@ def test_install_script_managed_ripgrep_verbose_failure_warns(
     proc, _ = _invoke(
         tmp_path,
         {
-            "DEEPAGENTS_CODE_SKIP_OPTIONAL": "0",
-            "DEEPAGENTS_CODE_VERBOSE": "1",
+            "NIKI_SKIP_OPTIONAL": "0",
+            "NIKI_VERBOSE": "1",
             "FAKE_DCODE_TOOLS_RC": "1",
         },
         installed_version="0.1.0",
@@ -4783,7 +4776,7 @@ def test_install_script_skips_managed_install_when_verify_failed(
     """
     proc, _ = _invoke(
         tmp_path,
-        {"DEEPAGENTS_CODE_SKIP_OPTIONAL": "0"},
+        {"NIKI_SKIP_OPTIONAL": "0"},
         installed_version="0.1.0",
         latest_version="0.2.0",
         dcode_verify_fails=True,
@@ -4813,7 +4806,7 @@ def test_install_script_version_flag_prints_version_and_exits(
     # contains "installer", so a weaker check wouldn't catch --version being
     # mis-wired to print_help. The absent "Usage:" marker pins that distinction
     # and doubles as a drift guard on INSTALLER_VERSION.
-    assert "deepagents-code installer 1.0" in proc.stdout
+    assert "niki-agent installer 1.0" in proc.stdout
     assert "Usage:" not in proc.stdout
     assert not (tmp_path / "uv-args.txt").exists()
 
@@ -4846,9 +4839,9 @@ def test_shell_lock_root_matches_python_installation_paths(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tool_name: str
 ) -> None:
     """The actual installer acquires its lock where Python expects it."""
-    from deepagents_code._paths import _installation_paths, _normalize_absolute
+    from niki_agent._paths import _installation_paths, _normalize_absolute
 
-    root = _normalize_absolute(tmp_path / tool_name / "deepagents-code")
+    root = _normalize_absolute(tmp_path / tool_name / "niki-agent")
     monkeypatch.setattr("sys.prefix", str(root))
     expected = _installation_paths().locks_dir
     functions = "\n".join(
@@ -4894,7 +4887,7 @@ def test_install_script_rejects_symlinked_deepagents_home_alias(
     destination = home if target == "home" else Path("/")
     link.symlink_to(destination, target_is_directory=True)
 
-    proc, uv_args = _invoke(tmp_path, {"DEEPAGENTS_HOME": str(link)})
+    proc, uv_args = _invoke(tmp_path, {"NIKI_HOME": str(link)})
 
     assert proc.returncode == 1
     assert expected_message in proc.stderr
@@ -4909,7 +4902,7 @@ def test_install_script_rejects_unresolved_deepagents_home_symlink(
     link = tmp_path / "profile-link"
     link.symlink_to(target, target_is_directory=True)
 
-    proc, uv_args = _invoke(tmp_path, {"DEEPAGENTS_HOME": str(link)})
+    proc, uv_args = _invoke(tmp_path, {"NIKI_HOME": str(link)})
 
     assert proc.returncode == 1
     assert "symlink whose target is missing or cannot be resolved" in proc.stderr
@@ -4921,7 +4914,7 @@ def test_install_script_rejects_non_directory_deepagents_home(tmp_path: Path) ->
     blocker = tmp_path / "blocker"
     blocker.write_text("")
 
-    proc, uv_args = _invoke(tmp_path, {"DEEPAGENTS_HOME": str(blocker)})
+    proc, uv_args = _invoke(tmp_path, {"NIKI_HOME": str(blocker)})
 
     assert proc.returncode == 1
     assert "not a directory" in proc.stderr
@@ -4937,7 +4930,7 @@ def test_install_script_rejects_unusable_deepagents_home(
     profile = tmp_path / "profile"
     profile.mkdir(mode=mode)
     try:
-        proc, uv_args = _invoke(tmp_path, {"DEEPAGENTS_HOME": str(profile)})
+        proc, uv_args = _invoke(tmp_path, {"NIKI_HOME": str(profile)})
     finally:
         profile.chmod(0o700)
 
@@ -4955,7 +4948,7 @@ def test_install_script_rejects_profile_behind_unsearchable_ancestor(
     blocked.mkdir(mode=0o600)
     profile = blocked / "profile"
     try:
-        proc, uv_args = _invoke(tmp_path, {"DEEPAGENTS_HOME": str(profile)})
+        proc, uv_args = _invoke(tmp_path, {"NIKI_HOME": str(profile)})
     finally:
         blocked.chmod(0o700)
 

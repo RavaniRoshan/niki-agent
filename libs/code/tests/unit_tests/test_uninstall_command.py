@@ -17,14 +17,14 @@ if TYPE_CHECKING:
 import pytest
 from rich.console import Console
 
-from deepagents_code._version import __version__
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.client.commands.extras import (
+from niki_agent._version import __version__
+from niki_agent.app import DeepAgentsApp
+from niki_agent.client.commands.extras import (
     run_uninstall_command,
     run_uninstall_request,
 )
-from deepagents_code.tui.widgets.messages import AppMessage
-from deepagents_code.update_check import (
+from niki_agent.tui.widgets.messages import AppMessage
+from niki_agent.update_check import (
     UPDATE_LOCK_CONTENDED_MESSAGE,
     CompositeExtraConflictError,
     ExtraNotInstalledError,
@@ -48,7 +48,7 @@ def _write_receipt(
 ) -> None:
     extra_values = ", ".join(f'"{extra}"' for extra in extras)
     requirement = (
-        f'{{ name = "deepagents-code", extras = [{extra_values}], '
+        f'{{ name = "niki-agent", extras = [{extra_values}], '
         f'specifier = "=={__version__}" }}'
     )
     requirements = [requirement]
@@ -78,7 +78,7 @@ class TestUninstallExtraCommand:
 
         assert command == (
             "uv tool install --reinstall -U --python '/opt/Python 3.13/bin/python' "
-            f"'deepagents-code[nvidia]=={__version__}' --with langchain-custom"
+            f"'niki-agent[nvidia]=={__version__}' --with langchain-custom"
         )
 
     def test_last_extra_reinstalls_plain_pinned_package(
@@ -88,15 +88,15 @@ class TestUninstallExtraCommand:
         monkeypatch.setattr(sys, "prefix", str(tmp_path))
 
         assert uninstall_extra_command("ollama") == (
-            f"uv tool install --reinstall -U deepagents-code=={__version__}"
+            f"uv tool install --reinstall -U niki-agent=={__version__}"
         )
 
     @pytest.mark.parametrize(
         "source",
         [
-            'path = "/tmp/deepagents-code.whl"',
-            'url = "https://example.com/deepagents-code.whl"',
-            'git = "https://example.com/deepagents-code.git"',
+            'path = "/tmp/niki-agent.whl"',
+            'url = "https://example.com/niki-agent.whl"',
+            'git = "https://example.com/niki-agent.git"',
         ],
     )
     def test_non_registry_tool_source_refuses_rebuild(
@@ -108,7 +108,7 @@ class TestUninstallExtraCommand:
         """Removing an extra must not replace a custom build with PyPI's."""
         tmp_path.joinpath("uv-receipt.toml").write_text(
             "[tool]\nrequirements = ["
-            f'{{ name = "deepagents-code", extras = ["ollama"], {source} }}'
+            f'{{ name = "niki-agent", extras = ["ollama"], {source} }}'
             "]\n",
             encoding="utf-8",
         )
@@ -127,8 +127,7 @@ class TestUninstallExtraCommand:
         monkeypatch.setattr(sys, "prefix", str(tmp_path))
 
         assert uninstall_extra_command("ollama", version="1.2.0rc1") == (
-            "uv tool install --reinstall -U "
-            "deepagents-code==1.2.0rc1 --prerelease allow"
+            "uv tool install --reinstall -U niki-agent==1.2.0rc1 --prerelease allow"
         )
 
     def test_absent_extra_raises_without_building_a_command(
@@ -148,7 +147,7 @@ class TestUninstallExtraCommand:
 
         command = uninstall_extra_command("MY_EXTRA")
 
-        assert f"deepagents-code[ollama]=={__version__}" in command
+        assert f"niki-agent[ollama]=={__version__}" in command
         assert "my-extra" not in command
 
     @pytest.mark.parametrize(
@@ -252,7 +251,7 @@ class TestUninstallExtraCommand:
             ),
             (
                 '[tool]\nrequirements = [{ name = "langchain-custom" }]\n',
-                "does not contain a 'deepagents-code' requirement",
+                "does not contain a 'niki-agent' requirement",
             ),
         ],
     )
@@ -266,7 +265,7 @@ class TestUninstallExtraCommand:
         """Every receipt shape that cannot describe the selection fails closed.
 
         Guessing an empty selection here would rebuild the tool as a plain
-        `deepagents-code`, deselecting everything the user installed.
+        `niki-agent`, deselecting everything the user installed.
         """
         tmp_path.joinpath("uv-receipt.toml").write_text(receipt, encoding="utf-8")
         monkeypatch.setattr(sys, "prefix", str(tmp_path))
@@ -281,12 +280,12 @@ class TestUninstallExtraCommand:
     @pytest.mark.parametrize(
         "main_requirement",
         [
-            '{ name = "deepagents-code", extras = "ollama" }',
-            '{ name = "deepagents-code", extras = ["ollama;rm -rf /"] }',
-            '{ name = "deepagents-code", extras = [1] }',
+            '{ name = "niki-agent", extras = "ollama" }',
+            '{ name = "niki-agent", extras = ["ollama;rm -rf /"] }',
+            '{ name = "niki-agent", extras = [1] }',
             # Duplicate canonical spellings: silently collapsing them would make
             # the rebuilt command disagree with the receipt it came from.
-            '{ name = "deepagents-code", extras = ["my-extra", "my_extra"] }',
+            '{ name = "niki-agent", extras = ["my-extra", "my_extra"] }',
         ],
     )
     def test_malformed_receipt_extras_fail_closed(
@@ -310,7 +309,7 @@ class TestPerformUninstallExtra:
 
     async def test_invalid_name_never_spawns(self) -> None:
         with patch(
-            "deepagents_code.update_check._run_install_subprocess",
+            "niki_agent.update_check._run_install_subprocess",
             new_callable=AsyncMock,
         ) as run:
             outcome = await perform_uninstall_extra("bad;name")
@@ -330,13 +329,13 @@ class TestPerformUninstallExtra:
         self, method: str, message: str
     ) -> None:
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value=method,
             ),
             patch(
-                "deepagents_code.update_check._run_install_subprocess",
+                "niki_agent.update_check._run_install_subprocess",
                 new_callable=AsyncMock,
             ) as run,
         ):
@@ -348,17 +347,15 @@ class TestPerformUninstallExtra:
     async def test_absent_extra_is_noop_without_uv(self) -> None:
         """An already-completed removal does not require an executable."""
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+            patch("niki_agent.update_check.shutil.which", return_value=None),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch("deepagents_code.update_check.shutil.which", return_value=None),
-            patch(
-                "deepagents_code.update_check.uninstall_extra_command",
+                "niki_agent.update_check.uninstall_extra_command",
                 side_effect=ExtraNotInstalledError("Extra 'ollama' is not installed."),
             ),
             patch(
-                "deepagents_code.update_check._run_install_subprocess",
+                "niki_agent.update_check._run_install_subprocess",
                 new_callable=AsyncMock,
             ) as run,
         ):
@@ -372,20 +369,18 @@ class TestPerformUninstallExtra:
         """A removal that needs a rebuild still fails cleanly without uv."""
         run = AsyncMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+            patch("niki_agent.update_check.shutil.which", return_value=None),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch("deepagents_code.update_check.shutil.which", return_value=None),
-            patch(
-                "deepagents_code.update_check.read_installed_distribution_version",
+                "niki_agent.update_check.read_installed_distribution_version",
                 return_value="9.8.7",
             ),
             patch(
-                "deepagents_code.update_check.uninstall_extra_command",
+                "niki_agent.update_check.uninstall_extra_command",
                 return_value="uv tool install safe-command",
             ),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             outcome = await perform_uninstall_extra("ollama")
 
@@ -397,46 +392,36 @@ class TestPerformUninstallExtra:
     async def test_cancellation_returns_the_locked_recovery_command(self) -> None:
         run = AsyncMock(side_effect=asyncio.CancelledError)
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+            patch("niki_agent.update_check.shutil.which", return_value="/usr/bin/uv"),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch(
-                "deepagents_code.update_check.shutil.which", return_value="/usr/bin/uv"
-            ),
-            patch(
-                "deepagents_code.update_check.read_installed_distribution_version",
+                "niki_agent.update_check.read_installed_distribution_version",
                 return_value="9.8.7",
             ),
             patch(
-                "deepagents_code.update_check.uninstall_extra_command",
-                return_value="uv tool install deepagents-code==9.8.7",
+                "niki_agent.update_check.uninstall_extra_command",
+                return_value="uv tool install niki-agent==9.8.7",
             ),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             outcome = await perform_uninstall_extra("ollama")
 
         assert outcome.interrupted is True
-        assert (
-            outcome.manual_recovery_command == "uv tool install deepagents-code==9.8.7"
-        )
+        assert outcome.manual_recovery_command == "uv tool install niki-agent==9.8.7"
 
     async def test_unknown_installed_version_refuses_rebuild(self) -> None:
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+            patch("niki_agent.update_check.shutil.which", return_value="/usr/bin/uv"),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch(
-                "deepagents_code.update_check.shutil.which", return_value="/usr/bin/uv"
-            ),
-            patch(
-                "deepagents_code.update_check.read_installed_distribution_version",
+                "niki_agent.update_check.read_installed_distribution_version",
                 return_value=None,
             ),
-            patch("deepagents_code.update_check.uninstall_extra_command") as command,
+            patch("niki_agent.update_check.uninstall_extra_command") as command,
             patch(
-                "deepagents_code.update_check._run_install_subprocess",
+                "niki_agent.update_check._run_install_subprocess",
                 new_callable=AsyncMock,
             ) as run,
         ):
@@ -451,19 +436,15 @@ class TestPerformUninstallExtra:
         command = MagicMock()
         run = AsyncMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+            patch("niki_agent.update_check.shutil.which", return_value="/usr/bin/uv"),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch(
-                "deepagents_code.update_check.shutil.which", return_value="/usr/bin/uv"
-            ),
-            patch(
-                "deepagents_code.update_check.update_install_lock",
+                "niki_agent.update_check.update_install_lock",
                 return_value=nullcontext(False),
             ),
-            patch("deepagents_code.update_check.uninstall_extra_command", command),
-            patch("deepagents_code.update_check._run_install_subprocess", run),
+            patch("niki_agent.update_check.uninstall_extra_command", command),
+            patch("niki_agent.update_check._run_install_subprocess", run),
         ):
             outcome = await perform_uninstall_extra("ollama")
 
@@ -481,15 +462,13 @@ class TestUninstallCli:
 
     @pytest.fixture(autouse=True)
     def _uv_install_method(self) -> Iterator[None]:
-        with patch(
-            "deepagents_code.update_check.detect_install_method", return_value="uv"
-        ):
+        with patch("niki_agent.update_check.detect_install_method", return_value="uv"):
             yield
 
     def test_subcommand_dispatches_name(self) -> None:
         args = argparse.Namespace(uninstall_target="ollama")
         with patch(
-            "deepagents_code.client.commands.extras.run_uninstall_request",
+            "niki_agent.client.commands.extras.run_uninstall_request",
             return_value=0,
         ) as request:
             assert run_uninstall_command(args) == 0
@@ -502,7 +481,7 @@ class TestUninstallCli:
         string the type checker cannot verify — so exercise it rather than
         patching it out.
         """
-        from deepagents_code.main import parse_args
+        from niki_agent.main import parse_args
 
         with (
             patch.object(sys, "argv", ["dcode", "uninstall", "--help"]),
@@ -512,13 +491,13 @@ class TestUninstallCli:
 
         assert exit_info.value.code == 0
         out = capsys.readouterr().out
-        assert "dcode uninstall NAME" in out
+        assert "niki uninstall NAME" in out
         assert "base dependencies" in out
         assert "quickjs" in out
 
     def test_missing_subcommand_name_shows_help(self) -> None:
         args = argparse.Namespace(uninstall_target=None)
-        with patch("deepagents_code.ui.show_uninstall_help") as show_help:
+        with patch("niki_agent.ui.show_uninstall_help") as show_help:
             assert run_uninstall_command(args) == 2
         show_help.assert_called_once()
 
@@ -526,14 +505,14 @@ class TestUninstallCli:
         console = MagicMock()
         log_path = tmp_path / "uninstall.log"
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=log_path,
             ),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
@@ -552,10 +531,10 @@ class TestUninstallCli:
     def test_composite_conflict_is_a_refusal(self) -> None:
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False, "Extra 'ollama' is also provided by all-providers."
@@ -572,10 +551,10 @@ class TestUninstallCli:
     def test_protected_extra_is_failure(self, extra: str) -> None:
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
@@ -602,15 +581,15 @@ class TestUninstallCli:
     ) -> None:
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value=method,
             ),
-            patch("deepagents_code.update_check.uninstall_extra_command") as command,
+            patch("niki_agent.update_check.uninstall_extra_command") as command,
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
             ) as perform,
         ):
@@ -625,20 +604,20 @@ class TestUninstallCli:
     def test_success_reports_restart_guidance(self) -> None:
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=Path("/tmp/uninstall.log"),
             ),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(True, ""),
             ) as perform,
             patch(
-                "deepagents_code._invocation.invoked_name",
-                return_value="deepagents-code",
+                "niki_agent._invocation.invoked_name",
+                return_value="niki-agent",
             ),
         ):
             assert run_uninstall_request(name="ollama") == 0
@@ -647,7 +626,7 @@ class TestUninstallCli:
             str(arg) for call in console.print.call_args_list for arg in call.args
         )
         assert "Uninstalled extra 'ollama'" in text
-        assert "Relaunch deepagents-code" in text
+        assert "Relaunch niki-agent" in text
 
     def _console_text(self, console: MagicMock) -> str:
         return " ".join(
@@ -658,16 +637,16 @@ class TestUninstallCli:
         """An editable install is refused before any environment mutation."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=True),
+            patch("niki_agent.config._is_editable_install", return_value=True),
             # A uv install so only the editable check can refuse: an editable
             # checkout under a uv tool prefix is detected as "uv".
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value="uv",
             ),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
             ) as perform,
         ):
@@ -685,10 +664,10 @@ class TestUninstallCli:
         """
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False, "Extra 'openai' is a base dependency and cannot be removed."
@@ -704,9 +683,9 @@ class TestUninstallCli:
         """A malformed extra name is a usage error, not a failed removal."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
             ) as perform,
         ):
@@ -728,15 +707,15 @@ class TestUninstallCli:
         console = MagicMock()
         command = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.detect_install_method",
+                "niki_agent.update_check.detect_install_method",
                 return_value=method,
             ),
-            patch("deepagents_code.update_check.uninstall_extra_command", command),
+            patch("niki_agent.update_check.uninstall_extra_command", command),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
             ) as perform,
         ):
@@ -749,10 +728,10 @@ class TestUninstallCli:
         """An unreadable receipt is reported with its type, not swallowed."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
@@ -769,25 +748,25 @@ class TestUninstallCli:
     def test_failure_reports_log_and_recovery_command(self) -> None:
         """A failed rebuild surfaces the tail of the output, log, and repair cmd."""
         console = MagicMock()
-        stale_command = MagicMock(return_value="uv tool install deepagents-code==1.0")
+        stale_command = MagicMock(return_value="uv tool install niki-agent==1.0")
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.uninstall_extra_command",
+                "niki_agent.update_check.uninstall_extra_command",
                 stale_command,
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=Path("/tmp/uninstall.log"),
             ),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
                     "x" * 300 + "resolver boom",
-                    manual_recovery_command=("uv tool install deepagents-code==9.8.7"),
+                    manual_recovery_command=("uv tool install niki-agent==9.8.7"),
                 ),
             ),
         ):
@@ -796,8 +775,8 @@ class TestUninstallCli:
         text = self._console_text(console)
         assert "resolver boom" in text
         assert "/tmp/uninstall.log" in text
-        assert "uv tool install deepagents-code==9.8.7" in text
-        assert "deepagents-code==1.0" not in text
+        assert "uv tool install niki-agent==9.8.7" in text
+        assert "niki-agent==1.0" not in text
         # Only the last 200 characters of output are echoed.
         assert "x" * 250 not in text
 
@@ -805,10 +784,10 @@ class TestUninstallCli:
         """Contention must not advise hand-running the rebuild."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
@@ -827,14 +806,14 @@ class TestUninstallCli:
         """A failed log create never advertises a path that does not exist."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=None,
             ),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(False, "receipt not found"),
             ),
@@ -850,15 +829,15 @@ class TestUninstallCli:
         """`Ctrl+C` mid-rebuild reports the partial-rebuild risk."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
                     "Uninstall interrupted.",
-                    manual_recovery_command=("uv tool install deepagents-code==9.8.7"),
+                    manual_recovery_command=("uv tool install niki-agent==9.8.7"),
                     interrupted=True,
                 ),
             ),
@@ -867,16 +846,16 @@ class TestUninstallCli:
         text = self._console_text(console)
         assert "Aborted" in text
         assert "partially rebuilt" in text
-        assert "uv tool install deepagents-code==9.8.7" in text
+        assert "uv tool install niki-agent==9.8.7" in text
 
     def test_os_error_exits_one_without_an_unlocked_repair_hint(self) -> None:
         """An OSError before a locked outcome never uses a guessed command."""
         console = MagicMock()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 side_effect=OSError("no space left on device"),
             ),
@@ -909,14 +888,14 @@ class TestUninstallCli:
         console = Console(file=output, color_system=None)
         log_path = Path("/tmp/[/red]/uninstall.log")
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
-            patch("deepagents_code.config.console", console, create=True),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.config.console", console, create=True),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value=log_path,
             ),
             patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=outcome,
             ),
@@ -935,7 +914,7 @@ class TestUninstallCli:
     def test_parser_accepts_subcommand_and_compatibility_flag(
         self, argv: list[str], command: str | None, target: str
     ) -> None:
-        from deepagents_code.main import parse_args
+        from niki_agent.main import parse_args
 
         with patch.object(sys, "argv", argv):
             args = parse_args()
@@ -944,7 +923,7 @@ class TestUninstallCli:
         assert parsed_target == target
 
     def test_install_and_uninstall_flags_are_mutually_exclusive(self) -> None:
-        from deepagents_code.main import parse_args
+        from niki_agent.main import parse_args
 
         with (
             patch.object(
@@ -965,7 +944,7 @@ class TestUninstallCli:
         ],
     )
     def test_package_modifier_is_rejected_for_uninstall(self, argv: list[str]) -> None:
-        from deepagents_code.main import parse_args
+        from niki_agent.main import parse_args
 
         with (
             patch.object(sys, "argv", argv),
@@ -982,7 +961,7 @@ class TestUninstallCli:
         ],
     )
     def test_cli_main_dispatches_both_forms(self, argv: list[str]) -> None:
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         stdin = MagicMock()
         stdin.isatty.return_value = False
@@ -990,9 +969,9 @@ class TestUninstallCli:
         with (
             patch.object(sys, "argv", argv),
             patch.object(sys, "stdin", stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
             patch(
-                "deepagents_code.client.commands.extras.run_uninstall_request",
+                "niki_agent.client.commands.extras.run_uninstall_request",
                 return_value=7,
             ) as request,
             pytest.raises(SystemExit) as exc_info,
@@ -1003,7 +982,7 @@ class TestUninstallCli:
 
     def test_cli_main_dispatches_empty_compatibility_value(self) -> None:
         """An explicit empty alias value reaches invalid-name validation."""
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         stdin = MagicMock()
         stdin.isatty.return_value = False
@@ -1011,9 +990,9 @@ class TestUninstallCli:
         with (
             patch.object(sys, "argv", ["dcode", "--uninstall", ""]),
             patch.object(sys, "stdin", stdin),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
             patch(
-                "deepagents_code.client.commands.extras.run_uninstall_request",
+                "niki_agent.client.commands.extras.run_uninstall_request",
                 return_value=2,
             ) as request,
             pytest.raises(SystemExit) as exc_info,
@@ -1028,7 +1007,7 @@ async def test_uninstall_slash_usage_does_not_invoke_performer() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         with patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
         ) as perform:
             await app._handle_command("/uninstall")
@@ -1045,12 +1024,10 @@ async def test_uninstall_slash_absent_extra_is_noop() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
+            patch("niki_agent.update_check.detect_install_method", return_value="uv"),
             patch(
-                "deepagents_code.update_check.detect_install_method", return_value="uv"
-            ),
-            patch(
-                "deepagents_code.update_check.perform_uninstall_extra",
+                "niki_agent.update_check.perform_uninstall_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraRemovalOutcome(
                     False,
@@ -1072,13 +1049,11 @@ async def test_uninstall_slash_non_uv_install_skips_receipt_read() -> None:
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="brew"),
+        patch("niki_agent.update_check.uninstall_extra_command") as command,
         patch(
-            "deepagents_code.update_check.detect_install_method", return_value="brew"
-        ),
-        patch("deepagents_code.update_check.uninstall_extra_command") as command,
-        patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
         ) as perform,
     ):
@@ -1102,14 +1077,14 @@ async def test_uninstall_slash_editable_install_refuses() -> None:
     app._mount_message = AsyncMock()
     command = MagicMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=True),
+        patch("niki_agent.config._is_editable_install", return_value=True),
         # Report a uv install so only the editable check can refuse: an editable
         # checkout under a uv tool prefix is detected as "uv", and the method
         # alone would let the removal through.
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
-        patch("deepagents_code.update_check.uninstall_extra_command", command),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.update_check.uninstall_extra_command", command),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
         ) as perform,
     ):
@@ -1144,13 +1119,11 @@ async def test_uninstall_slash_refuses_unsupported_install_methods(
     app._mount_message = AsyncMock()
     command = MagicMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value=method),
+        patch("niki_agent.update_check.uninstall_extra_command", command),
         patch(
-            "deepagents_code.update_check.detect_install_method", return_value=method
-        ),
-        patch("deepagents_code.update_check.uninstall_extra_command", command),
-        patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
         ) as perform,
     ):
@@ -1170,14 +1143,14 @@ async def test_uninstall_slash_protected_extra_is_refused(tmp_path: Path) -> Non
     app._mount_message = AsyncMock()
     log_path = tmp_path / "uninstall.log"
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.create_update_log_path",
+            "niki_agent.update_check.create_update_log_path",
             return_value=log_path,
         ),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(
                 False, "Extra 'openai' is a base dependency and cannot be removed."
@@ -1198,25 +1171,25 @@ async def test_uninstall_slash_reports_failure_with_recovery_command() -> None:
     """A failed removal surfaces the log path and the repair command."""
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
-    stale_command = MagicMock(return_value="uv tool install deepagents-code==1.0")
+    stale_command = MagicMock(return_value="uv tool install niki-agent==1.0")
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.uninstall_extra_command",
+            "niki_agent.update_check.uninstall_extra_command",
             stale_command,
         ),
         patch(
-            "deepagents_code.update_check.create_update_log_path",
+            "niki_agent.update_check.create_update_log_path",
             return_value=Path("/tmp/uninstall.log"),
         ),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(
                 False,
                 "resolver exploded",
-                manual_recovery_command="uv tool install deepagents-code==9.8.7",
+                manual_recovery_command="uv tool install niki-agent==9.8.7",
             ),
         ),
     ):
@@ -1228,8 +1201,8 @@ async def test_uninstall_slash_reports_failure_with_recovery_command() -> None:
     )
     assert "resolver exploded" in text
     assert "/tmp/uninstall.log" in text
-    assert "uv tool install deepagents-code==9.8.7" in text
-    assert "deepagents-code==1.0" not in text
+    assert "uv tool install niki-agent==9.8.7" in text
+    assert "niki-agent==1.0" not in text
 
 
 async def test_uninstall_slash_contention_withholds_manual_command() -> None:
@@ -1241,10 +1214,10 @@ async def test_uninstall_slash_contention_withholds_manual_command() -> None:
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(
                 False,
@@ -1273,15 +1246,15 @@ async def test_uninstall_slash_cancellation_is_reported_and_reraised() -> None:
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(
                 False,
                 "Uninstall interrupted.",
-                manual_recovery_command="uv tool install deepagents-code==9.8.7",
+                manual_recovery_command="uv tool install niki-agent==9.8.7",
                 interrupted=True,
             ),
         ),
@@ -1294,7 +1267,7 @@ async def test_uninstall_slash_cancellation_is_reported_and_reraised() -> None:
     )
     assert "Uninstall interrupted" in text
     assert "partially rebuilt" in text
-    assert "uv tool install deepagents-code==9.8.7" in text
+    assert "uv tool install niki-agent==9.8.7" in text
 
 
 async def test_uninstall_slash_os_error_is_reported_without_unlocked_hint() -> None:
@@ -1302,10 +1275,10 @@ async def test_uninstall_slash_os_error_is_reported_without_unlocked_hint() -> N
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             side_effect=OSError("no space left on device"),
         ),
@@ -1333,7 +1306,7 @@ async def test_uninstall_slash_rejects_bad_arguments(
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with patch(
-        "deepagents_code.update_check.perform_uninstall_extra",
+        "niki_agent.update_check.perform_uninstall_extra",
         new_callable=AsyncMock,
     ) as perform:
         await app._handle_uninstall_command(command)
@@ -1350,14 +1323,14 @@ async def test_uninstall_slash_canonicalizes_the_extra_name() -> None:
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.uninstall_extra_command",
+            "niki_agent.update_check.uninstall_extra_command",
             return_value="uv tool install safe-command",
         ),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(True, ""),
         ) as perform,
@@ -1372,18 +1345,18 @@ async def test_uninstall_slash_reports_success() -> None:
     app = DeepAgentsApp()
     app._mount_message = AsyncMock()
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.uninstall_extra_command",
+            "niki_agent.update_check.uninstall_extra_command",
             return_value="uv tool install safe-command",
         ),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             new_callable=AsyncMock,
             return_value=ExtraRemovalOutcome(True, ""),
         ) as perform,
-        patch("deepagents_code.app.invoked_name", return_value="dcode-worktree"),
+        patch("niki_agent.app.invoked_name", return_value="dcode-worktree"),
     ):
         await app._handle_uninstall_command("/uninstall ollama")
     perform.assert_awaited_once()
@@ -1417,17 +1390,17 @@ async def test_uninstall_slash_serializes_environment_mutation() -> None:
         return ExtraRemovalOutcome(True, "")
 
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
-        patch("deepagents_code.update_check.detect_install_method", return_value="uv"),
+        patch("niki_agent.config._is_editable_install", return_value=False),
+        patch("niki_agent.update_check.detect_install_method", return_value="uv"),
         patch(
-            "deepagents_code.update_check.uninstall_extra_command",
+            "niki_agent.update_check.uninstall_extra_command",
             return_value="uv tool install safe-command",
         ),
         patch(
-            "deepagents_code.update_check.perform_uninstall_extra",
+            "niki_agent.update_check.perform_uninstall_extra",
             side_effect=performer,
         ),
-        patch("deepagents_code.app.invoked_name", return_value="dcode"),
+        patch("niki_agent.app.invoked_name", return_value="dcode"),
     ):
         first = asyncio.create_task(app._handle_uninstall_command("/uninstall ollama"))
         second = asyncio.create_task(app._handle_uninstall_command("/uninstall nvidia"))

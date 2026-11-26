@@ -21,19 +21,19 @@ import pytest
 from langgraph.runtime import Runtime
 from textual.worker import WorkerCancelled
 
-from deepagents_code import offload
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code._session_stats import format_token_count
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.configuration.types import TomlSnapshot
-from deepagents_code.offload import (
+from niki_agent import offload
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent._session_stats import format_token_count
+from niki_agent.app import DeepAgentsApp
+from niki_agent.configuration.types import TomlSnapshot
+from niki_agent.offload import (
     _artifacts_root,
     _offload_fallback_root,
     delete_offloaded_history,
     sweep_offloaded_history,
 )
-from deepagents_code.tui.widgets.chat_input import ChatInput
-from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
+from niki_agent.tui.widgets.chat_input import ChatInput
+from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
 
 def _make_dict_messages(n: int) -> list[dict[str, Any]]:
@@ -74,7 +74,7 @@ def _setup_server_offload_app(app: DeepAgentsApp) -> MagicMock:
 
     The agent is specced as a `RemoteAgent` so `_remote_agent()` narrows to it.
     """
-    from deepagents_code.client.remote_client import RemoteAgent
+    from niki_agent.client.remote_client import RemoteAgent
 
     agent = MagicMock(spec=RemoteAgent)
     agent.aupdate_state = AsyncMock()
@@ -186,7 +186,7 @@ class TestOffloadCommand:
         YOLO -- a different mode than the same hook sees on every interactive
         turn.
         """
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         result = {
@@ -303,7 +303,7 @@ class TestOffloadCommand:
 
     async def test_session_start_hook_fires_after_a_committed_offload(self) -> None:
         """The `COMPACT` lifecycle event still reaches configured hooks."""
-        from deepagents_code.hooks.models.domain import SessionStartCause
+        from niki_agent.hooks.models.domain import SessionStartCause
 
         app = DeepAgentsApp()
         result = {
@@ -690,7 +690,7 @@ class TestOffloadFallbackRoot:
         assert root == temp_dir / f"deepagents-{uid}"
         assert stat.S_IMODE(root.stat().st_mode) == 0o700
         # The temp fallback is not persistent; the flag reflects that.
-        from deepagents_code.offload import offload_storage_is_ephemeral
+        from niki_agent.offload import offload_storage_is_ephemeral
 
         assert offload_storage_is_ephemeral() is True
 
@@ -713,7 +713,7 @@ class TestOffloadFallbackRoot:
         assert _offload_fallback_root() == root
         assert stat.S_IMODE(archive_dir.stat().st_mode) == 0o700
         # The persistent per-user location is not ephemeral.
-        from deepagents_code.offload import offload_storage_is_ephemeral
+        from niki_agent.offload import offload_storage_is_ephemeral
 
         assert offload_storage_is_ephemeral() is False
 
@@ -914,16 +914,14 @@ class TestSweepOffloadedHistory:
         if config:
             config_path.write_text(config)
         monkeypatch.setattr(offload, "_offload_fallback_root", lambda: root)
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", config_path
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config_path)
         # Isolate from the developer's shell: resolution must see only the
         # test's config.toml, never a real managed snapshot or exported env var.
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.load_managed_config_toml",
+            "niki_agent.config_manifest.load_managed_config_toml",
             lambda **_: {},
         )
-        monkeypatch.delenv("DEEPAGENTS_CODE_HISTORY_RETENTION_DAYS", raising=False)
+        monkeypatch.delenv("NIKI_HISTORY_RETENTION_DAYS", raising=False)
         return archive_dir
 
     def test_deletes_old_file_and_keeps_fresh_file(
@@ -981,14 +979,14 @@ class TestSweepOffloadedHistory:
         root = tmp_path / "offload"
         monkeypatch.setattr(offload, "_offload_fallback_root", lambda: root)
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "missing.toml",
         )
         monkeypatch.setattr(
-            "deepagents_code.config_manifest.load_managed_config_toml",
+            "niki_agent.config_manifest.load_managed_config_toml",
             lambda **_: {},
         )
-        monkeypatch.delenv("DEEPAGENTS_CODE_HISTORY_RETENTION_DAYS", raising=False)
+        monkeypatch.delenv("NIKI_HISTORY_RETENTION_DAYS", raising=False)
 
         assert sweep_offloaded_history() == 0
 
@@ -1028,7 +1026,7 @@ class TestSweepOffloadedHistory:
         archive_dir = self._setup(
             tmp_path, monkeypatch, "[history]\nretention_days = 30\n"
         )
-        monkeypatch.setenv("DEEPAGENTS_CODE_HISTORY_RETENTION_DAYS", "1")
+        monkeypatch.setenv("NIKI_HISTORY_RETENTION_DAYS", "1")
         archive = archive_dir / "old.md"
         archive.write_text("old")
         old_time = time.time() - 2 * 86_400
@@ -1044,9 +1042,9 @@ class TestSweepOffloadedHistory:
         archive_dir = self._setup(
             tmp_path, monkeypatch, "[history]\nretention_days = 1\n"
         )
-        monkeypatch.setenv("DEEPAGENTS_CODE_HISTORY_RETENTION_DAYS", "1")
+        monkeypatch.setenv("NIKI_HISTORY_RETENTION_DAYS", "1")
         monkeypatch.setattr(
-            "deepagents_code.configuration.service.get_managed_snapshot",
+            "niki_agent.configuration.service.get_managed_snapshot",
             lambda **_: TomlSnapshot.from_table(
                 "managed config", {"history": {"retention_days": 30}}
             ),
@@ -1142,14 +1140,14 @@ class TestOffloadHelpers:
     """Pure helpers for effective-conversation reconstruction."""
 
     def test_effective_conversation_applies_event(self) -> None:
-        from deepagents_code.app import _effective_conversation
+        from niki_agent.app import _effective_conversation
 
         messages = [f"m{i}" for i in range(5)]
         event = {"summary_message": "S", "cutoff_index": 2}
         assert _effective_conversation(messages, event) == ["S", "m2", "m3", "m4"]
 
     def test_effective_conversation_degrades_on_malformed(self) -> None:
-        from deepagents_code.app import _effective_conversation
+        from niki_agent.app import _effective_conversation
 
         messages = ["m0", "m1"]
         # No event, non-dict event, missing summary, and non-int cutoff all
@@ -1176,11 +1174,9 @@ class TestOffloadHelpers:
         sooner, and the next request silently re-sends the whole untrimmed
         history.
         """
-        from deepagents_code.app import _effective_conversation
+        from niki_agent.app import _effective_conversation
 
-        with caplog.at_level(
-            logging.WARNING, logger="deepagents_code.goal_state_notice"
-        ):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.goal_state_notice"):
             assert _effective_conversation(["m0", "m1"], {"cutoff_index": "x"}) == [
                 "m0",
                 "m1",
@@ -1197,7 +1193,7 @@ class TestOffloadHelpers:
         survivors are live turns; returning `[summary]` would hide them from
         the context sizing and dangling-tool-call checks that call this.
         """
-        from deepagents_code.app import _effective_conversation
+        from niki_agent.app import _effective_conversation
 
         event = {"summary_message": "S", "cutoff_index": 9}
         assert _effective_conversation(["m0"], event) == ["m0"]
@@ -1216,7 +1212,7 @@ class TestOffloadOperation:
     def _middleware(
         *, hook_update: dict[str, object] | None = None
     ) -> tuple[Any, MagicMock, MagicMock]:
-        from deepagents_code.offload_middleware import OffloadOperation
+        from niki_agent.offload_middleware import OffloadOperation
 
         compaction = MagicMock()
         compaction._aplan_forced_compaction_update = AsyncMock()
@@ -1229,7 +1225,7 @@ class TestOffloadOperation:
         # including the "no hook events enabled" path. The operation fails closed
         # when the channel is absent, so a mock returning a bare `{}` would
         # assert a contract the middleware never produces.
-        from deepagents_code.hooks.server_middleware import _PRE_TOOL_STATE_KEY
+        from niki_agent.hooks.server_middleware import _PRE_TOOL_STATE_KEY
 
         hooks.aafter_model = AsyncMock(
             return_value=hook_update
@@ -1257,7 +1253,7 @@ class TestOffloadOperation:
         """
         from uuid import uuid4
 
-        from deepagents_code.hooks.server_middleware import (
+        from niki_agent.hooks.server_middleware import (
             HookTransportInterruptError,
         )
 
@@ -1288,7 +1284,7 @@ class TestForcedOffloadCallId:
         dies with "the client answered a different request", but only for users
         with hooks configured. Without a log line there is nothing to point at.
         """
-        from deepagents_code import offload_middleware
+        from niki_agent import offload_middleware
 
         with (
             patch.object(
@@ -1311,7 +1307,7 @@ class TestForcedOffloadCallId:
         Nothing can interrupt or resume such a call, so the random id is
         correct there and must not be reported as a problem.
         """
-        from deepagents_code import offload_middleware
+        from niki_agent import offload_middleware
 
         with (
             patch.object(
@@ -1326,7 +1322,7 @@ class TestForcedOffloadCallId:
 
     def test_same_namespace_yields_the_same_id(self) -> None:
         """Answering a hook interrupt replays the node from the top."""
-        from deepagents_code import offload_middleware
+        from niki_agent import offload_middleware
 
         config = {"configurable": {"checkpoint_ns": "force_compact:abc123"}}
         with patch.object(offload_middleware, "get_config", return_value=config):

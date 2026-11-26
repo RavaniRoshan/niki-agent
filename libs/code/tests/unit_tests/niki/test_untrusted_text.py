@@ -25,7 +25,7 @@ from typing import Any, cast
 
 import pytest
 
-from deepagents_code.unicode_security import sanitize_control_chars
+from niki_agent.unicode_security import sanitize_control_chars
 
 #: Every sequence here is something a hostile tool result could contain.
 HOSTILE_SEQUENCES: dict[str, str] = {
@@ -100,7 +100,7 @@ async def test_hostile_tool_output_never_reaches_the_terminal_as_escapes() -> No
     import pyte
     from textual.app import App, ComposeResult
 
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     class Hostile(App[None]):
         """Mounts one tool card carrying a hostile payload."""
@@ -138,7 +138,7 @@ async def test_hostile_tool_output_never_reaches_the_terminal_as_escapes() -> No
 
 async def test_untrusted_stream_text_is_sanitized_at_render_boundary() -> None:
     """Assistant streaming keeps source text but sanitizes every render write."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     class StreamProbe:
         def __init__(self) -> None:
@@ -195,7 +195,7 @@ async def test_untrusted_reasoning_stream_text_is_sanitized_at_render_boundary()
     """Provider-visible reasoning uses the same terminal-control boundary."""
     from textual.app import App, ComposeResult
 
-    from deepagents_code.tui.widgets.messages import ReasoningMessage
+    from niki_agent.tui.widgets.messages import ReasoningMessage
 
     class HostileReasoning(App[None]):
         def compose(self) -> ComposeResult:

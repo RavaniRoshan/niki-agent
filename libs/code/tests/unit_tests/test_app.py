@@ -30,16 +30,16 @@ if TYPE_CHECKING:
     from langchain_core.messages import HumanMessage
     from textual.pilot import Pilot
 
-    from deepagents_code.mcp_auth import McpServerSpec
-    from deepagents_code.mcp_tools import MCPServerInfo
-    from deepagents_code.notifications import PendingNotification
-    from deepagents_code.resume_state import (
+    from niki_agent.mcp_auth import McpServerSpec
+    from niki_agent.mcp_tools import MCPServerInfo
+    from niki_agent.notifications import PendingNotification
+    from niki_agent.resume_state import (
         GoalProposalKind,
         GoalStatus,
         RubricResult,
     )
-    from deepagents_code.sessions import ThreadInfo
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.sessions import ThreadInfo
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     # `conftest`'s fixture protocols cannot be imported here: `tool.ty`
     # `extra-paths` puts `libs/deepagents` on the path too, so
@@ -58,15 +58,15 @@ from textual.screen import ModalScreen
 from textual.widget import Widget
 from textual.widgets import Checkbox, Input, OptionList, Static
 
-from deepagents_code._cli_context import INHERIT_CLASSIFIER_MODEL
-from deepagents_code._constants import (
+from niki_agent._cli_context import INHERIT_CLASSIFIER_MODEL
+from niki_agent._constants import (
     SDK_DEFAULT_RUBRIC_MAX_ITERATIONS,
     SYSTEM_MESSAGE_PREFIX,
 )
-from deepagents_code._paths import PATHS
-from deepagents_code._session_stats import SessionStats
-from deepagents_code._version import __version__
-from deepagents_code.app import (
+from niki_agent._paths import PATHS
+from niki_agent._session_stats import SessionStats
+from niki_agent._version import __version__
+from niki_agent.app import (
     DeepAgentsApp,
     DeferredAction,
     ExternalInput,
@@ -82,47 +82,47 @@ from deepagents_code.app import (
     _ThreadsResumeTarget,
     _warn_discarded_goal_channels,
 )
-from deepagents_code.cold_cache import (
+from niki_agent.cold_cache import (
     CacheConfidence,
     CacheWriteBucket,
     ColdCacheWarning,
     PromptCachePolicy,
     RewarmEstimate,
 )
-from deepagents_code.config import get_glyphs, runtime_state
-from deepagents_code.event_bus import ExternalEvent
-from deepagents_code.goal_state_limits import (
+from niki_agent.config import get_glyphs, runtime_state
+from niki_agent.event_bus import ExternalEvent
+from niki_agent.goal_state_limits import (
     GOAL_APPLICATION_CHAR_LIMIT,
     GOAL_OBJECTIVE_CHAR_LIMIT,
     RUBRIC_CHAR_LIMIT,
 )
-from deepagents_code.goal_state_notice import (
+from niki_agent.goal_state_notice import (
     GOAL_CONTROL_MESSAGE_SOURCE,
     goal_state_notice_info,
 )
-from deepagents_code.hooks.manager import HooksManager
-from deepagents_code.media_utils import ImageData, VideoData
-from deepagents_code.tui.modals.cold_cache import ColdCacheChoice
-from deepagents_code.tui.textual_adapter import RubricEvaluationEnd
-from deepagents_code.tui.widgets.ask_user import AskUserMenu, AskUserTextArea
-from deepagents_code.tui.widgets.chat_input import ChatInput
-from deepagents_code.tui.widgets.goal_review import (
+from niki_agent.hooks.manager import HooksManager
+from niki_agent.media_utils import ImageData, VideoData
+from niki_agent.tui.modals.cold_cache import ColdCacheChoice
+from niki_agent.tui.textual_adapter import RubricEvaluationEnd
+from niki_agent.tui.widgets.ask_user import AskUserMenu, AskUserTextArea
+from niki_agent.tui.widgets.chat_input import ChatInput
+from niki_agent.tui.widgets.goal_review import (
     GoalReviewMenu,
     GoalReviewResult,
     GoalReviewTextArea,
 )
-from deepagents_code.tui.widgets.goal_status import GoalStatusPanel
-from deepagents_code.tui.widgets.launch_init import (
+from niki_agent.tui.widgets.goal_status import GoalStatusPanel
+from niki_agent.tui.widgets.launch_init import (
     LaunchDependenciesScreen,
     LaunchGoalCriteriaPreferenceScreen,
     LaunchNameScreen,
 )
-from deepagents_code.tui.widgets.message_store import (
+from niki_agent.tui.widgets.message_store import (
     MessageData,
     MessageType,
     ToolStatus,
 )
-from deepagents_code.tui.widgets.messages import (
+from niki_agent.tui.widgets.messages import (
     AppMessage,
     AssistantMessage,
     ErrorMessage,
@@ -133,8 +133,8 @@ from deepagents_code.tui.widgets.messages import (
     ToolCallMessage,
     UserMessage,
 )
-from deepagents_code.tui.widgets.startup_tip import StartupTip
-from deepagents_code.update_check import ExtraInstallOutcome
+from niki_agent.tui.widgets.startup_tip import StartupTip
+from niki_agent.update_check import ExtraInstallOutcome
 
 
 def _pop_goal_state_notice(update: dict[str, Any]) -> HumanMessage:
@@ -162,7 +162,7 @@ async def _wait_for_branch(app: DeepAgentsApp, branch: str) -> None:
 
 def _rubric_status_label(glyph_name: str, text: str) -> str:
     """Return the expected rubric status label for the active charset."""
-    from deepagents_code.config import get_glyphs
+    from niki_agent.config import get_glyphs
 
     glyph = getattr(get_glyphs(), glyph_name)
     return f"{glyph} {text}"
@@ -217,7 +217,7 @@ class TestInitialPromptOnMount:
         app.call_after_refresh = lambda cb: cb()  # ty: ignore
         app._status_bar = None
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app.on_deep_agents_app_server_ready(
                 app.ServerReady(
                     agent=MagicMock(),
@@ -237,7 +237,7 @@ class TestInitialPromptOnMount:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Missing model identity at ServerReady should warn, not silently blank."""
-        from deepagents_code.tui.widgets.status import StatusBar
+        from niki_agent.tui.widgets.status import StatusBar
 
         app = DeepAgentsApp(thread_id="thread-123")
         app._connecting = True
@@ -247,8 +247,8 @@ class TestInitialPromptOnMount:
         app._status_bar = status_bar
 
         with (
-            patch("deepagents_code.config.runtime_state") as mock_runtime_state,
-            caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
+            patch("niki_agent.config.runtime_state") as mock_runtime_state,
+            caplog.at_level(logging.WARNING, logger="niki_agent.app"),
         ):
             mock_runtime_state.model_provider = None
             mock_runtime_state.model_name = None
@@ -328,7 +328,7 @@ class TestInitialPromptOnMount:
         app.run_worker = fake_run_worker  # ty: ignore
 
         with patch(
-            "deepagents_code.update_check.is_update_check_enabled",
+            "niki_agent.update_check.is_update_check_enabled",
             return_value=False,
         ):
             await app._post_paint_init()
@@ -347,7 +347,7 @@ class TestStartupSequence:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Keep legacy onboarding tests focused on the screens they exercise."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.setenv(GOAL_AUTO_ACCEPT_CRITERIA, "false")
 
@@ -777,7 +777,7 @@ class TestStartupSequence:
     @staticmethod
     def _clear_goal_auto_accept_prompt_marker() -> None:
         """Undo the shared fixture marker so preference-prompt coverage can run."""
-        from deepagents_code.onboarding import goal_auto_accept_prompt_marker_path
+        from niki_agent.onboarding import goal_auto_accept_prompt_marker_path
 
         goal_auto_accept_prompt_marker_path().unlink(missing_ok=True)
 
@@ -788,7 +788,7 @@ class TestStartupSequence:
         Tests that mock `run_worker` never start session init, so create the
         session state when it is absent rather than assuming it exists.
         """
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         if app._session_state is None:
             app._session_state = TextualSessionState()
@@ -801,9 +801,9 @@ class TestStartupSequence:
         drain_modal_commands: DrainModalCommands,
     ) -> None:
         """First Auto-mode create/amend should ask before drafting criteria."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.model_config import DEFAULT_CONFIG_PATH
-        from deepagents_code.onboarding import has_shown_goal_auto_accept_prompt
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.model_config import DEFAULT_CONFIG_PATH
+        from niki_agent.onboarding import has_shown_goal_auto_accept_prompt
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -859,8 +859,8 @@ class TestStartupSequence:
         through the real `ChatInput.Submitted` path and pressing Escape must
         resolve the modal.
         """
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.tui.widgets.chat_input import ChatInput
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.tui.widgets.chat_input import ChatInput
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -899,7 +899,7 @@ class TestStartupSequence:
         drain_modal_commands: DrainModalCommands,
     ) -> None:
         """An unanswered criteria prompt is not stacked under a second `/goal`."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -940,7 +940,7 @@ class TestStartupSequence:
         is about to start. Answering the prompt resumes the queue only after the
         proposal worker is running.
         """
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         app = DeepAgentsApp(agent=MagicMock())
@@ -1005,8 +1005,8 @@ class TestStartupSequence:
         wait_for_modal: WaitForModal,
     ) -> None:
         """`/goal amend` shares the create path's off-pump preference prompt."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.tui.widgets.chat_input import ChatInput
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.tui.widgets.chat_input import ChatInput
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -1044,7 +1044,7 @@ class TestStartupSequence:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Explicit prefs should not interrupt goal drafting, even in Auto."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.setenv(GOAL_AUTO_ACCEPT_CRITERIA, "true")
         self._clear_goal_auto_accept_prompt_marker()
@@ -1074,7 +1074,7 @@ class TestStartupSequence:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Onboarding should not ask about goals before the user uses them."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -1098,9 +1098,9 @@ class TestStartupSequence:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A saved choice should persist and suppress future prompts."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.model_config import DEFAULT_CONFIG_PATH
-        from deepagents_code.onboarding import has_shown_goal_auto_accept_prompt
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.model_config import DEFAULT_CONFIG_PATH
+        from niki_agent.onboarding import has_shown_goal_auto_accept_prompt
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         self._clear_goal_auto_accept_prompt_marker()
@@ -1250,7 +1250,7 @@ class TestStartupSequence:
         app.run_worker = fake_run_worker  # ty: ignore
 
         with patch(
-            "deepagents_code.update_check.is_update_check_enabled",
+            "niki_agent.update_check.is_update_check_enabled",
             return_value=False,
         ):
             async with app.run_test() as pilot:
@@ -1276,8 +1276,8 @@ class TestStartupSequence:
         summary is first when the flag is set, and the result future starts
         unresolved in both cases.
         """
-        from deepagents_code._env_vars import ONBOARDING_INTEGRATIONS_SCREEN
-        from deepagents_code.tui.widgets.model_selector import ModelSelectorScreen
+        from niki_agent._env_vars import ONBOARDING_INTEGRATIONS_SCREEN
+        from niki_agent.tui.widgets.model_selector import ModelSelectorScreen
 
         app = DeepAgentsApp(launch_init=True)
 
@@ -1295,7 +1295,7 @@ class TestStartupSequence:
 
     async def test_prompt_launch_tavily_uses_auth_prompt_and_applies_key(self) -> None:
         """Onboarding should reuse the `/auth` prompt for Tavily credentials."""
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen, AuthResult
+        from niki_agent.tui.widgets.auth import AuthPromptScreen, AuthResult
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="thread-123")
         pushed: list[AuthPromptScreen] = []
@@ -1308,11 +1308,9 @@ class TestStartupSequence:
         app._push_screen_wait = AsyncMock(side_effect=capture_prompt)  # ty: ignore
 
         with (
+            patch("niki_agent.config.credentials", SimpleNamespace(has_tavily=False)),
             patch(
-                "deepagents_code.config.credentials", SimpleNamespace(has_tavily=False)
-            ),
-            patch(
-                "deepagents_code.model_config.apply_stored_service_credentials"
+                "niki_agent.model_config.apply_stored_service_credentials"
             ) as apply_credentials,
         ):
             await app._prompt_launch_tavily()
@@ -1336,17 +1334,15 @@ class TestStartupSequence:
         widget layer (`test_optional_empty_submit_cancels_without_error` and
         `test_escape_cancels` in `test_auth_widgets.py`).
         """
-        from deepagents_code.tui.widgets.auth import AuthResult
+        from niki_agent.tui.widgets.auth import AuthResult
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="thread-123")
         app._push_screen_wait = AsyncMock(return_value=AuthResult.CANCELLED)  # ty: ignore
 
         with (
+            patch("niki_agent.config.credentials", SimpleNamespace(has_tavily=False)),
             patch(
-                "deepagents_code.config.credentials", SimpleNamespace(has_tavily=False)
-            ),
-            patch(
-                "deepagents_code.model_config.apply_stored_service_credentials"
+                "niki_agent.model_config.apply_stored_service_credentials"
             ) as apply_credentials,
         ):
             await app._prompt_launch_tavily()
@@ -1360,10 +1356,8 @@ class TestStartupSequence:
         app._push_screen_wait = push_screen_wait  # ty: ignore
 
         with (
-            patch(
-                "deepagents_code.config.credentials", SimpleNamespace(has_tavily=True)
-            ),
-            patch("deepagents_code.auth_store.set_stored_key") as set_stored_key,
+            patch("niki_agent.config.credentials", SimpleNamespace(has_tavily=True)),
+            patch("niki_agent.auth_store.set_stored_key") as set_stored_key,
         ):
             await app._prompt_launch_tavily()
 
@@ -1380,10 +1374,10 @@ class TestStatusBarPickerActions:
         self, target: str, busy: bool, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Opening and cancelling a footer picker preserves the reading position."""
-        from deepagents_code.app import _EffortContext
-        from deepagents_code.tui.widgets.effort_selector import EffortSelectorScreen
-        from deepagents_code.tui.widgets.model_selector import ModelSelectorScreen
-        from deepagents_code.tui.widgets.status import ModelLabel
+        from niki_agent.app import _EffortContext
+        from niki_agent.tui.widgets.effort_selector import EffortSelectorScreen
+        from niki_agent.tui.widgets.model_selector import ModelSelectorScreen
+        from niki_agent.tui.widgets.status import ModelLabel
 
         app = DeepAgentsApp(agent=MagicMock())
         monkeypatch.setattr(
@@ -1458,7 +1452,7 @@ class TestStartupFocus:
 
     async def test_modal_uses_first_focusable_widget(self) -> None:
         """Modal keyboard navigation should retain Textual's focus fallback."""
-        from deepagents_code.tui.widgets.effort_selector import EffortSelectorScreen
+        from niki_agent.tui.widgets.effort_selector import EffortSelectorScreen
 
         app = DeepAgentsApp()
         results: list[str | None] = []
@@ -1525,8 +1519,8 @@ class TestThreadCachePrewarm:
             app.call_after_refresh = MagicMock(side_effect=callbacks.append)  # ty: ignore[invalid-assignment]
             app.run_worker = run_worker_mock  # ty: ignore[invalid-assignment]
             with (
-                patch("deepagents_code.sessions.get_thread_limit", return_value=9),
-                patch("deepagents_code.sessions.get_cached_threads", return_value=[]),
+                patch("niki_agent.sessions.get_thread_limit", return_value=9),
+                patch("niki_agent.sessions.get_cached_threads", return_value=[]),
                 patch.object(app, "push_screen", side_effect=push_screen),
             ):
                 await app._show_thread_selector()
@@ -1726,7 +1720,7 @@ class TestCtrlDChatInput:
 
     async def test_ctrl_d_quits_with_non_empty_draft_hidden_by_modal(self) -> None:
         """Ctrl+D should quit instead of editing a draft hidden behind a modal."""
-        from deepagents_code.tui.widgets.update_available import UpdateAvailableScreen
+        from niki_agent.tui.widgets.update_available import UpdateAvailableScreen
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -1927,7 +1921,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "exit") as exit_mock,
@@ -1954,13 +1948,13 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "notify"),
                 patch.object(app, "exit") as exit_mock,
                 patch(
-                    "deepagents_code.app._monotonic",
+                    "niki_agent.app._monotonic",
                     side_effect=[0.0, 2.0, 4.0],
                 ),
             ):
@@ -1973,7 +1967,7 @@ class TestCtrlCCopySelection:
 
     async def test_ctrl_c_just_past_window_keeps_copying(self) -> None:
         """A press just past the window is not rapid: it copies again, never quits."""
-        from deepagents_code.app import _RAPID_QUIT_CTRL_C_WINDOW_SECONDS
+        from niki_agent.app import _RAPID_QUIT_CTRL_C_WINDOW_SECONDS
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -1989,13 +1983,13 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "notify"),
                 patch.object(app, "exit") as exit_mock,
                 patch(
-                    "deepagents_code.app._monotonic",
+                    "niki_agent.app._monotonic",
                     side_effect=[0.0, _RAPID_QUIT_CTRL_C_WINDOW_SECONDS + 0.001],
                 ),
             ):
@@ -2028,7 +2022,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "exit") as exit_mock,
@@ -2056,7 +2050,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "notify") as notify_mock,
@@ -2097,7 +2091,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "exit") as exit_mock,
@@ -2157,7 +2151,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "exit") as exit_mock,
@@ -2180,7 +2174,7 @@ class TestCtrlCCopySelection:
 
             with (
                 patch(
-                    "deepagents_code.clipboard.copy_text_to_clipboard",
+                    "niki_agent.clipboard.copy_text_to_clipboard",
                     return_value=(True, None),
                 ) as copy_mock,
                 patch.object(app, "exit") as exit_mock,
@@ -2198,7 +2192,7 @@ class TestCacheHandoffInterrupt:
         self, trigger: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A dismissed handoff modal must leave summarization interruptible."""
-        from deepagents_code.tui.modals.cold_cache import ColdCacheWarningScreen
+        from niki_agent.tui.modals.cold_cache import ColdCacheWarningScreen
 
         app = DeepAgentsApp()
         started = asyncio.Event()
@@ -2218,9 +2212,7 @@ class TestCacheHandoffInterrupt:
         monkeypatch.setattr(app, "_remote_agent", lambda: remote)
         monkeypatch.setattr(app, "_process_message", process)
         monkeypatch.setattr(app, "_cold_cache_opted_out", AsyncMock(return_value=False))
-        monkeypatch.setattr(
-            "deepagents_code.app._load_cache_prompt_mode", lambda: "expiry"
-        )
+        monkeypatch.setattr("niki_agent.app._load_cache_prompt_mode", lambda: "expiry")
 
         async with app.run_test() as pilot:
             await pilot.pause()
@@ -2328,7 +2320,7 @@ class TestModalScreenEscapeDismissal:
 async def test_thread_selector_ctrl_c_copies_highlighted_id() -> None:
     from textual.widgets import Input
 
-    from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+    from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
     threads: list[ThreadInfo] = [
         {
@@ -2340,12 +2332,12 @@ async def test_thread_selector_ctrl_c_copies_highlighted_id() -> None:
         for name in ("first", "second")
     ]
     with (
-        patch("deepagents_code.sessions.list_threads", AsyncMock(return_value=threads)),
+        patch("niki_agent.sessions.list_threads", AsyncMock(return_value=threads)),
         patch(
-            "deepagents_code.clipboard.copy_text_to_clipboard",
+            "niki_agent.clipboard.copy_text_to_clipboard",
             return_value=(True, None),
         ) as copy,
-        patch("deepagents_code.app._monotonic", side_effect=[0.0, 2.0, 4.0]),
+        patch("niki_agent.app._monotonic", side_effect=[0.0, 2.0, 4.0]),
     ):
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -2378,7 +2370,7 @@ async def test_thread_selector_ctrl_c_quit_flow(filter_text: str) -> None:
     """Rapid Ctrl+C arms quit even when the thread filter has no matches."""
     from textual.widgets import Input
 
-    from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+    from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
     threads: list[ThreadInfo] = [
         {
@@ -2389,9 +2381,9 @@ async def test_thread_selector_ctrl_c_quit_flow(filter_text: str) -> None:
         }
     ]
     with (
-        patch("deepagents_code.sessions.list_threads", AsyncMock(return_value=threads)),
+        patch("niki_agent.sessions.list_threads", AsyncMock(return_value=threads)),
         patch(
-            "deepagents_code.clipboard.copy_text_to_clipboard",
+            "niki_agent.clipboard.copy_text_to_clipboard",
             return_value=(True, None),
         ) as copy,
     ):
@@ -2409,7 +2401,7 @@ async def test_thread_selector_ctrl_c_quit_flow(filter_text: str) -> None:
                 patch.object(app, "exit") as exit_mock,
                 patch.object(app, "notify") as notify,
                 patch(
-                    "deepagents_code.app._monotonic",
+                    "niki_agent.app._monotonic",
                     side_effect=[0.0, 1.0, 2.1],
                 ),
             ):
@@ -2439,7 +2431,7 @@ class TestModalScreenCtrlDHandling:
         self,
     ) -> None:
         """Escape should close thread delete confirmation before dismissing modal."""
-        from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+        from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
         mock_threads: list[ThreadInfo] = [
             {
@@ -2451,7 +2443,7 @@ class TestModalScreenCtrlDHandling:
             }
         ]
         with patch(
-            "deepagents_code.sessions.list_threads",
+            "niki_agent.sessions.list_threads",
             new_callable=AsyncMock,
             return_value=mock_threads,
         ):
@@ -2483,14 +2475,14 @@ class TestModalScreenCtrlDHandling:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Ctrl+D in the auth prompt should open the confirm modal, not quit."""
-        from deepagents_code import auth_store
-        from deepagents_code.tui.widgets.auth import (
+        from niki_agent import auth_store
+        from niki_agent.tui.widgets.auth import (
             AuthPromptScreen,
             DeleteCredentialConfirmScreen,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         auth_store.set_stored_key("openai", "k")
 
@@ -2518,10 +2510,10 @@ class TestModalScreenCtrlDHandling:
         two inputs now, so the toggle handler must delegate backward navigation
         instead of swallowing the key.
         """
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen
+        from niki_agent.tui.widgets.auth import AuthPromptScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
 
         app = DeepAgentsApp()
@@ -2550,11 +2542,11 @@ class TestModalScreenCtrlDHandling:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Ctrl+D inside the auth confirm modal arms the double-press quit."""
-        from deepagents_code import auth_store
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen
+        from niki_agent import auth_store
+        from niki_agent.tui.widgets.auth import AuthPromptScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         auth_store.set_stored_key("openai", "k")
 
@@ -2590,7 +2582,7 @@ class TestModalScreenShiftTabHandling:
         """Side-question shortcuts edit text without changing approval mode."""
         from textual.widgets import Markdown, TextArea
 
-        from deepagents_code.tui.modals.btw import BtwScreen
+        from niki_agent.tui.modals.btw import BtwScreen
 
         app, remote = btw_app
         answer = remote.abtw
@@ -2637,10 +2629,10 @@ class TestModalScreenShiftTabHandling:
         """Shift+Tab should move the manager option-list cursor up, not toggle."""
         from textual.widgets import OptionList
 
-        from deepagents_code.tui.widgets.auth import AuthManagerScreen
+        from niki_agent.tui.widgets.auth import AuthManagerScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
 
         app = DeepAgentsApp()
@@ -2675,8 +2667,8 @@ class TestModalScreenShiftTabHandling:
         tuple sends Shift+Tab to the `ModalScreen` catch-all, which swallows it
         silently while the footer still advertises it.
         """
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.effort_selector import EffortSelectorScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.effort_selector import EffortSelectorScreen
 
         app = DeepAgentsApp()
 
@@ -2712,7 +2704,7 @@ class TestModalScreenShiftTabHandling:
 
         Same `action_cursor_up` routing as the effort selector above.
         """
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
 
@@ -2736,8 +2728,8 @@ class TestModalScreenShiftTabHandling:
 
     async def test_tab_round_trips_in_the_theme_selector(self) -> None:
         """Tab and Shift+Tab both move the theme cursor, as the footer says."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.theme_selector import ThemeSelectorScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.theme_selector import ThemeSelectorScreen
 
         app = DeepAgentsApp()
 
@@ -2763,8 +2755,8 @@ class TestModalScreenShiftTabHandling:
 
     async def test_tab_round_trips_in_the_agent_selector(self) -> None:
         """Tab and Shift+Tab both move the agent cursor, as the footer says."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.agent_selector import AgentSelectorScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.agent_selector import AgentSelectorScreen
 
         app = DeepAgentsApp()
 
@@ -2798,8 +2790,8 @@ class TestModalScreenShiftTabHandling:
         focusable `Checkbox` widgets. The footer advertises the same
         "Tab/Shift+Tab navigate" copy, so the traversal has to work both ways.
         """
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.notification_center import (
             NotificationCenterScreen,
         )
 
@@ -2933,7 +2925,7 @@ class TestMessageQueue:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The bottom startup tip is not mounted when tips are disabled."""
-        from deepagents_code._env_vars import HIDE_SPLASH_TIPS
+        from niki_agent._env_vars import HIDE_SPLASH_TIPS
 
         monkeypatch.setenv(HIDE_SPLASH_TIPS, "1")
         app = DeepAgentsApp()
@@ -2958,7 +2950,7 @@ class TestMessageQueue:
             assert not app.query(StartupTip)
 
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -2978,7 +2970,7 @@ class TestMessageQueue:
             await app._dismiss_startup_tip()
 
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -2999,7 +2991,7 @@ class TestMessageQueue:
             assert not app.query(StartupTip)
 
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -3020,11 +3012,11 @@ class TestMessageQueue:
 
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
                 patch.object(
@@ -3057,18 +3049,18 @@ class TestMessageQueue:
             if fallback == "not_found":
                 ctx: list[Any] = [
                     patch(
-                        "deepagents_code.sessions.thread_exists",
+                        "niki_agent.sessions.thread_exists",
                         AsyncMock(return_value=False),
                     ),
                     patch(
-                        "deepagents_code.sessions.find_similar_threads",
+                        "niki_agent.sessions.find_similar_threads",
                         AsyncMock(return_value=[]),
                     ),
                 ]
             elif fallback == "abort":
                 ctx = [
                     patch(
-                        "deepagents_code.sessions.thread_exists",
+                        "niki_agent.sessions.thread_exists",
                         AsyncMock(return_value=True),
                     ),
                     patch.object(
@@ -3080,7 +3072,7 @@ class TestMessageQueue:
             else:
                 ctx = [
                     patch(
-                        "deepagents_code.sessions.thread_exists",
+                        "niki_agent.sessions.thread_exists",
                         AsyncMock(side_effect=RuntimeError("boom")),
                     ),
                 ]
@@ -3098,7 +3090,7 @@ class TestMessageQueue:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Opting out of tips also suppresses the post-fallback restore."""
-        from deepagents_code._env_vars import HIDE_SPLASH_TIPS
+        from niki_agent._env_vars import HIDE_SPLASH_TIPS
 
         monkeypatch.setenv(HIDE_SPLASH_TIPS, "1")
         app = DeepAgentsApp(resume_thread="__MOST_RECENT__")
@@ -3106,7 +3098,7 @@ class TestMessageQueue:
             await pilot.pause()
 
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -3126,7 +3118,7 @@ class TestMessageQueue:
 
             with (
                 patch(
-                    "deepagents_code.sessions.get_most_recent",
+                    "niki_agent.sessions.get_most_recent",
                     AsyncMock(return_value=None),
                 ),
                 patch.object(
@@ -3318,7 +3310,7 @@ class TestMessageQueue:
 
     async def test_initial_prompt_anchors_transcript_spacers_above_it(self) -> None:
         """Stored startup output stays above the initial placeholder."""
-        from deepagents_code.app import _MESSAGE_BOTTOM_SPACER_ID
+        from niki_agent.app import _MESSAGE_BOTTOM_SPACER_ID
 
         app = DeepAgentsApp(initial_prompt="hello world")
         async with app.run_test() as pilot:
@@ -3724,12 +3716,10 @@ class TestMessageQueue:
             app._server_proc = MagicMock()
             app._server_kwargs = {}
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(
                 app, "_restart_server_manual", AsyncMock(return_value=False)
             )
@@ -4648,7 +4638,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_toggles_most_recent_expandable_user_message(self) -> None:
         """Ctrl+O expands a most-recent long UserMessage when nothing else owns it."""
-        from deepagents_code.tui.widgets.messages import UserMessage
+        from niki_agent.tui.widgets.messages import UserMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4664,7 +4654,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_prefers_a_later_tool_row_over_a_long_user_message(self) -> None:
         """A tool row after the prompt claims Ctrl+O; the prompt needs a click."""
-        from deepagents_code.tui.widgets.messages import ToolCallMessage, UserMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage, UserMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4687,7 +4677,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_skips_unexpandable_user_messages(self) -> None:
         """A short prompt is transparent, so Ctrl+O reaches the older long one."""
-        from deepagents_code.tui.widgets.messages import UserMessage
+        from niki_agent.tui.widgets.messages import UserMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4706,7 +4696,7 @@ class TestAskUserLifecycle:
 
     def test_user_message_expansion_is_persisted_and_remeasured(self) -> None:
         """Expanding a prompt updates the store and re-measures the row height."""
-        from deepagents_code.tui.widgets.messages import UserMessage
+        from niki_agent.tui.widgets.messages import UserMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._message_store = MagicMock()
@@ -4725,7 +4715,7 @@ class TestAskUserLifecycle:
 
     async def test_long_user_message_submit_toasts(self) -> None:
         """Submitting a >threshold message posts an information toast."""
-        from deepagents_code.tui.widgets.messages import UserMessage
+        from niki_agent.tui.widgets.messages import UserMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._image_tracker = MagicMock()
@@ -4775,7 +4765,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_falls_back_to_tool_with_expandable_args(self) -> None:
         """When no ask_user is pending, Ctrl+O still expands an ask_user-like row."""
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4800,7 +4790,7 @@ class TestAskUserLifecycle:
         which used to swallow the toggle and leave the collapsible code block
         stuck. The action must fall through to args in that case.
         """
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4825,7 +4815,7 @@ class TestAskUserLifecycle:
         Matches the region-aware click routing and the "click or Ctrl+O to show
         command/code" hint: the output stays reachable by clicking its own row.
         """
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4851,7 +4841,7 @@ class TestAskUserLifecycle:
         existed, leaving newer collapsible content (here a skill body)
         unreachable.
         """
-        from deepagents_code.tui.widgets.messages import SkillMessage, ToolGroupSummary
+        from niki_agent.tui.widgets.messages import SkillMessage, ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock())
         app._pending_ask_user_widget = None
@@ -4869,7 +4859,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_targets_visible_grouped_task_description(self) -> None:
         """An expanded group's visible task description takes Ctrl+O priority."""
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             ToolCallMessage,
             ToolGroupSummary,
         )
@@ -4896,7 +4886,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_prefers_recent_rubric_over_tool_group(self) -> None:
         """A newer rubric result should win Ctrl+O over an older tool group."""
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             ToolGroupSummary,
         )
 
@@ -4916,7 +4906,7 @@ class TestAskUserLifecycle:
 
     def test_ctrl_o_skips_rubric_without_details(self) -> None:
         """A summary-only rubric is not toggleable, so Ctrl+O falls through."""
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             ToolGroupSummary,
         )
 
@@ -5096,7 +5086,7 @@ class TestLoadingSpinnerLifecycle:
         never needs repositioning and exactly one spinner exists — the stability
         that replaced the per-tool hide/show flicker.
         """
-        from deepagents_code.tui.widgets.loading import LoadingWidget
+        from niki_agent.tui.widgets.loading import LoadingWidget
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5130,21 +5120,21 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com/o/org/projects/p/proj",
                 ),
-                patch("deepagents_code.app.webbrowser.open") as mock_open,
+                patch("niki_agent.app.webbrowser.open") as mock_open,
             ):
                 await app._handle_trace_command("/trace")
                 await pilot.pause()
 
             expected_url = (
                 "https://smith.langchain.com/o/org/projects/p/proj"
-                "/t/test-thread-123?utm_source=deepagents-code"
+                "/t/test-thread-123?utm_source=niki-agent"
             )
             mock_open.assert_called_once_with(expected_url)
             app_msgs = app.query(AppMessage)
@@ -5163,14 +5153,14 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com",
                 ),
-                patch("deepagents_code.app.webbrowser.open"),
+                patch("niki_agent.app.webbrowser.open"),
                 patch.object(
                     app, "_has_conversation_messages", AsyncMock(return_value=False)
                 ),
@@ -5191,14 +5181,14 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com",
                 ),
-                patch("deepagents_code.app.webbrowser.open"),
+                patch("niki_agent.app.webbrowser.open"),
                 patch.object(
                     app, "_has_conversation_messages", AsyncMock(return_value=True)
                 ),
@@ -5221,14 +5211,14 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com",
                 ),
-                patch("deepagents_code.app.webbrowser.open"),
+                patch("niki_agent.app.webbrowser.open"),
                 patch.object(
                     app,
                     "_get_thread_state_values",
@@ -5245,7 +5235,7 @@ class TestTraceCommand:
 
     async def test_trace_shows_error_when_not_configured(self) -> None:
         """Should show configuration hint when LangSmith is not set up."""
-        from deepagents_code.config import LangsmithShadowResult
+        from niki_agent.config import LangsmithShadowResult
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5254,13 +5244,13 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value=None,
                 ),
                 # Pin the shadow check so this branch is independent of whatever
                 # tracing vars the test runner happens to have exported.
                 patch(
-                    "deepagents_code.config.langsmith_key_shadowed_by_empty_override",
+                    "niki_agent.config.langsmith_key_shadowed_by_empty_override",
                     return_value=LangsmithShadowResult(),
                 ),
             ):
@@ -5283,13 +5273,13 @@ class TestTraceCommand:
 
             # Clear the sibling tracing vars so the real helper reaches the
             # canonical-env shadow branch deterministically.
-            for var in ("LANGCHAIN_API_KEY", "DEEPAGENTS_CODE_LANGCHAIN_API_KEY"):
+            for var in ("LANGCHAIN_API_KEY", "NIKI_LANGCHAIN_API_KEY"):
                 monkeypatch.delenv(var, raising=False)
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+            monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
 
             with patch(
-                "deepagents_code.config.get_langsmith_project_name",
+                "niki_agent.config.get_langsmith_project_name",
                 return_value=None,
             ):
                 await app._handle_trace_command("/trace")
@@ -5297,10 +5287,10 @@ class TestTraceCommand:
 
             app_msgs = app.query(AppMessage)
             rendered = "\n".join(str(w._content) for w in app_msgs)
-            assert "DEEPAGENTS_CODE_LANGSMITH_API_KEY" in rendered
+            assert "NIKI_LANGSMITH_API_KEY" in rendered
             assert "shadowing" in rendered
             # The actionable remediation must be present...
-            assert "Unset DEEPAGENTS_CODE_LANGSMITH_API_KEY" in rendered
+            assert "Unset NIKI_LANGSMITH_API_KEY" in rendered
             # ...and it must not send the user to /auth or mislabel an env key
             # as a "stored" key.
             assert "/auth" not in rendered
@@ -5308,7 +5298,7 @@ class TestTraceCommand:
 
     async def test_trace_flags_unreadable_credential_store(self) -> None:
         """A corrupt store surfaces a corruption hint, not the generic one."""
-        from deepagents_code.config import LangsmithShadowResult
+        from niki_agent.config import LangsmithShadowResult
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5317,11 +5307,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.config.langsmith_key_shadowed_by_empty_override",
+                    "niki_agent.config.langsmith_key_shadowed_by_empty_override",
                     return_value=LangsmithShadowResult(store_unreadable=True),
                 ),
             ):
@@ -5346,11 +5336,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.config.langsmith_key_shadowed_by_empty_override",
+                    "niki_agent.config.langsmith_key_shadowed_by_empty_override",
                     side_effect=RuntimeError("boom"),
                 ),
             ):
@@ -5371,7 +5361,7 @@ class TestTraceCommand:
         the user should see a network-flavored error rather than the misleading
         "not configured" message.
         """
-        from deepagents_code.config import LangSmithLookupTimeoutError
+        from niki_agent.config import LangSmithLookupTimeoutError
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5380,11 +5370,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     side_effect=LangSmithLookupTimeoutError("timed out"),
                 ),
             ):
@@ -5398,7 +5388,7 @@ class TestTraceCommand:
 
     async def test_trace_shows_import_error_when_langsmith_missing(self) -> None:
         """Should tell the user to install `langsmith` when import fails."""
-        from deepagents_code.config import LangSmithImportError
+        from niki_agent.config import LangSmithImportError
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5407,11 +5397,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     side_effect=LangSmithImportError("not installed"),
                 ),
             ):
@@ -5426,7 +5416,7 @@ class TestTraceCommand:
 
     async def test_trace_shows_api_error_when_lookup_rejected(self) -> None:
         """Should surface the SDK error (auth, 404) rather than blame network."""
-        from deepagents_code.config import LangSmithApiError
+        from niki_agent.config import LangSmithApiError
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5435,11 +5425,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     side_effect=LangSmithApiError("401 Unauthorized"),
                 ),
             ):
@@ -5454,7 +5444,7 @@ class TestTraceCommand:
 
     async def test_trace_shows_friendly_message_when_project_not_found(self) -> None:
         """A not-found project shows a 'created on first trace' hint, not an error."""
-        from deepagents_code.config import LangSmithProjectNotFoundError
+        from niki_agent.config import LangSmithProjectNotFoundError
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5463,13 +5453,13 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
-                    return_value="deepagents-code",
+                    "niki_agent.config.get_langsmith_project_name",
+                    return_value="niki-agent",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     side_effect=LangSmithProjectNotFoundError(
-                        "Project deepagents-code not found"
+                        "Project niki-agent not found"
                     ),
                 ),
             ):
@@ -5490,7 +5480,7 @@ class TestTraceCommand:
             app._session_state = TextualSessionState(thread_id="test-thread-123")
 
             with patch(
-                "deepagents_code.config.get_langsmith_project_name",
+                "niki_agent.config.get_langsmith_project_name",
                 side_effect=RuntimeError("env resolution failed"),
             ):
                 await app._handle_trace_command("/trace")
@@ -5523,14 +5513,14 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com",
                 ),
-                patch("deepagents_code.app.webbrowser.open"),
+                patch("niki_agent.app.webbrowser.open"),
             ):
                 await app._handle_trace_command("/trace")
                 await pilot.pause()
@@ -5567,14 +5557,14 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     return_value="https://smith.langchain.com",
                 ),
-                patch("deepagents_code.app.webbrowser.open"),
+                patch("niki_agent.app.webbrowser.open"),
                 patch.object(
                     app, "_has_conversation_messages", AsyncMock(return_value=False)
                 ),
@@ -5602,11 +5592,11 @@ class TestTraceCommand:
 
             with (
                 patch(
-                    "deepagents_code.config.get_langsmith_project_name",
+                    "niki_agent.config.get_langsmith_project_name",
                     return_value="proj",
                 ),
                 patch(
-                    "deepagents_code.config.fetch_langsmith_project_url_or_raise",
+                    "niki_agent.config.fetch_langsmith_project_url_or_raise",
                     side_effect=RuntimeError("SDK error"),
                 ),
             ):
@@ -5633,10 +5623,10 @@ class TestTraceCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """'/auth' should push the AuthManagerScreen modal."""
-        from deepagents_code.tui.widgets.auth import AuthManagerScreen
+        from niki_agent.tui.widgets.auth import AuthManagerScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5650,10 +5640,10 @@ class TestTraceCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """'/connect' should push the AuthManagerScreen modal."""
-        from deepagents_code.tui.widgets.auth import AuthManagerScreen
+        from niki_agent.tui.widgets.auth import AuthManagerScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5674,11 +5664,11 @@ class TestTraceCommand:
         sensitive to a dropped refresh, which assertions on the synchronously
         assigned `_mcp_connecting` flag cannot detect.
         """
-        from deepagents_code.tui.modals import plugin_manager as plugin_manager_module
-        from deepagents_code.tui.modals.plugin_manager.state import _ManagerState
+        from niki_agent.tui.modals import plugin_manager as plugin_manager_module
+        from niki_agent.tui.modals.plugin_manager.state import _ManagerState
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         loads: list[tuple[tuple[MCPServerInfo, ...], bool]] = []
 
@@ -5702,10 +5692,10 @@ class TestTraceCommand:
         Plugins are generally available, so dispatch must open the manager
         directly rather than emitting an experimental hint.
         """
-        from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
+        from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -5727,8 +5717,8 @@ class TestTraceCommand:
         assigned synchronously and so stays correct even if the refresh is
         dropped entirely.
         """
-        from deepagents_code.mcp_tools import MCPServerInfo
-        from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
+        from niki_agent.mcp_tools import MCPServerInfo
+        from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
 
         loads = self._record_manager_state_loads(monkeypatch, tmp_path)
         settled = MCPServerInfo(name="docs", transport="stdio", status="ok")
@@ -5769,7 +5759,7 @@ class TestTraceCommand:
         the manager keeps the connecting snapshot for the life of the modal —
         the same stale state on the failure branch.
         """
-        from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
+        from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
 
         loads = self._record_manager_state_loads(monkeypatch, tmp_path)
 
@@ -5794,7 +5784,7 @@ class TestTraceCommand:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A push into a dismissed manager must not query a torn-down DOM."""
-        from deepagents_code.tui.modals.plugin_manager import PluginManagerScreen
+        from niki_agent.tui.modals.plugin_manager import PluginManagerScreen
 
         loads = self._record_manager_state_loads(monkeypatch, tmp_path)
 
@@ -5838,7 +5828,7 @@ class TestClearCommand:
             )
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch.object(app, "_thread_links_configured", return_value=True),
                 patch.object(app, "_schedule_thread_message_link") as schedule,
             ):
@@ -5869,7 +5859,7 @@ class TestClearCommand:
 
     async def test_clear_points_back_to_previous_thread(self) -> None:
         """/clear should surface the abandoned thread and a resume hint."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp(thread_id="old-thread")
         async with app.run_test() as pilot:
@@ -5883,13 +5873,13 @@ class TestClearCommand:
             )
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="agent"),
                 ),
                 patch.object(app, "_thread_links_configured", return_value=True),
@@ -5918,7 +5908,7 @@ class TestClearCommand:
 
     async def test_clear_hides_thread_ids_without_tracing(self) -> None:
         """Unlinked thread notices should stay concise."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp(thread_id="old-thread")
         async with app.run_test() as pilot:
@@ -5930,13 +5920,13 @@ class TestClearCommand:
             )
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="agent"),
                 ),
                 patch.object(app, "_thread_links_configured", return_value=False),
@@ -5962,9 +5952,9 @@ class TestClearCommand:
             app._lc_thread_id = "old-thread"
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=False),
                 ),
                 patch.object(app, "_thread_links_configured", return_value=True),
@@ -5993,10 +5983,10 @@ class TestClearCommand:
             thread_exists = AsyncMock(return_value=True)
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
-                patch("deepagents_code.sessions.thread_exists", thread_exists),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.sessions.thread_exists", thread_exists),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="agent"),
                 ),
             ):
@@ -6028,9 +6018,9 @@ class TestClearCommand:
             app._rubric_model_recorded = True
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=False),
                 ),
                 patch.object(
@@ -6065,9 +6055,9 @@ class TestClearCommand:
             app._rubric_model_recorded = True
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=False),
                 ),
                 patch.object(
@@ -6092,9 +6082,9 @@ class TestClearCommand:
             app._lc_thread_id = "old-thread"
 
             with (
-                patch("deepagents_code.app._new_thread_id", return_value="new-thread"),
+                patch("niki_agent.app._new_thread_id", return_value="new-thread"),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=False),
                 ),
                 patch.object(
@@ -6146,7 +6136,7 @@ class TestCacheTiming:
                 state, messages=[], context_tokens=0, model_spec="", model_params=None
             )
             with patch(
-                "deepagents_code.tui.widgets.status.datetime", wraps=datetime
+                "niki_agent.tui.widgets.status.datetime", wraps=datetime
             ) as clock:
                 clock.now.return_value = now
                 await app._load_thread_history(preloaded_payload=payload)
@@ -6221,7 +6211,7 @@ class TestCacheTiming:
                 patch.object(app, "_ensure_goal_state_notice", return_value=True),
                 patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(
@@ -6289,11 +6279,9 @@ class TestCacheTiming:
             config = MagicMock()
             config.get_effective_kwargs.return_value = {"base_url": base_url}
             with (
+                patch("niki_agent.model_config.ModelConfig.load", return_value=config),
                 patch(
-                    "deepagents_code.model_config.ModelConfig.load", return_value=config
-                ),
-                patch(
-                    "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+                    "niki_agent.cold_cache.load_trusted_cache_endpoints",
                     return_value=frozenset({"gateway.example.com"})
                     if trusted
                     else frozenset(),
@@ -6350,7 +6338,7 @@ class TestCacheTiming:
                 patch.object(app, "_ensure_goal_state_notice", return_value=True),
                 patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(
@@ -6385,7 +6373,7 @@ class TestRunAgentTaskMediaTracker:
         async with app.run_test() as pilot:
             await pilot.pause()
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
             ):
                 await app._run_agent_task("hello")
@@ -6410,7 +6398,7 @@ class TestRunAgentTaskMediaTracker:
                 patch.object(runtime_state, "model_name", model_id),
                 patch.object(runtime_state, "model_provider", "bedrock"),
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     new_callable=AsyncMock,
                 ),
             ):
@@ -6427,7 +6415,7 @@ class TestRunAgentTaskMediaTracker:
             assert app._ui_adapter is not None
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
             ) as mock_execute:
                 await app._run_agent_task("hello")
@@ -6473,7 +6461,7 @@ class TestRunAgentTaskMediaTracker:
                 {"error": "ToolException", "message": "An internal error occurred"}
             )
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
                 side_effect=exc,
             ):
@@ -6494,7 +6482,7 @@ class TestRunAgentTaskMediaTracker:
         """`PermissionDeniedError` errors append a clickable gateway docs link."""
         from langgraph.pregel.remote import RemoteException
 
-        from deepagents_code.app import _GATEWAY_DOCS_URL
+        from niki_agent.app import _GATEWAY_DOCS_URL
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -6505,7 +6493,7 @@ class TestRunAgentTaskMediaTracker:
                 {"error": "PermissionDeniedError", "message": "An internal error"}
             )
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
                 side_effect=exc,
             ):
@@ -6519,7 +6507,7 @@ class TestRunAgentTaskMediaTracker:
         """A detected gateway/key mismatch names the offending env var in the UI."""
         from langgraph.pregel.remote import RemoteException
 
-        from deepagents_code import app as app_module
+        from niki_agent import app as app_module
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -6536,7 +6524,7 @@ class TestRunAgentTaskMediaTracker:
                     lambda _provider: "OPENAI_API_KEY",
                 ),
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     new_callable=AsyncMock,
                     side_effect=exc,
                 ),
@@ -6582,7 +6570,7 @@ class TestRunAgentTaskMediaTracker:
             app._show_reasoning = True
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
             ) as mock_execute:
                 await app._run_agent_task("hello")
@@ -6603,7 +6591,7 @@ class TestWarnDiscardedGoalChannels:
         DEBUG is not attached by default, so the discard must surface at WARNING
         (not DEBUG) to leave a visible trace.
         """
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             discarded = _warn_discarded_goal_channels({"_goal_objective": 123})
 
         assert discarded == ["_goal_objective"]
@@ -6664,7 +6652,7 @@ class TestWarnDiscardedGoalChannels:
 
     async def test_rubric_model_payload_restores_explicit_inheritance(self) -> None:
         """The sentinel overrides a startup dedicated grader model."""
-        from deepagents_code.resume_state import INHERIT_RUBRIC_MODEL
+        from niki_agent.resume_state import INHERIT_RUBRIC_MODEL
 
         payload = DeepAgentsApp._goal_rubric_payload_from_state(
             {"_rubric_model_spec": INHERIT_RUBRIC_MODEL},
@@ -6770,8 +6758,8 @@ class TestGoalCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Auto opt-in and YOLO should apply a proposal at the turn boundary."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.approval_mode import ApprovalMode
 
         mode = ApprovalMode(mode_name)
         monkeypatch.setenv(
@@ -7051,7 +7039,7 @@ class TestGoalCommand:
             clear_request = AsyncMock(return_value=True)
 
             with (
-                patch("deepagents_code.app._GOAL_SYNC_READ_RETRY_SECONDS", 0),
+                patch("niki_agent.app._GOAL_SYNC_READ_RETRY_SECONDS", 0),
                 patch.object(app, "_get_thread_state_values", fetch),
                 patch.object(app, "_persist_goal_rubric_state", persist),
                 patch.object(
@@ -7083,8 +7071,8 @@ class TestGoalCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Manual and default Auto should keep interactive goal review."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.approval_mode import ApprovalMode
 
         mode = ApprovalMode(mode_name)
         monkeypatch.setenv(
@@ -7122,8 +7110,8 @@ class TestGoalCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A regenerated proposal should use the live Auto-mode policy."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.approval_mode import ApprovalMode
 
         monkeypatch.setenv(GOAL_AUTO_ACCEPT_CRITERIA, "true")
         app = DeepAgentsApp(agent=MagicMock(), auto_approve=False)
@@ -7164,7 +7152,7 @@ class TestGoalCommand:
                 ),
                 patch.object(app, "_continue_goal_work", handle),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
             ):
@@ -7235,8 +7223,8 @@ class TestGoalCommand:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A submitted cancellation stays authoritative when opted-in Auto starts."""
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent.approval_mode import ApprovalMode
 
         monkeypatch.setenv(GOAL_AUTO_ACCEPT_CRITERIA, "true")
         app = DeepAgentsApp(agent=MagicMock(), auto_approve=False)
@@ -7269,7 +7257,7 @@ class TestGoalCommand:
                 ),
                 patch.object(app, "_handle_user_message", handle),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
             ):
@@ -7541,7 +7529,7 @@ class TestGoalCommand:
             execute = AsyncMock(return_value=SessionStats())
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     execute,
                 ),
                 patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
@@ -7764,7 +7752,7 @@ class TestGoalCommand:
             execute = AsyncMock(return_value=SessionStats())
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     execute,
                 ),
                 patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
@@ -8241,7 +8229,7 @@ class TestGoalCommand:
         self,
     ) -> None:
         """Fresh remote sessions should register the thread before state writes."""
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -8749,7 +8737,7 @@ class TestGoalCommand:
 
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     new=AsyncMock(return_value=SessionStats()),
                 ) as execute,
                 patch.object(
@@ -8935,7 +8923,7 @@ class TestGoalCommand:
             )
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(app, "_get_thread_state_values", fetch),
@@ -8985,7 +8973,7 @@ class TestGoalCommand:
             )
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(app, "_get_thread_state_values", fetch),
@@ -9037,7 +9025,7 @@ class TestGoalCommand:
             )
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(app, "_get_thread_state_values", fetch),
@@ -9382,7 +9370,7 @@ class TestGoalCommand:
             )
             notifications: list[str] = []
             with (
-                patch("deepagents_code.app._GOAL_SYNC_READ_RETRY_SECONDS", 0),
+                patch("niki_agent.app._GOAL_SYNC_READ_RETRY_SECONDS", 0),
                 patch.object(app, "_get_thread_state_values", fetch),
                 patch.object(
                     app,
@@ -9735,7 +9723,7 @@ class TestRubricCommand:
             # `_run_agent_task` owns the consumption check, so stub only the
             # streaming call it makes afterwards.
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(),
             ):
                 await app._run_agent_task("keep going")
@@ -9818,7 +9806,7 @@ class TestRubricCommand:
                 return SessionStats()
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(side_effect=execute_stub),
             ) as mock_execute:
                 await app._handle_user_message("I added the provider credentials")
@@ -9854,7 +9842,7 @@ class TestRubricCommand:
                 return SessionStats()
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(side_effect=execute_stub),
             ):
                 await app._handle_user_message("Credentials are configured now")
@@ -9900,7 +9888,7 @@ class TestRubricCommand:
                 return SessionStats()
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(side_effect=execute_stub),
             ) as mock_execute:
                 await app._handle_user_message("keep going")
@@ -9940,7 +9928,7 @@ class TestRubricCommand:
                 return SessionStats()
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(side_effect=execute_stub),
             ):
                 await app._handle_user_message("Credentials are configured now")
@@ -9965,7 +9953,7 @@ class TestRubricCommand:
             app._goal_status = "blocked"
             app._goal_status_note = "waiting on provider credentials"
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
             ) as mock_execute:
                 await app._handle_user_message("Credentials are configured now")
@@ -10006,7 +9994,7 @@ class TestRubricCommand:
                 return SessionStats()
 
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new=AsyncMock(side_effect=execute_stub),
             ) as mock_execute:
                 await app._send_to_agent("/skill:foo envelope prompt")
@@ -10031,7 +10019,7 @@ class TestRubricCommand:
             app._goal_status = "blocked"
             app._goal_status_note = "waiting on provider credentials"
             with patch(
-                "deepagents_code.tui.textual_adapter.execute_task_textual",
+                "niki_agent.tui.textual_adapter.execute_task_textual",
                 new_callable=AsyncMock,
             ) as mock_execute:
                 await app._handle_user_message("Credentials are configured now")
@@ -10074,7 +10062,7 @@ class TestRubricCommand:
             )
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     side_effect=execute,
                 ),
                 patch.object(app, "_get_thread_state_values", fetch),
@@ -10190,7 +10178,7 @@ class TestRubricCommand:
                 patch.object(app, "_persist_goal_rubric_state", persist),
                 patch.object(app, "_cleanup_agent_task", new_callable=AsyncMock),
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     new_callable=AsyncMock,
                 ) as execute,
             ):
@@ -10217,7 +10205,7 @@ class TestRubricCommand:
 
             with (
                 patch(
-                    "deepagents_code.tui.textual_adapter.execute_task_textual",
+                    "niki_agent.tui.textual_adapter.execute_task_textual",
                     new_callable=AsyncMock,
                 ),
                 patch.object(
@@ -10330,10 +10318,10 @@ class TestRubricCommand:
             assert app._rubric_max_iterations is None
             assert app._server_kwargs["rubric_max_iterations"] is None
             app._server_proc.update_env.assert_called_once_with(
-                DEEPAGENTS_CODE_SERVER_RUBRIC_MAX_ITERATIONS="",
+                NIKI_SERVER_RUBRIC_MAX_ITERATIONS="",
             )
             app._server_proc.persist_env.assert_called_once_with(
-                DEEPAGENTS_CODE_SERVER_RUBRIC_MAX_ITERATIONS="",
+                NIKI_SERVER_RUBRIC_MAX_ITERATIONS="",
             )
             assert respawn.await_count == 1
             rendered = "\n".join(str(w._content) for w in app.query(AppMessage))
@@ -10354,7 +10342,7 @@ class TestRubricCommand:
             await pilot.pause()
             app._server_kwargs = {}
             with patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_BlockingAuth(),
             ):
                 await app._set_rubric_model("anthropic:claude-sonnet-4-6")
@@ -10484,7 +10472,7 @@ class TestRubricCommand:
 
     async def test_set_rubric_model_clear_persists_inheritance_sentinel(self) -> None:
         """Clearing writes the explicit active-model inheritance sentinel."""
-        from deepagents_code.resume_state import INHERIT_RUBRIC_MODEL
+        from niki_agent.resume_state import INHERIT_RUBRIC_MODEL
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -10515,9 +10503,9 @@ class TestRubricCommand:
             app._server_proc = MagicMock()
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
                 patch.object(
@@ -10550,9 +10538,9 @@ class TestRubricCommand:
             app._lc_thread_id = "t-1"
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
                 patch.object(
@@ -10583,9 +10571,9 @@ class TestRubricCommand:
             app._lc_thread_id = None
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
                 patch.object(
@@ -10611,9 +10599,9 @@ class TestRubricCommand:
             app._rubric_model_recorded = True
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
                 patch.object(
@@ -10633,7 +10621,7 @@ class TestRubricCommand:
 
     async def test_set_rubric_model_supports_external_graph(self) -> None:
         """External graphs validate grader models with their own environment."""
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         app = DeepAgentsApp()
         app._agent = RemoteAgent("http://test:0")
@@ -10645,10 +10633,10 @@ class TestRubricCommand:
 
             with (
                 patch(
-                    "deepagents_code.app._create_model_with_deepagents_import_lock"
+                    "niki_agent.app._create_model_with_deepagents_import_lock"
                 ) as create_model,
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                 ) as get_auth_status,
                 patch.object(
                     app,
@@ -10672,8 +10660,8 @@ class TestAutoClassifierModelCommand:
 
     async def test_auto_model_selector_persists_to_auto_classifier_key(self) -> None:
         """Ctrl+S in the classifier picker must not retarget the agent's model."""
-        from deepagents_code.model_config import save_auto_classifier_model
-        from deepagents_code.tui.widgets.model_selector import (
+        from niki_agent.model_config import save_auto_classifier_model
+        from niki_agent.tui.widgets.model_selector import (
             AUTO_CLASSIFIER_DEFAULT_SCOPE,
         )
 
@@ -10708,7 +10696,7 @@ class TestAutoClassifierModelCommand:
         the description with `str(...)` — which is exactly the regression that
         makes a `[/]` spec crash the modal.
         """
-        from deepagents_code.tui.widgets.model_selector import ModelSelectorScreen
+        from niki_agent.tui.widgets.model_selector import ModelSelectorScreen
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -10749,9 +10737,9 @@ class TestAutoClassifierModelCommand:
             app._server_proc = MagicMock()
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
             ):
@@ -10772,9 +10760,9 @@ class TestAutoClassifierModelCommand:
         async with app.run_test() as pilot:
             await pilot.pause()
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
             ):
@@ -10794,21 +10782,21 @@ class TestAutoClassifierModelCommand:
     ) -> None:
         """A stored spec the env export outranks is "stored", not "the default".
 
-        The resolver consults `DEEPAGENTS_CODE_AUTO_CLASSIFIER_MODEL` before
+        The resolver consults `NIKI_AUTO_CLASSIFIER_MODEL` before
         `[models].auto_classifier`, so claiming the stored spec "is already the
         default for future sessions" misdescribes the next launch. Presence of
         the variable is enough — a blank export still outranks the config key.
         """
-        from deepagents_code import _env_vars
+        from niki_agent import _env_vars
 
         monkeypatch.setenv(_env_vars.AUTO_CLASSIFIER_MODEL, "")
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
             await pilot.pause()
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
             ):
@@ -10837,7 +10825,7 @@ class TestAutoClassifierModelCommand:
             app._auto_classifier_model = startup_spec
             app._server_kwargs = {"auto_classifier_model": startup_spec}
             with patch(
-                "deepagents_code.app._create_model_with_deepagents_import_lock"
+                "niki_agent.app._create_model_with_deepagents_import_lock"
             ) as create_model:
                 await app._handle_command("/auto model :")
             await pilot.pause()
@@ -10878,9 +10866,9 @@ class TestAutoClassifierModelCommand:
             await app._set_auto_classifier_model(None)
 
             with (
-                patch("deepagents_code.app._create_model_with_deepagents_import_lock"),
+                patch("niki_agent.app._create_model_with_deepagents_import_lock"),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
             ):
@@ -10931,11 +10919,11 @@ class TestAutoClassifierModelCommand:
 
             with (
                 patch(
-                    "deepagents_code.app._create_model_with_deepagents_import_lock",
+                    "niki_agent.app._create_model_with_deepagents_import_lock",
                     side_effect=RuntimeError("no provider package"),
                 ),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=None,
                 ),
             ):
@@ -10961,7 +10949,7 @@ class TestAutoClassifierModelCommand:
             await pilot.pause()
             app._server_kwargs = {}
             with patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=_BlockingAuth(),
             ):
                 await app._set_auto_classifier_model("anthropic:claude-haiku-4-5")
@@ -10978,7 +10966,7 @@ class TestBuildAgentErrorBody:
     def test_permission_denied_appends_docs_link(self) -> None:
         from langgraph.pregel.remote import RemoteException
 
-        from deepagents_code.app import _GATEWAY_DOCS_URL, _build_agent_error_body
+        from niki_agent.app import _GATEWAY_DOCS_URL, _build_agent_error_body
 
         exc = RemoteException({"error": "PermissionDeniedError", "message": "x"})
         body = _build_agent_error_body("Agent error: x", exc)
@@ -10987,7 +10975,7 @@ class TestBuildAgentErrorBody:
     def test_gateway_key_mismatch_names_env_var(self) -> None:
         from langgraph.pregel.remote import RemoteException
 
-        from deepagents_code.app import _build_agent_error_body
+        from niki_agent.app import _build_agent_error_body
 
         exc = RemoteException({"error": "PermissionDeniedError", "message": "x"})
         body = str(
@@ -10999,7 +10987,7 @@ class TestBuildAgentErrorBody:
     def test_permission_denied_without_mismatch_is_generic(self) -> None:
         from langgraph.pregel.remote import RemoteException
 
-        from deepagents_code.app import _GATEWAY_DOCS_URL, _build_agent_error_body
+        from niki_agent.app import _GATEWAY_DOCS_URL, _build_agent_error_body
 
         exc = RemoteException({"error": "PermissionDeniedError", "message": "x"})
         body = str(_build_agent_error_body("Agent error: x", exc))
@@ -11018,7 +11006,7 @@ class TestLangsmithGatewayKeyMismatch:
         key: str | None,
         key_env: str | None = "OPENAI_API_KEY",
     ) -> None:
-        from deepagents_code import model_config
+        from niki_agent import model_config
 
         class _Cfg:
             def get_base_url(self, _provider: str) -> str | None:
@@ -11038,7 +11026,7 @@ class TestLangsmithGatewayKeyMismatch:
             key="sk-proj-abc",
             key_env=None,
         )
-        from deepagents_code.app import _langsmith_gateway_key_mismatch
+        from niki_agent.app import _langsmith_gateway_key_mismatch
 
         assert _langsmith_gateway_key_mismatch("openai") is None
 
@@ -11081,7 +11069,7 @@ class TestAppFocusRestoresChatInput:
             assert app._chat_input is not None
             assert app._chat_input._text_area is not None
 
-            from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+            from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
             app.push_screen(ThreadSelectorScreen(current_thread=None))
             await pilot.pause()
@@ -11202,7 +11190,7 @@ class TestMessageTimestampFooters:
 
     async def test_spacer_mount_skips_detached_footer_anchor(self) -> None:
         """Spacer recreation tolerates a footer still listed during removal."""
-        from deepagents_code.app import _MESSAGE_TOP_SPACER_ID
+        from niki_agent.app import _MESSAGE_TOP_SPACER_ID
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -11235,13 +11223,11 @@ class TestMessageTimestampFooters:
         # Sandbox config so the toggle's persistence starts from "hidden" and
         # does not touch the real user config.
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         # Pin the clock style so the assertion is locale-independent.
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: False)
         self._sync_tz()
         app = DeepAgentsApp()
 
@@ -11280,13 +11266,11 @@ class TestMessageTimestampFooters:
         asserted in both directions: a footer built with `visible=False` must
         not carry the visible class, and one built with `visible=True` must.
         """
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         previous_tz = os.environ.get("TZ")
         monkeypatch.setenv("TZ", "UTC")
-        monkeypatch.setattr(
-            "deepagents_code.formatting.uses_24_hour_clock", lambda: False
-        )
+        monkeypatch.setattr("niki_agent.formatting.uses_24_hour_clock", lambda: False)
         self._sync_tz()
         app = DeepAgentsApp()
         data = MessageData(
@@ -11317,7 +11301,7 @@ class TestMessageTimestampFooters:
 
     async def test_toggle_positions_footer_after_each_message(self) -> None:
         """Message mounting keeps one footer directly after every message."""
-        from deepagents_code.app import _message_timestamp_footer_id
+        from niki_agent.app import _message_timestamp_footer_id
 
         app = DeepAgentsApp()
 
@@ -11364,7 +11348,7 @@ class TestMessageTimestampFooters:
         # Sandbox the config so the toggle's persistence never touches the real
         # user config on disk.
         config = tmp_path / "config.toml"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         app = DeepAgentsApp()
 
         async with app.run_test() as pilot:
@@ -11391,7 +11375,7 @@ class TestMessageTimestampFooters:
         # loads `True` and new footers build with the visible class.
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_message_timestamps = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         app = DeepAgentsApp()
         assert app._message_timestamps_visible is True
 
@@ -11408,12 +11392,12 @@ class TestMessageTimestampFooters:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Restoring an old thread builds visible footers for its messages."""
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_message_timestamps = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         app = DeepAgentsApp()
         tool = MessageData(
             type=MessageType.TOOL,
@@ -11520,7 +11504,7 @@ class TestMessageTimestampFooters:
         """
         from langchain_core.messages import HumanMessage
 
-        from deepagents_code.app import _ThreadHistoryPayload
+        from niki_agent.app import _ThreadHistoryPayload
 
         app = DeepAgentsApp()
         loop_thread = threading.get_ident()
@@ -11561,8 +11545,8 @@ class TestMessageTimestampFooters:
         `DuplicateIds`, which previously aborted the whole load and surfaced a
         "Could not load history" note instead of the conversation.
         """
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11608,8 +11592,8 @@ class TestMessageTimestampFooters:
         each surviving `AssistantMessage`'s own content, never a neighbor's.
         Only exercised when a skip removes an entry, shifting the survivors.
         """
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11646,8 +11630,8 @@ class TestMessageTimestampFooters:
         The intra-batch `seen` guard prevents a same-payload collision from
         raising `DuplicateIds` on the bulk mount.
         """
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11687,8 +11671,8 @@ class TestMessageTimestampFooters:
         up later pruning/hydration. Deduplicating against the store before
         `bulk_load` keeps every ID represented exactly once.
         """
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11730,8 +11714,8 @@ class TestMessageTimestampFooters:
         block and still reach completion without an error note -- the benign
         re-entrant reload case (same payload over surviving widgets).
         """
-        from deepagents_code.app import _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11765,7 +11749,7 @@ class TestMessageTimestampFooters:
         """Scroll-up hydration of older messages builds visible footers."""
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_message_timestamps = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         app = DeepAgentsApp()
 
         async with app.run_test() as pilot:
@@ -11803,8 +11787,8 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Long restored threads keep source rows above the mounted tail."""
-        from deepagents_code.app import _MESSAGE_TOP_SPACER_ID, _ThreadHistoryPayload
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.app import _MESSAGE_TOP_SPACER_ID, _ThreadHistoryPayload
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11842,7 +11826,7 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """New live output should mount only the bounded tail before appending."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
 
@@ -11924,7 +11908,7 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Concurrent hydration and append keep one mounted row per store entry."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         monkeypatch.setattr(app._message_store, "WINDOW_SIZE", 3)
@@ -12005,7 +11989,7 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A protected old row keeps the store and mounted append in sync."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -12126,7 +12110,7 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A cancelled content render must not leave a batch mounted as hydrated."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app = DeepAgentsApp()
         data = MessageData(
@@ -12179,7 +12163,7 @@ class TestMessageTimestampFooters:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Virtualizing an expanded group must retain its inner output state."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         tool = MessageData(
             type=MessageType.TOOL,
@@ -12354,11 +12338,11 @@ class TestMessageTimestampsPersistence:
         """Persisting the toggle leaves unrelated `[ui]` keys intact."""
         import tomllib
 
-        from deepagents_code.app import _save_message_timestamps_visible_result
+        from niki_agent.app import _save_message_timestamps_visible_result
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\ntheme = "langchain"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_message_timestamps_visible_result(True).ok is True
         data = tomllib.loads(config.read_text())
         assert data["ui"]["theme"] == "langchain"
@@ -12372,10 +12356,10 @@ class TestScrollbarToggle:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A missing config yields the hidden default."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         assert _load_show_scrollbar() is False
@@ -12384,11 +12368,11 @@ class TestScrollbarToggle:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An explicit `true` preference is read back."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_scrollbar = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _load_show_scrollbar() is True
 
     def test_load_ignores_non_boolean(
@@ -12398,12 +12382,12 @@ class TestScrollbarToggle:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A non-boolean preference is ignored with a warning."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\nshow_scrollbar = "yes"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        with caplog.at_level("WARNING", logger="deepagents_code.app"):
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        with caplog.at_level("WARNING", logger="niki_agent.app"):
             assert _load_show_scrollbar() is False
         assert any("show_scrollbar" in record.getMessage() for record in caplog.records)
 
@@ -12411,49 +12395,49 @@ class TestScrollbarToggle:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The env var takes priority over the config.toml value."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_scrollbar = false\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHOW_SCROLLBAR", "1")
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setenv("NIKI_SHOW_SCROLLBAR", "1")
         assert _load_show_scrollbar() is True
 
     def test_invalid_env_var_falls_back_to_config(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An unrecognized env var value does not mask the saved preference."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_scrollbar = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHOW_SCROLLBAR", "maybe")
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setenv("NIKI_SHOW_SCROLLBAR", "maybe")
         assert _load_show_scrollbar() is True
 
     def test_empty_env_var_falls_back_to_config(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An empty env var value does not mask the saved preference."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_scrollbar = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHOW_SCROLLBAR", "")
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setenv("NIKI_SHOW_SCROLLBAR", "")
         assert _load_show_scrollbar() is True
 
     def test_save_round_trips(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Saving then loading returns the saved value, both directions."""
-        from deepagents_code.app import (
+        from niki_agent.app import (
             _load_show_scrollbar,
             _save_show_scrollbar_result,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         assert _save_show_scrollbar_result(True).ok is True
@@ -12467,11 +12451,11 @@ class TestScrollbarToggle:
         """Persisting the toggle leaves unrelated `[ui]` keys intact."""
         import tomllib
 
-        from deepagents_code.app import _save_show_scrollbar_result
+        from niki_agent.app import _save_show_scrollbar_result
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\ntheme = "langchain"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_show_scrollbar_result(True).ok is True
         data = tomllib.loads(config.read_text())
         assert data["ui"]["theme"] == "langchain"
@@ -12483,7 +12467,7 @@ class TestScrollbarToggle:
         """The `/scrollbar` toggle flips the flag and updates the chat widget."""
         from textual.containers import VerticalScroll
 
-        from deepagents_code.config import reset_glyphs_cache
+        from niki_agent.config import reset_glyphs_cache
 
         # Force Unicode charset so the scrollbar can actually be shown —
         # in ASCII mode _apply_scrollbar_visibility keeps it at 0.
@@ -12491,7 +12475,7 @@ class TestScrollbarToggle:
         reset_glyphs_cache()
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         app = DeepAgentsApp()
@@ -12524,7 +12508,7 @@ class TestScrollbarToggle:
         """ASCII terminals never show the scrollbar, even when enabled."""
         from textual.containers import VerticalScroll
 
-        from deepagents_code.config import reset_glyphs_cache
+        from niki_agent.config import reset_glyphs_cache
 
         # ASCII terminals can't render the scrollbar glyphs, so the visibility
         # helper must keep the width at 0 regardless of the user preference.
@@ -12532,7 +12516,7 @@ class TestScrollbarToggle:
         reset_glyphs_cache()
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         app = DeepAgentsApp()
@@ -12555,7 +12539,7 @@ class TestScrollbarToggle:
     ) -> None:
         """`/scrollbar` reports its new state via a toast, not a chat message."""
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
         app = DeepAgentsApp()
@@ -12587,12 +12571,12 @@ class TestScrollbarToggle:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A falsy env var overrides a `true` config value (precedence)."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nshow_scrollbar = true\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHOW_SCROLLBAR", "0")
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setenv("NIKI_SHOW_SCROLLBAR", "0")
         assert _load_show_scrollbar() is False
 
     def test_load_handles_malformed_toml(
@@ -12607,11 +12591,11 @@ class TestScrollbarToggle:
         text here would couple this test to a sibling module's log string without
         distinguishing which preference failed to load.
         """
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text("this is = = not valid toml [[[\n")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _load_show_scrollbar() is False
 
     def test_load_ignores_non_table_ui(
@@ -12620,11 +12604,11 @@ class TestScrollbarToggle:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A scalar `[ui]` value reads as unset rather than raising."""
-        from deepagents_code.app import _load_show_scrollbar
+        from niki_agent.app import _load_show_scrollbar
 
         config = tmp_path / "config.toml"
         config.write_text('ui = "oops"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _load_show_scrollbar() is False
 
     def test_save_repairs_malformed_ui_table(
@@ -12633,11 +12617,11 @@ class TestScrollbarToggle:
         """Saving over a scalar `[ui]` replaces it and reports the repair."""
         import tomllib
 
-        from deepagents_code.app import _save_show_scrollbar_result
+        from niki_agent.app import _save_show_scrollbar_result
 
         config = tmp_path / "config.toml"
         config.write_text('ui = "oops"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
 
         result = _save_show_scrollbar_result(True)
         assert result.ok is True
@@ -12650,7 +12634,7 @@ class TestScrollbarToggle:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An unwritable target yields an error result instead of raising."""
-        from deepagents_code.app import _save_show_scrollbar_result
+        from niki_agent.app import _save_show_scrollbar_result
 
         # Point the config at a path whose parent is a regular file, so the
         # `mkdir` in the writer raises an OSError that must be converted into a
@@ -12658,7 +12642,7 @@ class TestScrollbarToggle:
         blocker = tmp_path / "not-a-dir"
         blocker.write_text("")
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             blocker / "config.toml",
         )
 
@@ -12677,11 +12661,11 @@ class TestDiffLineNumbersCommand:
         """Persisting the toggle leaves unrelated `[ui]` keys intact."""
         import tomllib
 
-        from deepagents_code.app import _save_show_diff_line_numbers_result
+        from niki_agent.app import _save_show_diff_line_numbers_result
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\ntheme = "langchain"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_show_diff_line_numbers_result(False).ok is True
         data = tomllib.loads(config.read_text())
         assert data["ui"]["theme"] == "langchain"
@@ -12697,11 +12681,11 @@ class TestDebugConsoleClickToCopyPreference:
         """Persisting the toggle leaves unrelated `[ui]` keys intact."""
         import tomllib
 
-        from deepagents_code.app import _save_debug_console_click_to_copy_result
+        from niki_agent.app import _save_debug_console_click_to_copy_result
 
         config = tmp_path / "config.toml"
         config.write_text('[ui]\ntheme = "langchain"\n')
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_debug_console_click_to_copy_result(True).ok is True
         data = tomllib.loads(config.read_text())
         assert data["ui"]["theme"] == "langchain"
@@ -12711,12 +12695,12 @@ class TestDebugConsoleClickToCopyPreference:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An unwritable target yields an error result instead of raising."""
-        from deepagents_code.app import _save_debug_console_click_to_copy_result
+        from niki_agent.app import _save_debug_console_click_to_copy_result
 
         blocker = tmp_path / "not-a-dir"
         blocker.write_text("")
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             blocker / "config.toml",
         )
 
@@ -12792,7 +12776,7 @@ class TestShellCommandInterrupt:
         """User shell commands keep dcode tracing credentials isolated."""
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -12808,11 +12792,11 @@ class TestShellCommandInterrupt:
         launch["LANGSMITH_API_KEY"] = "shell-key"
         carrier = json.dumps({"launch": launch, "user": dict(launch)})
         monkeypatch.setenv("LANGSMITH_API_KEY", "dcode-key")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "prefixed-key")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_PROFILE", "dcode-profile")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
+        monkeypatch.setenv("NIKI_LANGSMITH_PROFILE", "dcode-profile")
         monkeypatch.setenv(config_mod._USER_LANGSMITH_ENV_CARRIER, carrier)
         monkeypatch.setenv("SHELL_TEST_UNRELATED", "preserved")
-        monkeypatch.setenv("DEEPAGENTS_CODE_SUPPRESS_ENV_OVERRIDE_WARNING", "1")
+        monkeypatch.setenv("NIKI_SUPPRESS_ENV_OVERRIDE_WARNING", "1")
         config_mod._apply_prefixed_langsmith_env()
         assert os.environ["LANGSMITH_API_KEY"] == "prefixed-key"
 
@@ -12839,11 +12823,9 @@ class TestShellCommandInterrupt:
         assert child_env["LANGSMITH_PROJECT"] == "project-name"
         assert child_env["SHELL_TEST_UNRELATED"] == "preserved"
         assert config_mod._USER_LANGSMITH_ENV_CARRIER not in child_env
-        assert not any(
-            key.startswith("DEEPAGENTS_CODE_LANGSMITH_") for key in child_env
-        )
+        assert not any(key.startswith("NIKI_LANGSMITH_") for key in child_env)
         assert os.environ["LANGSMITH_API_KEY"] == "prefixed-key"
-        assert os.environ["DEEPAGENTS_CODE_LANGSMITH_API_KEY"] == "prefixed-key"
+        assert os.environ["NIKI_LANGSMITH_API_KEY"] == "prefixed-key"
         if incognito:
             assert app._pending_shell_messages == []
         else:
@@ -12857,12 +12839,12 @@ class TestShellCommandInterrupt:
         """App-only LangSmith credentials are absent from user commands."""
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         launch = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
         carrier = json.dumps({"launch": launch, "user": dict(launch)})
         monkeypatch.setenv("LANGSMITH_API_KEY", "dcode-only-key")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "prefixed-key")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
         monkeypatch.setenv(config_mod._USER_LANGSMITH_ENV_CARRIER, carrier)
         mock_proc = AsyncMock()
         mock_proc.communicate = AsyncMock(return_value=(b"", b""))
@@ -12883,7 +12865,7 @@ class TestShellCommandInterrupt:
 
         child_env = create_shell.call_args.kwargs["env"]
         assert "LANGSMITH_API_KEY" not in child_env
-        assert "DEEPAGENTS_CODE_LANGSMITH_API_KEY" not in child_env
+        assert "NIKI_LANGSMITH_API_KEY" not in child_env
         assert os.environ["LANGSMITH_API_KEY"] == "dcode-only-key"
 
     @staticmethod
@@ -13098,7 +13080,7 @@ class TestShellCommandInterrupt:
 
     async def test_incognito_timeout_feedback_is_not_model_visible(self) -> None:
         """Incognito timeout feedback should stay out of user/assistant records."""
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         app = DeepAgentsApp()
         mock_proc = AsyncMock()
@@ -13223,7 +13205,7 @@ class TestShellCommandInterrupt:
 
     async def test_incognito_shell_output_uses_regular_shell_widget(self) -> None:
         """Incognito output should use the regular shell output widget."""
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         app = DeepAgentsApp()
         mock_proc = AsyncMock()
@@ -13244,7 +13226,7 @@ class TestShellCommandInterrupt:
                     return_value=mock_proc,
                 ),
                 patch(
-                    "deepagents_code.app.AssistantMessage.write_initial_content",
+                    "niki_agent.app.AssistantMessage.write_initial_content",
                     new=AsyncMock(),
                 ) as write_mock,
             ):
@@ -13265,7 +13247,7 @@ class TestShellCommandInterrupt:
 
     async def test_incognito_nonzero_exit_keeps_stderr_out_of_model(self) -> None:
         """A failing incognito command must not leak stderr to model records."""
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         app = DeepAgentsApp()
         mock_proc = AsyncMock()
@@ -13374,7 +13356,7 @@ class TestShellCommandInterrupt:
                     return_value=mock_proc,
                 ),
                 patch(
-                    "deepagents_code.app.AssistantMessage.write_initial_content",
+                    "niki_agent.app.AssistantMessage.write_initial_content",
                     new=AsyncMock(),
                 ),
             ):
@@ -13426,7 +13408,7 @@ class TestShellCommandInterrupt:
                     return_value=mock_proc,
                 ),
                 patch(
-                    "deepagents_code.app.AssistantMessage.write_initial_content",
+                    "niki_agent.app.AssistantMessage.write_initial_content",
                     new=write_mock,
                 ),
             ):
@@ -13491,7 +13473,7 @@ class TestShellCommandInterrupt:
 
     async def test_pending_shell_flush_ensures_remote_thread_first(self) -> None:
         """Server mode must register a fresh thread before flushing shell output."""
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         calls: list[str] = []
         remote = MagicMock(spec=RemoteAgent)
@@ -13543,7 +13525,7 @@ class TestShellCommandInterrupt:
                     return_value=mock_proc,
                 ),
                 patch(
-                    "deepagents_code.app.AssistantMessage.write_initial_content",
+                    "niki_agent.app.AssistantMessage.write_initial_content",
                     new=AsyncMock(),
                 ),
             ):
@@ -13579,7 +13561,7 @@ class TestShellCommandInterrupt:
                 await app._run_startup_command("echo secret-startup")
                 await pilot.pause()
 
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         messages = app._message_store.get_all_messages()
         assert any(
@@ -13726,7 +13708,7 @@ class TestShellCommandInterrupt:
         Regression guard for the privacy invariant: a typo or stale mode
         literal must never silently fall through to `_handle_user_message`.
         """
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         app = DeepAgentsApp()
         user_handler = AsyncMock()
@@ -13777,7 +13759,7 @@ class TestInterruptApprovalPriority:
         self,
     ) -> None:
         """A focused approval should retain Escape after search was opened."""
-        from deepagents_code.tui.widgets.approval import ApprovalMenu
+        from niki_agent.tui.widgets.approval import ApprovalMenu
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -13809,7 +13791,7 @@ class TestInterruptApprovalPriority:
         self,
     ) -> None:
         """A focused approval should retain Shift+Tab after search opened."""
-        from deepagents_code.tui.widgets.approval import ApprovalMenu
+        from niki_agent.tui.widgets.approval import ApprovalMenu
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -13951,8 +13933,8 @@ class TestApprovalPositionBindings:
         from textual.containers import VerticalScroll
         from textual.widgets import TextArea
 
-        from deepagents_code.tui.modals.btw import BtwScreen
-        from deepagents_code.tui.widgets.approval import ApprovalMenu
+        from niki_agent.tui.modals.btw import BtwScreen
+        from niki_agent.tui.widgets.approval import ApprovalMenu
 
         app, _remote = btw_app
         async with app.run_test(size=(110, 36)) as pilot:
@@ -14061,7 +14043,7 @@ class TestRequestApprovalBranching:
         ]
 
         with (
-            patch("deepagents_code.app._load_shell_allow_list", return_value=["echo"]),
+            patch("niki_agent.app._load_shell_allow_list", return_value=["echo"]),
             patch.object(app, "_mount_approval_widget", new=AsyncMock()) as mount,
             patch.object(app, "_reveal_pending_tool_calls"),
             patch.object(app, "_pause_loading_spinner_for_approval"),
@@ -14122,7 +14104,7 @@ class TestRequestApprovalBranching:
 
     async def test_placeholder_mount_failure_falls_back_to_menu(self) -> None:
         """If placeholder mount fails, the ApprovalMenu is shown directly."""
-        from deepagents_code.tui.widgets.approval import ApprovalMenu
+        from niki_agent.tui.widgets.approval import ApprovalMenu
 
         app = DeepAgentsApp(agent=MagicMock())
         app._last_typed_at = time.monotonic()
@@ -14169,7 +14151,7 @@ class TestDeferredShowApproval:
 
     async def test_bails_if_placeholder_detached_and_cancels_future(self) -> None:
         """If placeholder is detached, worker cancels the future and exits."""
-        from deepagents_code.tui.widgets.approval import ApprovalMenu
+        from niki_agent.tui.widgets.approval import ApprovalMenu
 
         app = DeepAgentsApp(agent=MagicMock())
         app._last_typed_at = None
@@ -14270,7 +14252,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor",
+                    "niki_agent.editor.open_in_editor",
                     return_value="external editor result",
                 ),
             ):
@@ -14283,7 +14265,7 @@ class TestActionOpenEditor:
             assert text_area.text == "external editor result"
 
     async def test_notifies_on_editor_error(self) -> None:
-        from deepagents_code.editor import ExternalEditorError
+        from niki_agent.editor import ExternalEditorError
 
         app = DeepAgentsApp(agent=MagicMock())
         text_area = MagicMock()
@@ -14295,7 +14277,7 @@ class TestActionOpenEditor:
         with (
             patch.object(app, "suspend"),
             patch(
-                "deepagents_code.editor.open_in_editor",
+                "niki_agent.editor.open_in_editor",
                 side_effect=ExternalEditorError("boom"),
             ),
             patch.object(app, "notify") as mock_notify,
@@ -14318,7 +14300,7 @@ class TestActionOpenEditor:
         with (
             patch.object(app, "suspend"),
             patch(
-                "deepagents_code.editor.open_in_editor",
+                "niki_agent.editor.open_in_editor",
                 side_effect=RuntimeError("boom"),
             ),
             patch.object(app, "notify") as mock_notify,
@@ -14334,7 +14316,7 @@ class TestActionOpenEditor:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Cancelling the editor should preserve visible and stored paste text."""
-        from deepagents_code.tui.widgets import _paste_textarea as paste_textarea_module
+        from niki_agent.tui.widgets import _paste_textarea as paste_textarea_module
 
         monkeypatch.setattr(
             paste_textarea_module, "_collapse_pastes_enabled", lambda: True
@@ -14358,7 +14340,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor", return_value=None
+                    "niki_agent.editor.open_in_editor", return_value=None
                 ) as open_editor,
             ):
                 await pilot.press("ctrl+g")
@@ -14399,7 +14381,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor",
+                    "niki_agent.editor.open_in_editor",
                     return_value="edited chat draft",
                 ) as open_editor,
             ):
@@ -14473,7 +14455,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor",
+                    "niki_agent.editor.open_in_editor",
                     return_value="edited chat draft",
                 ) as open_editor,
             ):
@@ -14519,7 +14501,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor",
+                    "niki_agent.editor.open_in_editor",
                     return_value="edited chat draft",
                 ) as open_editor,
             ):
@@ -14557,7 +14539,7 @@ class TestActionOpenEditor:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Cancelling the editor must preserve text and NOT reset paste state."""
-        from deepagents_code.tui.widgets import _paste_textarea as paste_textarea_module
+        from niki_agent.tui.widgets import _paste_textarea as paste_textarea_module
 
         monkeypatch.setattr(
             paste_textarea_module, "_collapse_pastes_enabled", lambda: True
@@ -14580,7 +14562,7 @@ class TestActionOpenEditor:
             with (
                 patch.object(app, "suspend"),
                 patch(
-                    "deepagents_code.editor.open_in_editor", return_value=None
+                    "niki_agent.editor.open_in_editor", return_value=None
                 ) as open_editor,
             ):
                 await pilot.press("ctrl+g")
@@ -14614,7 +14596,7 @@ class TestYoloActiveWarning:
     @staticmethod
     async def _enter_yolo(app: DeepAgentsApp) -> list[str]:
         """Switch `app` into YOLO and return the toast messages it posted."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         with (
             patch.object(
@@ -14647,7 +14629,7 @@ class TestToolsSlashCommand:
         Returns:
             The rendered display text, laid out at a fixed width.
         """
-        from deepagents_code.tui.widgets.messages import _markdown_to_content
+        from niki_agent.tui.widgets.messages import _markdown_to_content
 
         return _markdown_to_content(source, width).plain
 
@@ -14681,7 +14663,7 @@ class TestToolsSlashCommand:
         assert "Read a file" in rendered
 
     async def test_remote_agent_reports_unavailable_mcp_server(self) -> None:
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPServerStatus
+        from niki_agent.mcp_tools import MCPServerInfo, MCPServerStatus
 
         app = DeepAgentsApp(
             agent=MagicMock(spec=[]),
@@ -14709,8 +14691,8 @@ class TestToolsSlashCommand:
         assert "Login required" in rendered
 
     def test_render_escapes_markup(self) -> None:
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-        from deepagents_code.tool_catalog import (
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.tool_catalog import (
             ToolEntry,
             build_catalog_from_server_info,
         )
@@ -14737,7 +14719,7 @@ class TestToolsSlashCommand:
         assert "[i]srv" in rendered
 
     def test_render_escapes_markdown_syntax(self) -> None:
-        from deepagents_code.tool_catalog import (
+        from niki_agent.tool_catalog import (
             ToolEntry,
             build_catalog_from_server_info,
         )
@@ -14771,8 +14753,8 @@ class TestToolsSlashCommand:
         HTML, `[d](u)` collapses to its link text, `~~x~~` to struck text, and a
         `\` before punctuation disappears — so each needs a live assertion.
         """
-        from deepagents_code._markdown import MARKDOWN_ESCAPES as _MARKDOWN_ESCAPES
-        from deepagents_code.tool_catalog import (
+        from niki_agent._markdown import MARKDOWN_ESCAPES as _MARKDOWN_ESCAPES
+        from niki_agent.tool_catalog import (
             ToolEntry,
             build_catalog_from_server_info,
         )
@@ -14796,7 +14778,7 @@ class TestToolsSlashCommand:
 
     def test_markdown_table_escapes_headers_and_rejects_ragged_rows(self) -> None:
         """Headers are escaped, and a row that misfits the headers raises."""
-        from deepagents_code.app import _markdown_table
+        from niki_agent.app import _markdown_table
 
         # Headers are escaped too, so a `|` cannot forge an extra column.
         assert _markdown_table(("a|b", "c"), []).splitlines()[0] == "| a\\|b | c |"
@@ -14866,7 +14848,7 @@ class TestFetchThreadHistoryData:
     async def test_reasoning_preference_applies_to_restored_messages(self) -> None:
         from langchain_core.messages import AIMessage
 
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         state = MagicMock()
         state.values = {
@@ -14912,7 +14894,7 @@ class TestFetchThreadHistoryData:
     def test_whitespace_only_blocks_preserve_separators(self) -> None:
         from langchain_core.messages import AIMessage
 
-        from deepagents_code.tui.widgets.message_store import MessageType
+        from niki_agent.tui.widgets.message_store import MessageType
 
         messages = [
             AIMessage(
@@ -14940,8 +14922,8 @@ class TestRemoteAgent:
     """Tests for configuring external agents."""
 
     def test_managed_agent_claims_only_session_policy(self, tmp_path) -> None:
-        from deepagents_code._server_config import ServerConfig
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent._server_config import ServerConfig
+        from niki_agent.client.remote_client import RemoteAgent
 
         app = DeepAgentsApp(cwd=tmp_path)
         app._server_kwargs = {}
@@ -14968,7 +14950,7 @@ class TestRemoteAgent:
         assert claim["no_mcp"] is True
 
     def test_external_agent_defers_policy_to_server(self, tmp_path) -> None:
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         app = DeepAgentsApp(cwd=tmp_path)
         agent = RemoteAgent("http://test:0")
@@ -14993,7 +14975,7 @@ class TestTerminalBackgroundSync:
     def test_initial_theme_sync_sets_terminal_background(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         calls: list[str] = []
         monkeypatch.setattr(
@@ -15014,7 +14996,7 @@ class TestTerminalBackgroundSync:
     def test_sync_terminal_background_uses_active_theme(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         calls: list[str] = []
         monkeypatch.setattr(
@@ -15035,7 +15017,7 @@ class TestTerminalBackgroundSync:
     ) -> None:
         from textual.theme import Theme as TextualTheme
 
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         app = DeepAgentsApp()
         calls: list[str] = []
@@ -15082,7 +15064,7 @@ class TestTerminalBackgroundSync:
     def test_sync_terminal_background_swallows_terminal_errors(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         app = DeepAgentsApp()
         app.theme = "langchain"  # force non-ANSI so the error path runs
@@ -15093,7 +15075,7 @@ class TestTerminalBackgroundSync:
 
         monkeypatch.setattr(terminal_escape, "set_terminal_background", _raise)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app.sync_terminal_background()
 
         assert "set_terminal_background raised unexpectedly" in caplog.text
@@ -15101,7 +15083,7 @@ class TestTerminalBackgroundSync:
     def test_sync_terminal_background_skips_ansi_dark(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         calls: list[str] = []
         monkeypatch.setattr(
@@ -15120,7 +15102,7 @@ class TestTerminalBackgroundSync:
     def test_sync_terminal_background_skips_ansi_light(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         calls: list[str] = []
         monkeypatch.setattr(
@@ -15140,7 +15122,7 @@ class TestTerminalBackgroundSync:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A non-ANSI theme, so an empty `calls` proves the guard fired."""
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         calls: list[str] = []
         monkeypatch.setenv("TERM_PROGRAM", "Apple_Terminal")
@@ -15162,7 +15144,7 @@ class TestTerminalBackgroundSync:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A padded `TERM_PROGRAM` groups with its unpadded form."""
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         calls: list[str] = []
         monkeypatch.setenv("TERM_PROGRAM", " Apple_Terminal ")
@@ -15182,7 +15164,7 @@ class TestTerminalBackgroundSync:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Only Apple Terminal is skipped; other terminals still sync."""
-        from deepagents_code import terminal_escape, theme
+        from niki_agent import terminal_escape, theme
 
         calls: list[str] = []
         monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
@@ -15211,7 +15193,7 @@ class TestExitGracefulWorkerHandoff:
         left in `_background_tasks` by an earlier test would otherwise push
         `test_synchronous_when_worker_finished` onto the graceful path and flake.
         """
-        import deepagents_code.hooks as hooks_mod
+        import niki_agent.hooks as hooks_mod
 
         hooks_mod._background_tasks.clear()
         yield
@@ -15245,7 +15227,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                patch("deepagents_code.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
+                patch("niki_agent.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15301,7 +15283,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                caplog.at_level(logging.DEBUG, logger="deepagents_code.app"),
+                caplog.at_level(logging.DEBUG, logger="niki_agent.app"),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15373,10 +15355,10 @@ class TestExitGracefulWorkerHandoff:
             await pilot.pause()
 
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=True),
-                patch("deepagents_code.hooks.drain_pending_hooks", new=hang),
-                patch("deepagents_code.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=True),
+                patch("niki_agent.hooks.drain_pending_hooks", new=hang),
+                patch("niki_agent.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15396,9 +15378,9 @@ class TestExitGracefulWorkerHandoff:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A slow Hooks v2 `SessionEnd` cannot stall or fire twice on TUI exit."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.hooks.manager import HookSessionIdentity
-        from deepagents_code.hooks.models.domain import (
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.hooks.manager import HookSessionIdentity
+        from niki_agent.hooks.models.domain import (
             HookEvent,
             SessionEndDecision,
         )
@@ -15446,13 +15428,13 @@ class TestExitGracefulWorkerHandoff:
                 app._session_state.hooks = hooks
 
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
                 patch(
-                    "deepagents_code.app.SESSION_END_DRAIN_TIMEOUT_SECONDS",
+                    "niki_agent.app.SESSION_END_DRAIN_TIMEOUT_SECONDS",
                     0.01,
                 ),
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=True),
-                patch("deepagents_code.hooks.drain_pending_hooks", new=drain_pending),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=True),
+                patch("niki_agent.hooks.drain_pending_hooks", new=drain_pending),
                 patch.object(App, "exit") as super_exit,
             ):
                 started = loop.time()
@@ -15532,11 +15514,11 @@ class TestExitGracefulWorkerHandoff:
 
             with (
                 patch(
-                    "deepagents_code.hooks._load_hooks",
+                    "niki_agent.hooks._load_hooks",
                     return_value=[{"command": ["x"]}],
                 ),
                 patch(
-                    "deepagents_code.hooks._dispatch_hook_sync",
+                    "niki_agent.hooks._dispatch_hook_sync",
                     side_effect=blocking_session_end,
                 ),
                 patch.object(App, "exit") as super_exit,
@@ -15591,7 +15573,7 @@ class TestExitGracefulWorkerHandoff:
 
             with (
                 # Large window so the agent-wait timeout cannot race the test.
-                patch("deepagents_code.app._GRACEFUL_EXIT_WAIT_SECONDS", 30.0),
+                patch("niki_agent.app._GRACEFUL_EXIT_WAIT_SECONDS", 30.0),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15632,11 +15614,11 @@ class TestExitGracefulWorkerHandoff:
 
             with (
                 patch(
-                    "deepagents_code.hooks._load_hooks",
+                    "niki_agent.hooks._load_hooks",
                     return_value=[{"command": ["x"]}],
                 ),
                 patch(
-                    "deepagents_code.hooks._dispatch_hook_sync",
+                    "niki_agent.hooks._dispatch_hook_sync",
                     side_effect=blocking_session_end,
                 ),
                 patch.object(App, "exit") as super_exit,
@@ -15795,8 +15777,8 @@ class TestExitGracefulWorkerHandoff:
             await asyncio.wait_for(restart_started.wait(), timeout=2.0)
 
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
-                patch("deepagents_code.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
+                patch("niki_agent.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15939,7 +15921,7 @@ class TestExitGracefulWorkerHandoff:
             app._server_proc = server_proc
 
             with (
-                patch("deepagents_code.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
+                patch("niki_agent.app._GRACEFUL_EXIT_WAIT_SECONDS", 0.01),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -15971,13 +15953,13 @@ class TestExitGracefulWorkerHandoff:
             app._server_proc = server_proc
 
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
                 patch(
-                    "deepagents_code.hooks._load_hooks",
+                    "niki_agent.hooks._load_hooks",
                     return_value=[{"command": ["x"]}],
                 ),
                 patch(
-                    "deepagents_code.hooks._dispatch_hook_sync",
+                    "niki_agent.hooks._dispatch_hook_sync",
                     side_effect=RuntimeError("boom"),
                 ),
                 patch.object(App, "exit") as super_exit,
@@ -16009,8 +15991,8 @@ class TestExitGracefulWorkerHandoff:
             app._server_proc = server_proc
 
             with (
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
-                patch("deepagents_code.hooks.drain_pending_hooks", new=failing_drain),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
+                patch("niki_agent.hooks.drain_pending_hooks", new=failing_drain),
                 patch.object(App, "exit") as super_exit,
             ):
                 app.exit()
@@ -16041,12 +16023,12 @@ class TestExitGracefulWorkerHandoff:
             app._server_proc = server_proc
 
             with (
-                caplog.at_level(logging.DEBUG, logger="deepagents_code.app"),
+                caplog.at_level(logging.DEBUG, logger="niki_agent.app"),
                 patch(
-                    "deepagents_code.hooks._load_hooks",
+                    "niki_agent.hooks._load_hooks",
                     return_value=[{"command": ["x"]}],
                 ),
-                patch("deepagents_code.hooks._dispatch_hook_sync", MagicMock()),
+                patch("niki_agent.hooks._dispatch_hook_sync", MagicMock()),
                 patch.object(App, "exit"),
             ):
                 app.exit()
@@ -16070,7 +16052,7 @@ class TestExitGracefulWorkerHandoff:
     @staticmethod
     def _shutdown_toast() -> str:
         """Return the shutdown toast for the active terminal charset."""
-        from deepagents_code.config import get_glyphs
+        from niki_agent.config import get_glyphs
 
         return f"Finishing pending work before exit{get_glyphs().ellipsis}"
 
@@ -16086,7 +16068,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=False),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=False),
                 patch.object(App, "exit"),
                 patch.object(app, "notify") as notify,
             ):
@@ -16103,9 +16085,9 @@ class TestExitGracefulWorkerHandoff:
             await pilot.pause()
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=True),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=True),
                 patch(
-                    "deepagents_code.hooks.drain_pending_hooks",
+                    "niki_agent.hooks.drain_pending_hooks",
                     new_callable=AsyncMock,
                 ),
                 patch.object(App, "exit"),
@@ -16129,9 +16111,9 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=True),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=True),
                 patch(
-                    "deepagents_code.hooks.drain_pending_hooks",
+                    "niki_agent.hooks.drain_pending_hooks",
                     new_callable=AsyncMock,
                 ),
                 patch.object(App, "exit"),
@@ -16145,20 +16127,20 @@ class TestExitGracefulWorkerHandoff:
 
     async def test_toast_uses_ascii_ellipsis_in_ascii_mode(self) -> None:
         """The shutdown toast honors the configured ASCII glyph set."""
-        from deepagents_code.config import ASCII_GLYPHS
+        from niki_agent.config import ASCII_GLYPHS
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
             await pilot.pause()
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=True),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=True),
                 patch(
-                    "deepagents_code.hooks.drain_pending_hooks",
+                    "niki_agent.hooks.drain_pending_hooks",
                     new_callable=AsyncMock,
                 ),
                 patch(
-                    "deepagents_code.config.get_glyphs",
+                    "niki_agent.config.get_glyphs",
                     return_value=ASCII_GLYPHS,
                 ),
                 patch.object(App, "exit"),
@@ -16181,7 +16163,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_running = False
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=False),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=False),
                 patch.object(App, "exit") as super_exit,
                 patch.object(app, "notify") as notify,
             ):
@@ -16203,7 +16185,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=False),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=False),
                 patch.object(App, "exit") as super_exit,
                 patch.object(app, "notify") as notify,
             ):
@@ -16225,7 +16207,7 @@ class TestExitGracefulWorkerHandoff:
             app._agent_worker = worker
 
             with (
-                patch("deepagents_code.hooks.has_pending_hooks", return_value=False),
+                patch("niki_agent.hooks.has_pending_hooks", return_value=False),
                 patch.object(App, "exit"),
                 patch.object(app, "notify") as notify,
             ):
@@ -16452,7 +16434,7 @@ class TestInstallExtraAuthContinuation:
         app.call_after_refresh = MagicMock()  # ty: ignore
         app._pending_web_search_restart = True
 
-        with patch("deepagents_code.app._extra_is_ready", return_value=None):
+        with patch("niki_agent.app._extra_is_ready", return_value=None):
             await app._install_provider_then_reopen_auth("baseten", provider="baseten")
 
         app._show_auth_manager.assert_not_awaited()  # ty: ignore
@@ -16473,8 +16455,8 @@ class TestInstallExtraModelSwitch:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Freshly installed providers should use the normal auth prompt flow."""
-        from deepagents_code.model_config import ProviderAuthState, ProviderAuthStatus
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen, AuthResult
+        from niki_agent.model_config import ProviderAuthState, ProviderAuthStatus
+        from niki_agent.tui.widgets.auth import AuthPromptScreen, AuthResult
 
         app = DeepAgentsApp()
         app._install_extra = AsyncMock(return_value=True)  # ty: ignore
@@ -16482,7 +16464,7 @@ class TestInstallExtraModelSwitch:
         dispatch = MagicMock()
         app._dispatch_model_switch = dispatch  # ty: ignore
         monkeypatch.setattr(
-            "deepagents_code.model_config.get_provider_auth_status",
+            "niki_agent.model_config.get_provider_auth_status",
             lambda provider: ProviderAuthStatus(
                 state=ProviderAuthState.MISSING,
                 provider=provider,
@@ -16513,7 +16495,7 @@ class TestInstallExtraModelSwitch:
         `_install_extra_then_switch` gates the model switch on this `bool`, so
         the contract is locked here rather than only through mocked callers.
         """
-        from deepagents_code import config as config_mod, update_check
+        from niki_agent import config as config_mod, update_check
 
         monkeypatch.setattr(config_mod, "_is_editable_install", lambda: False)
         monkeypatch.setattr(
@@ -16620,7 +16602,7 @@ class TestDispatchModelSwitch:
         """Undo the real-`runtime_state` writes these tests make.
 
         Unlike the rest of this module, which patches
-        `deepagents_code.config.runtime_state`, the confirmation-threshold
+        `niki_agent.config.runtime_state`, the confirmation-threshold
         tests below set the process-global directly so
         `_dispatch_model_switch` reads a spec worth warning about. Leaving
         those values behind poisons any later test whose own model shares the
@@ -16842,16 +16824,16 @@ class TestDeferredActions:
         """
         import logging
 
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         # Strip any installed debug handler so the helper reports "no log file"
         # deterministically — a developer may run the suite with
-        # `DEEPAGENTS_CODE_DEBUG` exported, which installs one at import.
-        package_logger = logging.getLogger("deepagents_code")
+        # `NIKI_DEBUG` exported, which installs one at import.
+        package_logger = logging.getLogger("niki_agent")
         stripped = [
             h
             for h in package_logger.handlers
-            if getattr(h, "_deepagents_code_debug_handler", False)
+            if getattr(h, "_niki_agent_debug_handler", False)
         ]
         for h in stripped:
             package_logger.removeHandler(h)
@@ -16872,7 +16854,7 @@ class TestDeferredActions:
                 assert isinstance(widget, ErrorMessage)
                 rendered = str(widget._content)
                 assert "error truncated" in rendered
-                assert "DEEPAGENTS_CODE_DEBUG=1" in rendered
+                assert "NIKI_DEBUG=1" in rendered
                 # The note stays on the displayed message, not in stored state.
                 assert app._server_startup_error is not None
                 assert "error truncated" not in app._server_startup_error
@@ -16886,20 +16868,20 @@ class TestDeferredActions:
         """The note points at the path of the handler that was actually installed.
 
         The pointer reflects the file handler attached by
-        `configure_debug_logging`, not the `DEEPAGENTS_CODE_DEBUG` env value: a
+        `configure_debug_logging`, not the `NIKI_DEBUG` env value: a
         var set only after import (e.g. via a project `.env`) never installs a
         handler, so the note must never advertise a file that was never created.
         """
         import logging
 
-        from deepagents_code._debug import (
+        from niki_agent._debug import (
             bind_debug_logging_to_thread,
             configure_debug_logging,
         )
-        from deepagents_code._env_vars import DEBUG, DEBUG_DIRECTORY
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent._env_vars import DEBUG, DEBUG_DIRECTORY
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
-        package_logger = logging.getLogger("deepagents_code")
+        package_logger = logging.getLogger("niki_agent")
         log_directory = tmp_path / "debug"
         pre_existing = list(package_logger.handlers)
         with patch.dict(
@@ -16934,7 +16916,7 @@ class TestDeferredActions:
 
     async def test_server_failure_short_headline_omits_truncation_note(self) -> None:
         """A headline within the limit renders no truncation note."""
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -16958,8 +16940,8 @@ class TestDeferredActions:
         not fire even when the rendered text far exceeds the headline limit.
         Locks the branch against a refactor that hoists the truncation check.
         """
-        from deepagents_code.mcp_tools import MCPConfigError
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.mcp_tools import MCPConfigError
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -16981,8 +16963,8 @@ class TestDeferredActions:
         286-char body yields a 300-char headline (no note) and a 287-char body
         yields 301 (note) — pinning the `>` vs `>=` boundary against off-by-one.
         """
-        from deepagents_code.app import _STARTUP_ERROR_HEADLINE_LIMIT
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.app import _STARTUP_ERROR_HEADLINE_LIMIT
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         prefix_len = len("RuntimeError: ")
         at_limit = "a" * (_STARTUP_ERROR_HEADLINE_LIMIT - prefix_len)
@@ -17021,18 +17003,18 @@ class TestDeferredActions:
         """
         import logging
 
-        from deepagents_code._debug import (
+        from niki_agent._debug import (
             bind_debug_logging_to_thread,
             configure_debug_logging,
         )
-        from deepagents_code._env_vars import (
+        from niki_agent._env_vars import (
             DEBUG,
             DEBUG_DIRECTORY,
             DEFAULT_DEBUG_DIRECTORY,
         )
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
-        package_logger = logging.getLogger("deepagents_code")
+        package_logger = logging.getLogger("niki_agent")
         pre_existing = list(package_logger.handlers)
         with patch.dict(os.environ, {DEBUG: "1"}, clear=False):
             os.environ.pop(DEBUG_DIRECTORY, None)
@@ -17070,8 +17052,8 @@ class TestDeferredActions:
         regression where the `elif` branch is dropped or `provider`/`package`
         are swapped.
         """
-        from deepagents_code.model_config import MissingProviderPackageError
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.model_config import MissingProviderPackageError
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -17116,11 +17098,11 @@ class TestDeferredActions:
         isolated to a temporary tool root or the hint degrades to the manual
         fallback (see the sibling unreadable-receipt test).
         """
-        from deepagents_code.model_config import MissingProviderPackageError
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.model_config import MissingProviderPackageError
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         tmp_path.joinpath("uv-receipt.toml").write_text(
-            '[tool]\nrequirements = [{ name = "deepagents-code" }]\n',
+            '[tool]\nrequirements = [{ name = "niki-agent" }]\n',
             encoding="utf-8",
         )
         monkeypatch.setattr("sys.prefix", str(tmp_path))
@@ -17138,11 +17120,11 @@ class TestDeferredActions:
             )
             with (
                 patch(
-                    "deepagents_code.extras_info.extra_for_package",
+                    "niki_agent.extras_info.extra_for_package",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.extras_info.installed_extra_names",
+                    "niki_agent.extras_info.installed_extra_names",
                     return_value=set(),
                 ),
             ):
@@ -17156,7 +17138,7 @@ class TestDeferredActions:
             rendered = str(widget._content)
             assert (
                 "uv tool install --reinstall -U "
-                f"deepagents-code=={__version__} "
+                f"niki-agent=={__version__} "
                 "--with langchain-custom_provider --prerelease allow" in rendered
             )
             assert "/model custom_provider:<model>" in rendered
@@ -17172,8 +17154,8 @@ class TestDeferredActions:
         must catch it and surface an actionable manual hint rather than crash
         while building the recovery message.
         """
-        from deepagents_code.model_config import MissingProviderPackageError
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.model_config import MissingProviderPackageError
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         # tmp_path intentionally has no uv-receipt.toml, so the receipt read
         # raises ToolRequirementIntrospectionError.
@@ -17192,11 +17174,11 @@ class TestDeferredActions:
             )
             with (
                 patch(
-                    "deepagents_code.extras_info.extra_for_package",
+                    "niki_agent.extras_info.extra_for_package",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.extras_info.installed_extra_names",
+                    "niki_agent.extras_info.installed_extra_names",
                     return_value=set(),
                 ),
             ):
@@ -17222,9 +17204,9 @@ class TestDeferredActions:
         environment still surfaces an actionable hint rather than crashing the
         failure-rendering path.
         """
-        from deepagents_code.extras_info import ExtrasIntrospectionError
-        from deepagents_code.model_config import MissingProviderPackageError
-        from deepagents_code.tui.widgets.messages import ErrorMessage
+        from niki_agent.extras_info import ExtrasIntrospectionError
+        from niki_agent.model_config import MissingProviderPackageError
+        from niki_agent.tui.widgets.messages import ErrorMessage
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -17239,11 +17221,11 @@ class TestDeferredActions:
             )
             with (
                 patch(
-                    "deepagents_code.extras_info.extra_for_package",
+                    "niki_agent.extras_info.extra_for_package",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.extras_info.installed_extra_names",
+                    "niki_agent.extras_info.installed_extra_names",
                     side_effect=ExtrasIntrospectionError("metadata unreadable"),
                 ),
             ):
@@ -17266,7 +17248,7 @@ class TestDeferredActions:
         that drops the reset would leave a stale `/install` hint visible
         after a successful retry, or render the wrong hint on the next failure.
         """
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             MissingProviderPackageError,
             ProviderAuthState,
             ProviderAuthStatus,
@@ -17287,7 +17269,7 @@ class TestDeferredActions:
             app.run_worker = MagicMock()  # ty: ignore
 
             with patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=ProviderAuthStatus(
                     state=ProviderAuthState.UNKNOWN,
                     provider="anthropic",
@@ -17316,7 +17298,7 @@ class TestDeferredActions:
 
     async def test_retry_startup_refreshes_provider_default_classifier(self) -> None:
         """Deferred startup refreshes its classifier default across retries."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             ProviderAuthState,
             ProviderAuthStatus,
         )
@@ -17331,18 +17313,18 @@ class TestDeferredActions:
 
             with (
                 patch(
-                    "deepagents_code.config._get_default_model_spec",
+                    "niki_agent.config._get_default_model_spec",
                     return_value="anthropic:claude-opus-4-7",
                 ),
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=ProviderAuthStatus(
                         state=ProviderAuthState.UNKNOWN,
                         provider="anthropic",
                     ),
                 ),
                 patch(
-                    "deepagents_code.config.resolve_auto_classifier_model_for_provider",
+                    "niki_agent.config.resolve_auto_classifier_model_for_provider",
                     side_effect=[
                         "anthropic:claude-sonnet-5",
                         "openai:gpt-5.6-luna",
@@ -17367,7 +17349,7 @@ class TestDeferredActions:
         through separate `if`/`elif` branches, so stale state from a prior
         retry-failure must never bleed into the next failure type.
         """
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             MissingCredentialsError,
             MissingProviderPackageError,
         )
@@ -17399,7 +17381,7 @@ class TestDeferredActions:
 
     async def test_auth_saved_event_resumes_startup_immediately(self) -> None:
         """Saving a key in `/auth` retries without waiting for the manager to close."""
-        from deepagents_code.tui.widgets.auth import AuthManagerScreen
+        from niki_agent.tui.widgets.auth import AuthManagerScreen
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -17416,7 +17398,7 @@ class TestDeferredActions:
 
     async def test_auth_change_does_not_retry_when_key_still_missing(self) -> None:
         """A still-missing key must not loop back into the same failure."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             ProviderAuthState,
             ProviderAuthStatus,
         )
@@ -17430,7 +17412,7 @@ class TestDeferredActions:
             app._retry_startup_with_model = AsyncMock()  # ty: ignore
 
             with patch(
-                "deepagents_code.model_config.get_provider_auth_status",
+                "niki_agent.model_config.get_provider_auth_status",
                 return_value=ProviderAuthStatus(
                     state=ProviderAuthState.MISSING,
                     provider="anthropic",
@@ -17488,7 +17470,7 @@ class TestDeferredActions:
 
     async def test_auth_change_retry_surfaces_malformed_default_config(self) -> None:
         """A malformed default-model config is surfaced, not silently dropped."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             ModelConfigError,
             ProviderAuthSource,
             ProviderAuthState,
@@ -17506,7 +17488,7 @@ class TestDeferredActions:
 
             with (
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=ProviderAuthStatus(
                         state=ProviderAuthState.CONFIGURED,
                         provider="anthropic",
@@ -17514,7 +17496,7 @@ class TestDeferredActions:
                     ),
                 ),
                 patch(
-                    "deepagents_code.config._get_default_model_spec",
+                    "niki_agent.config._get_default_model_spec",
                     side_effect=ModelConfigError("unknown provider 'bogus'"),
                 ),
             ):
@@ -17528,7 +17510,7 @@ class TestDeferredActions:
 
     async def test_auth_change_retry_silent_without_default_credentials(self) -> None:
         """No usable default credentials means a quiet no-op, no error message."""
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             NoCredentialsConfiguredError,
             ProviderAuthSource,
             ProviderAuthState,
@@ -17546,7 +17528,7 @@ class TestDeferredActions:
 
             with (
                 patch(
-                    "deepagents_code.model_config.get_provider_auth_status",
+                    "niki_agent.model_config.get_provider_auth_status",
                     return_value=ProviderAuthStatus(
                         state=ProviderAuthState.CONFIGURED,
                         provider="anthropic",
@@ -17554,7 +17536,7 @@ class TestDeferredActions:
                     ),
                 ),
                 patch(
-                    "deepagents_code.config._get_default_model_spec",
+                    "niki_agent.config._get_default_model_spec",
                     side_effect=NoCredentialsConfiguredError("no creds"),
                 ),
             ):
@@ -17656,7 +17638,7 @@ class TestDeferredActions:
 
     async def test_repeated_footer_model_click_keeps_one_modal(self) -> None:
         """Clicking the model label again does not stack another selector."""
-        from deepagents_code.tui.widgets.model_selector import ModelSelectorScreen
+        from niki_agent.tui.widgets.model_selector import ModelSelectorScreen
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -18091,14 +18073,14 @@ class TestSwitchAgentGuards:
         (tmp_path / "coder").mkdir()
         async with app.run_test():
             with (
-                patch("deepagents_code.config.credentials") as mock_credentials,
+                patch("niki_agent.config.credentials") as mock_credentials,
                 patch(
-                    "deepagents_code.app.user_deepagents_dir",
+                    "niki_agent.app.user_niki_dir",
                     return_value=tmp_path,
                 ),
                 patch.object(app, "run_worker") as worker,
             ):
-                mock_credentials.user_deepagents_dir = tmp_path
+                mock_credentials.user_niki_dir = tmp_path
                 app._switch_agent("ghost")
             worker.assert_not_called()
             assert app._assistant_id == "coder"
@@ -18114,14 +18096,14 @@ class TestSwitchAgentGuards:
         (tmp_path / "researcher").mkdir()
         async with app.run_test():
             with (
-                patch("deepagents_code.config.credentials") as mock_credentials,
+                patch("niki_agent.config.credentials") as mock_credentials,
                 patch(
-                    "deepagents_code.app.user_deepagents_dir",
+                    "niki_agent.app.user_niki_dir",
                     return_value=tmp_path,
                 ),
                 patch.object(app, "run_worker") as worker,
             ):
-                mock_credentials.user_deepagents_dir = tmp_path
+                mock_credentials.user_niki_dir = tmp_path
                 app._switch_agent("researcher")
             worker.assert_called_once()
             assert app._agent_switching is True
@@ -18162,7 +18144,7 @@ class TestRestartServerForAgentSwap:
         self,
     ) -> None:
         """Successful restart stages env, calls restart, and rewires client."""
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app, server_proc = self._make_app()
         # Seed an assistant message so the previous thread looks like it
@@ -18196,7 +18178,7 @@ class TestRestartServerForAgentSwap:
 
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ) as save_mock,
                 patch.object(app, "_mount_message", side_effect=mounted.append),
@@ -18205,7 +18187,7 @@ class TestRestartServerForAgentSwap:
                 await app._restart_server_for_agent_swap("researcher")
 
             server_proc.update_env.assert_called_once_with(
-                DEEPAGENTS_CODE_SERVER_ASSISTANT_ID="researcher"
+                NIKI_SERVER_ASSISTANT_ID="researcher"
             )
             server_proc.restart.assert_awaited_once()
             assert app._assistant_id == "researcher"
@@ -18232,7 +18214,7 @@ class TestRestartServerForAgentSwap:
             # Confirmation + resume-hint messages reached the user.
             plain = [str(getattr(m, "_content", m)) for m in mounted]
             assert any("Switched to researcher" in s for s in plain)
-            assert any("dcode -r old-thread" in s and "to resume" in s for s in plain)
+            assert any("niki -r old-thread" in s and "to resume" in s for s in plain)
 
     async def test_cross_agent_resume_blocked_before_confirmation(self) -> None:
         """Policy rejection occurs before an agent confirmation or restart."""
@@ -18247,9 +18229,7 @@ class TestRestartServerForAgentSwap:
             ),
             patch.object(app, "_mount_message", side_effect=mounted.append),
             patch.object(app, "push_screen_wait", new_callable=AsyncMock) as confirm,
-            patch(
-                "deepagents_code.app.asyncio.to_thread", AsyncMock(return_value=True)
-            ),
+            patch("niki_agent.app.asyncio.to_thread", AsyncMock(return_value=True)),
         ):
             await app._confirm_then_resume_cross_agent_thread(
                 _ThreadsResumeTarget("stale-thread", "researcher")
@@ -18274,9 +18254,7 @@ class TestRestartServerForAgentSwap:
                 AsyncMock(side_effect=OSError("sessions unavailable")),
             ),
             patch.object(app, "_mount_message", side_effect=mounted.append),
-            patch(
-                "deepagents_code.app.asyncio.to_thread", AsyncMock(return_value=True)
-            ),
+            patch("niki_agent.app.asyncio.to_thread", AsyncMock(return_value=True)),
         ):
             await app._confirm_then_resume_cross_agent_thread(
                 _ThreadsResumeTarget("stale-thread", "researcher")
@@ -18303,7 +18281,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ) as save_mock,
                 patch.object(app, "_load_thread_history", load_history),
@@ -18389,7 +18367,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(app, "_mount_message", side_effect=mounted.append),
@@ -18409,7 +18387,7 @@ class TestRestartServerForAgentSwap:
         Telling the user to relaunch when a single command suffices sends them
         the long way around.
         """
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app, _server_proc = self._make_app()
         # Only a thread the user did work in is worth pointing back at.
@@ -18422,15 +18400,15 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
                 patch.object(app, "_thread_links_configured", return_value=False),
@@ -18453,9 +18431,9 @@ class TestRestartServerForAgentSwap:
         package's `dcode` console script), so a hardcoded name would tell them
         to run something that does not exist on their PATH.
         """
-        from deepagents_code._env_vars import INVOKED_AS
-        from deepagents_code._invocation import invoked_name
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent._env_vars import INVOKED_AS
+        from niki_agent._invocation import invoked_name
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         monkeypatch.setenv(INVOKED_AS, "abc")
         invoked_name.cache_clear()
@@ -18470,7 +18448,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(app, "_mount_message", side_effect=mounted.append),
@@ -18489,7 +18467,7 @@ class TestRestartServerForAgentSwap:
         never call the server, so no checkpoint exists. A `USER`-only store
         must not trigger the resume hint.
         """
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
         app, _server_proc = self._make_app()
         app._message_store.append(MessageData(type=MessageType.USER, content="/update"))
@@ -18499,7 +18477,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(app, "_mount_message", side_effect=mounted.append),
@@ -18530,7 +18508,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(app, "_mount_message", side_effect=mounted.append),
@@ -18587,7 +18565,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(app, "_persist_goal_rubric_state", persist),
@@ -18613,7 +18591,7 @@ class TestRestartServerForAgentSwap:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.model_config.save_recent_agent",
+                    "niki_agent.model_config.save_recent_agent",
                     return_value=True,
                 ),
                 patch.object(
@@ -18647,7 +18625,7 @@ class TestResolveResumeThread:
 
     async def test_launch_resume_blocked_offers_new_session(self) -> None:
         """A stale launch-time target waits for an explicit fresh-session choice."""
-        from deepagents_code.tui.modals.resume_blocked import ResumeBlockedScreen
+        from niki_agent.tui.modals.resume_blocked import ResumeBlockedScreen
 
         app = self._make_app("agent")
 
@@ -18658,7 +18636,7 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "stale-thread"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch.object(
@@ -18691,7 +18669,7 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "stale-thread"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch.object(
@@ -18713,9 +18691,9 @@ class TestResolveResumeThread:
 
     async def test_resume_policy_allows_cutoff_boundary_and_blocks_older(self) -> None:
         """The cutoff is inclusive and unverifiable timestamps fail closed."""
-        from deepagents_code.config_manifest import get_option
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.config_manifest import get_option
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         app = self._make_app("agent")
         resolver = resolver_from_snapshots(
@@ -18731,11 +18709,11 @@ class TestResolveResumeThread:
 
         with (
             patch(
-                "deepagents_code.configuration.resolver.get_config_resolver",
+                "niki_agent.configuration.resolver.get_config_resolver",
                 return_value=resolver,
             ),
             patch(
-                "deepagents_code.sessions.get_thread_updated_at",
+                "niki_agent.sessions.get_thread_updated_at",
                 AsyncMock(
                     side_effect=[
                         "2026-06-01T12:00:00+00:00",
@@ -18756,8 +18734,8 @@ class TestResolveResumeThread:
 
     async def test_max_resume_age_moves_with_current_time(self) -> None:
         """A rolling age blocks old threads without a hardcoded calendar date."""
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         resolver = resolver_from_snapshots(
             managed=TomlSnapshot.declaring_nothing("managed config"),
@@ -18769,11 +18747,11 @@ class TestResolveResumeThread:
         now = datetime.now(UTC)
         with (
             patch(
-                "deepagents_code.configuration.resolver.get_config_resolver",
+                "niki_agent.configuration.resolver.get_config_resolver",
                 return_value=resolver,
             ),
             patch(
-                "deepagents_code.sessions.get_thread_updated_at",
+                "niki_agent.sessions.get_thread_updated_at",
                 AsyncMock(
                     side_effect=[
                         (now - timedelta(days=6)).isoformat(),
@@ -18790,8 +18768,8 @@ class TestResolveResumeThread:
 
     async def test_max_resume_age_larger_than_current_date_allows_threads(self) -> None:
         """An age that predates `datetime.min` clamps to the earliest cutoff."""
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         resolver = resolver_from_snapshots(
             managed=TomlSnapshot.declaring_nothing("managed config"),
@@ -18802,11 +18780,11 @@ class TestResolveResumeThread:
         )
         with (
             patch(
-                "deepagents_code.configuration.resolver.get_config_resolver",
+                "niki_agent.configuration.resolver.get_config_resolver",
                 return_value=resolver,
             ),
             patch(
-                "deepagents_code.sessions.get_thread_updated_at",
+                "niki_agent.sessions.get_thread_updated_at",
                 AsyncMock(return_value="0001-01-01T00:00:00+00:00"),
             ),
         ):
@@ -18814,8 +18792,8 @@ class TestResolveResumeThread:
 
     async def test_stricter_resume_policy_wins(self) -> None:
         """When both forms are configured, the newer effective cutoff wins."""
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         now = datetime.now(UTC)
         resolver = resolver_from_snapshots(
@@ -18832,11 +18810,11 @@ class TestResolveResumeThread:
         )
         with (
             patch(
-                "deepagents_code.configuration.resolver.get_config_resolver",
+                "niki_agent.configuration.resolver.get_config_resolver",
                 return_value=resolver,
             ),
             patch(
-                "deepagents_code.sessions.get_thread_updated_at",
+                "niki_agent.sessions.get_thread_updated_at",
                 AsyncMock(return_value=(now - timedelta(days=8)).isoformat()),
             ),
         ):
@@ -18846,8 +18824,8 @@ class TestResolveResumeThread:
 
     async def test_user_resume_cutoff_names_config_source(self) -> None:
         """A user cutoff explains its origin and rationale."""
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         resolver = resolver_from_snapshots(
             managed=TomlSnapshot.declaring_nothing("managed config"),
@@ -18858,11 +18836,11 @@ class TestResolveResumeThread:
         )
         with (
             patch(
-                "deepagents_code.configuration.resolver.get_config_resolver",
+                "niki_agent.configuration.resolver.get_config_resolver",
                 return_value=resolver,
             ),
             patch(
-                "deepagents_code.sessions.get_thread_updated_at",
+                "niki_agent.sessions.get_thread_updated_at",
                 AsyncMock(return_value="2026-05-01T12:00:00+00:00"),
             ),
         ):
@@ -18878,8 +18856,8 @@ class TestResolveResumeThread:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """An ignored user cutoff must explain why the restriction is inactive."""
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import TomlSnapshot
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import TomlSnapshot
 
         resolver = resolver_from_snapshots(
             managed=TomlSnapshot.declaring_nothing("managed config"),
@@ -18889,10 +18867,10 @@ class TestResolveResumeThread:
             ),
         )
         monkeypatch.setattr(
-            "deepagents_code.configuration.resolver.get_config_resolver",
+            "niki_agent.configuration.resolver.get_config_resolver",
             lambda: resolver,
         )
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config_manifest"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config_manifest"):
             assert await DeepAgentsApp._thread_resume_block("thread") is None
 
         assert any(
@@ -18911,11 +18889,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "thread-from-coder"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -18943,11 +18921,11 @@ class TestResolveResumeThread:
             get_thread_agent_mock = AsyncMock(return_value="researcher")
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     get_thread_agent_mock,
                 ),
             ):
@@ -18966,11 +18944,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "__MOST_RECENT__"
             with (
                 patch(
-                    "deepagents_code.sessions.get_most_recent",
+                    "niki_agent.sessions.get_most_recent",
                     AsyncMock(return_value="recent-thread"),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -18989,11 +18967,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "some-thread"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
             ):
@@ -19016,11 +18994,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "some-thread"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
             ):
@@ -19042,7 +19020,7 @@ class TestResolveResumeThread:
             app._resuming = True
             app._resume_thread_intent = "__MOST_RECENT__"
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -19065,11 +19043,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "__MOST_RECENT__"
             with (
                 patch(
-                    "deepagents_code.sessions.get_most_recent",
+                    "niki_agent.sessions.get_most_recent",
                     AsyncMock(return_value="recent-thread"),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
             ):
@@ -19095,11 +19073,11 @@ class TestResolveResumeThread:
             )
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -19130,11 +19108,11 @@ class TestResolveResumeThread:
             )
             with (
                 patch(
-                    "deepagents_code.sessions.get_most_recent",
+                    "niki_agent.sessions.get_most_recent",
                     AsyncMock(return_value="recent-thread"),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -19157,11 +19135,11 @@ class TestResolveResumeThread:
             app._offer_thread_cwd_switch = offer  # ty: ignore[invalid-assignment]
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
             ):
@@ -19191,11 +19169,11 @@ class TestResolveResumeThread:
             )
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -19219,11 +19197,11 @@ class TestResolveResumeThread:
             app._resume_thread_intent = "ghost-thread"
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=False),
                 ),
                 patch(
-                    "deepagents_code.sessions.find_similar_threads",
+                    "niki_agent.sessions.find_similar_threads",
                     AsyncMock(return_value=[]),
                 ),
             ):
@@ -19248,7 +19226,7 @@ class TestResolveResumeThread:
             app._resuming = True
             app._resume_thread_intent = "some-thread"
             with patch(
-                "deepagents_code.sessions.thread_exists",
+                "niki_agent.sessions.thread_exists",
                 AsyncMock(side_effect=RuntimeError("db offline")),
             ):
                 await app._resolve_resume_thread()
@@ -19276,11 +19254,11 @@ class TestResolveResumeThread:
             )
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value="coder"),
                 ),
             ):
@@ -19307,7 +19285,7 @@ class TestResolveResumeThread:
             app._session_state.thread_id = "stale-thread"
             app._resume_thread_intent = "__MOST_RECENT__"
             with patch(
-                "deepagents_code.sessions.get_most_recent",
+                "niki_agent.sessions.get_most_recent",
                 AsyncMock(return_value=None),
             ):
                 await app._resolve_resume_thread()
@@ -19322,7 +19300,7 @@ def _missing_dep_entry(
     install_command: str | None = None,
     url: str | None = None,
 ) -> PendingNotification:
-    from deepagents_code.notifications import (
+    from niki_agent.notifications import (
         ActionId,
         MissingDepPayload,
         NotificationAction,
@@ -19344,7 +19322,7 @@ def _missing_dep_entry(
 
 def _service_dep_entry(tool: str = "tavily") -> PendingNotification:
     """A missing-dep entry whose primary action opens the API-key prompt."""
-    from deepagents_code.notifications import (
+    from niki_agent.notifications import (
         ActionId,
         MissingDepPayload,
         NotificationAction,
@@ -19365,7 +19343,7 @@ def _service_dep_entry(tool: str = "tavily") -> PendingNotification:
 
 
 def _update_entry(latest: str = "2.0.0") -> PendingNotification:
-    from deepagents_code.notifications import (
+    from niki_agent.notifications import (
         ActionId,
         NotificationAction,
         PendingNotification,
@@ -19382,21 +19360,21 @@ def _update_entry(latest: str = "2.0.0") -> PendingNotification:
             NotificationAction(ActionId.SKIP_VERSION, "Skip this version"),
         ),
         payload=UpdateAvailablePayload(
-            latest=latest, upgrade_cmd="uv tool upgrade deepagents-code"
+            latest=latest, upgrade_cmd="uv tool upgrade niki-agent"
         ),
     )
 
 
 def test_build_update_notification_uses_release_and_installed_age_copy() -> None:
     """Update notices separate latest-release age from installed-version age."""
-    from deepagents_code.app import DeepAgentsApp
+    from niki_agent.app import DeepAgentsApp
 
     notification = DeepAgentsApp._build_update_notification(
         latest="2.0.0",
         cli_version="1.0.0",
         release_age=" (released 3d ago)",
         installed_age=" (8 days old)",
-        upgrade_cmd="uv tool upgrade deepagents-code",
+        upgrade_cmd="uv tool upgrade niki-agent",
     )
 
     assert notification.body == (
@@ -19414,7 +19392,7 @@ def _app_without_stale_banner(**kwargs: Any) -> DeepAgentsApp:
     exercising the runtime refresh start from a known-clean baseline.
     """
     with patch(
-        "deepagents_code.update_check.is_installation_stale",
+        "niki_agent.update_check.is_installation_stale",
         return_value=False,
     ):
         return DeepAgentsApp(**kwargs)
@@ -19436,33 +19414,33 @@ def _patched_update_env(*, auto_update: bool) -> Iterator[MagicMock]:
         version was recorded as notified.
     """
     with (
-        patch("deepagents_code.config._is_editable_install", return_value=False),
+        patch("niki_agent.config._is_editable_install", return_value=False),
         patch(
-            "deepagents_code.update_check.is_update_available",
+            "niki_agent.update_check.is_update_available",
             return_value=(True, "9.9.9"),
         ),
-        patch("deepagents_code.update_check.installed_days_old", return_value=7),
+        patch("niki_agent.update_check.installed_days_old", return_value=7),
         patch(
-            "deepagents_code.update_check.is_auto_update_enabled",
+            "niki_agent.update_check.is_auto_update_enabled",
             return_value=auto_update,
         ),
-        patch("deepagents_code.update_check.should_notify_update", return_value=True),
-        patch("deepagents_code.update_check.mark_update_notified") as mark_notified,
+        patch("niki_agent.update_check.should_notify_update", return_value=True),
+        patch("niki_agent.update_check.mark_update_notified") as mark_notified,
         patch(
-            "deepagents_code.update_check.format_release_age_parenthetical",
+            "niki_agent.update_check.format_release_age_parenthetical",
             return_value="",
         ),
         patch(
-            "deepagents_code.update_check.format_installed_age_suffix",
+            "niki_agent.update_check.format_installed_age_suffix",
             return_value="",
         ),
         patch(
-            "deepagents_code.update_check.release_requires_prereleases",
+            "niki_agent.update_check.release_requires_prereleases",
             return_value=False,
         ),
         patch(
-            "deepagents_code.update_check.upgrade_command",
-            return_value="uv tool upgrade deepagents-code",
+            "niki_agent.update_check.upgrade_command",
+            return_value="uv tool upgrade niki-agent",
         ),
     ):
         yield mark_notified
@@ -19483,19 +19461,19 @@ class TestNotificationCenterIntegration:
         """
         with (
             patch(
-                "deepagents_code.main.check_optional_tools",
+                "niki_agent.main.check_optional_tools",
                 return_value=[],
             ),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 new=AsyncMock(return_value=None),
             ),
         ):
@@ -19513,7 +19491,7 @@ class TestNotificationCenterIntegration:
         dedicated shadow-present test below overrides it.
         """
         with patch(
-            "deepagents_code.update_check.detect_shadowed_dcode",
+            "niki_agent.update_check.detect_shadowed_dcode",
             return_value=None,
         ):
             yield
@@ -19522,7 +19500,7 @@ class TestNotificationCenterIntegration:
         """Preferences expand inside the hub; Esc collapses back to the list."""
         from textual.widgets import Checkbox
 
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.tui.widgets.notification_center import (
             NotificationCenterScreen,
         )
 
@@ -19549,7 +19527,7 @@ class TestNotificationCenterIntegration:
 
     async def test_ctrl_n_with_pending_opens_modal(self) -> None:
         """ctrl+n pushes the NotificationCenterScreen when entries exist."""
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.tui.widgets.notification_center import (
             NotificationCenterScreen,
         )
 
@@ -19623,14 +19601,14 @@ class TestNotificationCenterIntegration:
 
     async def test_suppress_action_removes_entry_and_persists(self) -> None:
         """Selecting 'suppress' calls suppress_warning and removes the entry."""
-        from deepagents_code.notifications import ActionId
+        from niki_agent.notifications import ActionId
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _missing_dep_entry()
         app._notice_registry.add(entry)
 
         with patch(
-            "deepagents_code.model_config.suppress_warning",
+            "niki_agent.model_config.suppress_warning",
             return_value=True,
         ) as mock_suppress:
             async with app.run_test() as pilot:
@@ -19643,8 +19621,8 @@ class TestNotificationCenterIntegration:
 
     async def test_enter_api_key_saved_removes_entry_and_notifies(self) -> None:
         """Saving a service key clears the notice and confirms the restart."""
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen, AuthResult
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.auth import AuthPromptScreen, AuthResult
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _missing_dep_entry("tavily", url="https://tavily.com")
@@ -19673,8 +19651,8 @@ class TestNotificationCenterIntegration:
 
     async def test_enter_api_key_esc_returns_to_notification_center(self) -> None:
         """Esc in the API-key prompt returns to the center, not the base screen."""
-        from deepagents_code.tui.widgets.auth import AuthPromptScreen
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.tui.widgets.auth import AuthPromptScreen
+        from niki_agent.tui.widgets.notification_center import (
             NotificationCenterScreen,
         )
 
@@ -19707,9 +19685,9 @@ class TestNotificationCenterIntegration:
 
     async def test_enter_api_key_save_reloads_open_center(self) -> None:
         """Saving the key removes the entry and reloads the still-open center."""
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.auth import AuthResult
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.auth import AuthResult
+        from niki_agent.tui.widgets.notification_center import (
             NotificationActionRequested,
             NotificationCenterScreen,
             _NotificationRow,
@@ -19738,9 +19716,9 @@ class TestNotificationCenterIntegration:
 
     async def test_enter_api_key_save_last_entry_keeps_settings_hub(self) -> None:
         """Saving the only key leaves warning preferences reachable."""
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.auth import AuthResult
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.auth import AuthResult
+        from niki_agent.tui.widgets.notification_center import (
             NotificationActionRequested,
             NotificationCenterScreen,
             _NotificationRow,
@@ -19771,9 +19749,9 @@ class TestNotificationCenterIntegration:
         """A reload race after saving logs and toasts instead of vanishing."""
         from textual.css.query import NoMatches
 
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.auth import AuthResult
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.auth import AuthResult
+        from niki_agent.tui.widgets.notification_center import (
             NotificationActionRequested,
             NotificationCenterScreen,
         )
@@ -19814,7 +19792,7 @@ class TestNotificationCenterIntegration:
         from textual.screen import ModalScreen
         from textual.widgets import Static
 
-        from deepagents_code.tui.widgets.notification_center import (
+        from niki_agent.tui.widgets.notification_center import (
             NotificationCenterScreen,
         )
 
@@ -19846,8 +19824,8 @@ class TestNotificationCenterIntegration:
             center.reload.assert_not_awaited()  # ty: ignore
 
     async def test_suppress_skips_persistence_in_debug_mode(self) -> None:
-        """SUPPRESS with DEEPAGENTS_CODE_DEBUG_NOTIFICATIONS set skips persistence."""
-        from deepagents_code.notifications import ActionId
+        """SUPPRESS with NIKI_DEBUG_NOTIFICATIONS set skips persistence."""
+        from niki_agent.notifications import ActionId
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _missing_dep_entry()
@@ -19865,11 +19843,11 @@ class TestNotificationCenterIntegration:
         with (
             patch.dict(
                 os.environ,
-                {"DEEPAGENTS_CODE_DEBUG_NOTIFICATIONS": "1"},
+                {"NIKI_DEBUG_NOTIFICATIONS": "1"},
                 clear=False,
             ),
             patch(
-                "deepagents_code.model_config.suppress_warning",
+                "niki_agent.model_config.suppress_warning",
             ) as mock_suppress,
         ):
             async with app.run_test() as pilot:
@@ -19890,9 +19868,9 @@ class TestNotificationCenterIntegration:
         miss must neither precede `mark_success` (which would strand the
         modal) nor raise (which would report a completed install as failed).
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.update_progress import UpdateProgressScreen
-        from deepagents_code.tui.widgets.welcome import WelcomeBanner
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.update_progress import UpdateProgressScreen
+        from niki_agent.tui.widgets.welcome import WelcomeBanner
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry()
@@ -19912,8 +19890,8 @@ class TestNotificationCenterIntegration:
             await app.query_one("#welcome-banner", WelcomeBanner).remove()
             await pilot.pause()
             with patch(
-                "deepagents_code.update_check.perform_upgrade",
-                new=AsyncMock(return_value=(True, "Updated deepagents-code", "2.0.0")),
+                "niki_agent.update_check.perform_upgrade",
+                new=AsyncMock(return_value=(True, "Updated niki-agent", "2.0.0")),
             ):
                 await app._dispatch_notification_action(entry.key, ActionId.INSTALL)
                 await pilot.pause()
@@ -19938,8 +19916,8 @@ class TestNotificationCenterIntegration:
         update check and the install is what lands on disk. `perform_upgrade`
         reads that back; the splash must use the readback version.
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.welcome import WelcomeBanner
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.welcome import WelcomeBanner
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry(latest="2.0.0")
@@ -19948,8 +19926,8 @@ class TestNotificationCenterIntegration:
         async with app.run_test() as pilot:
             await pilot.pause()
             with patch(
-                "deepagents_code.update_check.perform_upgrade",
-                new=AsyncMock(return_value=(True, "Updated deepagents-code", "2.1.0")),
+                "niki_agent.update_check.perform_upgrade",
+                new=AsyncMock(return_value=(True, "Updated niki-agent", "2.1.0")),
             ):
                 await app._dispatch_notification_action(entry.key, ActionId.INSTALL)
                 await pilot.pause()
@@ -19972,9 +19950,9 @@ class TestNotificationCenterIntegration:
         determinism, so it is `_UPDATE_INSTALL_THREAD_LOCK` that refuses;
         `TestUpdateInstallLock` covers genuine cross-process exclusion.
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.update_progress import UpdateProgressScreen
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.update_progress import UpdateProgressScreen
+        from niki_agent.update_check import update_install_lock
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry()
@@ -19993,7 +19971,7 @@ class TestNotificationCenterIntegration:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.update_check.perform_upgrade",
+                    "niki_agent.update_check.perform_upgrade",
                     new_callable=AsyncMock,
                 ) as upgrade_mock,
                 update_install_lock() as holding,
@@ -20015,8 +19993,8 @@ class TestNotificationCenterIntegration:
         early return would leave the lock free too and this would pass while
         proving nothing.
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.notifications import ActionId
+        from niki_agent.update_check import update_install_lock
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry()
@@ -20026,7 +20004,7 @@ class TestNotificationCenterIntegration:
         async with app.run_test() as pilot:
             await pilot.pause()
             with patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new=upgrade_mock,
             ):
                 await app._dispatch_notification_action(entry.key, ActionId.INSTALL)
@@ -20044,8 +20022,8 @@ class TestNotificationCenterIntegration:
         lock is not reentrant, so re-entering from inside `perform_upgrade`
         proves it is held for the real work.
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.notifications import ActionId
+        from niki_agent.update_check import update_install_lock
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry()
@@ -20060,7 +20038,7 @@ class TestNotificationCenterIntegration:
         async with app.run_test() as pilot:
             await pilot.pause()
             with patch(
-                "deepagents_code.update_check.perform_upgrade",
+                "niki_agent.update_check.perform_upgrade",
                 new=_record_lock_state,
             ):
                 await app._dispatch_notification_action(entry.key, ActionId.INSTALL)
@@ -20077,7 +20055,7 @@ class TestNotificationCenterIntegration:
         tool environment as an upgrade, so racing another terminal's install
         hits the same queued-uv and transiently-absent-module hazards.
         """
-        from deepagents_code.update_check import update_install_lock
+        from niki_agent.update_check import update_install_lock
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         refresh = AsyncMock(return_value=(True, ""))
@@ -20086,7 +20064,7 @@ class TestNotificationCenterIntegration:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.update_check.perform_dependency_refresh",
+                    "niki_agent.update_check.perform_dependency_refresh",
                     new=refresh,
                 ),
                 update_install_lock() as holding,
@@ -20108,10 +20086,10 @@ class TestNotificationCenterIntegration:
         broken upgrade. This pins the contract that the success modal status
         and toast are suppressed while the warning stays visible.
         """
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.update_progress import UpdateProgressScreen
-        from deepagents_code.tui.widgets.welcome import WelcomeBanner
-        from deepagents_code.update_check import (
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.update_progress import UpdateProgressScreen
+        from niki_agent.tui.widgets.welcome import WelcomeBanner
+        from niki_agent.update_check import (
             ShadowedDcode,
             format_shadowed_dcode_fix_command,
         )
@@ -20140,14 +20118,12 @@ class TestNotificationCenterIntegration:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.update_check.perform_upgrade",
-                    new=AsyncMock(
-                        return_value=(True, "Updated deepagents-code", "2.0.0")
-                    ),
+                    "niki_agent.update_check.perform_upgrade",
+                    new=AsyncMock(return_value=(True, "Updated niki-agent", "2.0.0")),
                 ),
                 # Override the autouse `None` patch.
                 patch(
-                    "deepagents_code.update_check.detect_shadowed_dcode",
+                    "niki_agent.update_check.detect_shadowed_dcode",
                     return_value=shadow,
                 ),
             ):
@@ -20201,9 +20177,9 @@ class TestNotificationCenterIntegration:
         """
         from textual.screen import ModalScreen
 
-        from deepagents_code.notifications import ActionId
-        from deepagents_code.tui.widgets.update_progress import UpdateProgressScreen
-        from deepagents_code.update_check import ShadowedDcode
+        from niki_agent.notifications import ActionId
+        from niki_agent.tui.widgets.update_progress import UpdateProgressScreen
+        from niki_agent.update_check import ShadowedDcode
 
         shadow = ShadowedDcode(
             shadowing_bin=Path("/opt/stale/bin/dcode"),
@@ -20231,13 +20207,11 @@ class TestNotificationCenterIntegration:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.update_check.perform_upgrade",
-                    new=AsyncMock(
-                        return_value=(True, "Updated deepagents-code", "2.0.0")
-                    ),
+                    "niki_agent.update_check.perform_upgrade",
+                    new=AsyncMock(return_value=(True, "Updated niki-agent", "2.0.0")),
                 ),
                 patch(
-                    "deepagents_code.update_check.detect_shadowed_dcode",
+                    "niki_agent.update_check.detect_shadowed_dcode",
                     return_value=shadow,
                 ),
             ):
@@ -20261,7 +20235,7 @@ class TestNotificationCenterIntegration:
 
     async def test_dispatcher_handler_exception_surfaces_action_label(self) -> None:
         """A handler raising OSError produces a warning toast naming the action."""
-        from deepagents_code.notifications import ActionId
+        from niki_agent.notifications import ActionId
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _missing_dep_entry()
@@ -20277,7 +20251,7 @@ class TestNotificationCenterIntegration:
         app.notify = capture_notify  # ty: ignore
 
         with patch(
-            "deepagents_code.model_config.suppress_warning",
+            "niki_agent.model_config.suppress_warning",
             side_effect=OSError("permission denied"),
         ):
             async with app.run_test() as pilot:
@@ -20303,23 +20277,23 @@ class TestNotificationCenterIntegration:
 
         with (
             patch(
-                "deepagents_code.main.check_optional_tools",
+                "niki_agent.main.check_optional_tools",
                 return_value=["ripgrep"],
             ),
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.main._ripgrep_install_hint",
+                "niki_agent.main._ripgrep_install_hint",
                 return_value="brew install ripgrep",
             ),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 new=AsyncMock(return_value=None),
             ),
         ):
@@ -20337,8 +20311,8 @@ class TestNotificationCenterIntegration:
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=True),
-            patch("deepagents_code.update_check.is_update_available") as available,
+            patch("niki_agent.config._is_editable_install", return_value=True),
+            patch("niki_agent.update_check.is_update_available") as available,
         ):
             async with app.run_test() as pilot:
                 await pilot.pause()
@@ -20358,19 +20332,19 @@ class TestNotificationCenterIntegration:
 
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
             ) as auto_update_enabled,
         ):
             async with app.run_test() as pilot:
@@ -20385,36 +20359,36 @@ class TestNotificationCenterIntegration:
 
     async def test_update_check_preserves_prerelease_channel_in_command(self) -> None:
         """Prerelease users get a prerelease-capable update command in notices."""
-        from deepagents_code.notifications import UpdateAvailablePayload
-        from deepagents_code.tui.widgets.update_available import UpdateAvailableScreen
+        from niki_agent.notifications import UpdateAvailablePayload
+        from niki_agent.tui.widgets.update_available import UpdateAvailableScreen
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
 
         with (
             patch(
-                "deepagents_code.config._is_editable_install",
+                "niki_agent.config._is_editable_install",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_update_available",
+                "niki_agent.update_check.is_update_available",
                 return_value=(True, "9.9.9rc2"),
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.should_notify_update",
+                "niki_agent.update_check.should_notify_update",
                 return_value=True,
             ),
-            patch("deepagents_code.update_check.mark_update_notified"),
+            patch("niki_agent.update_check.mark_update_notified"),
             patch(
-                "deepagents_code.update_check.release_requires_prereleases",
+                "niki_agent.update_check.release_requires_prereleases",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool install -U deepagents-code --prerelease allow",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool install -U niki-agent --prerelease allow",
             ) as upgrade_command_mock,
         ):
             async with app.run_test() as pilot:
@@ -20434,7 +20408,7 @@ class TestNotificationCenterIntegration:
 
     async def test_periodic_update_check_mounts_durable_message(self) -> None:
         """Hourly rechecks surface one durable message instead of a toast."""
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = _app_without_stale_banner(agent=MagicMock(), thread_id="t")
         app.notify = MagicMock()  # ty: ignore
@@ -20464,7 +20438,7 @@ class TestNotificationCenterIntegration:
 
     async def test_header_failure_does_not_swallow_the_update_notice(self) -> None:
         """A broken header still leaves the notice and the message intact."""
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = _app_without_stale_banner(agent=MagicMock(), thread_id="t")
 
@@ -20488,7 +20462,7 @@ class TestNotificationCenterIntegration:
 
     async def test_auto_update_mounts_durable_restart_prompt(self) -> None:
         """With auto-update on, the restart prompt is a message, not a toast."""
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = _app_without_stale_banner(agent=MagicMock(), thread_id="t")
         app.notify = MagicMock()  # ty: ignore
@@ -20512,7 +20486,7 @@ class TestNotificationCenterIntegration:
 
     async def test_deferred_resume_does_not_block_update_check(self) -> None:
         """A future history restore must not strand the update-check worker."""
-        from deepagents_code.tui.widgets.messages import AppMessage
+        from niki_agent.tui.widgets.messages import AppMessage
 
         app = _app_without_stale_banner(
             thread_id="t",
@@ -20567,7 +20541,7 @@ class TestNotificationCenterIntegration:
 
     async def test_open_update_available_modal_over_modal_toasts_hint(self) -> None:
         """Another modal already open: update modal is deferred with a hint toast."""
-        from deepagents_code.tui.widgets.update_available import UpdateAvailableScreen
+        from niki_agent.tui.widgets.update_available import UpdateAvailableScreen
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         entry = _update_entry()
@@ -20608,8 +20582,8 @@ class TestNotificationCenterIntegration:
 
     async def test_mcp_viewer_shift_tab_jumps_to_previous_server(self) -> None:
         """App-level shift+tab routes to MCPViewerScreen.jump_up."""
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-        from deepagents_code.tui.widgets.mcp_viewer import MCPViewerScreen
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.tui.widgets.mcp_viewer import MCPViewerScreen
 
         servers = [
             MCPServerInfo(
@@ -20646,21 +20620,21 @@ class TestNotificationCenterIntegration:
 
         with (
             patch(
-                "deepagents_code.main.check_optional_tools",
+                "niki_agent.main.check_optional_tools",
                 side_effect=OSError("permission denied"),
             ),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 new=AsyncMock(return_value=None),
             ),
         ):
             async with app.run_test() as pilot:
                 await pilot.pause()
-                with caplog.at_level(logging.DEBUG, logger="deepagents_code.app"):
+                with caplog.at_level(logging.DEBUG, logger="niki_agent.app"):
                     await app._check_optional_tools_background()
                 await pilot.pause()
 
@@ -20686,15 +20660,15 @@ class TestNotificationCenterIntegration:
 
         with (
             patch(
-                "deepagents_code.main.check_optional_tools",
+                "niki_agent.main.check_optional_tools",
                 side_effect=RuntimeError("future refactor regression"),
             ),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 new=AsyncMock(return_value=None),
             ),
         ):
@@ -20831,7 +20805,7 @@ class TestFatalErrorRedaction:
 
     Locals on the `create_model` call path include resolved API keys in a
     `kwargs` dict. Textual's default rendering uses `show_locals=True`,
-    which would print them. We disable locals unless `DEEPAGENTS_CODE_DEBUG`
+    which would print them. We disable locals unless `NIKI_DEBUG`
     is set to a truthy token.
     """
 
@@ -20856,7 +20830,7 @@ class TestPrewarmDeferredImports:
     """Prewarming is a cache optimization and must never crash the app.
 
     When the installed package is replaced in place mid-session (e.g. a
-    concurrent `uv tool upgrade deepagents-code`), a not-yet-imported module
+    concurrent `uv tool upgrade niki-agent`), a not-yet-imported module
     can be transiently absent on disk, so a deferred import raises
     `ModuleNotFoundError`. The prewarm worker must swallow that — the module
     cold-loads on first use instead — rather than surfacing a fatal traceback.
@@ -20881,7 +20855,7 @@ class TestPrewarmDeferredImports:
         # module file that is momentarily gone during an in-place file swap.
         monkeypatch.setitem(
             sys.modules,
-            "deepagents_code.tui.widgets.approval",
+            "niki_agent.tui.widgets.approval",
             None,
         )
 
@@ -20890,7 +20864,7 @@ class TestPrewarmDeferredImports:
         with pytest.raises(ModuleNotFoundError):
             DeepAgentsApp._load_deferred_modules()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             # Must not raise — the worker entry point swallows the failure.
             DeepAgentsApp._prewarm_deferred_imports()
 
@@ -20915,7 +20889,7 @@ class TestPrewarmDeferredImports:
 
         monkeypatch.setitem(
             sys.modules,
-            "deepagents_code.tui.widgets.approval",
+            "niki_agent.tui.widgets.approval",
             None,
         )
 
@@ -20942,7 +20916,7 @@ class TestPrewarmAwait:
         after `create_model` (or drops it) silently re-introduces the
         production crash. This is the only test that catches that.
         """
-        from deepagents_code import config as cli_config
+        from niki_agent import config as cli_config
 
         call_order: list[str] = []
         create_model_kwargs: dict[str, Any] = {}
@@ -20973,7 +20947,7 @@ class TestPrewarmAwait:
         with (
             patch.object(app, "_await_prewarm_imports", side_effect=record_prewarm),
             patch.object(cli_config, "create_model", side_effect=record_create_model),
-            patch("deepagents_code.model_config.save_recent_model"),
+            patch("niki_agent.model_config.save_recent_model"),
             patch.object(app, "post_message"),
             # `_start_server_background` continues past `create_model` into
             # server + MCP setup we don't care about for an ordering test.
@@ -20997,7 +20971,7 @@ class TestPrewarmAwait:
         thread's owning agent. Without this assertion a future refactor
         that swaps the argument back to `_assistant_id` is invisible.
         """
-        from deepagents_code import config as cli_config
+        from niki_agent import config as cli_config
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         app._model_kwargs = {"model_spec": "anthropic:claude-opus-4-7"}
@@ -21019,9 +20993,9 @@ class TestPrewarmAwait:
         with (
             patch.object(app, "_await_prewarm_imports", AsyncMock()),
             patch.object(cli_config, "create_model", side_effect=fake_create_model),
-            patch("deepagents_code.model_config.save_recent_model"),
+            patch("niki_agent.model_config.save_recent_model"),
             patch(
-                "deepagents_code.model_config.save_recent_agent",
+                "niki_agent.model_config.save_recent_agent",
                 return_value=True,
             ) as save_agent_mock,
             patch.object(app, "post_message"),
@@ -21043,8 +21017,8 @@ class TestPrewarmAwait:
         `create_model` plus a credential miss silently drops the write
         with no test signal.
         """
-        from deepagents_code import config as cli_config
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent import config as cli_config
+        from niki_agent.model_config import ModelConfigError
 
         call_order: list[str] = []
 
@@ -21069,10 +21043,10 @@ class TestPrewarmAwait:
             patch.object(app, "_await_prewarm_imports", AsyncMock()),
             patch.object(cli_config, "create_model", side_effect=record_create_model),
             patch(
-                "deepagents_code.model_config.save_recent_agent",
+                "niki_agent.model_config.save_recent_agent",
                 side_effect=record_save_agent,
             ),
-            patch("deepagents_code.model_config.save_recent_model"),
+            patch("niki_agent.model_config.save_recent_model"),
             patch.object(app, "post_message"),
             patch.object(app, "notify"),
         ):
@@ -21191,11 +21165,11 @@ class TestStaleInstallBanner:
         """The stale-install advisory takes precedence over the sandbox label."""
         with (
             patch(
-                "deepagents_code.update_check.is_installation_stale",
+                "niki_agent.update_check.is_installation_stale",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.installed_days_old",
+                "niki_agent.update_check.installed_days_old",
                 return_value=21,
             ),
         ):
@@ -21206,16 +21180,16 @@ class TestStaleInstallBanner:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A `None` age (cache race) drops the banner, never `"None days old"`."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_SHOW_HEADER", raising=False)
+        monkeypatch.delenv("NIKI_SHOW_HEADER", raising=False)
         from textual.widgets import Header
 
         with (
             patch(
-                "deepagents_code.update_check.is_installation_stale",
+                "niki_agent.update_check.is_installation_stale",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.installed_days_old",
+                "niki_agent.update_check.installed_days_old",
                 return_value=None,
             ),
         ):
@@ -21230,7 +21204,7 @@ class TestStaleInstallBanner:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A fresh hourly result reveals the stale warning without a restart."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_SHOW_HEADER", raising=False)
+        monkeypatch.delenv("NIKI_SHOW_HEADER", raising=False)
         from textual.widgets import Header
 
         app = _app_without_stale_banner()
@@ -21250,7 +21224,7 @@ class TestStaleInstallBanner:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Clearing a stale result does not hide the explicitly enabled header."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_SHOW_HEADER", "1")
+        monkeypatch.setenv("NIKI_SHOW_HEADER", "1")
         app = _app_without_stale_banner()
 
         async with app.run_test() as pilot:
@@ -21274,7 +21248,7 @@ class TestStaleInstallBanner:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An unknown age never retracts an advisory the user already saw."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_SHOW_HEADER", raising=False)
+        monkeypatch.delenv("NIKI_SHOW_HEADER", raising=False)
         from textual.widgets import Header
 
         app = _app_without_stale_banner()
@@ -21299,7 +21273,7 @@ class TestStaleInstallBanner:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A result with no update left hides the header and restores sub_title."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_SHOW_HEADER", raising=False)
+        monkeypatch.delenv("NIKI_SHOW_HEADER", raising=False)
         from textual.widgets import Header
 
         app = _app_without_stale_banner()
@@ -21466,11 +21440,11 @@ class TestLiveApprovalModeWrites:
         """Auto resolves at startup without a sandbox, even with EXPERIMENTAL off.
 
         Auto is now generally available; the former experimental opt-in is gone.
-        Setting `DEEPAGENTS_CODE_EXPERIMENTAL` explicitly falsy proves the flag
+        Setting `NIKI_EXPERIMENTAL` explicitly falsy proves the flag
         no longer gates Auto, so this stays load-bearing rather than inert.
         """
-        from deepagents_code._env_vars import EXPERIMENTAL
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent._env_vars import EXPERIMENTAL
+        from niki_agent.approval_mode import ApprovalMode
 
         monkeypatch.setenv(EXPERIMENTAL, "0")
 
@@ -21479,7 +21453,7 @@ class TestLiveApprovalModeWrites:
         assert app._approval_mode is ApprovalMode.AUTO
 
     def test_auto_startup_unavailable_with_sandbox(self) -> None:
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp(
             approval_mode=ApprovalMode.AUTO,
@@ -21493,7 +21467,7 @@ class TestLiveApprovalModeWrites:
 
     def test_no_sandbox_downgrade_flag_without_auto(self) -> None:
         """Manual under a sandbox has nothing to explain."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp(
             approval_mode=ApprovalMode.MANUAL,
@@ -21503,7 +21477,7 @@ class TestLiveApprovalModeWrites:
         assert app._auto_downgraded_by_sandbox is False
 
     async def test_write_live_approval_mode_records_key(self) -> None:
-        from deepagents_code.approval_mode import (
+        from niki_agent.approval_mode import (
             APPROVAL_MODE_NAMESPACE,
             approval_mode_key,
         )
@@ -21549,7 +21523,7 @@ class TestLiveApprovalModeWrites:
         assert app._session_state.approval_mode_key is None
 
     async def test_toggle_on_while_connecting_stages_mode(self) -> None:
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -21571,12 +21545,10 @@ class TestLiveApprovalModeWrites:
                 ),
                 patch.object(app, "notify") as notify,
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
-                patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice"
-                ) as save_notice,
+                patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
             ):
                 await app.action_toggle_auto_approve()
 
@@ -21592,7 +21564,7 @@ class TestLiveApprovalModeWrites:
         )
 
     async def test_toggle_off_while_reconnecting_stages_manual(self) -> None:
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp(auto_approve=True)
         async with app.run_test() as pilot:
@@ -21634,7 +21606,7 @@ class TestLiveApprovalModeWrites:
             creations += 1
 
         with patch(
-            "deepagents_code.hooks.runtime.HooksRuntime.create",
+            "niki_agent.hooks.runtime.HooksRuntime.create",
             side_effect=count_creation,
         ):
             await asyncio.gather(
@@ -21756,12 +21728,10 @@ class TestLiveApprovalModeWrites:
                 patch.object(app, "_force_interrupt_active_work") as force,
                 patch.object(app, "notify") as notify,
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
-                patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice"
-                ) as save_notice,
+                patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
             ):
                 await app.action_toggle_auto_approve()
 
@@ -21794,10 +21764,10 @@ class TestLiveApprovalModeWrites:
             ),
             patch.object(app, "notify") as notify,
             patch(
-                "deepagents_code.approval_mode.has_auto_mode_notice",
+                "niki_agent.approval_mode.has_auto_mode_notice",
                 return_value=True,
             ),
-            patch("deepagents_code.approval_mode.save_auto_mode_notice") as save_notice,
+            patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
         ):
             await app._on_auto_approve_enabled()
 
@@ -21812,8 +21782,8 @@ class TestLiveApprovalModeWrites:
         self,
     ) -> None:
         """First Auto toggle shows the confirmation modal before switching."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import (
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import (
             AutoModeNoticeScreen,
             build_auto_mode_notice_body,
         )
@@ -21837,11 +21807,11 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice",
+                    "niki_agent.approval_mode.save_auto_mode_notice",
                     return_value=True,
                 ) as save_notice,
             ):
@@ -21870,8 +21840,8 @@ class TestLiveApprovalModeWrites:
 
     async def test_toggle_auto_skips_modal_when_notice_already_shown(self) -> None:
         """Later Auto enables stay quiet once the install-local notice exists."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -21890,16 +21860,14 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
-                patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice"
-                ) as save_notice,
+                patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
                 # Keep Manual ↔ Auto for this Auto-notice sequence; YOLO coverage
                 # lives in dedicated switcher tests below.
                 patch(
-                    "deepagents_code.config.is_yolo_switcher_enabled",
+                    "niki_agent.config.is_yolo_switcher_enabled",
                     return_value=False,
                 ),
             ):
@@ -21918,8 +21886,8 @@ class TestLiveApprovalModeWrites:
 
     async def test_toggle_into_yolo_escape_keeps_current_mode(self) -> None:
         """Esc on the switcher YOLO notice leaves Auto active and unsaved."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -21936,14 +21904,12 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(return_value=True),
                 ) as write_mode,
                 patch(
-                    "deepagents_code.approval_mode.has_yolo_acknowledgement",
+                    "niki_agent.approval_mode.has_yolo_acknowledgement",
                     return_value=False,
                 ),
+                patch("niki_agent.approval_mode.save_yolo_acknowledgement") as save_ack,
                 patch(
-                    "deepagents_code.approval_mode.save_yolo_acknowledgement"
-                ) as save_ack,
-                patch(
-                    "deepagents_code.config.is_yolo_switcher_enabled",
+                    "niki_agent.config.is_yolo_switcher_enabled",
                     return_value=True,
                 ),
                 patch.object(app, "notify") as notify,
@@ -21964,8 +21930,8 @@ class TestLiveApprovalModeWrites:
 
     async def test_toggle_into_yolo_m_switches_to_manual(self) -> None:
         """`m` on the switcher YOLO notice switches to Manual without ack."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -21982,14 +21948,12 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(return_value=True),
                 ) as write_mode,
                 patch(
-                    "deepagents_code.approval_mode.has_yolo_acknowledgement",
+                    "niki_agent.approval_mode.has_yolo_acknowledgement",
                     return_value=False,
                 ),
+                patch("niki_agent.approval_mode.save_yolo_acknowledgement") as save_ack,
                 patch(
-                    "deepagents_code.approval_mode.save_yolo_acknowledgement"
-                ) as save_ack,
-                patch(
-                    "deepagents_code.config.is_yolo_switcher_enabled",
+                    "niki_agent.config.is_yolo_switcher_enabled",
                     return_value=True,
                 ),
                 patch.object(app, "notify"),
@@ -22011,8 +21975,8 @@ class TestLiveApprovalModeWrites:
         A failed redundant Manual write would set `_approval_mode_blocked` and
         could cancel active work even though the user only declined YOLO.
         """
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.yolo_mode_notice import YoloModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -22033,14 +21997,12 @@ class TestLiveApprovalModeWrites:
                     app, "_set_approval_mode", wraps=app._set_approval_mode
                 ) as set_mode,
                 patch(
-                    "deepagents_code.approval_mode.has_yolo_acknowledgement",
+                    "niki_agent.approval_mode.has_yolo_acknowledgement",
                     return_value=False,
                 ),
+                patch("niki_agent.approval_mode.save_yolo_acknowledgement") as save_ack,
                 patch(
-                    "deepagents_code.approval_mode.save_yolo_acknowledgement"
-                ) as save_ack,
-                patch(
-                    "deepagents_code.config.is_yolo_switcher_enabled",
+                    "niki_agent.config.is_yolo_switcher_enabled",
                     return_value=True,
                 ),
                 patch.object(app, "_warn_live_approval_mode_unavailable") as warn,
@@ -22060,7 +22022,7 @@ class TestLiveApprovalModeWrites:
 
     async def test_set_approval_mode_yolo_persist_failure_returns_false(self) -> None:
         """A failed live write for YOLO returns False without escalating."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -22097,13 +22059,13 @@ class TestLiveApprovalModeWrites:
         self, mode_value: str
     ) -> None:
         """A user-selected Manual or Auto becomes the next launch's mode."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         mode = ApprovalMode(mode_value)
         with (
             patch(
-                "deepagents_code.model_config.save_recent_startup_mode",
+                "niki_agent.model_config.save_recent_startup_mode",
                 return_value=True,
             ) as save_recent,
             patch.object(app, "_notify_auto_classifier_active"),
@@ -22116,12 +22078,12 @@ class TestLiveApprovalModeWrites:
         self,
     ) -> None:
         """The session change stands; only the durable record is reported lost."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         with (
             patch(
-                "deepagents_code.model_config.save_recent_startup_mode",
+                "niki_agent.model_config.save_recent_startup_mode",
                 return_value=False,
             ),
             patch.object(app, "notify") as notify,
@@ -22138,13 +22100,11 @@ class TestLiveApprovalModeWrites:
 
     async def test_set_approval_mode_does_not_persist_yolo_as_recent(self) -> None:
         """YOLO stays opt-in every launch, so it is never recorded."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         with (
-            patch(
-                "deepagents_code.model_config.save_recent_startup_mode"
-            ) as save_recent,
+            patch("niki_agent.model_config.save_recent_startup_mode") as save_recent,
             patch.object(app, "_warn_yolo_active"),
         ):
             assert await app._set_approval_mode(ApprovalMode.YOLO) is True
@@ -22160,7 +22120,7 @@ class TestLiveApprovalModeWrites:
         session would sit in Auto while the next launch reverted to the old
         mode, undoing a selection that actually succeeded.
         """
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -22178,7 +22138,7 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(side_effect=RuntimeError("boom")),
                 ),
                 patch(
-                    "deepagents_code.model_config.save_recent_startup_mode",
+                    "niki_agent.model_config.save_recent_startup_mode",
                     return_value=True,
                 ) as save_recent,
                 patch.object(app, "_notify_auto_classifier_active"),
@@ -22194,11 +22154,11 @@ class TestLiveApprovalModeWrites:
         The confirmation modal has two entry points that both activate Auto:
         the awaiting caller and the task its result schedules.
         """
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         with patch(
-            "deepagents_code.model_config.save_recent_startup_mode",
+            "niki_agent.model_config.save_recent_startup_mode",
             return_value=True,
         ) as save_recent:
             await app._persist_startup_approval_mode(ApprovalMode.AUTO)
@@ -22208,12 +22168,12 @@ class TestLiveApprovalModeWrites:
 
     async def test_persist_startup_mode_retries_after_failure(self) -> None:
         """A failed write is not remembered as done."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         with (
             patch(
-                "deepagents_code.model_config.save_recent_startup_mode",
+                "niki_agent.model_config.save_recent_startup_mode",
                 return_value=False,
             ) as save_recent,
             patch.object(app, "notify"),
@@ -22229,7 +22189,7 @@ class TestLiveApprovalModeWrites:
         app._auto_downgraded_by_sandbox = False
         with (
             patch(
-                "deepagents_code.model_config.consume_recent_auto_not_restored_notice",
+                "niki_agent.model_config.consume_recent_auto_not_restored_notice",
                 return_value="Auto was not restored.",
             ),
             patch.object(app, "notify") as notify,
@@ -22249,7 +22209,7 @@ class TestLiveApprovalModeWrites:
         app._auto_downgraded_by_sandbox = True
         with (
             patch(
-                "deepagents_code.model_config.consume_recent_auto_not_restored_notice",
+                "niki_agent.model_config.consume_recent_auto_not_restored_notice",
                 return_value="Auto was not restored.",
             ),
             patch.object(app, "notify") as notify,
@@ -22268,7 +22228,7 @@ class TestLiveApprovalModeWrites:
         app._auto_downgraded_by_sandbox = False
         with (
             patch(
-                "deepagents_code.model_config.consume_recent_auto_not_restored_notice",
+                "niki_agent.model_config.consume_recent_auto_not_restored_notice",
                 return_value=None,
             ),
             patch.object(app, "notify") as notify,
@@ -22282,7 +22242,7 @@ class TestLiveApprovalModeWrites:
         self, mode_value: str
     ) -> None:
         """A rejected live write must not arm the mode for the next launch."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         target = ApprovalMode(mode_value)
@@ -22296,7 +22256,7 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(return_value=False),
                 ),
                 patch(
-                    "deepagents_code.model_config.save_recent_startup_mode",
+                    "niki_agent.model_config.save_recent_startup_mode",
                     return_value=True,
                 ) as save_recent,
                 patch.object(app, "_warn_live_approval_mode_unavailable"),
@@ -22308,7 +22268,7 @@ class TestLiveApprovalModeWrites:
 
     async def test_switch_to_manual_from_fallback_persists_manual(self) -> None:
         """The live fallback's Manual switch updates the next bare launch."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         with (
@@ -22318,7 +22278,7 @@ class TestLiveApprovalModeWrites:
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.model_config.save_recent_startup_mode",
+                "niki_agent.model_config.save_recent_startup_mode",
                 return_value=True,
             ) as save_recent,
         ):
@@ -22338,8 +22298,8 @@ class TestLiveApprovalModeWrites:
                 push.assert_not_called()
 
     async def test_on_auto_approve_enabled_first_modal_and_save(self) -> None:
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import (
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import (
             AutoModeNoticeScreen,
             build_auto_mode_notice_body,
         )
@@ -22366,15 +22326,15 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice",
+                    "niki_agent.approval_mode.save_auto_mode_notice",
                     return_value=True,
                 ) as save_notice,
                 patch(
-                    "deepagents_code.model_config.save_recent_startup_mode",
+                    "niki_agent.model_config.save_recent_startup_mode",
                     return_value=True,
                 ) as save_recent_mode,
             ):
@@ -22398,8 +22358,8 @@ class TestLiveApprovalModeWrites:
                 assert app._approval_mode is ApprovalMode.AUTO
 
     async def test_on_auto_approve_enabled_skips_modal_when_notice_shown(self) -> None:
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
 
         app = DeepAgentsApp(auto_approve=False)
         app._auto_mode_eligible = True
@@ -22421,12 +22381,10 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=True,
                 ),
-                patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice"
-                ) as save_notice,
+                patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
             ):
                 assert await app._on_auto_approve_enabled() is True
                 await pilot.pause()
@@ -22436,11 +22394,11 @@ class TestLiveApprovalModeWrites:
 
     async def test_mount_auto_reports_classifier_after_notice_was_shown(self) -> None:
         """Returning Auto users still see which model authorizes actions."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         classifier = "anthropic:claude-haiku-4-5"
         with patch(
-            "deepagents_code.approval_mode.has_auto_mode_notice",
+            "niki_agent.approval_mode.has_auto_mode_notice",
             return_value=True,
         ):
             app = DeepAgentsApp(
@@ -22459,8 +22417,8 @@ class TestLiveApprovalModeWrites:
 
     async def test_toggle_auto_first_enable_esc_cancels_switch(self) -> None:
         """Esc on the pre-confirmation modal cancels the Auto switch."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -22480,11 +22438,11 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice",
+                    "niki_agent.approval_mode.save_auto_mode_notice",
                 ) as save_notice,
             ):
                 await app.action_toggle_auto_approve()
@@ -22502,8 +22460,8 @@ class TestLiveApprovalModeWrites:
 
     async def test_on_auto_approve_enabled_esc_returns_false(self) -> None:
         """Esc on the inline Auto confirmation returns False without activating."""
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
 
         app = DeepAgentsApp(auto_approve=False)
         app._auto_mode_eligible = True
@@ -22525,14 +22483,14 @@ class TestLiveApprovalModeWrites:
                     new=AsyncMock(),
                 ),
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice",
+                    "niki_agent.approval_mode.save_auto_mode_notice",
                 ) as save_notice,
                 patch(
-                    "deepagents_code.model_config.save_recent_startup_mode",
+                    "niki_agent.model_config.save_recent_startup_mode",
                     return_value=True,
                 ) as save_recent_mode,
             ):
@@ -22550,7 +22508,7 @@ class TestLiveApprovalModeWrites:
 
     async def test_prompt_auto_mode_confirmation_is_reentrant_safe(self) -> None:
         """Two calls before dismiss push a single modal."""
-        from deepagents_code.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
+        from niki_agent.tui.widgets.auto_mode_notice import AutoModeNoticeScreen
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -22558,11 +22516,11 @@ class TestLiveApprovalModeWrites:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice",
+                    "niki_agent.approval_mode.save_auto_mode_notice",
                     return_value=True,
                 ),
             ):
@@ -22578,7 +22536,7 @@ class TestLiveApprovalModeWrites:
 
     async def test_prompt_auto_mode_confirmation_survives_push_failure(self) -> None:
         """A failed modal push does not activate Auto."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         app._auto_mode_eligible = True
@@ -22586,12 +22544,10 @@ class TestLiveApprovalModeWrites:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.approval_mode.has_auto_mode_notice",
+                    "niki_agent.approval_mode.has_auto_mode_notice",
                     return_value=False,
                 ),
-                patch(
-                    "deepagents_code.approval_mode.save_auto_mode_notice"
-                ) as save_notice,
+                patch("niki_agent.approval_mode.save_auto_mode_notice") as save_notice,
                 patch.object(app, "push_screen", side_effect=RuntimeError("boom")),
                 patch.object(app, "_warn_live_approval_mode_unavailable") as warn,
             ):
@@ -22617,7 +22573,7 @@ class TestLiveApprovalModeWrites:
             "consecutive_unavailable": 0,
             "total_denials": 4,
         }
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.app")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.app")
 
         with patch.object(app, "_mount_message", new=AsyncMock()) as mount:
             await app._on_auto_mode_event(event)
@@ -22638,7 +22594,7 @@ class TestLiveApprovalModeWrites:
 
     async def test_server_manual_fallback_clears_recent_auto(self) -> None:
         """The server's safety decision must survive the session boundary."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         app = DeepAgentsApp()
         app._approval_mode = ApprovalMode.AUTO
@@ -22655,7 +22611,7 @@ class TestLiveApprovalModeWrites:
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "deepagents_code.model_config.save_recent_startup_mode",
+                "niki_agent.model_config.save_recent_startup_mode",
                 return_value=True,
             ) as save_recent,
             patch.object(app, "_mount_message", new=AsyncMock()),
@@ -22693,21 +22649,21 @@ class TestSetSpinnerTerminalProgress:
         Without this, `_load_terminal_progress_preference` reads the developer's
         real `~/.deepagents/config.toml` during `DeepAgentsApp.__init__`, so a
         local `[ui].terminal_progress = false` — or an exported
-        `DEEPAGENTS_CODE_TERMINAL_PROGRESS`, which outranks it — would silently
+        `NIKI_TERMINAL_PROGRESS`, which outranks it — would silently
         flip the positive-path tests below to failing. Tests that need a
         specific config write to and re-point at this same path.
         """
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "config.toml",
         )
-        monkeypatch.delenv("DEEPAGENTS_CODE_TERMINAL_PROGRESS", raising=False)
+        monkeypatch.delenv("NIKI_TERMINAL_PROGRESS", raising=False)
 
     async def test_status_triggers_indeterminate_progress(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A non-None spinner status should set indeterminate progress."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
 
@@ -22740,7 +22696,7 @@ class TestSetSpinnerTerminalProgress:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Hiding the spinner should clear terminal progress."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         calls: list[str] = []
 
@@ -22770,11 +22726,11 @@ class TestSetSpinnerTerminalProgress:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`[ui].terminal_progress = false` should suppress progress escapes."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nterminal_progress = false\n", encoding="utf-8")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
 
         calls: list[str] = []
 
@@ -22803,11 +22759,11 @@ class TestSetSpinnerTerminalProgress:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`[ui].terminal_progress = true` should emit set and clear escapes."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         config = tmp_path / "config.toml"
         config.write_text("[ui]\nterminal_progress = true\n", encoding="utf-8")
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", config)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
 
         calls: list[str] = []
 
@@ -22838,7 +22794,7 @@ class TestSetSpinnerTerminalProgress:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Re-showing after a clear should re-emit indeterminate progress."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         calls: list[str] = []
 
@@ -22871,7 +22827,7 @@ class TestSetSpinnerTerminalProgress:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Unexpected exceptions from `terminal_escape` must not break the UI."""
-        from deepagents_code import terminal_escape
+        from niki_agent import terminal_escape
 
         def _boom_set(*_args: object, **_kwargs: object) -> bool:
             msg = "boom"
@@ -22953,7 +22909,7 @@ class TestMCPLoginCommand:
 
     async def test_viewer_dismiss_with_server_name_starts_login(self) -> None:
         """Selecting an unauth server in the viewer kicks off `_start_mcp_login`."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -22977,7 +22933,7 @@ class TestMCPLoginCommand:
 
     def test_optimistic_reenable_started_disabled_points_to_ctrl_r(self) -> None:
         """F2 re-enable guidance should use the in-modal reconnect shortcut."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         original = MCPServerInfo(
             name="notion",
@@ -22995,8 +22951,8 @@ class TestMCPLoginCommand:
 
     def test_optimistic_mcp_login_pending_state_relabels_only_target(self) -> None:
         """Deferred OAuth login updates the target without touching siblings."""
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-        from deepagents_code.tui.widgets.welcome import WelcomeBanner
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.tui.widgets.welcome import WelcomeBanner
 
         ok = MCPServerInfo(
             name="filesystem",
@@ -23043,7 +22999,7 @@ class TestMCPLoginCommand:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """An unexpected OAuth callback does not fail silently."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         original = MCPServerInfo(
             name="github",
@@ -23054,7 +23010,7 @@ class TestMCPLoginCommand:
         app = DeepAgentsApp(agent=MagicMock(), mcp_server_info=[original])
         app.query_one = MagicMock(side_effect=NoMatches("welcome-banner"))  # ty: ignore
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._apply_optimistic_mcp_login_pending_state("notion")
 
         assert app._mcp_server_info == [original]
@@ -23065,7 +23021,7 @@ class TestMCPLoginCommand:
 
     def test_init_counts_awaiting_reconnect_servers(self) -> None:
         """Constructor seeds `_mcp_awaiting_reconnect` from initial server info."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         waiting = MCPServerInfo(
             name="github",
@@ -23083,9 +23039,7 @@ class TestMCPLoginCommand:
         async with app.run_test() as pilot:
             await pilot.pause()
             with (
-                patch(
-                    "deepagents_code.mcp_disabled.set_server_disabled"
-                ) as set_disabled,
+                patch("niki_agent.mcp_disabled.set_server_disabled") as set_disabled,
                 patch.object(app, "notify") as notify,
             ):
                 await app._toggle_mcp_server_disabled("")
@@ -23198,7 +23152,7 @@ class TestMCPLoginCommand:
 
     async def test_mcp_login_worker_surfaces_config_resolution_error(self) -> None:
         """`_run_mcp_login_worker` exits with ErrorMessage on config-resolve failure."""
-        from deepagents_code.mcp_login_service import (
+        from niki_agent.mcp_login_service import (
             ConfigErrorKind,
             ConfigResolutionError,
         )
@@ -23212,7 +23166,7 @@ class TestMCPLoginCommand:
                 "trust_project_mcp": True,
             }
             with patch(
-                "deepagents_code.mcp_login_service.resolve_mcp_config",
+                "niki_agent.mcp_login_service.resolve_mcp_config",
                 return_value=ConfigResolutionError(
                     kind=ConfigErrorKind.NO_CONFIG_FOUND,
                     message="No MCP config file found",
@@ -23238,7 +23192,7 @@ class TestMCPLoginCommand:
         """
         from pathlib import Path as _Path
 
-        from deepagents_code.mcp_login_service import (
+        from niki_agent.mcp_login_service import (
             ConfigResolution,
             ServerSelection,
         )
@@ -23276,14 +23230,14 @@ class TestMCPLoginCommand:
 
             with (
                 patch(
-                    "deepagents_code.mcp_login_service.resolve_mcp_config",
+                    "niki_agent.mcp_login_service.resolve_mcp_config",
                     return_value=resolution,
                 ),
                 patch(
-                    "deepagents_code.mcp_login_service.select_server",
+                    "niki_agent.mcp_login_service.select_server",
                     return_value=selection,
                 ),
-                patch("deepagents_code.mcp_auth.login", _failing_login),
+                patch("niki_agent.mcp_auth.login", _failing_login),
             ):
                 await app._run_mcp_login_worker("notion")
                 await pilot.pause()
@@ -23296,7 +23250,7 @@ class TestMCPLoginCommand:
         """A stdio server can't speak OAuth; the worker reports the transport."""
         from pathlib import Path as _Path
 
-        from deepagents_code.mcp_login_service import (
+        from niki_agent.mcp_login_service import (
             ConfigResolution,
             ServerSelection,
         )
@@ -23322,14 +23276,14 @@ class TestMCPLoginCommand:
 
             with (
                 patch(
-                    "deepagents_code.mcp_login_service.resolve_mcp_config",
+                    "niki_agent.mcp_login_service.resolve_mcp_config",
                     return_value=resolution,
                 ),
                 patch(
-                    "deepagents_code.mcp_login_service.select_server",
+                    "niki_agent.mcp_login_service.select_server",
                     return_value=selection,
                 ),
-                patch("deepagents_code.mcp_auth.login", new=AsyncMock()) as login,
+                patch("niki_agent.mcp_auth.login", new=AsyncMock()) as login,
                 patch.object(app, "_prompt_mcp_reconnect", new=AsyncMock()) as prompt,
             ):
                 await app._run_mcp_login_worker("local")
@@ -23352,7 +23306,7 @@ class TestMCPLoginCommand:
         """
         from pathlib import Path as _Path
 
-        from deepagents_code.mcp_login_service import (
+        from niki_agent.mcp_login_service import (
             ConfigResolution,
             ServerSelection,
         )
@@ -23384,14 +23338,14 @@ class TestMCPLoginCommand:
 
             with (
                 patch(
-                    "deepagents_code.mcp_login_service.resolve_mcp_config",
+                    "niki_agent.mcp_login_service.resolve_mcp_config",
                     return_value=resolution,
                 ),
                 patch(
-                    "deepagents_code.mcp_login_service.select_server",
+                    "niki_agent.mcp_login_service.select_server",
                     return_value=selection,
                 ),
-                patch("deepagents_code.mcp_auth.login", _ok_login),
+                patch("niki_agent.mcp_auth.login", _ok_login),
                 patch.object(app, "_prompt_mcp_reconnect", new=AsyncMock()) as prompt,
                 patch.object(
                     app, "_restart_server_for_mcp_refresh", new=AsyncMock()
@@ -23416,7 +23370,7 @@ class TestMCPLoginCommand:
         draining once idle fires exactly one restart carrying the real server
         name.
         """
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -23580,8 +23534,8 @@ class TestMCPLoginCommand:
         self,
     ) -> None:
         """Choosing `reconnect` clears stale login/reconnect splash counters."""
-        from deepagents_code.mcp_tools import MCPServerInfo
-        from deepagents_code.tui.widgets.welcome import WelcomeBanner
+        from niki_agent.mcp_tools import MCPServerInfo
+        from niki_agent.tui.widgets.welcome import WelcomeBanner
 
         app = DeepAgentsApp(
             agent=MagicMock(),
@@ -23670,7 +23624,7 @@ class TestMCPLoginCommand:
 
     async def test_mcp_reconnect_force_cancel_skips_restart(self) -> None:
         """`/mcp reconnect force` does nothing when the confirm modal is cancelled."""
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPReconnectForceConfirmScreen,
         )
 
@@ -23717,7 +23671,7 @@ class TestMCPLoginCommand:
 
     async def test_viewer_enter_on_remote_server_routes_to_reauth(self) -> None:
         """End-to-end: Enter on a healthy OAuth server starts OAuth again."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -23851,7 +23805,7 @@ class TestMCPLoginCommand:
                     app, "_restart_server_for_mcp_refresh", new=AsyncMock()
                 ) as restart,
                 patch.object(app, "notify") as notify,
-                caplog.at_level("ERROR", logger="deepagents_code.app"),
+                caplog.at_level("ERROR", logger="niki_agent.app"),
             ):
                 await app._prompt_mcp_reconnect("notion")
             restart.assert_not_called()
@@ -23906,8 +23860,8 @@ class TestMCPLoginCommand:
         accepts Enter to apply the change. Without the prompt the toggle
         would sit unapplied with no further nudge.
         """
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPDisableReconnectPromptScreen,
         )
 
@@ -23921,11 +23875,11 @@ class TestMCPLoginCommand:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.mcp_disabled.is_server_disabled",
+                    "niki_agent.mcp_disabled.is_server_disabled",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.mcp_disabled.set_server_disabled",
+                    "niki_agent.mcp_disabled.set_server_disabled",
                     return_value=(True, None),
                 ),
                 patch.object(
@@ -23958,8 +23912,8 @@ class TestMCPLoginCommand:
 
     async def test_viewer_close_after_disable_toggle_esc_defers(self) -> None:
         """Deferring the post-viewer prompt keeps the pending state intact."""
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPDisableReconnectPromptScreen,
         )
 
@@ -23973,11 +23927,11 @@ class TestMCPLoginCommand:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.mcp_disabled.is_server_disabled",
+                    "niki_agent.mcp_disabled.is_server_disabled",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.mcp_disabled.set_server_disabled",
+                    "niki_agent.mcp_disabled.set_server_disabled",
                     return_value=(True, None),
                 ),
                 patch.object(
@@ -24007,7 +23961,7 @@ class TestMCPLoginCommand:
         self,
     ) -> None:
         """An undone disable does not borrow pending state from an MCP login."""
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
 
         original = MCPServerInfo(
             name="filesystem",
@@ -24021,11 +23975,11 @@ class TestMCPLoginCommand:
             app._sync_pending_mcp_reconnect()
             with (
                 patch(
-                    "deepagents_code.mcp_disabled.is_server_disabled",
+                    "niki_agent.mcp_disabled.is_server_disabled",
                     side_effect=[False, True],
                 ),
                 patch(
-                    "deepagents_code.mcp_disabled.set_server_disabled",
+                    "niki_agent.mcp_disabled.set_server_disabled",
                     return_value=(True, None),
                 ),
                 patch.object(app, "_prompt_mcp_disable_reconnect") as prompt,
@@ -24060,7 +24014,7 @@ class TestMCPLoginCommand:
         detached task this test times out (pump stalled on the gated
         coroutine).
         """
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPDisableReconnectPromptScreen,
         )
 
@@ -24106,8 +24060,8 @@ class TestMCPLoginCommand:
         to the pending set rather than discarding from it — the branch that
         makes the prompt reachable in the enable direction.
         """
-        from deepagents_code.mcp_tools import MCPServerInfo
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.mcp_tools import MCPServerInfo
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPDisableReconnectPromptScreen,
         )
 
@@ -24122,11 +24076,11 @@ class TestMCPLoginCommand:
             await pilot.pause()
             with (
                 patch(
-                    "deepagents_code.mcp_disabled.is_server_disabled",
+                    "niki_agent.mcp_disabled.is_server_disabled",
                     return_value=True,
                 ),
                 patch(
-                    "deepagents_code.mcp_disabled.set_server_disabled",
+                    "niki_agent.mcp_disabled.set_server_disabled",
                     return_value=(True, None),
                 ),
                 patch.object(app, "notify"),
@@ -24152,7 +24106,7 @@ class TestMCPLoginCommand:
         (here: MCP disabled for the session), the toggle made in the same
         viewer session would otherwise sit unapplied with no further nudge.
         """
-        from deepagents_code.tui.widgets.mcp_reconnect import (
+        from niki_agent.tui.widgets.mcp_reconnect import (
             MCPDisableReconnectPromptScreen,
         )
 
@@ -24187,7 +24141,7 @@ class TestRestartCommand:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A remote policy fetch cannot block Textual event dispatch."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         app = DeepAgentsApp()
         loop_thread_id = threading.get_ident()
@@ -24202,7 +24156,7 @@ class TestRestartCommand:
             "reload_from_environment",
             reload_from_environment,
         )
-        monkeypatch.setattr("deepagents_code.model_config.clear_caches", lambda: None)
+        monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
 
         assert await app._reload_configuration_for_restart() is True
         assert reload_thread_ids
@@ -24230,12 +24184,10 @@ class TestRestartCommand:
                 assert release_reload.wait(timeout=5)
                 return []
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", slow_reload)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(
                 app,
                 "_restart_server_manual",
@@ -24281,12 +24233,10 @@ class TestRestartCommand:
                 assert release_reload.wait(timeout=5)
                 return []
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", slow_reload)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             restart = AsyncMock(return_value=False)
             monkeypatch.setattr(app, "_restart_server_manual", restart)
 
@@ -24348,7 +24298,7 @@ class TestRestartCommand:
         the server on the previous policy generation and mount "Restart
         complete." for a restart that applied no policy change.
         """
-        from deepagents_code.config import (
+        from niki_agent.config import (
             MANAGED_RELOAD_BLOCKED_PREFIX,
             credentials,
         )
@@ -24367,9 +24317,7 @@ class TestRestartCommand:
                 lambda: [blocked],
             )
             clear_caches = MagicMock()
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", clear_caches
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", clear_caches)
 
             assert await app._reload_configuration_for_restart() is False
             clear_caches.assert_not_called()
@@ -24388,7 +24336,7 @@ class TestRestartCommand:
         during the refresh to the chat input, and never mount "Restart
         complete.".
         """
-        from deepagents_code.config import (
+        from niki_agent.config import (
             MANAGED_RELOAD_BLOCKED_PREFIX,
             credentials,
         )
@@ -24417,9 +24365,7 @@ class TestRestartCommand:
                 return [blocked]
 
             monkeypatch.setattr(credentials, "reload_from_environment", blocking_reload)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             restart = AsyncMock(return_value=True)
             monkeypatch.setattr(app, "_restart_server_manual", restart)
 
@@ -24464,12 +24410,10 @@ class TestRestartCommand:
                 assert release_reload.wait(timeout=5)
                 return []
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", slow_reload)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(
                 app,
                 "_restart_server_manual",
@@ -24517,12 +24461,10 @@ class TestRestartCommand:
                 nonlocal called
                 called = True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _fail)
 
             await app._handle_command("/restart")
@@ -24554,12 +24496,10 @@ class TestRestartCommand:
                 nonlocal called
                 called = True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _fail)
 
             await app._handle_command("/restart")
@@ -24593,12 +24533,10 @@ class TestRestartCommand:
                 nonlocal called
                 called = True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _fail)
 
             await app._handle_command("/restart")
@@ -24639,10 +24577,10 @@ class TestRestartCommand:
                 restart_called = True
                 return True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", _reload)
-            monkeypatch.setattr("deepagents_code.model_config.clear_caches", _clear)
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", _clear)
             monkeypatch.setattr(app, "_restart_server_manual", _fake_restart)
 
             await app._handle_command("/restart")
@@ -24691,12 +24629,10 @@ class TestRestartCommand:
                 await gate.wait()
                 return True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _blocked_restart)
 
             await app._handle_command("/restart")
@@ -24736,12 +24672,10 @@ class TestRestartCommand:
 
             restart = AsyncMock(return_value=False)
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_mount_transient_app_message", _blocked_status)
             monkeypatch.setattr(app, "_restart_server_manual", restart)
 
@@ -24797,12 +24731,10 @@ class TestRestartCommand:
                 await gate.wait()
                 return True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _gated_restart)
 
             await app._handle_restart_command("/restart")
@@ -24863,12 +24795,10 @@ class TestRestartCommand:
                 restart_called = True
                 return False
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", _reload)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _fake_restart)
 
             await app._handle_command("/restart")
@@ -24914,12 +24844,10 @@ class TestRestartCommand:
                 msg = "respawn exploded"
                 raise RuntimeError(msg)
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(app, "_restart_server_manual", _boom)
 
             await app._handle_restart_command("/restart")
@@ -24961,7 +24889,7 @@ class TestRestartCommand:
                 nonlocal restart_called
                 restart_called = True
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", _boom)
             monkeypatch.setattr(app, "_restart_server_manual", _fake_restart)
@@ -24991,7 +24919,7 @@ class TestRestartCommand:
             async def _noop_restart() -> None:  # noqa: RUF029  # awaited by handler
                 return
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             monkeypatch.setattr(credentials, "reload_from_environment", _boom)
             monkeypatch.setattr(app, "_restart_server_manual", _noop_restart)
@@ -25022,7 +24950,7 @@ class TestRestartCommand:
             app._agent_turn_started = True
             app._pending_messages.append(QueuedMessage(text="hi", mode="normal"))
 
-            from deepagents_code.config import credentials
+            from niki_agent.config import credentials
 
             def _reload() -> list[str]:
                 return []
@@ -25031,7 +24959,7 @@ class TestRestartCommand:
                 return
 
             monkeypatch.setattr(credentials, "reload_from_environment", _reload)
-            monkeypatch.setattr("deepagents_code.model_config.clear_caches", _clear)
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", _clear)
 
             async def _noop_restart() -> bool:  # noqa: RUF029  # awaited by handler
                 assert app._agent_running is True
@@ -25056,7 +24984,7 @@ class TestFormatMcpServerChanges:
     """MCP server change summaries shown after `/reload`."""
 
     def test_lists_loaded_and_removed_servers_in_sorted_order(self) -> None:
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [
             MCPServerInfo(name="removed-b", transport="stdio"),
@@ -25076,7 +25004,7 @@ class TestFormatMcpServerChanges:
         )
 
     def test_reports_no_changes(self) -> None:
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         servers = [MCPServerInfo(name="notion", transport="stdio")]
 
@@ -25092,7 +25020,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_current_servers_when_baseline_is_missing(self) -> None:
         """A lost baseline still permits saying what is loaded now."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         current = [
             MCPServerInfo(name="notion", transport="stdio"),
@@ -25106,7 +25034,7 @@ class TestFormatMcpServerChanges:
 
     def test_flags_server_that_kept_its_name_but_started_failing(self) -> None:
         """A same-name `ok` -> `error` transition is not "no changes"."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [
@@ -25124,7 +25052,7 @@ class TestFormatMcpServerChanges:
 
     def test_flags_newly_added_server_that_failed_to_load(self) -> None:
         """A new server failing its first discovery is a failure, not a load."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [
@@ -25153,7 +25081,7 @@ class TestFormatMcpServerChanges:
         self, status: str, error: str
     ) -> None:
         """New servers that are not ready must not be omitted from the diff."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [
@@ -25173,7 +25101,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_server_that_recovered_with_the_same_name(self) -> None:
         """A same-name `error` -> `ok` transition is not "no changes"."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [
             MCPServerInfo(
@@ -25191,7 +25119,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_non_error_server_status_changes(self) -> None:
         """Availability changes other than an error recovery remain visible."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [
             MCPServerInfo(
@@ -25218,7 +25146,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_config_errors_separately_from_loaded_servers(self) -> None:
         """A bad config file is a parse error, not a newly loaded server."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [
@@ -25238,7 +25166,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_resolved_config_errors(self) -> None:
         """A repaired config error changes MCP availability after `/reload`."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [
             MCPServerInfo(
@@ -25255,7 +25183,7 @@ class TestFormatMcpServerChanges:
 
     def test_qualifies_no_changes_when_a_server_still_needs_attention(self) -> None:
         """An unchanged-but-broken server must not read as "all good"."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         servers = [
             MCPServerInfo(
@@ -25273,7 +25201,7 @@ class TestFormatMcpServerChanges:
 
     def test_qualifies_no_changes_for_a_server_awaiting_login(self) -> None:
         """The attention qualifier covers logins, not just hard errors."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         servers = [
             MCPServerInfo(
@@ -25291,7 +25219,7 @@ class TestFormatMcpServerChanges:
 
     def test_qualifies_no_changes_for_an_unrepaired_config_error(self) -> None:
         """A `/reload` run to check a config fix must not read as success."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         servers = [
             MCPServerInfo(
@@ -25309,7 +25237,7 @@ class TestFormatMcpServerChanges:
 
     def test_names_still_broken_servers_alongside_real_changes(self) -> None:
         """A successful load must not present a still-broken server as fine."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         broken = MCPServerInfo(
             name="github",
@@ -25330,7 +25258,7 @@ class TestFormatMcpServerChanges:
         self,
     ) -> None:
         """The server needing action must not vanish because another loaded."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [
@@ -25352,7 +25280,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_a_transport_change_under_an_unchanged_name(self) -> None:
         """Editing a server's transport and reloading is not "no changes"."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         previous = [MCPServerInfo(name="notion", transport="stdio")]
         current = [MCPServerInfo(name="notion", transport="http")]
@@ -25364,7 +25292,7 @@ class TestFormatMcpServerChanges:
 
     def test_reports_a_tool_count_change_under_an_unchanged_name(self) -> None:
         """A server whose tool set changed is a change worth reporting."""
-        from deepagents_code.mcp_tools import MCPServerInfo, MCPToolInfo
+        from niki_agent.mcp_tools import MCPServerInfo, MCPToolInfo
 
         def _tools(count: int) -> tuple[MCPToolInfo, ...]:
             return tuple(
@@ -25381,7 +25309,7 @@ class TestFormatMcpServerChanges:
 
     def test_missing_baseline_does_not_call_a_broken_server_loaded(self) -> None:
         """A named server must be usable to count as loaded here too."""
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         current = [
             MCPServerInfo(name="slack", transport="stdio"),
@@ -25465,9 +25393,9 @@ class TestRespawnServer:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`/reload` may restart inline without retaining its message-loop caller."""
-        from deepagents_code import theme
-        from deepagents_code.config import credentials
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent import theme
+        from niki_agent.config import credentials
+        from niki_agent.mcp_tools import MCPServerInfo
 
         removed = MCPServerInfo(name="removed-plugin:server", transport="stdio")
         loaded = MCPServerInfo(name="loaded-plugin:server", transport="stdio")
@@ -25496,13 +25424,11 @@ class TestRespawnServer:
                 "reload_from_environment",
                 reload_from_environment,
             )
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(theme, "reload_registry", lambda: None)
             monkeypatch.setattr(app, "_register_custom_themes", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.app._load_theme_preference", lambda: app.theme
+                "niki_agent.app._load_theme_preference", lambda: app.theme
             )
             monkeypatch.setattr(app, "_discover_skills", AsyncMock(return_value=True))
             monkeypatch.setattr(
@@ -25539,7 +25465,7 @@ class TestRespawnServer:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A retained policy snapshot must not be followed by a server restart."""
-        from deepagents_code.config import (
+        from niki_agent.config import (
             MANAGED_RELOAD_BLOCKED_PREFIX,
             credentials,
         )
@@ -25560,7 +25486,7 @@ class TestRespawnServer:
             )
             clear_caches = MagicMock()
             monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches",
+                "niki_agent.model_config.clear_caches",
                 clear_caches,
             )
             restart = AsyncMock()
@@ -25578,7 +25504,7 @@ class TestRespawnServer:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`/reload` cannot overlap a cwd switch or another environment mutation."""
-        from deepagents_code import config as config_module
+        from niki_agent import config as config_module
 
         app = DeepAgentsApp()
         reload_started = asyncio.Event()
@@ -25609,7 +25535,7 @@ class TestRespawnServer:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A late worker error cannot replace the caller's cancellation."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         started = threading.Event()
         release = threading.Event()
@@ -25645,8 +25571,8 @@ class TestRespawnServer:
         discards the queue before respawning; without preservation that prompt
         would vanish.
         """
-        from deepagents_code import theme
-        from deepagents_code.config import credentials
+        from niki_agent import theme
+        from niki_agent.config import credentials
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -25671,13 +25597,11 @@ class TestRespawnServer:
                 return _ServerRespawnResult(restarted=True, mcp_status="disabled")
 
             monkeypatch.setattr(credentials, "reload_from_environment", list)
-            monkeypatch.setattr(
-                "deepagents_code.model_config.clear_caches", lambda: None
-            )
+            monkeypatch.setattr("niki_agent.model_config.clear_caches", lambda: None)
             monkeypatch.setattr(theme, "reload_registry", lambda: None)
             monkeypatch.setattr(app, "_register_custom_themes", lambda: None)
             monkeypatch.setattr(
-                "deepagents_code.app._load_theme_preference", lambda: app.theme
+                "niki_agent.app._load_theme_preference", lambda: app.theme
             )
             monkeypatch.setattr(app, "_discover_skills", AsyncMock(return_value=True))
             monkeypatch.setattr(
@@ -25730,7 +25654,7 @@ class TestRespawnServer:
                 return []
 
             monkeypatch.setattr(
-                "deepagents_code.main._preload_session_mcp_server_info", preload
+                "niki_agent.main._preload_session_mcp_server_info", preload
             )
 
             caller = asyncio.current_task()
@@ -25769,7 +25693,7 @@ class TestRespawnServer:
                 return ["info"]
 
             monkeypatch.setattr(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 _preload,
             )
             notes: list[Any] = []
@@ -25800,7 +25724,7 @@ class TestRespawnServer:
                 raise RuntimeError(msg)
 
             monkeypatch.setattr(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 _preload,
             )
             notes: list[Any] = []
@@ -25862,7 +25786,7 @@ class TestRespawnServer:
                 return None
 
             monkeypatch.setattr(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 _preload,
             )
             monkeypatch.setattr(app, "post_message", lambda _m: None)
@@ -25883,7 +25807,7 @@ class TestRespawnServer:
         configured" — an all-clear — at the moment the app knows least, and the
         report line sends the user to exactly that screen.
         """
-        from deepagents_code.mcp_tools import MCPServerInfo
+        from niki_agent.mcp_tools import MCPServerInfo
 
         known = MCPServerInfo(
             name="notion",
@@ -25903,7 +25827,7 @@ class TestRespawnServer:
                 raise RuntimeError(msg)
 
             monkeypatch.setattr(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 _preload,
             )
             monkeypatch.setattr(app, "notify", lambda *_a, **_k: None)
@@ -26261,7 +26185,7 @@ class TestScheduleOffMessagePump:
         prompt cannot stack its modal over an install or update continuation
         that is still in flight.
         """
-        from deepagents_code._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
+        from niki_agent._env_vars import GOAL_AUTO_ACCEPT_CRITERIA
 
         monkeypatch.delenv(GOAL_AUTO_ACCEPT_CRITERIA, raising=False)
         app = DeepAgentsApp(agent=MagicMock())
@@ -26499,13 +26423,13 @@ class TestWelcomeBannerLiveUpdates:
         async with app.run_test() as pilot:
             await pilot.pause()
             with (
-                patch("deepagents_code.config.runtime_state") as mock_runtime_state,
+                patch("niki_agent.config.runtime_state") as mock_runtime_state,
                 patch.object(
                     app,
                     "query_one",
                     side_effect=_banner_query_raiser(app, NoMatches("gone")),
                 ),
-                caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.app"),
             ):
                 mock_runtime_state.model_provider = "openai"
                 mock_runtime_state.model_name = "gpt-5.5"
@@ -26519,9 +26443,7 @@ class TestHookStatusReveal:
     async def test_fast_hook_status_never_reaches_footer(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "deepagents_code.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01
-        )
+        monkeypatch.setattr("niki_agent.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01)
         app = DeepAgentsApp(agent=MagicMock(), thread_id="thread-123")
 
         async with app.run_test() as pilot:
@@ -26539,9 +26461,7 @@ class TestHookStatusReveal:
     async def test_slow_hook_status_appears_after_delay(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "deepagents_code.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01
-        )
+        monkeypatch.setattr("niki_agent.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01)
         app = DeepAgentsApp(agent=MagicMock(), thread_id="thread-123")
 
         async with app.run_test() as pilot:
@@ -26559,9 +26479,7 @@ class TestHookStatusReveal:
     async def test_clearing_revealed_hook_status_restores_agent_status(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "deepagents_code.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01
-        )
+        monkeypatch.setattr("niki_agent.app._HOOK_STATUS_REVEAL_DELAY_SECONDS", 0.01)
         app = DeepAgentsApp(agent=MagicMock(), thread_id="thread-123")
 
         async with app.run_test() as pilot:
@@ -26818,7 +26736,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Accepting the prompt switches process and UI cwd."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -26853,8 +26771,8 @@ class TestResumeThreadCwdSwitch:
         )
 
         with (
-            patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)),
-            patch("deepagents_code.model_config.clear_caches") as clear_caches,
+            patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)),
+            patch("niki_agent.model_config.clear_caches") as clear_caches,
         ):
             ok = await app._offer_thread_cwd_switch(
                 "thread-1", restart_server=False, abort=abort
@@ -26876,8 +26794,8 @@ class TestResumeThreadCwdSwitch:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from deepagents_code.client.remote_client import RemoteAgent
-        from deepagents_code.config import credentials
+        from niki_agent.client.remote_client import RemoteAgent
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -26903,8 +26821,8 @@ class TestResumeThreadCwdSwitch:
         monkeypatch.setattr(app, "_retarget_hooks_after_cwd_switch", retarget)
 
         with (
-            patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             outcome = await app._offer_thread_cwd_switch(
                 "thread-1", restart_server=True
@@ -26931,7 +26849,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A failed local switch does not commit the server binding."""
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -26964,7 +26882,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A failed server binding restores the already-switched local cwd."""
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27013,11 +26931,11 @@ class TestResumeThreadCwdSwitch:
         import httpx
         from langgraph_sdk.errors import ConflictError
 
-        from deepagents_code.client.remote_client import RemoteAgent
-        from deepagents_code.model_config import ThreadConfig
-        from deepagents_code.tui.widgets.cwd_switch import CwdSwitchPromptScreen
-        from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
-        from deepagents_code.workspace_diagnostics import WorkspaceDiagnostics
+        from niki_agent.client.remote_client import RemoteAgent
+        from niki_agent.model_config import ThreadConfig
+        from niki_agent.tui.widgets.cwd_switch import CwdSwitchPromptScreen
+        from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
+        from niki_agent.workspace_diagnostics import WorkspaceDiagnostics
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27053,19 +26971,19 @@ class TestResumeThreadCwdSwitch:
             }
         ]
         monkeypatch.setattr(
-            "deepagents_code.model_config.load_thread_config",
+            "niki_agent.model_config.load_thread_config",
             lambda: ThreadConfig(
                 columns={}, relative_time=True, sort_order="updated_at", scope="all"
             ),
         )
         monkeypatch.setattr(
-            "deepagents_code.sessions.get_cached_threads", lambda **_kwargs: threads
+            "niki_agent.sessions.get_cached_threads", lambda **_kwargs: threads
         )
         monkeypatch.setattr(
-            "deepagents_code.sessions.list_threads", AsyncMock(return_value=threads)
+            "niki_agent.sessions.list_threads", AsyncMock(return_value=threads)
         )
         monkeypatch.setattr(
-            "deepagents_code.sessions.get_thread_cwd",
+            "niki_agent.sessions.get_thread_cwd",
             AsyncMock(return_value=str(target)),
         )
         app = DeepAgentsApp(thread_id="old-thread", cwd=current)
@@ -27130,7 +27048,7 @@ class TestResumeThreadCwdSwitch:
         import httpx
         from langgraph_sdk.errors import ConflictError
 
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27159,7 +27077,7 @@ class TestResumeThreadCwdSwitch:
         retarget = AsyncMock()
         monkeypatch.setattr(app, "_retarget_hooks_after_cwd_switch", retarget)
 
-        with patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)):
             outcome = await app._offer_thread_cwd_switch(
                 "thread-1", restart_server=True, abort="thread_switch"
             )
@@ -27180,7 +27098,7 @@ class TestResumeThreadCwdSwitch:
         import httpx
         from langgraph_sdk.errors import ConflictError
 
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27211,7 +27129,7 @@ class TestResumeThreadCwdSwitch:
         replace_server = AsyncMock()
         monkeypatch.setattr(app, "_replace_server_after_cwd_switch", replace_server)
 
-        with patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)):
             outcome = await app._offer_thread_cwd_switch(
                 "new-thread", restart_server=True, abort="thread_switch"
             )
@@ -27232,7 +27150,7 @@ class TestResumeThreadCwdSwitch:
         import httpx
         from langgraph_sdk.errors import ConflictError
 
-        from deepagents_code.client.remote_client import RemoteAgent
+        from niki_agent.client.remote_client import RemoteAgent
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27259,7 +27177,7 @@ class TestResumeThreadCwdSwitch:
         replace_server = AsyncMock()
         monkeypatch.setattr(app, "_replace_server_after_cwd_switch", replace_server)
 
-        with patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)):
             outcome = await app._offer_thread_cwd_switch(
                 "thread-1", restart_server=True, abort="thread_switch"
             )
@@ -27277,7 +27195,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Launch-time cwd switches keep CLI paths rooted at launch cwd."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27304,8 +27222,8 @@ class TestResumeThreadCwdSwitch:
         )
 
         with (
-            patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             ok = await app._offer_thread_cwd_switch("thread-1", restart_server=False)
 
@@ -27321,7 +27239,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A live cwd switch refreshes the cached skill metadata."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -27362,7 +27280,7 @@ class TestResumeThreadCwdSwitch:
             monkeypatch.setattr(app, "_discover_skills", discover_skills)
             monkeypatch.setattr(app, "run_worker", run_worker)
 
-            with patch("deepagents_code.model_config.clear_caches"):
+            with patch("niki_agent.model_config.clear_caches"):
                 await app._switch_process_cwd(target)
 
         assert scheduled_groups == ["startup-skill-discovery"]
@@ -27385,7 +27303,7 @@ class TestResumeThreadCwdSwitch:
         notify = MagicMock()
         app.notify = notify  # ty: ignore[invalid-assignment]
 
-        with patch("deepagents_code.sessions.get_thread_cwd", return_value=str(target)):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(target)):
             ok = await app._offer_thread_cwd_switch("thread-1", restart_server=False)
 
         assert ok == "continue"
@@ -27405,9 +27323,7 @@ class TestResumeThreadCwdSwitch:
         push_wait = AsyncMock(return_value="switch")
         app._push_screen_wait = push_wait  # ty: ignore[invalid-assignment]
 
-        with patch(
-            "deepagents_code.sessions.get_thread_cwd", return_value=str(tmp_path)
-        ):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(tmp_path)):
             ok = await app._offer_thread_cwd_switch("thread-1", restart_server=False)
 
         assert ok == "continue"
@@ -27458,7 +27374,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch.setattr(app, "_mount_message", mount)
         monkeypatch.setattr(app, "_thread_resume_block", AsyncMock(return_value=None))
         lookup = AsyncMock(side_effect=error_type("cwd lookup failed"))
-        monkeypatch.setattr("deepagents_code.sessions.get_thread_cwd", lookup)
+        monkeypatch.setattr("niki_agent.sessions.get_thread_cwd", lookup)
 
         with pytest.raises(error_type, match="cwd lookup failed"):
             await app._resume_thread("new-thread")
@@ -27635,9 +27551,7 @@ class TestResumeThreadCwdSwitch:
         app.notify = notify  # ty: ignore[invalid-assignment]
         missing = tmp_path / "gone"
 
-        with patch(
-            "deepagents_code.sessions.get_thread_cwd", return_value=str(missing)
-        ):
+        with patch("niki_agent.sessions.get_thread_cwd", return_value=str(missing)):
             result = await app._thread_cwd_mismatch("t")
 
         assert result is None
@@ -27652,7 +27566,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Wire an app with an owned server and stub cwd-refresh side effects."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         monkeypatch.setattr(
             credentials,
@@ -27692,10 +27606,10 @@ class TestResumeThreadCwdSwitch:
 
         with (
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=fake_start,
             ),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             result = await app._replace_server_after_cwd_switch(target)
 
@@ -27741,14 +27655,14 @@ class TestResumeThreadCwdSwitch:
 
         with (
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=fake_start,
             ),
             patch(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 side_effect=fake_preload,
             ),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             result = await app._replace_server_after_cwd_switch(target)
 
@@ -27788,10 +27702,10 @@ class TestResumeThreadCwdSwitch:
 
         with (
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=boom,
             ),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             result = await app._replace_server_after_cwd_switch(target)
 
@@ -27855,8 +27769,8 @@ class TestResumeThreadCwdSwitch:
         """A failed restart restores previous cwd-scoped dotenv settings."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import (
+        import niki_agent.config as config_mod
+        from niki_agent.config import (
             _RELOADABLE_FIELDS,
             Credentials,
             credentials,
@@ -27867,13 +27781,13 @@ class TestResumeThreadCwdSwitch:
         current.mkdir()
         target.mkdir()
         (current / ".env").write_text(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY=sk-current\n",
+            "NIKI_OPENAI_API_KEY=sk-current\n",
         )
         (target / ".env").write_text(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY=sk-target\n",
+            "NIKI_OPENAI_API_KEY=sk-target\n",
         )
         monkeypatch.chdir(current)
-        monkeypatch.delenv("DEEPAGENTS_CODE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OPENAI_API_KEY", raising=False)
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -27903,17 +27817,17 @@ class TestResumeThreadCwdSwitch:
 
             with (
                 patch(
-                    "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                    "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                     side_effect=boom,
                 ),
-                patch("deepagents_code.model_config.clear_caches"),
+                patch("niki_agent.model_config.clear_caches"),
             ):
                 result = await app._replace_server_after_cwd_switch(target)
 
             assert result == "abort"
             assert Path.cwd() == current
             assert credentials.openai_api_key == "sk-current"
-            assert os.environ["DEEPAGENTS_CODE_OPENAI_API_KEY"] == "sk-current"
+            assert os.environ["NIKI_OPENAI_API_KEY"] == "sk-current"
         finally:
             for field, value in saved.items():
                 setattr(credentials, field, value)
@@ -27948,10 +27862,10 @@ class TestResumeThreadCwdSwitch:
 
         with (
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=fatal,
             ),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
             pytest.raises(_CwdSwitchFatalError),
         ):
             await app._replace_server_after_cwd_switch(target)
@@ -27991,14 +27905,14 @@ class TestResumeThreadCwdSwitch:
 
         with (
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=fake_start,
             ),
             patch(
-                "deepagents_code.main._preload_session_mcp_server_info",
+                "niki_agent.main._preload_session_mcp_server_info",
                 side_effect=boom_mcp,
             ),
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
         ):
             result = await app._replace_server_after_cwd_switch(target)
 
@@ -28014,7 +27928,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A cwd refresh cannot overlap another environment mutation."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         app = DeepAgentsApp(thread_id="t", cwd=tmp_path)
         reload_started = threading.Event()
@@ -28029,7 +27943,7 @@ class TestResumeThreadCwdSwitch:
             "reload_from_environment",
             reload_from_environment,
         )
-        with patch("deepagents_code.model_config.clear_caches"):
+        with patch("niki_agent.model_config.clear_caches"):
             async with app._environment_mutation_lock:
                 refresh = asyncio.create_task(
                     app._refresh_project_context_for_cwd_switch(tmp_path)
@@ -28047,7 +27961,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Cancellation cannot let a target reload outlive the rollback reload."""
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -28079,7 +27993,7 @@ class TestResumeThreadCwdSwitch:
             "reload_from_environment",
             reload_from_environment,
         )
-        with patch("deepagents_code.model_config.clear_caches"):
+        with patch("niki_agent.model_config.clear_caches"):
             switch = asyncio.create_task(app._switch_process_cwd(target))
             assert await asyncio.to_thread(target_started.wait, 5)
             switch.cancel()
@@ -28114,7 +28028,7 @@ class TestResumeThreadCwdSwitch:
         diverged here, `_restore_cwd_after_failed_thread_switch` would see a
         false match and silently skip restoring.
         """
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -28133,7 +28047,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch.setattr(credentials, "reload_from_environment", boom)
 
         with (
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
             pytest.raises(RuntimeError, match="reload failed"),
         ):
             await app._switch_process_cwd(target)
@@ -28147,7 +28061,7 @@ class TestResumeThreadCwdSwitch:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A retained old-project policy must prevent the cwd from changing."""
-        from deepagents_code.config import (
+        from niki_agent.config import (
             MANAGED_RELOAD_BLOCKED_PREFIX,
             credentials,
         )
@@ -28179,7 +28093,7 @@ class TestResumeThreadCwdSwitch:
         )
 
         with (
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
             pytest.raises(RuntimeError, match="could not be refreshed"),
         ):
             await app._switch_process_cwd(target)
@@ -28202,7 +28116,7 @@ class TestResumeThreadCwdSwitch:
         leave settings and model caches pointing at a directory the process
         never entered.
         """
-        from deepagents_code.config import credentials
+        from niki_agent.config import credentials
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -28227,7 +28141,7 @@ class TestResumeThreadCwdSwitch:
             raise OSError(msg)
 
         with (
-            patch("deepagents_code.model_config.clear_caches"),
+            patch("niki_agent.model_config.clear_caches"),
             patch("os.chdir", boom),
             pytest.raises(OSError, match="cannot chdir"),
         ):
@@ -28438,11 +28352,11 @@ class TestResumeThreadCwdSwitch:
             )
             with (
                 patch(
-                    "deepagents_code.sessions.thread_exists",
+                    "niki_agent.sessions.thread_exists",
                     AsyncMock(return_value=True),
                 ),
                 patch(
-                    "deepagents_code.sessions.get_thread_agent",
+                    "niki_agent.sessions.get_thread_agent",
                     AsyncMock(return_value=None),
                 ),
             ):
@@ -28480,16 +28394,16 @@ class TestEnsureManagedRipgrep:
         prepend = MagicMock()
         with (
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=True,
             ),
-            patch("deepagents_code.managed_tools.ensure_ripgrep", ensure),
+            patch("niki_agent.managed_tools.ensure_ripgrep", ensure),
             patch(
-                "deepagents_code.managed_tools.managed_rg_path",
+                "niki_agent.managed_tools.managed_rg_path",
                 return_value=Path("/managed/rg"),
             ),
             patch(
-                "deepagents_code.managed_tools.prepend_managed_bin_to_path",
+                "niki_agent.managed_tools.prepend_managed_bin_to_path",
                 prepend,
             ),
         ):
@@ -28502,13 +28416,13 @@ class TestEnsureManagedRipgrep:
 
     async def test_managed_tool_unavailable_notifies_message(self) -> None:
         """Permanent managed-tool gaps surface their remediation message."""
-        from deepagents_code.managed_tools import ManagedToolUnavailableError
+        from niki_agent.managed_tools import ManagedToolUnavailableError
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
         notices: list[dict[str, Any]] = []
         message = (
             "Managed ripgrep is not available for this system. "
-            "Set DEEPAGENTS_CODE_RIPGREP_INSTALLER=system."
+            "Set NIKI_RIPGREP_INSTALLER=system."
         )
         error = ManagedToolUnavailableError(
             tool="ripgrep",
@@ -28521,11 +28435,11 @@ class TestEnsureManagedRipgrep:
 
         with (
             patch(
-                "deepagents_code.main._should_ensure_managed_ripgrep",
+                "niki_agent.main._should_ensure_managed_ripgrep",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 AsyncMock(side_effect=error),
             ),
             patch.object(app, "notify", _capture),
@@ -28560,7 +28474,7 @@ class TestEnsureManagedRipgrep:
         with (
             patch.object(app, "_ensure_managed_ripgrep", side_effect=record_ensure),
             patch(
-                "deepagents_code.client.launch.server_manager.start_server_and_get_agent",
+                "niki_agent.client.launch.server_manager.start_server_and_get_agent",
                 side_effect=record_start,
             ),
             patch.object(app, "post_message"),
@@ -28631,7 +28545,7 @@ class TestNotifyInterpreterDisabledBySandbox:
 
     def test_no_toast_when_config_default_off(self, tmp_path: Path) -> None:
         """A user who disabled the interpreter in config is not nagged."""
-        from deepagents_code.configuration import service
+        from niki_agent.configuration import service
 
         (tmp_path / "config.toml").write_text(
             "[interpreter]\nenable_interpreter = false\n", encoding="utf-8"
@@ -28664,7 +28578,7 @@ class TestNotifyOrphanedTracingDisabled:
         app.notify = notify_mock  # ty: ignore
 
         with patch(
-            "deepagents_code.config.consume_orphaned_tracing_disabled_notice",
+            "niki_agent.config.consume_orphaned_tracing_disabled_notice",
             return_value="tracing disabled, set LANGSMITH_API_KEY",
         ):
             app._notify_orphaned_tracing_disabled()
@@ -28683,7 +28597,7 @@ class TestNotifyOrphanedTracingDisabled:
         app.notify = notify_mock  # ty: ignore
 
         with patch(
-            "deepagents_code.config.consume_orphaned_tracing_disabled_notice",
+            "niki_agent.config.consume_orphaned_tracing_disabled_notice",
             return_value=None,
         ):
             app._notify_orphaned_tracing_disabled()
@@ -28698,10 +28612,10 @@ class TestNotifyOrphanedTracingDisabled:
 
         with (
             patch(
-                "deepagents_code.config.consume_orphaned_tracing_disabled_notice",
+                "niki_agent.config.consume_orphaned_tracing_disabled_notice",
                 return_value="tracing disabled",
             ),
-            patch("deepagents_code.app.logger.exception") as log_mock,
+            patch("niki_agent.app.logger.exception") as log_mock,
         ):
             app._notify_orphaned_tracing_disabled()
 
@@ -28865,7 +28779,7 @@ class TestCopyFocusedInputText:
         """A whitespace-only draft is treated as empty and not copied."""
         from textual.widgets import TextArea
 
-        import deepagents_code.clipboard as clipboard_module
+        import niki_agent.clipboard as clipboard_module
 
         copied: list[str] = []
 
@@ -28895,7 +28809,7 @@ class TestCopyFocusedInputText:
             await pilot.pause()
 
             with patch(
-                "deepagents_code.clipboard.copy_text_to_clipboard",
+                "niki_agent.clipboard.copy_text_to_clipboard",
                 return_value=(True, None),
             ) as copy_mock:
                 assert app._copy_focused_input_text() is False
@@ -28917,7 +28831,7 @@ class TestToolGroupCollapse:
         Each spec is `(id, tool_name, args, status)` where status is
         `"success"` or `"error"`.
         """
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         tools: list[ToolCallMessage] = []
         for tid, name, args, _status in specs:
@@ -28936,7 +28850,7 @@ class TestToolGroupCollapse:
 
     async def test_approval_reveals_pending_calls_and_closes_live_group(self) -> None:
         """Approval surfaces unfinished rows without reusing the pre-approval group."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-approval-group")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29108,7 +29022,7 @@ class TestToolGroupCollapse:
         that no other test reaches, and one that does get a footer since only
         app/summarization messages are excluded from footers.
         """
-        from deepagents_code.tui.widgets.messages import DiffMessage
+        from niki_agent.tui.widgets.messages import DiffMessage
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-diff-footer")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29189,7 +29103,7 @@ class TestToolGroupCollapse:
         stay hidden for the rest of the session, unrecoverable even by toggling
         `/timestamps`.
         """
-        from deepagents_code.tui.widgets.messages import DiffMessage
+        from niki_agent.tui.widgets.messages import DiffMessage
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-strand")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29230,8 +29144,8 @@ class TestToolGroupCollapse:
         `flush()` that empties the run at each boundary, these would be
         misattributed and hidden.
         """
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-attrib")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29287,7 +29201,7 @@ class TestToolGroupCollapse:
 
     async def test_regroup_collapses_success_run(self) -> None:
         """A run of successful tools folds into one collapsed summary."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-group")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29321,7 +29235,7 @@ class TestToolGroupCollapse:
         `mark_superseded_by_diff` runs, so one that never got a diff must still
         stay visible and act as a group boundary.
         """
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-excluded-history")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29357,7 +29271,7 @@ class TestToolGroupCollapse:
         be read as `▸ Deleted 1 file` — identical to destroying an empty one,
         and visible only after the user scrolls away and back.
         """
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-caveat-history")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29390,7 +29304,7 @@ class TestToolGroupCollapse:
 
     async def test_regroup_leaves_edit_diff_outside_later_tool_group(self) -> None:
         """An edit diff arriving after a parallel read stays expanded."""
-        from deepagents_code.tui.widgets.messages import DiffMessage, ToolGroupSummary
+        from niki_agent.tui.widgets.messages import DiffMessage, ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-edit-diff-history")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29422,7 +29336,7 @@ class TestToolGroupCollapse:
 
     async def test_regroup_leaves_consecutive_excluded_tools_expanded(self) -> None:
         """Two adjacent excluded tools stay expanded with no summary between them."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-excluded-adjacent")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29460,8 +29374,8 @@ class TestToolGroupCollapse:
         run, returns on expand, and still defers to the `/timestamps`
         preference rather than being pinned visible by the group.
         """
-        from deepagents_code.tui.widgets.message_store import MessageData, MessageType
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.message_store import MessageData, MessageType
+        from niki_agent.tui.widgets.messages import (
             ToolCallMessage,
             ToolGroupSummary,
         )
@@ -29528,7 +29442,7 @@ class TestToolGroupCollapse:
 
     async def test_regroup_is_idempotent(self) -> None:
         """Re-running regroup does not create duplicate summaries."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-idem")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29549,7 +29463,7 @@ class TestToolGroupCollapse:
 
     async def test_errored_tool_stays_visible(self) -> None:
         """An errored tool stays visible; only the successful prefix collapses."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-err")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29576,7 +29490,7 @@ class TestToolGroupCollapse:
 
     async def test_assistant_message_boundary_triggers_collapse(self) -> None:
         """Mounting a non-tool message folds the preceding tool run."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-boundary")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29597,7 +29511,7 @@ class TestToolGroupCollapse:
 
     async def test_separate_steps_get_separate_summaries(self) -> None:
         """Tools split by an assistant message form two independent groups."""
-        from deepagents_code.tui.widgets.messages import ToolGroupSummary
+        from niki_agent.tui.widgets.messages import ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-steps")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29619,7 +29533,7 @@ class TestToolGroupCollapse:
 
     async def test_mount_tool_creates_collapsed_live_group(self) -> None:
         """Mounting a tool via _mount_message folds it immediately, no flash."""
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             ToolCallMessage,
             ToolGroupSummary,
         )
@@ -29663,7 +29577,7 @@ class TestToolGroupCollapse:
     @pytest.mark.parametrize("tool_name", ["ask_user", "edit_file", "write_todos"])
     async def test_mount_leaves_excluded_tools_expanded(self, tool_name: str) -> None:
         """Excluded tools mount standalone instead of opening a live group."""
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-excluded-live")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29680,7 +29594,7 @@ class TestToolGroupCollapse:
 
     async def test_mount_leaves_edit_diff_outside_parallel_read_group(self) -> None:
         """A late edit diff does not join the active parallel read group."""
-        from deepagents_code.tui.widgets.messages import DiffMessage, ToolGroupSummary
+        from niki_agent.tui.widgets.messages import DiffMessage, ToolGroupSummary
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-edit-diff-live")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29707,7 +29621,7 @@ class TestToolGroupCollapse:
         self, tool_name: str
     ) -> None:
         """An excluded tool closes the live group; the next tool opens a new one."""
-        from deepagents_code.tui.widgets.messages import ToolCallMessage
+        from niki_agent.tui.widgets.messages import ToolCallMessage
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t-excluded-boundary")
         app._load_thread_history = AsyncMock()  # ty: ignore
@@ -29740,7 +29654,7 @@ class TestToolGroupCollapse:
         Textual's MessagePump internals, or the widget is silently pruned on the
         next idle tick (looked like the group "disappearing" when tools finish).
         """
-        from deepagents_code.tui.widgets.messages import (
+        from niki_agent.tui.widgets.messages import (
             ToolCallMessage,
             ToolGroupSummary,
         )
@@ -29868,12 +29782,12 @@ async def _run_cold_cache_gate(
         return 0.10 if "cache_read" in details else 0.35
 
     with (
-        patch("deepagents_code.model_config.ModelConfig.load", return_value=config),
+        patch("niki_agent.model_config.ModelConfig.load", return_value=config),
         patch(
-            "deepagents_code.model_config.is_warning_suppressed",
+            "niki_agent.model_config.is_warning_suppressed",
             return_value=False,
         ),
-        patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+        patch("niki_agent.cost_tracking.estimate_cost", estimate),
     ):
         return await app._cold_cache_warning_for(
             message or QueuedMessage("continue", "normal")
@@ -29926,14 +29840,14 @@ class TestColdCacheWarningFlow:
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
-            patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+            patch("niki_agent.cost_tracking.estimate_cost", estimate),
         ):
             warning = await app._cold_cache_warning_for(
                 QueuedMessage("continue", "normal")
@@ -29973,21 +29887,21 @@ class TestColdCacheWarningFlow:
             trusted: list[str],
         ) -> Coroutine[Any, Any, ColdCacheWarning | None]:
             monkeypatch.setattr(
-                "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+                "niki_agent.cold_cache.load_trusted_cache_endpoints",
                 lambda: frozenset(trusted),
             )
             return app._cold_cache_warning_for(QueuedMessage("continue", "normal"))
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
-            patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+            patch("niki_agent.cost_tracking.estimate_cost", estimate),
         ):
             # Untrusted gateway: no policy, no warning.
             assert await run_with_trusted([]) is None
@@ -30017,7 +29931,7 @@ class TestColdCacheWarningFlow:
         the prompt, so an effort change invalidates the cached prefix for
         both. Google documents no such link, so no warning may fire there.
         """
-        from deepagents_code.model_config import ModelConfig
+        from niki_agent.model_config import ModelConfig
 
         app = DeepAgentsApp()
         app._model_override = model_spec
@@ -30046,14 +29960,14 @@ class TestColdCacheWarningFlow:
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
-            patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+            patch("niki_agent.cost_tracking.estimate_cost", estimate),
         ):
             warning = await app._cold_cache_warning_for(
                 QueuedMessage("continue", "normal")
@@ -30073,7 +29987,7 @@ class TestColdCacheWarningFlow:
     ) -> None:
         """Switching endpoints warns even while the previous cache is fresh."""
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             lambda: frozenset({"smith.langchain.com"}),
         )
         app = DeepAgentsApp()
@@ -30099,14 +30013,14 @@ class TestColdCacheWarningFlow:
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
-            patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+            patch("niki_agent.cost_tracking.estimate_cost", estimate),
         ):
             warning = await app._cold_cache_warning_for(
                 QueuedMessage("continue", "normal")
@@ -30127,7 +30041,7 @@ class TestColdCacheWarningFlow:
         leave this test green.
         """
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             lambda: frozenset({"smith.langchain.com"}),
         )
         config = MagicMock()
@@ -30158,14 +30072,14 @@ class TestColdCacheWarningFlow:
             app._cold_cache_warning_threshold_usd = 0.10
             with (
                 patch(
-                    "deepagents_code.model_config.ModelConfig.load",
+                    "niki_agent.model_config.ModelConfig.load",
                     return_value=config,
                 ),
                 patch(
-                    "deepagents_code.model_config.is_warning_suppressed",
+                    "niki_agent.model_config.is_warning_suppressed",
                     return_value=False,
                 ),
-                patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+                patch("niki_agent.cost_tracking.estimate_cost", estimate),
             ):
                 return await app._cold_cache_warning_for(
                     QueuedMessage("continue", "normal")
@@ -30194,7 +30108,7 @@ class TestColdCacheWarningFlow:
         # Stubbed so the assertion cannot depend on the developer's own
         # `config.toml`, which the real loader would otherwise read.
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             frozenset,
         )
         app = DeepAgentsApp()
@@ -30215,11 +30129,11 @@ class TestColdCacheWarningFlow:
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
         ):
@@ -30245,10 +30159,10 @@ class TestColdCacheWarningFlow:
         The mismatched control below is what keeps that assertion honest: it
         fails if the endpoint comparison stops running at all.
         """
-        from deepagents_code.configurable_model import _cache_endpoint_identity
+        from niki_agent.configurable_model import _cache_endpoint_identity
 
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             frozenset,
         )
         config = MagicMock()
@@ -30279,22 +30193,20 @@ class TestColdCacheWarningFlow:
             app._cold_cache_warning_threshold_usd = 0.10
             with (
                 patch(
-                    "deepagents_code.model_config.ModelConfig.load",
+                    "niki_agent.model_config.ModelConfig.load",
                     return_value=config,
                 ),
                 patch(
-                    "deepagents_code.model_config.is_warning_suppressed",
+                    "niki_agent.model_config.is_warning_suppressed",
                     return_value=False,
                 ),
-                patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+                patch("niki_agent.cost_tracking.estimate_cost", estimate),
             ):
                 return await app._cold_cache_warning_for(
                     QueuedMessage("continue", "normal")
                 )
 
-        with patch(
-            "deepagents_code.model_config.ModelConfig.load", return_value=config
-        ):
+        with patch("niki_agent.model_config.ModelConfig.load", return_value=config):
             recorded = _cache_endpoint_identity("openai:gpt-5.6")
 
         assert await warning_for(recorded) is None
@@ -30326,10 +30238,10 @@ class TestColdCacheWarningFlow:
         reports `identity_changed` with copy naming a change that never
         happened.
         """
-        from deepagents_code.configurable_model import _cache_endpoint_identity
+        from niki_agent.configurable_model import _cache_endpoint_identity
 
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             frozenset,
         )
         config = MagicMock()
@@ -30349,9 +30261,7 @@ class TestColdCacheWarningFlow:
             details = usage.get("input_token_details", {})
             return 0.10 if "cache_read" in details else 0.35
 
-        with patch(
-            "deepagents_code.model_config.ModelConfig.load", return_value=config
-        ):
+        with patch("niki_agent.model_config.ModelConfig.load", return_value=config):
             recorded = _cache_endpoint_identity(model_spec)
 
         app = DeepAgentsApp()
@@ -30366,12 +30276,12 @@ class TestColdCacheWarningFlow:
         app._context_tokens = 50_000
         app._cold_cache_warning_threshold_usd = 0.10
         with (
-            patch("deepagents_code.model_config.ModelConfig.load", return_value=config),
+            patch("niki_agent.model_config.ModelConfig.load", return_value=config),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
-            patch("deepagents_code.cost_tracking.estimate_cost", estimate),
+            patch("niki_agent.cost_tracking.estimate_cost", estimate),
         ):
             warning = await app._cold_cache_warning_for(
                 QueuedMessage("continue", "normal")
@@ -30408,7 +30318,7 @@ class TestColdCacheWarningFlow:
         and pinning that here would test the wrong thing.
         """
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             lambda: frozenset({"proxy.example.com"}),
         )
         app = DeepAgentsApp()
@@ -30425,13 +30335,13 @@ class TestColdCacheWarningFlow:
         config.get_base_url.return_value = base_url
 
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.app"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.app"),
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
         ):
@@ -30452,7 +30362,7 @@ class TestColdCacheWarningFlow:
         every input, including the ones it exists to protect.
         """
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.resolve_prompt_cache_policy",
+            "niki_agent.cold_cache.resolve_prompt_cache_policy",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
         )
         app = DeepAgentsApp()
@@ -30464,7 +30374,7 @@ class TestColdCacheWarningFlow:
         ).isoformat()
         app._context_tokens = 50_000
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             result = await app._cold_cache_warning_for(
                 QueuedMessage("continue", "normal")
             )
@@ -30484,7 +30394,7 @@ class TestColdCacheWarningFlow:
         rather than resolving a policy that can never be costed.
         """
         monkeypatch.setattr(
-            "deepagents_code.cold_cache.load_trusted_cache_endpoints",
+            "niki_agent.cold_cache.load_trusted_cache_endpoints",
             lambda: frozenset({"smith.langchain.com"}),
         )
         app = DeepAgentsApp()
@@ -30504,11 +30414,11 @@ class TestColdCacheWarningFlow:
         # model name, which is exactly the regression under test.
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=False,
             ),
         ):
@@ -30531,7 +30441,7 @@ class TestColdCacheWarningFlow:
         preference, and the env var exists to force the modal for developers
         who may have dismissed it permanently at some point.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_COLD_CACHE", "1")
+        monkeypatch.setenv("NIKI_DEBUG_COLD_CACHE", "1")
         app = DeepAgentsApp()
         app._model_override = "openai:gpt-5.6"
         app._cold_cache_warning_threshold_usd = 0.10
@@ -30546,11 +30456,11 @@ class TestColdCacheWarningFlow:
         config.get_base_url.return_value = None
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
             patch(
-                "deepagents_code.model_config.is_warning_suppressed",
+                "niki_agent.model_config.is_warning_suppressed",
                 return_value=True,
             ) as suppressed_check,
         ):
@@ -30581,7 +30491,7 @@ class TestColdCacheWarningFlow:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A hook must not be able to veto the user's spend decision."""
-        from deepagents_code.hooks.client_lifecycle import ClientHookStopError
+        from niki_agent.hooks.client_lifecycle import ClientHookStopError
 
         app = DeepAgentsApp()
         warning = ColdCacheWarning(
@@ -30648,7 +30558,7 @@ class TestColdCacheWarningFlow:
         app._cold_cache_warning_threshold_usd = 0.10
 
         with patch(
-            "deepagents_code.model_config.ModelConfig.load",
+            "niki_agent.model_config.ModelConfig.load",
             side_effect=OSError("config.toml unreadable"),
         ):
             warning = await app._cold_cache_warning_for(
@@ -30715,11 +30625,11 @@ class TestColdCacheWarningFlow:
         would leave "Send and never warn again" a no-op that still reports
         success. This exercises the real `config.toml` round trip.
         """
-        from deepagents_code.model_config import is_warning_suppressed
+        from niki_agent.model_config import is_warning_suppressed
 
         config_path = tmp_path / "config.toml"
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             config_path,
         )
 
@@ -30740,7 +30650,7 @@ class TestColdCacheWarningFlow:
         config = MagicMock()
         config.get_base_url.return_value = None
         with patch(
-            "deepagents_code.model_config.ModelConfig.load",
+            "niki_agent.model_config.ModelConfig.load",
             return_value=config,
         ):
             assert (
@@ -30791,7 +30701,7 @@ class TestColdCacheWarningFlow:
         This continuation runs outside the caller's `try/except`, so without
         its own handler the message would vanish with no user-visible error.
         """
-        from deepagents_code.tui.modals.cold_cache import ColdCacheChoice
+        from niki_agent.tui.modals.cold_cache import ColdCacheChoice
 
         app = DeepAgentsApp()
         app._lc_thread_id = "thread-1"
@@ -30908,7 +30818,7 @@ class TestColdCacheWarningFlow:
         """
         app = DeepAgentsApp()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._sync_cache_state_from_state(
                 {
                     "_last_model_request_at": "2026-08-11T12:30:00+00:00",
@@ -30937,7 +30847,7 @@ class TestColdCacheWarningFlow:
         """
         app = DeepAgentsApp()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._sync_cache_state_from_state(
                 {
                     "_last_model_request_at": "2026-08-11T12:30:00+00:00",
@@ -30955,7 +30865,7 @@ class TestColdCacheWarningFlow:
     ) -> None:
         app = DeepAgentsApp()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._sync_cache_state_from_state(
                 {
                     "_last_model_request_at": "not-a-timestamp",
@@ -30981,7 +30891,7 @@ class TestColdCacheWarningFlow:
     ) -> None:
         app = DeepAgentsApp()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._sync_cache_state_from_state(
                 {
                     "_last_model_request_at": "2026-08-11T12:30:00+00:00",
@@ -31019,7 +30929,7 @@ class TestColdCacheWarningFlow:
         config = MagicMock()
         config.get_base_url.return_value = None
         with patch(
-            "deepagents_code.model_config.ModelConfig.load",
+            "niki_agent.model_config.ModelConfig.load",
             return_value=config,
         ):
             warning = await app._cold_cache_warning_for(
@@ -31036,7 +30946,7 @@ class TestColdCacheWarningFlow:
         """`""` is as unusable as a non-string and must not pass silently."""
         app = DeepAgentsApp()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.app"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.app"):
             app._sync_cache_state_from_state(
                 {
                     "_last_model_request_at": "2026-08-11T12:30:00+00:00",
@@ -31059,8 +30969,8 @@ class TestColdCacheWarningFlow:
         `shift+tab -> toggle_auto_approve` priority binding consumes the key
         and the modal's own `shift+tab -> move_up` binding never fires.
         """
-        from deepagents_code.approval_mode import ApprovalMode
-        from deepagents_code.tui.modals.cold_cache import ColdCacheWarningScreen
+        from niki_agent.approval_mode import ApprovalMode
+        from niki_agent.tui.modals.cold_cache import ColdCacheWarningScreen
 
         app = DeepAgentsApp(agent=MagicMock(), thread_id="t")
 
@@ -31189,7 +31099,7 @@ class TestColdCacheStateLifecycle:
 
         with (
             patch(
-                "deepagents_code.model_config.ModelConfig.load",
+                "niki_agent.model_config.ModelConfig.load",
                 return_value=config,
             ),
         ):
@@ -31328,7 +31238,7 @@ class TestPromptClipboard:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A background approval must not intercept the modal's Tab binding."""
-        from deepagents_code.tui.modals.prompt_clipboard import PromptClipboardScreen
+        from niki_agent.tui.modals.prompt_clipboard import PromptClipboardScreen
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -31360,7 +31270,7 @@ class TestPromptClipboard:
 
     async def test_ctrl_r_keeps_file_picker_open(self) -> None:
         """Prompt recall must not replace an active `@` file picker."""
-        from deepagents_code.tui.modals.prompt_clipboard import PromptClipboardScreen
+        from niki_agent.tui.modals.prompt_clipboard import PromptClipboardScreen
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -31435,7 +31345,7 @@ class TestPromptClipboard:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The app swallows Shift+Tab in the modal without moving selection."""
-        from deepagents_code.tui.modals.prompt_clipboard import PromptClipboardScreen
+        from niki_agent.tui.modals.prompt_clipboard import PromptClipboardScreen
 
         app = DeepAgentsApp(agent=MagicMock())
         async with app.run_test() as pilot:
@@ -31492,7 +31402,7 @@ class TestPromptClipboard:
     async def test_thread_reference_picker_preserves_other_directory_results(
         self,
     ) -> None:
-        from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+        from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
         threads: list[ThreadInfo] = [
             {
@@ -31505,9 +31415,9 @@ class TestPromptClipboard:
         ]
         with (
             patch.object(ChatInput, "_initialize_thread_cache"),
-            patch("deepagents_code.sessions.get_cached_threads", return_value=threads),
+            patch("niki_agent.sessions.get_cached_threads", return_value=threads),
             patch(
-                "deepagents_code.sessions.list_threads",
+                "niki_agent.sessions.list_threads",
                 new=AsyncMock(
                     side_effect=lambda *, cwd=None, **_kwargs: (
                         threads if cwd is None else []
@@ -31595,7 +31505,7 @@ class TestSessionCostWarning:
 
     @pytest.mark.parametrize("dismiss_key", ["enter", "escape"])
     async def test_warning_modal_once_per_thread(self, dismiss_key: str) -> None:
-        from deepagents_code.tui.modals.session_cost import SessionCostWarningScreen
+        from niki_agent.tui.modals.session_cost import SessionCostWarningScreen
 
         app = DeepAgentsApp()
         app._session_cost_warning_threshold_usd = 5.0
@@ -31625,7 +31535,7 @@ class TestSessionCostWarning:
             await pilot.press(dismiss_key)
 
     async def test_restored_cost_does_not_stack_with_compaction(self) -> None:
-        from deepagents_code.tui.modals.resume_compact import ResumeCompactPromptScreen
+        from niki_agent.tui.modals.resume_compact import ResumeCompactPromptScreen
 
         app = DeepAgentsApp()
         app._session_cost_warning_threshold_usd = 5.0
@@ -31656,7 +31566,7 @@ class TestSessionCostWarning:
     async def test_restored_cost_keeps_new_crossing_warning(
         self, restored_cost: float
     ) -> None:
-        from deepagents_code.tui.modals.session_cost import SessionCostWarningScreen
+        from niki_agent.tui.modals.session_cost import SessionCostWarningScreen
 
         app = DeepAgentsApp()
         app._session_cost_warning_threshold_usd = 5.0

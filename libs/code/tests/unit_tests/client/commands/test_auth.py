@@ -16,8 +16,8 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-from deepagents_code import auth_store
-from deepagents_code.client.commands.auth import (
+from niki_agent import auth_store
+from niki_agent.client.commands.auth import (
     _known_providers,
     _resolution_label,
     run_auth_command,
@@ -31,7 +31,7 @@ def fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake))
     monkeypatch.setattr(
-        "deepagents_code.model_config.DEFAULT_STATE_DIR",
+        "niki_agent.model_config.DEFAULT_STATE_DIR",
         fake / ".deepagents" / ".state",
     )
     return fake
@@ -45,7 +45,7 @@ def clean_model_caches() -> Generator[None]:
     so tests that redirect `DEFAULT_CONFIG_PATH` must clear it before reading
     and after, lest a warm or freshly-populated cache leak across tests.
     """
-    from deepagents_code import model_config
+    from niki_agent import model_config
 
     model_config.clear_caches()
     yield
@@ -224,7 +224,7 @@ class TestSet:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`--base-url eu` resolves the shorthand to the canonical EU URL."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         monkeypatch.setattr(sys, "stdin", io.StringIO("lsv2_test\n"))
         code = run_auth_command(
@@ -301,7 +301,7 @@ class TestSet:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An explicit empty `--base-url` clears a previously stored endpoint."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         auth_store.set_stored_key("langsmith", "old", base_url=LANGSMITH_EU_ENDPOINT)
         monkeypatch.setattr(sys, "stdin", io.StringIO("new\n"))
@@ -322,7 +322,7 @@ class TestSet:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Rotating the key without `--base-url` keeps the stored endpoint."""
-        from deepagents_code.config import LANGSMITH_EU_ENDPOINT
+        from niki_agent.config import LANGSMITH_EU_ENDPOINT
 
         auth_store.set_stored_key("langsmith", "old", base_url=LANGSMITH_EU_ENDPOINT)
         monkeypatch.setattr(sys, "stdin", io.StringIO("new\n"))
@@ -488,7 +488,7 @@ class TestSet:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`openai_codex` is OAuth-only, so CLI API-key storage is rejected."""
-        from deepagents_code.model_config import CODEX_PROVIDER
+        from niki_agent.model_config import CODEX_PROVIDER
 
         stdin = io.StringIO("sk-ignored\n")
         monkeypatch.setattr(sys, "stdin", stdin)
@@ -509,7 +509,7 @@ class TestSet:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`--from-env` cannot create ignored API keys for `openai_codex`."""
-        from deepagents_code.model_config import CODEX_PROVIDER
+        from niki_agent.model_config import CODEX_PROVIDER
 
         monkeypatch.setenv("MY_KEY", "sk-ignored")
 
@@ -587,8 +587,8 @@ class TestRemove:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """`openai_codex` removal targets the ChatGPT OAuth token store."""
-        from deepagents_code.integrations import openai_codex
-        from deepagents_code.model_config import CODEX_PROVIDER
+        from niki_agent.integrations import openai_codex
+        from niki_agent.model_config import CODEX_PROVIDER
 
         token = tmp_path / "chatgpt-auth.json"
         token.write_text("token", encoding="utf-8")
@@ -608,8 +608,8 @@ class TestRemove:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Missing ChatGPT OAuth tokens are treated like absent API keys."""
-        from deepagents_code.integrations import openai_codex
-        from deepagents_code.model_config import CODEX_PROVIDER
+        from niki_agent.integrations import openai_codex
+        from niki_agent.model_config import CODEX_PROVIDER
 
         token = tmp_path / "missing-chatgpt-auth.json"
         monkeypatch.setattr(openai_codex, "default_store_path", lambda: token)
@@ -623,8 +623,8 @@ class TestRemove:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """OAuth token deletion failures return a clean CLI error."""
-        from deepagents_code.integrations import openai_codex
-        from deepagents_code.model_config import CODEX_PROVIDER
+        from niki_agent.integrations import openai_codex
+        from niki_agent.model_config import CODEX_PROVIDER
 
         def _raise() -> bool:
             msg = "permission denied"
@@ -656,7 +656,7 @@ class TestStatus:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env")
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         code = run_auth_command(_ns(auth_command="status", provider="anthropic"))
         assert code == 0
         assert "env: ANTHROPIC_API_KEY" in capsys.readouterr().out
@@ -674,16 +674,16 @@ class TestStatus:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-env")
+        monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-env")
         code = run_auth_command(_ns(auth_command="status", provider="anthropic"))
         assert code == 0
-        assert "env: DEEPAGENTS_CODE_ANTHROPIC_API_KEY" in capsys.readouterr().out
+        assert "env: NIKI_ANTHROPIC_API_KEY" in capsys.readouterr().out
 
     def test_status_missing(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         code = run_auth_command(_ns(auth_command="status", provider="anthropic"))
         assert code == 0
         assert "missing" in capsys.readouterr().out
@@ -722,7 +722,7 @@ class TestStatus:
         authoritative.
         """
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_ANTHROPIC_API_KEY", raising=False)
         _write_corrupt_store()
         code = run_auth_command(_ns(auth_command="status", provider="anthropic"))
         assert code == 0
@@ -779,7 +779,7 @@ class TestList:
             'api_key_env = "ZZZ_CONFIG_API_KEY"\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_CONFIG_PATH", cfg)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", cfg)
         code = run_auth_command(_ns(auth_command="list"))
         assert code == 0
         assert "zzz-config-provider" in capsys.readouterr().out
@@ -793,15 +793,15 @@ class TestList:
     ) -> None:
         """`openai_codex` appears with `langchain-openai` despite no API key env."""
         monkeypatch.setattr(
-            "deepagents_code.model_config.get_available_models",
+            "niki_agent.model_config.get_available_models",
             lambda: {"openai": ["gpt-5.3-codex"]},
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "missing.toml",
         )
 
-        from deepagents_code.model_config import SERVICE_API_KEY_ENV
+        from niki_agent.model_config import SERVICE_API_KEY_ENV
 
         expected = sorted({"openai", "openai_codex", *SERVICE_API_KEY_ENV})
         assert _known_providers() == (expected, None)
@@ -822,13 +822,13 @@ class TestList:
         Mirrors the TUI `/auth` manager, where services are configurable
         regardless of whether any model-provider package is installed.
         """
-        monkeypatch.setattr("deepagents_code.model_config.get_available_models", dict)
+        monkeypatch.setattr("niki_agent.model_config.get_available_models", dict)
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH",
+            "niki_agent.model_config.DEFAULT_CONFIG_PATH",
             tmp_path / "missing.toml",
         )
 
-        from deepagents_code.model_config import SERVICE_API_KEY_ENV
+        from niki_agent.model_config import SERVICE_API_KEY_ENV
 
         assert _known_providers() == (sorted(SERVICE_API_KEY_ENV), None)
         code = run_auth_command(_ns(auth_command="list"))
@@ -860,7 +860,7 @@ class TestResolutionLabel:
     """`_resolution_label` maps each `ProviderAuthState` to a plain-text source."""
 
     def test_not_required_uses_detail_then_default(self) -> None:
-        from deepagents_code.model_config import ProviderAuthState, ProviderAuthStatus
+        from niki_agent.model_config import ProviderAuthState, ProviderAuthStatus
 
         with_detail = ProviderAuthStatus(
             state=ProviderAuthState.NOT_REQUIRED,
@@ -874,7 +874,7 @@ class TestResolutionLabel:
         assert _resolution_label(without_detail) == "no API key required"
 
     def test_implicit_default(self) -> None:
-        from deepagents_code.model_config import ProviderAuthState, ProviderAuthStatus
+        from niki_agent.model_config import ProviderAuthState, ProviderAuthStatus
 
         status = ProviderAuthStatus(
             state=ProviderAuthState.IMPLICIT, provider="google_vertexai"
@@ -882,19 +882,19 @@ class TestResolutionLabel:
         assert _resolution_label(status) == "implicit auth"
 
     def test_managed_default(self) -> None:
-        from deepagents_code.model_config import ProviderAuthState, ProviderAuthStatus
+        from niki_agent.model_config import ProviderAuthState, ProviderAuthStatus
 
         status = ProviderAuthStatus(state=ProviderAuthState.MANAGED, provider="custom")
         assert _resolution_label(status) == "custom auth"
 
     def test_unknown_falls_through_to_default(self) -> None:
-        from deepagents_code.model_config import ProviderAuthState, ProviderAuthStatus
+        from niki_agent.model_config import ProviderAuthState, ProviderAuthStatus
 
         status = ProviderAuthStatus(state=ProviderAuthState.UNKNOWN, provider="mystery")
         assert _resolution_label(status) == "credentials unknown"
 
     def test_configured_without_env_var_falls_back(self) -> None:
-        from deepagents_code.model_config import (
+        from niki_agent.model_config import (
             ProviderAuthSource,
             ProviderAuthState,
             ProviderAuthStatus,
@@ -925,7 +925,7 @@ def test_no_subcommand_shows_help(capsys: pytest.CaptureFixture[str]) -> None:
     """A bare `auth` invocation renders the help screen."""
     code = run_auth_command(_ns(auth_command=None))
     assert code == 0
-    assert "dcode auth <command>" in capsys.readouterr().out
+    assert "niki auth <command>" in capsys.readouterr().out
 
 
 # --- Subprocess round-trip (per issue coverage requirements) ----------------
@@ -944,12 +944,12 @@ def _run_cli(
         import sys
         from unittest.mock import patch
 
-        from deepagents_code.main import cli_main
+        from niki_agent.main import cli_main
 
         argv = ["deepagents", *json.loads(sys.argv[1])]
         with (
             patch.object(sys, "argv", argv),
-            patch("deepagents_code.main.check_cli_dependencies"),
+            patch("niki_agent.main.check_cli_dependencies"),
         ):
             cli_main()
     """

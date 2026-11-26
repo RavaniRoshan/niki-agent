@@ -13,8 +13,8 @@ from langchain_core.language_models.fake_chat_models import FakeMessagesListChat
 from langchain_core.messages import AIMessage
 from starlette.requests import Request
 
-from deepagents_code import btw_api, offload_api
-from deepagents_code.btw import BtwOperation
+from niki_agent import btw_api, offload_api
+from niki_agent.btw import BtwOperation
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

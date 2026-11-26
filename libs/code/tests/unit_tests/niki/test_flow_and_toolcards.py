@@ -21,7 +21,7 @@ CHUNKS = 40
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-flow")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -37,7 +37,7 @@ def _rendered(app: App) -> str:  # type: ignore[type-arg]
 
 async def test_f3_streaming_renders_into_one_block() -> None:
     """F3: a stream must grow one message, not append a new widget per token."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -70,7 +70,7 @@ async def test_f3_streaming_renders_into_one_block() -> None:
 
 async def test_f3_streaming_paints_far_fewer_frames_than_chunks() -> None:
     """F3: 'smoothly' means the coalescing actually coalesces."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage
     from unit_tests.niki.perf_probe import count_renders
 
     app = _app()
@@ -105,7 +105,7 @@ async def test_f2_no_activity_state_without_a_real_event(
     did. Splash tips are hidden: one of them says the agent "keeps working",
     and a random tip would otherwise decide this test.
     """
-    monkeypatch.setenv("DEEPAGENTS_CODE_HIDE_SPLASH_TIPS", "1")
+    monkeypatch.setenv("NIKI_HIDE_SPLASH_TIPS", "1")
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
@@ -122,7 +122,7 @@ async def test_f2_no_activity_state_without_a_real_event(
 
 async def test_v7_a_tool_card_shows_tool_intent_and_status() -> None:
     """V7: the card names the tool and its intent, and carries a status glyph."""
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -149,7 +149,7 @@ async def test_v7_a_tool_card_shows_tool_intent_and_status() -> None:
 
 async def test_v7_no_card_appears_without_a_real_tool_event() -> None:
     """V7: a card must correspond to a tool event, never appear speculatively."""
-    from deepagents_code.tui.widgets.messages import AssistantMessage, ToolCallMessage
+    from niki_agent.tui.widgets.messages import AssistantMessage, ToolCallMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -167,7 +167,7 @@ async def test_v7_no_card_appears_without_a_real_tool_event() -> None:
 @pytest.mark.parametrize("result", ["done", ""])
 async def test_v7_card_reports_a_result_or_elapsed_time(result: str) -> None:
     """V7: a finished card shows an outcome; an empty result must not blank it."""
-    from deepagents_code.tui.widgets.messages import ToolCallMessage
+    from niki_agent.tui.widgets.messages import ToolCallMessage
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:

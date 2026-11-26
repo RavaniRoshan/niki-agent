@@ -8,7 +8,7 @@ from contextlib import closing
 
 import pytest
 
-from deepagents_code.workspace import (
+from niki_agent.workspace import (
     WorkspaceConflictError,
     bind_thread_workspace,
     get_thread_workspace,
@@ -20,7 +20,7 @@ from deepagents_code.workspace import (
 def workspace_database(tmp_path, monkeypatch: pytest.MonkeyPatch):
     """Point bindings at an isolated SQLite database."""
     database = tmp_path / "sessions.db"
-    monkeypatch.setenv("DEEPAGENTS_CODE_SERVER_DB_PATH", str(database))
+    monkeypatch.setenv("NIKI_SERVER_DB_PATH", str(database))
     return database
 
 
@@ -128,7 +128,7 @@ async def test_binding_persists_only_non_secret_policy(
     tmp_path, workspace_database
 ) -> None:
     """Durable bindings do not contain model credentials or prompt material."""
-    from deepagents_code._server_config import ServerConfig
+    from niki_agent._server_config import ServerConfig
 
     config = ServerConfig(
         model_params={"api_key": "secret-value"},
@@ -320,7 +320,7 @@ async def test_model_only_change_does_not_rebind_current_schema(tmp_path) -> Non
     The payload omits model settings, so the policy fingerprint is stable
     across a model switch; only the runtime fingerprint changes.
     """
-    from deepagents_code._server_config import ServerConfig
+    from niki_agent._server_config import ServerConfig
 
     bound = ServerConfig(model="anthropic:claude-a", auto_approve=False)
     binding = await bind_thread_workspace(
@@ -344,7 +344,7 @@ async def test_model_only_change_does_not_rebind_current_schema(tmp_path) -> Non
 
 def test_relative_workspace_is_rejected() -> None:
     """Client-controlled relative paths never inherit the server cwd."""
-    from deepagents_code.workspace import resolve_workspace
+    from niki_agent.workspace import resolve_workspace
 
     with pytest.raises(ValueError, match="absolute path"):
         resolve_workspace("relative/path", {})

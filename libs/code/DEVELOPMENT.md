@@ -31,7 +31,7 @@ If you only want to sync dependencies without installing hooks, run `uv sync --g
 Run the TUI from `libs/code` in your local checkout:
 
 ```bash
-uv run deepagents-code
+uv run niki-agent
 ```
 
 `uv run` uses the project environment with the package installed editable, so source changes take effect on the next launch. If you want a persistent `dcode-dev` command that stays separate from a released install, use the local dev install setup below.
@@ -71,18 +71,18 @@ Run `make help` to see every available target.
 
 ## LangSmith tracing projects
 
-When LangSmith tracing is enabled and a `LANGSMITH_API_KEY` is available, `deepagents-code` traces its own agent runs to LangSmith. A key alone is not enough for environment-supplied keys — set `LANGSMITH_TRACING=true`. Keys stored via `/auth` auto- enable tracing unless you explicitly opt out (for example `DEEPAGENTS_CODE_LANGSMITH_TRACING=false`).
+When LangSmith tracing is enabled and a `LANGSMITH_API_KEY` is available, `niki-agent` traces its own agent runs to LangSmith. A key alone is not enough for environment-supplied keys — set `LANGSMITH_TRACING=true`. Keys stored via `/auth` auto- enable tracing unless you explicitly opt out (for example `NIKI_LANGSMITH_TRACING=false`).
 
-By default those runs land in the `deepagents-code` project, but the team routes shared runs to a GA project (`shared-deepagents-code`) that is monitored by LangSmith Engine, which raises high-priority Slack alerts on suspected issues.
+By default those runs land in the `niki-agent` project, but the team routes shared runs to a GA project (`shared-niki-agent`) that is monitored by LangSmith Engine, which raises high-priority Slack alerts on suspected issues.
 
 **Do not point local development at the GA project.** Active development produces failures, half-finished branches, and experiments that Engine flags as issues — noise that buries the alerts that matter for the production project and costs the team triage time. Keep dev and prod runs in separate projects so Engine alerting on the GA project stays high-signal (this also mirrors LangSmith best practice of splitting dev and prod environments into distinct projects).
 
-Route your local runs to a dev-scoped project via `DEEPAGENTS_CODE_LANGSMITH_PROJECT` (this overrides only the agent's own traces, leaving your shell's `LANGSMITH_PROJECT` for user code untouched):
+Route your local runs to a dev-scoped project via `NIKI_LANGSMITH_PROJECT` (this overrides only the agent's own traces, leaving your shell's `LANGSMITH_PROJECT` for user code untouched):
 
 ```bash
 # A shared dev bucket, or your own personal project — anything but the GA project
-export DEEPAGENTS_CODE_LANGSMITH_PROJECT=shared-deepagents-code-dev
-uv run deepagents-code
+export NIKI_LANGSMITH_PROJECT=shared-niki-agent-dev
+uv run niki-agent
 ```
 
 Set the same override for [local dev installs](#local-dev-installs) (`dcode-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the GA project before doing noisy work.
@@ -97,22 +97,22 @@ Deep Agents Code runs as two processes: the **Textual TUI** you interact with, a
 
 ```bash
 cd libs/code
-export DEEPAGENTS_CODE_DEBUG=1
-uv run deepagents-code
+export NIKI_DEBUG=1
+uv run niki-agent
 ```
 
 | Variable | Effect |
 | --- | --- |
-| `DEEPAGENTS_CODE_DEBUG` | Master switch. Preserves the server subprocess log on exit (printing its path to stderr) and attaches the client `DEBUG` file handler. Truthy: `1`/`true`/`yes`/`on` (case-insensitive). Falsy: `0`/`false`/`no`/`off`/empty/unset. |
-| `DEEPAGENTS_CODE_DEBUG_DIRECTORY=<path>` | Overrides the client log directory (default `/tmp/deepagents_debug`). Each thread writes to `<thread-id>.log`. **Only takes effect when `DEEPAGENTS_CODE_DEBUG` is truthy**; does **not** affect the server subprocess log. |
-| `DEEPAGENTS_CODE_DEBUG_FILE=<path>` | Deprecated compatibility override. When `DEEPAGENTS_CODE_DEBUG_DIRECTORY` and `[debug].directory` are unset, per-thread logs use this path's parent directory. Existing `[debug].file` config works the same way. |
+| `NIKI_DEBUG` | Master switch. Preserves the server subprocess log on exit (printing its path to stderr) and attaches the client `DEBUG` file handler. Truthy: `1`/`true`/`yes`/`on` (case-insensitive). Falsy: `0`/`false`/`no`/`off`/empty/unset. |
+| `NIKI_DEBUG_DIRECTORY=<path>` | Overrides the client log directory (default `/tmp/deepagents_debug`). Each thread writes to `<thread-id>.log`. **Only takes effect when `NIKI_DEBUG` is truthy**; does **not** affect the server subprocess log. |
+| `NIKI_DEBUG_FILE=<path>` | Deprecated compatibility override. When `NIKI_DEBUG_DIRECTORY` and `[debug].directory` are unset, per-thread logs use this path's parent directory. Existing `[debug].file` config works the same way. |
 
 Then pick the log you need by symptom:
 
 | Symptom | Log you want | Default location |
 | --- | --- | --- |
 | App crashes on launch (one-line failure banner) | **Server subprocess log** — the real traceback | `$TMPDIR/deepagents_server_log_*.txt` |
-| App starts, then misbehaves (UI, model calls, slash commands) | **Client app log** — `deepagents_code` at `DEBUG` | `/tmp/deepagents_debug/<thread-id>.log` |
+| App starts, then misbehaves (UI, model calls, slash commands) | **Client app log** — `niki_agent` at `DEBUG` | `/tmp/deepagents_debug/<thread-id>.log` |
 
 ### Startup crash -> server subprocess log
 
@@ -139,7 +139,7 @@ For problems that appear after the app is up, tail the client log in another ter
 tail -f /tmp/deepagents_debug/<thread-id>.log
 ```
 
-To send logs elsewhere, also `export DEEPAGENTS_CODE_DEBUG_DIRECTORY=<path>`. Each thread gets its own append-only file, and changing threads in the app switches the active log file.
+To send logs elsewhere, also `export NIKI_DEBUG_DIRECTORY=<path>`. Each thread gets its own append-only file, and changing threads in the app switches the active log file.
 
 The directory is created or tightened to owner-only access, and each file is created or tightened to user-only access. Symlinks are refused. If either cannot be secured, no file handler is attached and a warning goes to stderr. Use the in-app Debug Console in that case.
 
@@ -147,9 +147,9 @@ Raw stdio MCP server stderr is discarded to protect the TUI and prevent unbounde
 
 ### In-app Debug Console (`Ctrl+\`)
 
-Press `Ctrl+\` (or run the hidden `/debug` command) inside a session to toggle a read-only Debug Console overlay. It shows a point-in-time session/runtime snapshot (version, model, thread, cwd, auto-approve, sandbox, MCP servers, token usage, debug-log path) plus a live tail of recent `deepagents_code.*` log records.
+Press `Ctrl+\` (or run the hidden `/debug` command) inside a session to toggle a read-only Debug Console overlay. It shows a point-in-time session/runtime snapshot (version, model, thread, cwd, auto-approve, sandbox, MCP servers, token usage, debug-log path) plus a live tail of recent `niki_agent.*` log records.
 
-The tail is fed by an always-on in-memory ring buffer (`_debug_buffer.install_log_buffer`, installed on the package logger in `__init__.py`), so it works **without** `DEEPAGENTS_CODE_DEBUG` — though enabling that switch raises the captured level to `DEBUG` and adds the file handler above. In the console, `Ctrl+X` clears the on-screen view (the buffer keeps accruing) and `c` copies the visible lines. `Ctrl+L` remains an alias for clearing the view.
+The tail is fed by an always-on in-memory ring buffer (`_debug_buffer.install_log_buffer`, installed on the package logger in `__init__.py`), so it works **without** `NIKI_DEBUG` — though enabling that switch raises the captured level to `DEBUG` and adds the file handler above. In the console, `Ctrl+X` clears the on-screen view (the buffer keeps accruing) and `c` copies the visible lines. `Ctrl+L` remains an alias for clearing the view.
 
 In `/btw`, `Esc` hides the modal and cancels any unfinished answer. Completed side exchanges remain available when you reopen `/btw` or switch away from the main thread and return. Each main thread has its own side history, kept only while the app runs and separate from the main conversation. `Ctrl+X` cancels the side answer and clears that thread's side transcript, follow-up context, and draft while keeping the modal open.
 
@@ -157,7 +157,7 @@ In `/btw`, `Esc` hides the modal and cancels any unfinished answer. Completed si
 
 A *local dev install* gives you a persistent `dcode-dev` command that launches your checkout directly. It lives in a dedicated editable venv under `~/.local/share/dcode-dev`, symlinked into `~/.local/bin/dcode-dev`. It can sit alongside a released `dcode` without interfering:
 
-- `dcode` / `deepagents-code` — the released tool, installed via `curl -LsSf https://langch.in/dcode | bash` (the install script).
+- `dcode` / `niki-agent` — the released tool, installed via `curl -LsSf https://langch.in/dcode | bash` (the install script).
 - `dcode-dev` — your local checkout.
 
 That lets you compare released behavior against local, and fall back to a known-good build if your checkout breaks. Either way, the dedicated venv keeps the dev binary's dependency experiments out of the repo's locked `uv sync` environment.
@@ -198,7 +198,7 @@ which dcode
 which dcode-dev
 dcode --version
 dcode-dev --version
-~/.local/share/dcode-dev/bin/python -c 'import deepagents_code; print(deepagents_code.__file__)'
+~/.local/share/dcode-dev/bin/python -c 'import niki_agent; print(niki_agent.__file__)'
 ```
 
 ## Live CSS development with Textual devtools
@@ -213,7 +213,7 @@ cat > /tmp/dev_deepagents.py << 'PYEOF'
 import sys
 sys.argv = ["deepagents"] + sys.argv[1:]
 
-from deepagents_code.main import cli_main
+from niki_agent.main import cli_main
 cli_main()
 PYEOF
 ```
@@ -242,4 +242,4 @@ Edit any `.tcss` file and save — changes appear immediately. Any `self.log()` 
 
 ### Why the wrapper script?
 
-`textual run --dev` handles the devtools connection, but it needs to run inside the project's virtualenv to import `deepagents_code`. The wrapper script bridges the gap — `uv run --group test textual run --dev` ensures both `textual-dev` (from the `test` group) and `deepagents_code` are available in the same environment.
+`textual run --dev` handles the devtools connection, but it needs to run inside the project's virtualenv to import `niki_agent`. The wrapper script bridges the gap — `uv run --group test textual run --dev` ensures both `textual-dev` (from the `test` group) and `niki_agent` are available in the same environment.

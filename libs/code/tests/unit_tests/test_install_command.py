@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepagents_code.app import DeepAgentsApp
-from deepagents_code.tui.widgets.messages import AppMessage, ErrorMessage
-from deepagents_code.update_check import (
+from niki_agent.app import DeepAgentsApp
+from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
+from niki_agent.update_check import (
     UPDATE_LOCK_CONTENDED_MESSAGE,
     ExtraInstallOutcome,
 )
@@ -28,9 +28,7 @@ if TYPE_CHECKING:
     DrainModalCommands = Callable[..., Awaitable[None]]
     WaitForModal = Callable[..., Awaitable[None]]
 
-MANUAL_EXTRA_COMMAND = (
-    "curl -LsSf https://langch.in/dcode | DEEPAGENTS_CODE_EXTRAS=quickjs bash"
-)
+MANUAL_EXTRA_COMMAND = "curl -LsSf https://langch.in/dcode | NIKI_EXTRAS=quickjs bash"
 
 
 async def test_install_slash_failure_surfaces_log_path_and_manual_cmd() -> None:
@@ -44,21 +42,21 @@ async def test_install_slash_failure_surfaces_log_path_and_manual_cmd() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(False, "resolver: conflict"),
             ),
@@ -71,7 +69,7 @@ async def test_install_slash_failure_surfaces_log_path_and_manual_cmd() -> None:
         assert "resolver: conflict" in joined
         assert "/tmp/deepagents-install.log" in joined
         assert "curl -LsSf https://langch.in/dcode" in joined
-        assert "DEEPAGENTS_CODE_EXTRAS=quickjs bash" in joined
+        assert "NIKI_EXTRAS=quickjs bash" in joined
         assert "quickjs" in joined
 
 
@@ -81,21 +79,21 @@ async def test_install_slash_exception_surfaces_log_path_and_manual_cmd() -> Non
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 side_effect=OSError("disk full"),
             ),
@@ -108,7 +106,7 @@ async def test_install_slash_exception_surfaces_log_path_and_manual_cmd() -> Non
         assert "disk full" in joined
         assert "/tmp/deepagents-install.log" in joined
         assert "curl -LsSf https://langch.in/dcode" in joined
-        assert "DEEPAGENTS_CODE_EXTRAS=quickjs bash" in joined
+        assert "NIKI_EXTRAS=quickjs bash" in joined
         assert "quickjs" in joined
 
 
@@ -118,26 +116,26 @@ async def test_install_slash_failure_renders_recovery_bracket_literally() -> Non
     The TUI mounts recovery commands as Textual `Content`, so — unlike the
     Rich-markup CLI path — the bracket must not be backslash-escaped.
     """
-    uv_cmd = "uv tool install -U 'deepagents-code[quickjs]'"
+    uv_cmd = "uv tool install -U 'niki-agent[quickjs]'"
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 return_value=uv_cmd,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(False, "resolver: conflict"),
             ),
@@ -145,8 +143,8 @@ async def test_install_slash_failure_renders_recovery_bracket_literally() -> Non
             await app._handle_command("/install quickjs")
             await pilot.pause()
         joined = "\n".join(str(m._content) for m in app.query(ErrorMessage))
-        assert "deepagents-code[quickjs]" in joined
-        assert "deepagents-code\\[quickjs]" not in joined
+        assert "niki-agent[quickjs]" in joined
+        assert "niki-agent\\[quickjs]" not in joined
 
 
 async def test_install_slash_failure_recovery_error_keeps_prior_command() -> None:
@@ -159,21 +157,21 @@ async def test_install_slash_failure_recovery_error_keeps_prior_command() -> Non
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 side_effect=ValueError("bad receipt"),
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(False, "resolver: conflict"),
             ),
@@ -195,21 +193,21 @@ async def test_install_slash_exception_recovery_error_keeps_prior_command() -> N
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.install_extra_recovery_command",
+                "niki_agent.update_check.install_extra_recovery_command",
                 side_effect=ValueError("bad receipt"),
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 side_effect=OSError("disk full"),
             ),
@@ -229,9 +227,9 @@ async def test_install_slash_package_confirm_runs(
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
                 return_value=(True, ""),
             ) as perform_mock,
@@ -258,9 +256,9 @@ async def test_install_slash_package_cancel_aborts(
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
             ) as perform_mock,
             patch.object(
@@ -287,9 +285,9 @@ async def test_install_slash_package_prompt_timeout_aborts(
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
             ) as perform_mock,
             patch.object(
@@ -318,9 +316,9 @@ async def test_install_slash_package_prompt_mount_failure_aborts(
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
             ) as perform_mock,
             patch.object(
@@ -361,9 +359,9 @@ async def test_install_package_prompt_responsive_through_message_pump(
     teardown, and the failure surfaces as a bare pytest-timeout that says
     nothing about the cause.
     """
-    from deepagents_code import app as app_module
-    from deepagents_code.tui.widgets.chat_input import ChatInput
-    from deepagents_code.tui.widgets.install_confirm import InstallPackageConfirmScreen
+    from niki_agent import app as app_module
+    from niki_agent.tui.widgets.chat_input import ChatInput
+    from niki_agent.tui.widgets.install_confirm import InstallPackageConfirmScreen
 
     monkeypatch.setattr(app_module, "_MODAL_WATCHDOG_TIMEOUT_SECONDS", 2.0)
 
@@ -375,9 +373,9 @@ async def test_install_package_prompt_responsive_through_message_pump(
         app._connecting = False
         app._startup_sequence_running = False
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
                 return_value=(True, ""),
             ) as perform_mock,
@@ -415,12 +413,12 @@ async def test_install_package_continuation_surfaces_unexpected_error(
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch.object(
                 app, "_confirm_install_package", new=AsyncMock(return_value=True)
             ),
             patch(
-                "deepagents_code.update_check.perform_install_package",
+                "niki_agent.update_check.perform_install_package",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("subprocess machinery exploded"),
             ),
@@ -448,7 +446,7 @@ async def test_perform_package_install_import_failure_surfaces_error() -> None:
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
-        with patch.dict(sys.modules, {"deepagents_code.update_check": None}):
+        with patch.dict(sys.modules, {"niki_agent.update_check": None}):
             await app._perform_package_install("langchain-custom")
             await pilot.pause()
 
@@ -465,9 +463,9 @@ async def test_install_restart_prompt_skipped_while_agent_running() -> None:
         app._server_kwargs = {"model_name": "fireworks:fake"}
         app._agent_running = True
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(True, ""),
             ),
@@ -486,9 +484,9 @@ async def test_install_restart_prompt_mount_failure_leaves_manual_hint() -> None
         app._server_proc = MagicMock()
         app._server_kwargs = {"model_name": "fireworks:fake"}
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(True, ""),
             ),
@@ -522,17 +520,17 @@ async def test_install_restart_failure_omits_complete_message() -> None:
         app._server_proc = MagicMock()
         app._server_kwargs = {"model_name": "fireworks:fake"}
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(True, ""),
             ),
             patch.object(
                 app, "_push_screen_wait", new=AsyncMock(return_value="restart")
             ) as prompt,
-            patch("deepagents_code.config.credentials.reload_from_environment", list),
-            patch("deepagents_code.model_config.clear_caches", lambda: None),
+            patch("niki_agent.config.credentials.reload_from_environment", list),
+            patch("niki_agent.model_config.clear_caches", lambda: None),
             patch.object(
                 app, "_restart_server_manual", new=AsyncMock(return_value=False)
             ) as restart,
@@ -564,8 +562,8 @@ async def test_install_restart_raising_removes_transient_and_propagates() -> Non
         app._server_kwargs = {"model_name": "fireworks:fake"}
 
         with (
-            patch("deepagents_code.config.credentials.reload_from_environment", list),
-            patch("deepagents_code.model_config.clear_caches", lambda: None),
+            patch("niki_agent.config.credentials.reload_from_environment", list),
+            patch("niki_agent.model_config.clear_caches", lambda: None),
             patch.object(
                 app,
                 "_restart_server_manual",
@@ -587,8 +585,8 @@ async def test_install_restart_raising_removes_transient_and_propagates() -> Non
 async def test_offer_restart_survives_missing_restart_prompt_module() -> None:
     """A missing `restart_prompt` module must degrade, not crash the TUI.
 
-    `/install` runs `uv tool install -U 'deepagents-code[...]'`, which rewrites
-    deepagents-code's own on-disk tree mid-session. A first import of the
+    `/install` runs `uv tool install -U 'niki-agent[...]'`, which rewrites
+    niki-agent's own on-disk tree mid-session. A first import of the
     restart modal on the post-install path then reads the half-replaced tree
     and raises `ModuleNotFoundError`. The handler must degrade to the manual
     `/restart` hint instead of letting the import crash the app.
@@ -607,7 +605,7 @@ async def test_offer_restart_survives_missing_restart_prompt_module() -> None:
             # failure a half-replaced on-disk tree causes after a self-upgrade.
             patch.dict(
                 sys.modules,
-                {"deepagents_code.tui.widgets.restart_prompt": None},
+                {"niki_agent.tui.widgets.restart_prompt": None},
             ),
             patch.object(app, "_push_screen_wait", new=push),
             patch.object(
@@ -634,8 +632,8 @@ async def test_install_restart_prompt_responsive_through_message_pump() -> None:
     through the real `ChatInput.Submitted` path and pressing Enter must resolve
     the modal and trigger the restart rather than wedging the UI.
     """
-    from deepagents_code.tui.widgets.chat_input import ChatInput
-    from deepagents_code.tui.widgets.restart_prompt import RestartPromptScreen
+    from niki_agent.tui.widgets.chat_input import ChatInput
+    from niki_agent.tui.widgets.restart_prompt import RestartPromptScreen
 
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
@@ -647,9 +645,9 @@ async def test_install_restart_prompt_responsive_through_message_pump() -> None:
         app._connecting = False
         restart = AsyncMock(return_value=True)
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(True, ""),
             ),
@@ -686,17 +684,17 @@ async def test_install_slash_contention_omits_manual_cmd() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.create_update_log_path",
+                "niki_agent.update_check.create_update_log_path",
                 return_value="/tmp/deepagents-install.log",
             ),
             patch(
-                "deepagents_code.update_check.install_extra_command",
+                "niki_agent.update_check.install_extra_command",
                 return_value=MANUAL_EXTRA_COMMAND,
             ),
             patch(
-                "deepagents_code.update_check.perform_install_extra",
+                "niki_agent.update_check.perform_install_extra",
                 new_callable=AsyncMock,
                 return_value=ExtraInstallOutcome(
                     False,

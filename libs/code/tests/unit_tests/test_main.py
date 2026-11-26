@@ -17,22 +17,22 @@ from rich.console import Console
 if TYPE_CHECKING:
     from prompt_toolkit.layout import Layout
 
-from deepagents_code._env_vars import (
+from niki_agent._env_vars import (
     DEBUG,
     EXPERIMENTAL,
     INVOKED_AS,
     LAUNCH_TERM_PROGRAM,
     RESUME_TERM_PROGRAM,
 )
-from deepagents_code._invocation import invoked_name
-from deepagents_code.app import (
+from niki_agent._invocation import invoked_name
+from niki_agent.app import (
     AppResult,
     DeepAgentsApp,
     TextualAppError,
     run_textual_app,
 )
-from deepagents_code.config import reset_langsmith_url_cache
-from deepagents_code.main import (
+from niki_agent.config import reset_langsmith_url_cache
+from niki_agent.main import (
     _auto_install_ripgrep_cli,
     _install_termination_signal_handlers,
     _print_session_stats,
@@ -45,15 +45,15 @@ from deepagents_code.main import (
     format_tool_warning_cli,
     run_textual_cli_async,
 )
-from deepagents_code.mcp_tools import (
+from niki_agent.mcp_tools import (
     DiscoveredMCPConfig,
     MCPConfigScope,
     ProjectServerSummary,
 )
-from deepagents_code.model_config import ModelConfig
-from deepagents_code.update_check import update_install_lock
+from niki_agent.model_config import ModelConfig
+from niki_agent.update_check import update_install_lock
 
-# Most unit tests set `DEEPAGENTS_CODE_NO_UPDATE_CHECK=1` and patch
+# Most unit tests set `NIKI_NO_UPDATE_CHECK=1` and patch
 # `is_update_check_enabled()` to avoid accidental PyPI/DNS work. This module
 # tests startup update behavior itself, so each test must control those values.
 pytestmark = pytest.mark.self_managed_update_check
@@ -71,9 +71,9 @@ class TestTerminationSignalHandling:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Windows skips the POSIX-only SIGHUP API."""
-        monkeypatch.setattr("deepagents_code.main.sys.platform", "win32")
+        monkeypatch.setattr("niki_agent.main.sys.platform", "win32")
         install = MagicMock()
-        monkeypatch.setattr("deepagents_code.main.signal.signal", install)
+        monkeypatch.setattr("niki_agent.main.signal.signal", install)
 
         _install_termination_signal_handlers()
 
@@ -94,7 +94,7 @@ class TestStartupAutoUpdate:
         to `False`; the function's own behavior is covered in `test_update_check`.
         """
         with patch(
-            "deepagents_code.update_check.release_requires_prereleases",
+            "niki_agent.update_check.release_requires_prereleases",
             return_value=False,
         ):
             yield
@@ -107,7 +107,7 @@ class TestStartupAutoUpdate:
         notice is covered in `TestAutoUpdateDefaultMigration`.
         """
         with patch(
-            "deepagents_code.update_check.should_announce_auto_update_default",
+            "niki_agent.update_check.should_announce_auto_update_default",
             return_value=False,
         ):
             yield
@@ -125,12 +125,12 @@ class TestStartupAutoUpdate:
         `None` here so the contract being tested is "shadow path is opt-in";
         the dedicated shadow-present test below patches it explicitly.
 
-        Patches at the source module rather than `deepagents_code.main`
+        Patches at the source module rather than `niki_agent.main`
         because `_run_startup_auto_update` lazy-imports it inside the
         function.
         """
         with patch(
-            "deepagents_code.update_check.detect_shadowed_dcode",
+            "niki_agent.update_check.detect_shadowed_dcode",
             return_value=None,
         ):
             yield
@@ -140,7 +140,7 @@ class TestStartupAutoUpdate:
         """Stand in for the re-exec, pinning the sentinel *at* the restart.
 
         The loop guard in `_run_startup_auto_update` is keyed on
-        `DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE` surviving `os.execv` into the
+        `NIKI_RESTARTED_AFTER_UPDATE` surviving `os.execv` into the
         next generation. Asserting on `os.environ` after the call cannot tell
         "set, then popped" from "never set", so the check has to happen inside
         the restart. Without it, deleting the assignment outright leaves every
@@ -149,7 +149,7 @@ class TestStartupAutoUpdate:
         Raises:
             SystemExit: Always, standing in for process replacement.
         """
-        assert os.environ["DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE"] == "9.9.9"
+        assert os.environ["NIKI_RESTARTED_AFTER_UPDATE"] == "9.9.9"
         raise SystemExit(0)
 
     def test_update_held_by_another_session_is_skipped(self) -> None:
@@ -163,24 +163,24 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed"
+                "niki_agent.update_check.mark_startup_auto_update_failed"
             ) as mark_failed,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
             # Holds the lock the same way a second dcode process would. Taken
             # in-process for determinism, so it is `_UPDATE_INSTALL_THREAD_LOCK`
             # that refuses here; genuine cross-process exclusion is covered by
@@ -217,34 +217,34 @@ class TestStartupAutoUpdate:
             return True, "updated", "9.9.9"
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", _record_lock_state),
-            patch("deepagents_code.update_check.clear_startup_auto_update_failure"),
+            patch("niki_agent.update_check.perform_upgrade", _record_lock_state),
+            patch("niki_agent.update_check.clear_startup_auto_update_failure"),
             patch(
-                "deepagents_code.update_check.detect_shadowed_dcode",
+                "niki_agent.update_check.detect_shadowed_dcode",
                 return_value=None,
             ),
-            patch("deepagents_code.main._restart_current_process"),
+            patch("niki_agent.main._restart_current_process"),
         ):
             _run_startup_auto_update(console)
 
@@ -270,30 +270,30 @@ class TestStartupAutoUpdate:
             raise SystemExit(0)
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.main._restart_current_process",
+                "niki_agent.main._restart_current_process",
                 side_effect=_record_lock_state,
             ),
             pytest.raises(SystemExit),
@@ -307,13 +307,13 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=False,
             ),
-            patch("deepagents_code.update_check.get_cached_update_available") as check,
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.update_check.get_cached_update_available") as check,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
         ):
             _run_startup_auto_update(console)
 
@@ -325,18 +325,18 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
-            patch("deepagents_code.update_check.get_cached_update_available") as check,
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.get_cached_update_available") as check,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -356,7 +356,7 @@ class TestStartupAutoUpdate:
 
         execv.assert_called_once_with(
             "/tool/bin/python",
-            ["/tool/bin/python", "-m", "deepagents_code", "--model", "openai:gpt-5.5"],
+            ["/tool/bin/python", "-m", "niki_agent", "--model", "openai:gpt-5.5"],
         )
 
     def test_restart_uses_upgraded_shim_when_provided(self) -> None:
@@ -395,32 +395,32 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(False, "pip exploded", None))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool upgrade deepagents-code",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool upgrade niki-agent",
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed"
+                "niki_agent.update_check.mark_startup_auto_update_failed"
             ) as mark_failed,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -436,34 +436,34 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(False, "pip exploded", None))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool upgrade deepagents-code",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool upgrade niki-agent",
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             # The marker write fails (e.g. a read-only state dir).
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed",
+                "niki_agent.update_check.mark_startup_auto_update_failed",
                 return_value=False,
             ),
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -479,29 +479,29 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(side_effect=RuntimeError("uv wedged"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed",
+                "niki_agent.update_check.mark_startup_auto_update_failed",
                 return_value=False,
             ) as mark_failed,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             # Must not raise: the fail-soft handler swallows and continues.
             _run_startup_auto_update(console)
@@ -517,29 +517,29 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.should_skip_startup_auto_update_after_failure",
+                "niki_agent.update_check.should_skip_startup_auto_update_after_failure",
                 return_value=True,
             ) as should_skip,
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool install -U deepagents-code",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool install -U niki-agent",
             ),
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -554,13 +554,13 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=True),
+            patch("niki_agent.config._is_editable_install", return_value=True),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
-            patch("deepagents_code.update_check.get_cached_update_available") as check,
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.update_check.get_cached_update_available") as check,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
         ):
             _run_startup_auto_update(console)
 
@@ -572,17 +572,17 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(False, None),
             ),
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -600,21 +600,21 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 return_value=True,
             ),
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -625,24 +625,24 @@ class TestStartupAutoUpdate:
     def test_debug_update_skips_install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """DEBUG_UPDATE announces the update but skips the actual install."""
         console = MagicMock()
-        monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_UPDATE", "1")
+        monkeypatch.setenv("NIKI_DEBUG_UPDATE", "1")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -656,16 +656,16 @@ class TestStartupAutoUpdate:
         console = MagicMock()
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 side_effect=RuntimeError("boom"),
             ),
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             # Must swallow the error rather than propagate it.
             _run_startup_auto_update(console)
@@ -680,31 +680,31 @@ class TestStartupAutoUpdate:
         """A re-exec that did not change the version must not re-upgrade."""
         console = MagicMock()
         # Simulate the sentinel set by the prior generation before its restart.
-        monkeypatch.setenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", "9.9.9")
+        monkeypatch.setenv("NIKI_RESTARTED_AFTER_UPDATE", "9.9.9")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool upgrade deepagents-code",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool upgrade niki-agent",
             ),
-            patch("deepagents_code.update_check.perform_upgrade") as upgrade,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.perform_upgrade") as upgrade,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
         upgrade.assert_not_called()
         restart.assert_not_called()
         # Sentinel is consumed so a genuine future update is not suppressed.
-        assert os.environ.get("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE") is None
+        assert os.environ.get("NIKI_RESTARTED_AFTER_UPDATE") is None
         printed = " ".join(str(c.args[0]) for c in console.print.call_args_list)
         assert "restart loop" in printed
 
@@ -721,29 +721,29 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed"
+                "niki_agent.update_check.mark_startup_auto_update_failed"
             ) as mark_failed,
             patch(
-                "deepagents_code.main._restart_current_process",
+                "niki_agent.main._restart_current_process",
                 side_effect=OSError("exec failed"),
             ) as restart,
             pytest.raises(SystemExit) as exit_info,
@@ -753,7 +753,7 @@ class TestStartupAutoUpdate:
         assert exit_info.value.code == 0
         restart.assert_called_once_with()
         # Sentinel is dropped since the restart did not happen.
-        assert os.environ.get("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE") is None
+        assert os.environ.get("NIKI_RESTARTED_AFTER_UPDATE") is None
         # Exiting means no sentinel reaches a next generation, so the
         # `restarted_for` loop guard can never fire for this path. The cooldown
         # is the only thing stopping a no-op-but-successful upgrade paired with
@@ -770,7 +770,7 @@ class TestStartupAutoUpdate:
 
     def test_shadowed_windows_install_resolves_upgraded_executable(self) -> None:
         """A shadowed Windows `.cmd` must re-exec uv's `dcode.exe` shim."""
-        from deepagents_code.update_check import ShadowedDcode
+        from niki_agent.update_check import ShadowedDcode
 
         console = MagicMock()
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
@@ -781,34 +781,34 @@ class TestStartupAutoUpdate:
         )
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.detect_shadowed_dcode",
+                "niki_agent.update_check.detect_shadowed_dcode",
                 return_value=shadow,
             ),
             patch(
-                "deepagents_code.update_check._upgraded_entry_point",
+                "niki_agent.update_check._upgraded_entry_point",
                 return_value=Path("C:/uv/bin/dcode.exe"),
             ),
             patch(
-                "deepagents_code.main._restart_current_process",
+                "niki_agent.main._restart_current_process",
                 side_effect=SystemExit(0),
             ) as restart,
             pytest.raises(SystemExit),
@@ -835,32 +835,32 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.clear_startup_auto_update_failure",
+                "niki_agent.update_check.clear_startup_auto_update_failure",
                 side_effect=RuntimeError("state dir exploded"),
             ),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed"
+                "niki_agent.update_check.mark_startup_auto_update_failed"
             ) as mark_failed,
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
             pytest.raises(SystemExit) as exit_info,
         ):
             _run_startup_auto_update(console)
@@ -890,7 +890,7 @@ class TestStartupAutoUpdate:
         started rendering, which is the realistic mid-branch failure — and the
         window where a duplicated, contradictory pair of messages would show up.
         """
-        from deepagents_code.update_check import ShadowedDcode
+        from niki_agent.update_check import ShadowedDcode
 
         console = MagicMock()
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
@@ -900,30 +900,30 @@ class TestStartupAutoUpdate:
         )
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.detect_shadowed_dcode",
+                "niki_agent.update_check.detect_shadowed_dcode",
                 return_value=shadow,
             ),
             patch(
-                "deepagents_code.update_check.format_shadowed_dcode_warning",
+                "niki_agent.update_check.format_shadowed_dcode_warning",
                 side_effect=RuntimeError("warning render exploded"),
             ),
             # Must be patched: `UPDATE_STATE_FILE` is bound at import from the
@@ -932,8 +932,8 @@ class TestStartupAutoUpdate:
             # and the unpatched call writes a cooldown to the developer's own
             # `~/.deepagents/.state/update_state.json`, then leaks into every
             # later test in the session.
-            patch("deepagents_code.update_check.mark_startup_auto_update_failed"),
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.update_check.mark_startup_auto_update_failed"),
+            patch("niki_agent.main._restart_current_process") as restart,
             pytest.raises(SystemExit) as exit_info,
         ):
             _run_startup_auto_update(console)
@@ -961,30 +961,30 @@ class TestStartupAutoUpdate:
         upgrade = AsyncMock(return_value=(True, "updated", "9.9.9"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.update_check.mark_startup_auto_update_failed",
+                "niki_agent.update_check.mark_startup_auto_update_failed",
                 side_effect=OSError("read-only state dir"),
             ),
             patch(
-                "deepagents_code.main._restart_current_process",
+                "niki_agent.main._restart_current_process",
                 side_effect=OSError("exec failed"),
             ),
             pytest.raises(SystemExit) as exit_info,
@@ -1004,27 +1004,27 @@ class TestStartupAutoUpdate:
         # redirected stream (pipe/file) would. Asserting on the real stream
         # proves no escape bytes reach redirected output, end-to-end.
         console = Console(file=stream, force_terminal=False, no_color=True, width=80)
-        monkeypatch.setenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", "9.9.9")
+        monkeypatch.setenv("NIKI_RESTARTED_AFTER_UPDATE", "9.9.9")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(False, "9.9.9"),
             ),
-            patch("deepagents_code.main._restart_current_process"),
+            patch("niki_agent.main._restart_current_process"),
         ):
             _run_startup_auto_update(console)
 
@@ -1039,32 +1039,32 @@ class TestStartupAutoUpdate:
         console = MagicMock()
         console.is_terminal = True
         console.width = 80
-        monkeypatch.setenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", "9.9.9")
+        monkeypatch.setenv("NIKI_RESTARTED_AFTER_UPDATE", "9.9.9")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             # The install did not change the running version.
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.upgrade_command",
-                return_value="uv tool upgrade deepagents-code",
+                "niki_agent.update_check.upgrade_command",
+                return_value="uv tool upgrade niki-agent",
             ),
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -1086,28 +1086,28 @@ class TestStartupAutoUpdate:
         """
         stream = StringIO()
         console = Console(file=stream, force_terminal=True, no_color=True, width=80)
-        monkeypatch.setenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", "9.9.9")
+        monkeypatch.setenv("NIKI_RESTARTED_AFTER_UPDATE", "9.9.9")
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             # The re-exec did not land on the recorded version.
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 return_value=False,
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(False, None),
             ),
-            patch("deepagents_code.main._restart_current_process") as restart,
+            patch("niki_agent.main._restart_current_process") as restart,
         ):
             _run_startup_auto_update(console)
 
@@ -1127,40 +1127,40 @@ class TestStartupAutoUpdate:
         """
         stream = StringIO()
         console = Console(file=stream, force_terminal=True, no_color=True, width=80)
-        monkeypatch.setenv("DEEPAGENTS_CODE_RESTARTED_AFTER_UPDATE", "9.9.8")
+        monkeypatch.setenv("NIKI_RESTARTED_AFTER_UPDATE", "9.9.8")
         upgrade = AsyncMock(return_value=(True, "", "9.9.9"))
 
         with (
-            patch("deepagents_code.config._is_editable_install", return_value=False),
+            patch("niki_agent.config._is_editable_install", return_value=False),
             patch(
-                "deepagents_code.update_check.is_update_check_enabled",
+                "niki_agent.update_check.is_update_check_enabled",
                 return_value=True,
             ),
             patch(
-                "deepagents_code.update_check.is_auto_update_enabled",
+                "niki_agent.update_check.is_auto_update_enabled",
                 return_value=True,
             ),
             # The running version satisfies the prior restart (9.9.8) but not the
             # newly available 9.9.9, so the upgrade path must still run.
             patch(
-                "deepagents_code.update_check.is_installed_version_at_least",
+                "niki_agent.update_check.is_installed_version_at_least",
                 side_effect=lambda version: version == "9.9.8",
             ),
             patch(
-                "deepagents_code.update_check.get_cached_update_available",
+                "niki_agent.update_check.get_cached_update_available",
                 return_value=(True, "9.9.9"),
             ),
             patch(
-                "deepagents_code.update_check.format_release_age_parenthetical",
+                "niki_agent.update_check.format_release_age_parenthetical",
                 return_value="",
             ),
             patch(
-                "deepagents_code.update_check.create_update_log_file",
+                "niki_agent.update_check.create_update_log_file",
                 return_value=Path("/tmp/dcode-update.log"),
             ),
-            patch("deepagents_code.update_check.perform_upgrade", upgrade),
+            patch("niki_agent.update_check.perform_upgrade", upgrade),
             patch(
-                "deepagents_code.main._restart_current_process",
+                "niki_agent.main._restart_current_process",
                 side_effect=SystemExit(0),
             ) as restart,
             pytest.raises(SystemExit),
@@ -1178,22 +1178,20 @@ class TestStartupAutoUpdate:
 
     def test_project_mcp_prompt_interrupt_aborts_before_tui(self) -> None:
         """Ctrl+C at the project MCP prompt exits before launching Textual."""
-        from deepagents_code.main import _TrustPromptOutcome
+        from niki_agent.main import _TrustPromptOutcome
 
         launch = AsyncMock(return_value=AppResult(return_code=0, thread_id="thread"))
         with (
             patch("sys.argv", ["dcode"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch(
-                "deepagents_code.main._check_mcp_project_trust",
+                "niki_agent.main._check_mcp_project_trust",
                 return_value=_TrustPromptOutcome.INTERRUPTED,
             ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
+            patch("niki_agent.main.run_textual_cli_async", launch),
             pytest.raises(SystemExit) as exc_info,
         ):
             cli_main()
@@ -1205,27 +1203,25 @@ class TestStartupAutoUpdate:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An interrupted YOLO acknowledgement never launches Textual."""
-        from deepagents_code.approval_mode import ApprovalMode
+        from niki_agent.approval_mode import ApprovalMode
 
         launch = AsyncMock(return_value=AppResult(return_code=0, thread_id="thread"))
         with (
             patch("sys.argv", ["dcode", "--yolo"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=None),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=None),
-            patch(
-                "deepagents_code.main._resolve_approval_mode",
+                "niki_agent.main._resolve_approval_mode",
                 return_value=ApprovalMode.YOLO,
             ),
             patch(
-                "deepagents_code.main._ensure_yolo_acknowledged",
+                "niki_agent.main._ensure_yolo_acknowledged",
                 side_effect=KeyboardInterrupt,
             ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
+            patch("niki_agent.main.run_textual_cli_async", launch),
             pytest.raises(SystemExit) as exc_info,
         ):
             cli_main()
@@ -1239,22 +1235,20 @@ class TestStartupAutoUpdate:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Esc in the server selector cancels launch before Textual starts."""
-        from deepagents_code.main import _TrustPromptOutcome
+        from niki_agent.main import _TrustPromptOutcome
 
         launch = AsyncMock(return_value=AppResult(return_code=0, thread_id="thread"))
         with (
             patch("sys.argv", ["dcode"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
             patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch(
-                "deepagents_code.main._check_mcp_project_trust",
+                "niki_agent.main._check_mcp_project_trust",
                 return_value=_TrustPromptOutcome.CANCELLED,
             ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
+            patch("niki_agent.main.run_textual_cli_async", launch),
         ):
             cli_main()
 
@@ -1292,7 +1286,7 @@ class TestAutoUpdateDefaultMigration:
     def _no_shadowed_dcode(self) -> Iterator[None]:
         """Default to no PATH shadow — same reasoning as `TestStartupAutoUpdate`."""
         with patch(
-            "deepagents_code.update_check.detect_shadowed_dcode",
+            "niki_agent.update_check.detect_shadowed_dcode",
             return_value=None,
         ):
             yield
@@ -1363,13 +1357,11 @@ class TestPrintSessionStats:
         Returns:
             Everything the teardown printed to the console.
         """
-        from deepagents_code._session_stats import SessionStats
+        from niki_agent._session_stats import SessionStats
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(config_toml, encoding="utf-8")
-        monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_CONFIG_PATH", config_path
-        )
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config_path)
 
         stats = SessionStats(wall_time_seconds=2.0)
         stats.record_request("test-model", 100, 50)
@@ -1478,9 +1470,9 @@ class TestRenderTeardownThreadHints:
                 "not = = valid toml\n", encoding="utf-8"
             )
         with (
-            patch("deepagents_code.sessions.thread_exists", thread_exists_mock),
+            patch("niki_agent.sessions.thread_exists", thread_exists_mock),
             patch(
-                "deepagents_code.config.build_langsmith_thread_url",
+                "niki_agent.config.build_langsmith_thread_url",
                 return_value=thread_url,
             ),
             patch.dict(os.environ, env),
@@ -1720,9 +1712,9 @@ class TestRenderTeardownThreadHints:
             **(extra_env or {}),
         }
         with (
-            patch("deepagents_code.sessions.thread_exists", thread_exists_mock),
+            patch("niki_agent.sessions.thread_exists", thread_exists_mock),
             patch(
-                "deepagents_code.config.build_langsmith_thread_url",
+                "niki_agent.config.build_langsmith_thread_url",
                 return_value=None,
             ),
             patch.object(sys, "platform", platform),
@@ -1836,22 +1828,16 @@ class TestTeardownHintsOnCrash:
         with (
             patch("sys.argv", ["dcode"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._install_termination_signal_handlers"),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
-            patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=None),
-            patch("deepagents_code.main._check_project_hooks_trust", return_value=None),
-            patch(
-                "deepagents_code.sessions.generate_thread_id", return_value="test123"
-            ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
-            patch("deepagents_code.sessions.thread_exists", thread_exists_mock),
-            patch(
-                "deepagents_code.config.build_langsmith_thread_url", return_value=None
-            ),
+            patch("niki_agent.main._install_termination_signal_handlers"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=None),
+            patch("niki_agent.main._check_project_hooks_trust", return_value=None),
+            patch("niki_agent.sessions.generate_thread_id", return_value="test123"),
+            patch("niki_agent.main.run_textual_cli_async", launch),
+            patch("niki_agent.sessions.thread_exists", thread_exists_mock),
+            patch("niki_agent.config.build_langsmith_thread_url", return_value=None),
             patch.dict(os.environ, {INVOKED_AS: "dcode"}),
             pytest.raises(SystemExit) as exc_info,
         ):
@@ -1882,7 +1868,7 @@ class TestTeardownHintsOnCrash:
             await asyncio.sleep(0)
             raise TextualAppError(msg, result_snapshot)
 
-        with patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub):
+        with patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub):
             result = await run_textual_cli_async(
                 "agent",
                 thread_id=None,
@@ -1903,7 +1889,7 @@ class TestTeardownHintsOnCrash:
             await asyncio.sleep(0)
             raise RuntimeError(msg)
 
-        with patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub):
+        with patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub):
             result = await run_textual_cli_async(
                 "agent",
                 thread_id="launch-thread",
@@ -1924,22 +1910,16 @@ class TestTeardownHintsOnCrash:
         with (
             patch("sys.argv", ["dcode"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._install_termination_signal_handlers"),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
-            patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=None),
-            patch("deepagents_code.main._check_project_hooks_trust", return_value=None),
-            patch(
-                "deepagents_code.sessions.generate_thread_id", return_value="test123"
-            ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
-            patch("deepagents_code.sessions.thread_exists", thread_exists_mock),
-            patch(
-                "deepagents_code.config.build_langsmith_thread_url", return_value=None
-            ),
+            patch("niki_agent.main._install_termination_signal_handlers"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=None),
+            patch("niki_agent.main._check_project_hooks_trust", return_value=None),
+            patch("niki_agent.sessions.generate_thread_id", return_value="test123"),
+            patch("niki_agent.main.run_textual_cli_async", launch),
+            patch("niki_agent.sessions.thread_exists", thread_exists_mock),
+            patch("niki_agent.config.build_langsmith_thread_url", return_value=None),
             patch.dict(os.environ, {INVOKED_AS: "dcode"}),
             pytest.raises(SystemExit) as exc_info,
         ):
@@ -1964,22 +1944,16 @@ class TestTeardownHintsOnCrash:
         with (
             patch("sys.argv", ["dcode"]),
             patch("sys.stdin", SimpleNamespace(isatty=lambda: True)),
-            patch("deepagents_code.main._install_termination_signal_handlers"),
-            patch("deepagents_code.main._run_startup_auto_update"),
-            patch("deepagents_code.main._resolve_agent_arg", return_value="agent"),
-            patch(
-                "deepagents_code.main._resolve_interpreter_enabled", return_value=False
-            ),
-            patch("deepagents_code.main._check_mcp_project_trust", return_value=None),
-            patch("deepagents_code.main._check_project_hooks_trust", return_value=None),
-            patch(
-                "deepagents_code.sessions.generate_thread_id", return_value="test123"
-            ),
-            patch("deepagents_code.main.run_textual_cli_async", launch),
-            patch("deepagents_code.sessions.thread_exists", thread_exists_mock),
-            patch(
-                "deepagents_code.config.build_langsmith_thread_url", return_value=None
-            ),
+            patch("niki_agent.main._install_termination_signal_handlers"),
+            patch("niki_agent.main._run_startup_auto_update"),
+            patch("niki_agent.main._resolve_agent_arg", return_value="agent"),
+            patch("niki_agent.main._resolve_interpreter_enabled", return_value=False),
+            patch("niki_agent.main._check_mcp_project_trust", return_value=None),
+            patch("niki_agent.main._check_project_hooks_trust", return_value=None),
+            patch("niki_agent.sessions.generate_thread_id", return_value="test123"),
+            patch("niki_agent.main.run_textual_cli_async", launch),
+            patch("niki_agent.sessions.thread_exists", thread_exists_mock),
+            patch("niki_agent.config.build_langsmith_thread_url", return_value=None),
             patch.dict(os.environ, {INVOKED_AS: "dcode"}),
             pytest.raises(SystemExit) as exc_info,
         ):
@@ -2022,7 +1996,7 @@ class TestRunTextualCliAsyncMcp:
             await asyncio.sleep(0)
             return app_result
 
-        with patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub):
+        with patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub):
             result = await run_textual_cli_async(
                 "agent",
                 thread_id="thread-123",
@@ -2054,8 +2028,8 @@ class TestRunTextualCliAsyncMcp:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Startup diagnostics identify an administrator-blocked classifier."""
-        from deepagents_code.main import _auto_classifier_spec_problem
-        from deepagents_code.model_config import ModelConfig
+        from niki_agent.main import _auto_classifier_spec_problem
+        from niki_agent.model_config import ModelConfig
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -2082,8 +2056,8 @@ class TestRunTextualCliAsyncMcp:
         warning about. The runtime model -- already policy-checked -- is used
         instead, matching how the other two classifier problems degrade.
         """
-        from deepagents_code._cli_context import INHERIT_CLASSIFIER_MODEL
-        from deepagents_code.model_config import ModelConfig
+        from niki_agent._cli_context import INHERIT_CLASSIFIER_MODEL
+        from niki_agent.model_config import ModelConfig
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -2095,7 +2069,7 @@ class TestRunTextualCliAsyncMcp:
             classmethod(lambda _cls, _path=None: policy),
         )
 
-        from deepagents_code.main import _classifier_model_after_policy
+        from niki_agent.main import _classifier_model_after_policy
 
         # Blocked -> inherit the (already checked) runtime model.
         assert (
@@ -2113,11 +2087,11 @@ class TestRunTextualCliAsyncMcp:
 
     def test_provider_classifier_resolver_preserves_precedence(self) -> None:
         """Late provider resolution preserves explicit and fail-closed choices."""
-        from deepagents_code._cli_context import INHERIT_CLASSIFIER_MODEL
-        from deepagents_code.config import resolve_auto_classifier_model_for_provider
+        from niki_agent._cli_context import INHERIT_CLASSIFIER_MODEL
+        from niki_agent.config import resolve_auto_classifier_model_for_provider
 
         with patch(
-            "deepagents_code.config.resolve_auto_classifier_model_with_problem",
+            "niki_agent.config.resolve_auto_classifier_model_with_problem",
             return_value=(None, "malformed configured classifier"),
         ):
             assert (
@@ -2127,7 +2101,7 @@ class TestRunTextualCliAsyncMcp:
 
         explicit = "anthropic:claude-sonnet-5"
         with patch(
-            "deepagents_code.config.resolve_auto_classifier_model_with_problem",
+            "niki_agent.config.resolve_auto_classifier_model_with_problem",
         ) as resolve_config:
             assert resolve_auto_classifier_model_for_provider("openai", explicit) == (
                 explicit
@@ -2138,8 +2112,8 @@ class TestRunTextualCliAsyncMcp:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """With no policy, any resolved classifier spec is forwarded unchanged."""
-        from deepagents_code.main import _classifier_model_after_policy
-        from deepagents_code.model_config import ModelConfig
+        from niki_agent.main import _classifier_model_after_policy
+        from niki_agent.model_config import ModelConfig
 
         monkeypatch.setattr(
             ModelConfig,
@@ -2173,14 +2147,12 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch(
-                "deepagents_code.config.resolve_auto_classifier_model_with_problem",
+                "niki_agent.config.resolve_auto_classifier_model_with_problem",
                 return_value=(None, None),
             ),
-            patch(
-                "deepagents_code.main._auto_classifier_spec_problem", return_value=None
-            ),
+            patch("niki_agent.main._auto_classifier_spec_problem", return_value=None),
         ):
             await run_textual_cli_async("agent", model_name=main_model)
 
@@ -2197,9 +2169,9 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch(
-                "deepagents_code.config.resolve_auto_classifier_model_with_problem",
+                "niki_agent.config.resolve_auto_classifier_model_with_problem",
                 return_value=(None, "configured classifier is invalid"),
             ),
         ):
@@ -2219,9 +2191,9 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch(
-                "deepagents_code.config.resolve_auto_classifier_model_with_problem"
+                "niki_agent.config.resolve_auto_classifier_model_with_problem"
             ) as resolve_classifier,
         ):
             await run_textual_cli_async(
@@ -2245,7 +2217,7 @@ class TestRunTextualCliAsyncMcp:
         the `INHERIT_CLASSIFIER_MODEL` sentinel so the server resolves inherit
         instead of re-reading env/TOML.
         """
-        from deepagents_code._cli_context import INHERIT_CLASSIFIER_MODEL
+        from niki_agent._cli_context import INHERIT_CLASSIFIER_MODEL
 
         app_result = AppResult(return_code=0, thread_id="thread-123")
         captured_kwargs: dict[str, Any] = {}
@@ -2256,9 +2228,9 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch(
-                "deepagents_code.config.resolve_auto_classifier_model_with_problem"
+                "niki_agent.config.resolve_auto_classifier_model_with_problem"
             ) as resolve_classifier,
         ):
             await run_textual_cli_async(
@@ -2290,10 +2262,10 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch.object(ModelConfig, "load", return_value=config),
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=AssertionError("summary model constructed before TUI"),
             ) as create_model,
         ):
@@ -2314,10 +2286,10 @@ class TestRunTextualCliAsyncMcp:
             return app_result
 
         with (
-            patch("deepagents_code.app.run_textual_app", new=_run_textual_app_stub),
+            patch("niki_agent.app.run_textual_app", new=_run_textual_app_stub),
             patch.object(ModelConfig, "load", return_value=config),
             patch(
-                "deepagents_code.config.create_model",
+                "niki_agent.config.create_model",
                 side_effect=AssertionError("summary model constructed before TUI"),
             ) as create_model,
         ):
@@ -2364,14 +2336,14 @@ class TestServerCleanupLifecycle:
         with (
             patch.object(DeepAgentsApp, "run_async", new=_run_async),
             patch(
-                "deepagents_code._terminal_stderr.TerminalStderrGuard.install",
+                "niki_agent._terminal_stderr.TerminalStderrGuard.install",
                 return_value=guard,
             ),
             patch(
-                "deepagents_code._terminal_stderr.stdout_driver_class",
+                "niki_agent._terminal_stderr.stdout_driver_class",
                 return_value=driver_class,
             ),
-            patch("deepagents_code.client.launch.server.emit_preserved_log_notices"),
+            patch("niki_agent.client.launch.server.emit_preserved_log_notices"),
         ):
             await run_textual_app(server_proc=None, thread_id="t-1")  # ty: ignore
 
@@ -2389,14 +2361,14 @@ class TestServerCleanupLifecycle:
         with (
             patch.object(DeepAgentsApp, "run_async", new=_run_async),
             patch(
-                "deepagents_code._terminal_stderr.TerminalStderrGuard.install",
+                "niki_agent._terminal_stderr.TerminalStderrGuard.install",
                 return_value=guard,
             ),
             patch(
-                "deepagents_code._terminal_stderr.stdout_driver_class",
+                "niki_agent._terminal_stderr.stdout_driver_class",
                 return_value=stdout_driver,
             ) as stdout_driver_class,
-            patch("deepagents_code.client.launch.server.emit_preserved_log_notices"),
+            patch("niki_agent.client.launch.server.emit_preserved_log_notices"),
         ):
             await run_textual_app(server_proc=None, thread_id="t-1")  # ty: ignore
 
@@ -2415,14 +2387,14 @@ class TestServerCleanupLifecycle:
         with (
             patch.object(DeepAgentsApp, "run_async", new=_run_async),
             patch(
-                "deepagents_code._terminal_stderr.TerminalStderrGuard.install",
+                "niki_agent._terminal_stderr.TerminalStderrGuard.install",
                 return_value=guard,
             ),
             patch(
-                "deepagents_code._terminal_stderr.stdout_driver_class",
+                "niki_agent._terminal_stderr.stdout_driver_class",
                 return_value=None,
             ),
-            patch("deepagents_code.client.launch.server.emit_preserved_log_notices"),
+            patch("niki_agent.client.launch.server.emit_preserved_log_notices"),
         ):
             await run_textual_app(server_proc=None, thread_id="t-1")  # ty: ignore
 
@@ -2438,11 +2410,11 @@ class TestServerCleanupLifecycle:
 
         with (
             patch(
-                "deepagents_code._terminal_stderr.TerminalStderrGuard.install",
+                "niki_agent._terminal_stderr.TerminalStderrGuard.install",
                 side_effect=OSError("too many open files"),
             ),
             patch(
-                "deepagents_code.client.launch.server.emit_preserved_log_notices",
+                "niki_agent.client.launch.server.emit_preserved_log_notices",
             ) as emit,
             pytest.raises(TextualAppError, match="too many open files"),
         ):
@@ -2465,7 +2437,7 @@ class TestServerCleanupLifecycle:
         with (
             patch.object(DeepAgentsApp, "run_async", new=_crash_after_switch),
             patch(
-                "deepagents_code.client.launch.server.emit_preserved_log_notices",
+                "niki_agent.client.launch.server.emit_preserved_log_notices",
             ),
             pytest.raises(TextualAppError) as exc_info,
         ):
@@ -2495,7 +2467,7 @@ class TestServerCleanupLifecycle:
                 new=_fake_run_async,
             ),
             patch(
-                "deepagents_code.client.launch.server.emit_preserved_log_notices",
+                "niki_agent.client.launch.server.emit_preserved_log_notices",
             ) as emit,
         ):
             await run_textual_app(
@@ -2513,7 +2485,7 @@ class TestCheckOptionalTools:
     def _tavily_available(self) -> Iterator[None]:
         """Patch credentials.has_tavily so ripgrep-only tests stay isolated."""
         with patch(
-            "deepagents_code.config.credentials",
+            "niki_agent.config.credentials",
             SimpleNamespace(has_tavily=True),
         ):
             yield
@@ -2523,7 +2495,7 @@ class TestCheckOptionalTools:
         config_path = tmp_path / "config.toml"
         config_path.write_text("this is not valid toml [[[")
 
-        with patch("deepagents_code.main.shutil.which", return_value=None):
+        with patch("niki_agent.main.shutil.which", return_value=None):
             missing = check_optional_tools(config_path=config_path)
 
         assert missing == ["ripgrep"]
@@ -2533,7 +2505,7 @@ class TestCheckOptionalTools:
         config_path = tmp_path / "config.toml"
         config_path.write_text("[warnings]\nsuppress = true\n")
 
-        with patch("deepagents_code.main.shutil.which", return_value=None):
+        with patch("niki_agent.main.shutil.which", return_value=None):
             missing = check_optional_tools(config_path=config_path)
 
         assert missing == ["ripgrep"]
@@ -2542,9 +2514,9 @@ class TestCheckOptionalTools:
         """Returns `'tavily'` when TAVILY_API_KEY is not set."""
         config_path = tmp_path / "config.toml"
         with (
-            patch("deepagents_code.main.shutil.which", return_value="/usr/bin/rg"),
+            patch("niki_agent.main.shutil.which", return_value="/usr/bin/rg"),
             patch(
-                "deepagents_code.config.credentials",
+                "niki_agent.config.credentials",
                 SimpleNamespace(has_tavily=False),
             ),
         ):
@@ -2558,9 +2530,9 @@ class TestCheckOptionalTools:
         config_path.write_text('[warnings]\nsuppress = ["tavily"]\n')
 
         with (
-            patch("deepagents_code.main.shutil.which", return_value="/usr/bin/rg"),
+            patch("niki_agent.main.shutil.which", return_value="/usr/bin/rg"),
             patch(
-                "deepagents_code.config.credentials",
+                "niki_agent.config.credentials",
                 SimpleNamespace(has_tavily=False),
             ),
         ):
@@ -2582,15 +2554,15 @@ class TestAutoInstallRipgrepCli:
         prepend = MagicMock()
         with (
             patch(
-                "deepagents_code.managed_tools.ensure_ripgrep",
+                "niki_agent.managed_tools.ensure_ripgrep",
                 AsyncMock(return_value=Path("/usr/bin/rg")),
             ),
             patch(
-                "deepagents_code.managed_tools.managed_rg_path",
+                "niki_agent.managed_tools.managed_rg_path",
                 return_value=Path("/managed/rg"),
             ),
             patch(
-                "deepagents_code.managed_tools.prepend_managed_bin_to_path",
+                "niki_agent.managed_tools.prepend_managed_bin_to_path",
                 prepend,
             ),
         ):
@@ -2601,11 +2573,11 @@ class TestAutoInstallRipgrepCli:
 
     def test_managed_tool_unavailable_keeps_ripgrep_and_reports(self) -> None:
         """Permanent managed-tool gaps report remediation and keep fallback active."""
-        from deepagents_code.managed_tools import ManagedToolUnavailableError
+        from niki_agent.managed_tools import ManagedToolUnavailableError
 
         message = (
             "Managed ripgrep is not available for this system. "
-            "Set DEEPAGENTS_CODE_RIPGREP_INSTALLER=system."
+            "Set NIKI_RIPGREP_INSTALLER=system."
         )
         error = ManagedToolUnavailableError(
             tool="ripgrep",
@@ -2614,7 +2586,7 @@ class TestAutoInstallRipgrepCli:
         )
         console = MagicMock()
         with patch(
-            "deepagents_code.managed_tools.ensure_ripgrep",
+            "niki_agent.managed_tools.ensure_ripgrep",
             AsyncMock(side_effect=error),
         ):
             result = _auto_install_ripgrep_cli(console, ["ripgrep"])
@@ -2627,7 +2599,7 @@ class TestAutoInstallRipgrepCli:
         """An unexpected error degrades gracefully to the missing-tool path."""
         console = MagicMock()
         with patch(
-            "deepagents_code.managed_tools.ensure_ripgrep",
+            "niki_agent.managed_tools.ensure_ripgrep",
             AsyncMock(side_effect=RuntimeError("boom")),
         ):
             result = _auto_install_ripgrep_cli(console, ["ripgrep"])
@@ -2645,7 +2617,7 @@ class TestFormatToolWarnings:
     def test_cli_format_contains_install_hint(self) -> None:
         """CLI format includes a platform-specific install hint."""
         hint_patch = patch(
-            "deepagents_code.main._ripgrep_install_hint",
+            "niki_agent.main._ripgrep_install_hint",
             return_value="brew install ripgrep",
         )
         with hint_patch:
@@ -2680,7 +2652,7 @@ class TestRunTextualCliAsyncModelConfigError:
 
     async def test_launches_tui_on_no_credentials(self) -> None:
         """Missing default credentials should be recoverable inside the TUI."""
-        from deepagents_code.model_config import NoCredentialsConfiguredError
+        from niki_agent.model_config import NoCredentialsConfiguredError
 
         app_result = AppResult(return_code=0, thread_id="t-1")
         captured_kwargs: dict[str, Any] = {}
@@ -2692,10 +2664,10 @@ class TestRunTextualCliAsyncModelConfigError:
 
         with (
             patch(
-                "deepagents_code.config._get_default_model_spec",
+                "niki_agent.config._get_default_model_spec",
                 side_effect=NoCredentialsConfiguredError("No credentials configured"),
             ),
-            patch("deepagents_code.app.run_textual_app", new=_stub),
+            patch("niki_agent.app.run_textual_app", new=_stub),
         ):
             result = await run_textual_cli_async("agent")
 
@@ -2709,7 +2681,7 @@ class TestRunTextualCliAsyncModelConfigError:
 
         Regardless of the exception message text.
         """
-        from deepagents_code.model_config import NoCredentialsConfiguredError
+        from niki_agent.model_config import NoCredentialsConfiguredError
 
         app_result = AppResult(return_code=0, thread_id="t-2")
         captured_kwargs: dict[str, Any] = {}
@@ -2722,12 +2694,12 @@ class TestRunTextualCliAsyncModelConfigError:
         # Reword the message to prove we no longer string-match on prefix.
         with (
             patch(
-                "deepagents_code.config._get_default_model_spec",
+                "niki_agent.config._get_default_model_spec",
                 side_effect=NoCredentialsConfiguredError(
                     "Setup required: please run /model"
                 ),
             ),
-            patch("deepagents_code.app.run_textual_app", new=_stub),
+            patch("niki_agent.app.run_textual_app", new=_stub),
         ):
             result = await run_textual_cli_async("agent")
 
@@ -2736,14 +2708,14 @@ class TestRunTextualCliAsyncModelConfigError:
 
     async def test_returns_error_code_on_other_model_config_error(self) -> None:
         """Non-recoverable default model errors should still block startup."""
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent.model_config import ModelConfigError
 
         with (
             patch(
-                "deepagents_code.config._get_default_model_spec",
+                "niki_agent.config._get_default_model_spec",
                 side_effect=ModelConfigError("Invalid model config"),
             ),
-            patch("deepagents_code.config._get_console") as mock_console_fn,
+            patch("niki_agent.config._get_console") as mock_console_fn,
         ):
             mock_console = MagicMock()
             mock_console_fn.return_value = mock_console
@@ -2761,7 +2733,7 @@ class TestNormalizeCwdFilter:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Explicit relative paths collapse `..` without resolving symlinks."""
-        from deepagents_code.main import _normalize_cwd_filter
+        from niki_agent.main import _normalize_cwd_filter
 
         project = tmp_path / "project"
         subdir = project / "subdir"
@@ -2772,7 +2744,7 @@ class TestNormalizeCwdFilter:
 
     def test_explicit_path_does_not_resolve_symlinks(self, tmp_path: Path) -> None:
         """Lexical normalization (not `.resolve()`) matches storage convention."""
-        from deepagents_code.main import _normalize_cwd_filter
+        from niki_agent.main import _normalize_cwd_filter
 
         real = tmp_path / "real"
         real.mkdir()
@@ -2792,7 +2764,7 @@ class TestThreadsListCwdArgparse:
     """Tests for `--cwd` argparse semantics on `deepagents threads list`."""
 
     def _parse(self, argv: list[str]) -> Any:  # noqa: ANN401
-        from deepagents_code.main import parse_args
+        from niki_agent.main import parse_args
 
         with patch("sys.argv", ["deepagents", *argv]):
             return parse_args()
@@ -2827,8 +2799,8 @@ class TestCheckMcpProjectTrustPrompt:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The debug helper treats common falsy strings as disabled."""
-        from deepagents_code._env_vars import DEBUG_MCP_PROJECT_TRUST
-        from deepagents_code.main import _debug_mcp_project_trust_enabled
+        from niki_agent._env_vars import DEBUG_MCP_PROJECT_TRUST
+        from niki_agent.main import _debug_mcp_project_trust_enabled
 
         monkeypatch.setenv(DEBUG_MCP_PROJECT_TRUST, "0")
 
@@ -2845,19 +2817,19 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The debug env var shows a sample prompt without requiring config files."""
-        from deepagents_code._env_vars import DEBUG_MCP_PROJECT_TRUST
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent._env_vars import DEBUG_MCP_PROJECT_TRUST
+        from niki_agent.main import _check_mcp_project_trust
 
         project_context = SimpleNamespace(project_root=tmp_path, user_cwd=tmp_path)
         monkeypatch.setenv(DEBUG_MCP_PROJECT_TRUST, "1")
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[],
             ),
             patch("builtins.input", return_value="y"),
@@ -2875,9 +2847,9 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Esc aborts the launch without recording a denial decision."""
-        from deepagents_code import model_config
-        from deepagents_code._env_vars import DEBUG_MCP_PROJECT_TRUST
-        from deepagents_code.main import (
+        from niki_agent import model_config
+        from niki_agent._env_vars import DEBUG_MCP_PROJECT_TRUST
+        from niki_agent.main import (
             _check_mcp_project_trust,
             _TrustPromptOutcome,
         )
@@ -2889,15 +2861,15 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[],
             ),
             patch(
-                "deepagents_code.main._select_trust_action",
+                "niki_agent.main._select_trust_action",
                 return_value=_TrustPromptOutcome.CANCELLED,
             ),
         ):
@@ -2918,8 +2890,8 @@ class TestCheckMcpProjectTrustPrompt:
         Positive companion to the abort tests: their `"denied" not in ...` guards
         only mean something if the explicit-Deny path actually emits the wording.
         """
-        from deepagents_code._env_vars import DEBUG_MCP_PROJECT_TRUST
-        from deepagents_code.main import (
+        from niki_agent._env_vars import DEBUG_MCP_PROJECT_TRUST
+        from niki_agent.main import (
             _check_mcp_project_trust,
             _TrustAction,
         )
@@ -2929,15 +2901,15 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[],
             ),
             patch(
-                "deepagents_code.main._select_trust_action",
+                "niki_agent.main._select_trust_action",
                 return_value=_TrustAction.DENY,
             ),
         ):
@@ -2950,7 +2922,7 @@ class TestCheckMcpProjectTrustPrompt:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         """The prompt keeps required server details without extra explanation."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -2962,21 +2934,21 @@ class TestCheckMcpProjectTrustPrompt:
         )
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={
                     "mcpServers": {"fs": {"command": "node", "args": ["server.js"]}}
                 },
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("fs", "stdio", "node server.js")],
             ),
             patch("builtins.input", return_value="n"),
@@ -2994,7 +2966,7 @@ class TestCheckMcpProjectTrustPrompt:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         """Answering "y" allows for the session without persisting anything."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3006,21 +2978,21 @@ class TestCheckMcpProjectTrustPrompt:
         )
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={
                     "mcpServers": {"fs": {"command": "node", "args": ["server.js"]}}
                 },
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("fs", "stdio", "node server.js")],
             ),
             patch("builtins.input", return_value="y"),
@@ -3039,8 +3011,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Session trust never activates a valid server omitted from the prompt."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_dir = project_root / ".deepagents"
@@ -3060,11 +3032,11 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(lower_cfg, project_root),
                     _project_mcp_source(higher_cfg, project_root),
@@ -3087,8 +3059,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The prompt includes every server that merged runtime trust can load."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_dir = project_root / ".deepagents"
@@ -3110,11 +3082,11 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(lower, project_root),
                     _project_mcp_source(higher, project_root),
@@ -3140,8 +3112,8 @@ class TestCheckMcpProjectTrustPrompt:
         from prompt_toolkit.input import create_pipe_input
         from prompt_toolkit.output import DummyOutput
 
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         config = tmp_path / ".mcp.json"
         config.write_text(
@@ -3157,9 +3129,9 @@ class TestCheckMcpProjectTrustPrompt:
                 "prompt_toolkit.output.defaults.create_output",
                 return_value=DummyOutput(),
             ),
-            patch("deepagents_code.main._trust_picker_has_terminal", return_value=True),
+            patch("niki_agent.main._trust_picker_has_terminal", return_value=True),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(config, tmp_path)],
             ),
         ):
@@ -3175,8 +3147,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         config = tmp_path / ".mcp.json"
         config.write_text('{"mcpServers": {"docs": {"command": "echo"}}}')
@@ -3184,14 +3156,12 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", user_config)
         with (
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(config, tmp_path)],
             ),
+            patch("niki_agent.main._trust_picker_has_terminal", return_value=False),
             patch(
-                "deepagents_code.main._trust_picker_has_terminal", return_value=False
-            ),
-            patch(
-                "deepagents_code.model_config.add_disabled_project_mcp_servers",
+                "niki_agent.model_config.add_disabled_project_mcp_servers",
                 return_value=False,
             ),
             patch("builtins.input", return_value="d"),
@@ -3204,8 +3174,8 @@ class TestCheckMcpProjectTrustPrompt:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Answering "a" persists prompted names to config.toml and allows."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3225,19 +3195,19 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("reference", "stdio", "echo reference"),
@@ -3245,7 +3215,7 @@ class TestCheckMcpProjectTrustPrompt:
             ),
             patch("builtins.input", return_value="a"),
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=["docs", "reference"],
             ),
         ):
@@ -3267,7 +3237,7 @@ class TestCheckMcpProjectTrustPrompt:
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path
     ) -> None:
         """A failed remember write still allows the session but warns."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3280,23 +3250,23 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": {"fs": {"command": "node"}}},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("fs", "stdio", "node")],
             ),
             patch(
-                "deepagents_code.model_config.add_enabled_project_mcp_servers",
+                "niki_agent.model_config.add_enabled_project_mcp_servers",
                 return_value=False,
             ),
             patch("builtins.input", return_value="always"),
@@ -3313,8 +3283,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Checkbox selection persists only the chosen server, not the full list."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3334,19 +3304,19 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("reference", "stdio", "echo reference"),
@@ -3355,7 +3325,7 @@ class TestCheckMcpProjectTrustPrompt:
             # Allow -> always; checkbox-select only the 2nd server.
             patch("builtins.input", return_value="a"),
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=["reference"],
             ),
         ):
@@ -3385,8 +3355,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Selecting no servers denies rather than implicitly allowing the session."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3406,19 +3376,19 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("reference", "stdio", "echo reference"),
@@ -3426,7 +3396,7 @@ class TestCheckMcpProjectTrustPrompt:
             ),
             patch("builtins.input", return_value="a"),
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=[],
             ),
         ):
@@ -3452,8 +3422,8 @@ class TestCheckMcpProjectTrustPrompt:
         Regression guard: a cancelled picker must not be read as "remember none,
         allow this session" or as a denial that continues into the TUI.
         """
-        from deepagents_code import model_config
-        from deepagents_code.main import (
+        from niki_agent import model_config
+        from niki_agent.main import (
             _check_mcp_project_trust,
             _TrustPromptOutcome,
         )
@@ -3476,19 +3446,19 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[_project_mcp_source(project_cfg, project_root)],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("reference", "stdio", "echo reference"),
@@ -3496,7 +3466,7 @@ class TestCheckMcpProjectTrustPrompt:
             ),
             patch("builtins.input", return_value=action),
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=_TrustPromptOutcome.CANCELLED,
             ),
         ):
@@ -3510,8 +3480,8 @@ class TestCheckMcpProjectTrustPrompt:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A disabled server is never offered for — or persisted to — the allowlist."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3533,21 +3503,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("reference", "stdio", "echo reference"),
@@ -3575,8 +3545,8 @@ class TestCheckMcpProjectTrustPrompt:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         main = tmp_path / "main"
         first = tmp_path / "first"
@@ -3603,21 +3573,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("docs", "http", "https://example.test/mcp")],
             ),
             patch("builtins.input", _no_input),
@@ -3633,8 +3603,8 @@ class TestCheckMcpProjectTrustPrompt:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         main = tmp_path / "main"
         first = tmp_path / "first"
@@ -3657,21 +3627,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("docs", "stdio", "python server.py")],
             ),
             patch("builtins.input", return_value="n"),
@@ -3690,8 +3660,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Remembered approvals still skip the prompt with an env allowlist set."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3729,21 +3699,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs[/green]", "stdio[/green]", "echo [/green]"),
                     ("blocked[/red]", "http[/red]", "https://x.test/[/red]"),
@@ -3764,8 +3734,8 @@ class TestCheckMcpProjectTrustPrompt:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Pre-approved servers stay hidden when unlisted servers are prompted."""
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3790,21 +3760,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": server_configs},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[
                     ("docs", "stdio", "echo docs"),
                     ("other", "stdio", "echo other"),
@@ -3824,7 +3794,7 @@ class TestCheckMcpProjectTrustPrompt:
 
     def test_ctrl_c_returns_interrupted_outcome(self, tmp_path: Path) -> None:
         """Ctrl+C at the approval prompt cancels launch instead of denying MCP."""
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _check_mcp_project_trust,
             _TrustPromptOutcome,
         )
@@ -3839,21 +3809,21 @@ class TestCheckMcpProjectTrustPrompt:
         )
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": {"docs": {"command": "echo"}}},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("docs", "stdio", "echo docs")],
             ),
             patch("builtins.input", side_effect=KeyboardInterrupt),
@@ -3869,7 +3839,7 @@ class TestCheckMcpProjectTrustPrompt:
         servers: EOF coerces the answer to empty, which is neither yes nor
         always, so the prompt returns False.
         """
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3881,21 +3851,21 @@ class TestCheckMcpProjectTrustPrompt:
         )
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": {"docs": {"command": "echo"}}},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("docs", "stdio", "echo docs")],
             ),
             patch("builtins.input", side_effect=EOFError),
@@ -3916,8 +3886,8 @@ class TestCheckMcpProjectTrustPrompt:
         possibly persist trust) under an unknown deny list; it warns and denies,
         matching the loader's fail-closed behavior.
         """
-        from deepagents_code import model_config
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent import model_config
+        from niki_agent.main import _check_mcp_project_trust
 
         project_root = tmp_path / "proj"
         project_root.mkdir()
@@ -3938,21 +3908,21 @@ class TestCheckMcpProjectTrustPrompt:
 
         with (
             patch(
-                "deepagents_code.project_utils.ProjectContext.from_user_cwd",
+                "niki_agent.project_utils.ProjectContext.from_user_cwd",
                 return_value=project_context,
             ),
             patch(
-                "deepagents_code.mcp_tools.discover_mcp_config_sources",
+                "niki_agent.mcp_tools.discover_mcp_config_sources",
                 return_value=[
                     _project_mcp_source(project_cfg, project_context.project_root)
                 ],
             ),
             patch(
-                "deepagents_code.mcp_tools.load_merged_mcp_configs_lenient",
+                "niki_agent.mcp_tools.load_merged_mcp_configs_lenient",
                 return_value={"mcpServers": {"docs": {"command": "echo"}}},
             ),
             patch(
-                "deepagents_code.mcp_tools.extract_project_server_summaries",
+                "niki_agent.mcp_tools.extract_project_server_summaries",
                 return_value=[("docs", "stdio", "echo docs")],
             ),
             patch("builtins.input", _no_input),
@@ -3994,7 +3964,7 @@ class TestPromptYoloAcknowledgement:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Ctrl+C and Ctrl+D propagate an interrupt out of the selector."""
-        from deepagents_code.main import _prompt_yolo_acknowledgement
+        from niki_agent.main import _prompt_yolo_acknowledgement
 
         captured: dict[str, Any] = {}
 
@@ -4025,10 +3995,10 @@ class TestPromptYoloAcknowledgement:
                 raise exception
 
         monkeypatch.setattr(
-            "deepagents_code.main.sys.stdin", SimpleNamespace(isatty=lambda: True)
+            "niki_agent.main.sys.stdin", SimpleNamespace(isatty=lambda: True)
         )
         monkeypatch.setattr(
-            "deepagents_code.main.sys.stderr", SimpleNamespace(isatty=lambda: True)
+            "niki_agent.main.sys.stderr", SimpleNamespace(isatty=lambda: True)
         )
         monkeypatch.setattr(
             "prompt_toolkit.output.defaults.create_output",
@@ -4052,7 +4022,7 @@ class TestSelectProjectServersToPersist:
     def _interactive_picker_terminal(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Allow picker tests to run independently of pytest's captured streams."""
         monkeypatch.setattr(
-            "deepagents_code.main._trust_picker_has_terminal",
+            "niki_agent.main._trust_picker_has_terminal",
             lambda: True,
         )
 
@@ -4060,14 +4030,14 @@ class TestSelectProjectServersToPersist:
         """A lone prompted server is returned without asking anything."""
         from rich.console import Console
 
-        from deepagents_code.main import _select_project_servers_to_persist
+        from niki_agent.main import _select_project_servers_to_persist
 
         def _unexpected_picker(*_args: Any, **_kwargs: Any) -> list[str] | None:
             msg = "no picker expected for a single server"
             raise AssertionError(msg)
 
         with patch(
-            "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+            "niki_agent.main._run_project_mcp_server_checkbox_picker",
             _unexpected_picker,
         ):
             names = _select_project_servers_to_persist(
@@ -4087,7 +4057,7 @@ class TestSelectProjectServersToPersist:
         """The unified selector is inline and requires navigation to grant trust."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustAction,
         )
@@ -4147,7 +4117,7 @@ class TestSelectProjectServersToPersist:
         """
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustAction,
         )
@@ -4210,7 +4180,7 @@ class TestSelectProjectServersToPersist:
         """
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustAction,
         )
@@ -4272,7 +4242,7 @@ class TestSelectProjectServersToPersist:
         """Moving up once from the refresh default selects "Abort launch"."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustAction,
         )
@@ -4330,14 +4300,14 @@ class TestSelectProjectServersToPersist:
         Without this mapping the dep-floor prompt's "Abort launch" was
         indistinguishable from "continue", and the launch proceeded.
         """
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustAction,
             _TrustPromptOutcome,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda *_args, **_kwargs: _TrustAction.DENY,
         )
 
@@ -4355,7 +4325,7 @@ class TestSelectProjectServersToPersist:
         """The inline picker suppresses the stray first-character terminal cursor."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustAction,
         )
@@ -4387,7 +4357,7 @@ class TestSelectProjectServersToPersist:
         """Esc and Ctrl+D abort instead of selecting the deny action."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_trust_action_picker,
             _TrustPromptOutcome,
         )
@@ -4437,13 +4407,13 @@ class TestSelectProjectServersToPersist:
         """A CANCELLED outcome from the inline picker passes straight through."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustPromptOutcome,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda _console, **_kwargs: _TrustPromptOutcome.CANCELLED,
         )
 
@@ -4458,14 +4428,14 @@ class TestSelectProjectServersToPersist:
         """A picker's explicit abort choice produces the launch-abort outcome."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustAction,
             _TrustPromptOutcome,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda _console, **_kwargs: _TrustAction.DENY,
         )
 
@@ -4479,13 +4449,13 @@ class TestSelectProjectServersToPersist:
         """A hidden selector is not launched when stderr is not a terminal."""
         from rich.console import Console
 
-        from deepagents_code.main import _run_trust_action_picker
+        from niki_agent.main import _run_trust_action_picker
 
         monkeypatch.setattr(
-            "deepagents_code.main.sys.stdin", SimpleNamespace(isatty=lambda: True)
+            "niki_agent.main.sys.stdin", SimpleNamespace(isatty=lambda: True)
         )
         monkeypatch.setattr(
-            "deepagents_code.main.sys.stderr", SimpleNamespace(isatty=lambda: False)
+            "niki_agent.main.sys.stderr", SimpleNamespace(isatty=lambda: False)
         )
 
         result = _run_trust_action_picker(Console(stderr=True))
@@ -4500,8 +4470,8 @@ class TestSelectProjectServersToPersist:
         """Up at the first row and down at the last row wrap around."""
         from rich.console import Console
 
-        from deepagents_code.config import get_glyphs
-        from deepagents_code.main import _run_project_mcp_server_checkbox_picker
+        from niki_agent.config import get_glyphs
+        from niki_agent.main import _run_project_mcp_server_checkbox_picker
 
         cursor = get_glyphs().cursor
         captured: dict[str, Any] = {}
@@ -4560,7 +4530,7 @@ class TestSelectProjectServersToPersist:
         """Long server lists stay bounded while navigation keeps the cursor visible."""
         from rich.console import Console
 
-        from deepagents_code.main import _run_project_mcp_server_checkbox_picker
+        from niki_agent.main import _run_project_mcp_server_checkbox_picker
 
         captured: dict[str, Any] = {}
 
@@ -4610,7 +4580,7 @@ class TestSelectProjectServersToPersist:
         """
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_project_mcp_server_checkbox_picker,
             _TrustPromptOutcome,
         )
@@ -4664,7 +4634,7 @@ class TestSelectProjectServersToPersist:
         """Ctrl+C in the checkbox picker aborts the launch flow."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_project_mcp_server_checkbox_picker,
             _TrustPromptOutcome,
         )
@@ -4712,7 +4682,7 @@ class TestSelectProjectServersToPersist:
         """Ctrl+D (EOF) in the checkbox picker cancels rather than confirming."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _run_project_mcp_server_checkbox_picker,
             _TrustPromptOutcome,
         )
@@ -4745,7 +4715,7 @@ class TestSelectProjectServersToPersist:
         """A runtime failure launching the checkbox UI falls back to text input."""
         from rich.console import Console
 
-        from deepagents_code.main import _run_project_mcp_server_checkbox_picker
+        from niki_agent.main import _run_project_mcp_server_checkbox_picker
 
         class _FakeApplication:
             def __class_getitem__(cls, _item: object) -> type["_FakeApplication"]:
@@ -4778,7 +4748,7 @@ class TestSelectProjectServersToPersist:
         """A runtime failure launching the action picker falls back to text input."""
         from rich.console import Console
 
-        from deepagents_code.main import _run_trust_action_picker
+        from niki_agent.main import _run_trust_action_picker
 
         class _FakeApplication:
             def __class_getitem__(cls, _item: object) -> type["_FakeApplication"]:
@@ -4800,14 +4770,14 @@ class TestSelectProjectServersToPersist:
         """The checkbox picker decides which prompted servers are remembered."""
         from rich.console import Console
 
-        from deepagents_code.main import _select_project_servers_to_persist
+        from niki_agent.main import _select_project_servers_to_persist
 
         servers = [
             ProjectServerSummary("docs", "stdio", "a"),
             ProjectServerSummary("reference", "stdio", "b"),
         ]
         with patch(
-            "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+            "niki_agent.main._run_project_mcp_server_checkbox_picker",
             return_value=["reference"],
         ):
             names = _select_project_servers_to_persist(servers, Console(stderr=True))
@@ -4818,7 +4788,7 @@ class TestSelectProjectServersToPersist:
         """If the checkbox picker cannot run, numbers still select a subset."""
         from rich.console import Console
 
-        from deepagents_code.main import _select_project_servers_to_persist
+        from niki_agent.main import _select_project_servers_to_persist
 
         servers = [
             ProjectServerSummary("docs", "stdio", "a"),
@@ -4826,7 +4796,7 @@ class TestSelectProjectServersToPersist:
         ]
         with (
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=None,
             ),
             patch("builtins.input", return_value="2"),
@@ -4839,7 +4809,7 @@ class TestSelectProjectServersToPersist:
         """The text fallback can still remember every prompted server."""
         from rich.console import Console
 
-        from deepagents_code.main import _select_project_servers_to_persist
+        from niki_agent.main import _select_project_servers_to_persist
 
         servers = [
             ProjectServerSummary("docs", "stdio", "a"),
@@ -4847,7 +4817,7 @@ class TestSelectProjectServersToPersist:
         ]
         with (
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=None,
             ),
             patch("builtins.input", return_value="all"),
@@ -4860,7 +4830,7 @@ class TestSelectProjectServersToPersist:
         """A KeyboardInterrupt at the fallback prompt aborts the launch flow."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_project_servers_to_persist,
             _TrustPromptOutcome,
         )
@@ -4871,7 +4841,7 @@ class TestSelectProjectServersToPersist:
         ]
         with (
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=None,
             ),
             patch("builtins.input", side_effect=KeyboardInterrupt),
@@ -4884,7 +4854,7 @@ class TestSelectProjectServersToPersist:
         """Blank fallback input cancels (deny) rather than confirming nothing."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_project_servers_to_persist,
             _TrustPromptOutcome,
         )
@@ -4895,7 +4865,7 @@ class TestSelectProjectServersToPersist:
         ]
         with (
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=None,
             ),
             patch("builtins.input", return_value="   "),
@@ -4908,7 +4878,7 @@ class TestSelectProjectServersToPersist:
         """EOF (Ctrl+D) at the fallback prompt cancels, not an empty confirm."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_project_servers_to_persist,
             _TrustPromptOutcome,
         )
@@ -4919,7 +4889,7 @@ class TestSelectProjectServersToPersist:
         ]
         with (
             patch(
-                "deepagents_code.main._run_project_mcp_server_checkbox_picker",
+                "niki_agent.main._run_project_mcp_server_checkbox_picker",
                 return_value=None,
             ),
             patch("builtins.input", side_effect=EOFError),
@@ -4956,14 +4926,14 @@ class TestSelectProjectMcpTrustAction:
         """Each accepted token maps to the documented action."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustAction,
         )
 
         # Force the inline picker to defer to the text prompt.
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda *_args, **_kwargs: None,
         )
         monkeypatch.setattr("builtins.input", lambda _prompt="": token)
@@ -4983,13 +4953,13 @@ class TestSelectProjectMcpTrustAction:
         """
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustAction,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda *_args, **_kwargs: None,
         )
         monkeypatch.setattr("builtins.input", lambda _prompt="": token)
@@ -5007,13 +4977,13 @@ class TestSelectProjectMcpTrustAction:
         """Refusing the dependency-floor prompt stays an explicit choice."""
         from rich.console import Console
 
-        from deepagents_code.main import (
+        from niki_agent.main import (
             _select_trust_action,
             _TrustAction,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.main._run_trust_action_picker",
+            "niki_agent.main._run_trust_action_picker",
             lambda *_args, **_kwargs: None,
         )
         monkeypatch.setattr("builtins.input", lambda _prompt="": token)
@@ -5056,7 +5026,7 @@ class TestCheckMcpProjectTrustDedupe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """A server defined in both project configs appears once in the prompt."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         server = {
             "fs": {
@@ -5082,7 +5052,7 @@ class TestCheckMcpProjectTrustDedupe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """The higher-precedence project-root config wins for duplicate names."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         self._write_config(
             tmp_path / ".deepagents" / ".mcp.json",
@@ -5110,7 +5080,7 @@ class TestCheckMcpProjectTrustDedupe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Duplicate remote servers are deduped the same way as stdio servers."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         self._write_config(
             tmp_path / ".deepagents" / ".mcp.json",
@@ -5148,7 +5118,7 @@ class TestCheckMcpProjectTrustDedupe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Malformed project configs are skipped while valid configs still prompt."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         invalid = tmp_path / ".deepagents" / ".mcp.json"
         invalid.parent.mkdir(parents=True, exist_ok=True)
@@ -5174,7 +5144,7 @@ class TestCheckMcpProjectTrustDedupe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Different servers from different project configs are all shown."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         self._write_config(
             tmp_path / ".mcp.json",
@@ -5217,7 +5187,7 @@ class TestCheckMcpProjectTrustScopeFilter:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """A mixed source list prompts for the project server only."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         profile = tmp_path / "profile"
         project = tmp_path / "repo"
@@ -5231,7 +5201,7 @@ class TestCheckMcpProjectTrustScopeFilter:
         monkeypatch.setattr("builtins.input", lambda _prompt="": "n")
 
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[
                 DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER),
                 _project_mcp_source(project_cfg, project),
@@ -5252,14 +5222,14 @@ class TestCheckMcpProjectTrustScopeFilter:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """With nothing project-scoped there is nothing to approve."""
-        from deepagents_code.main import _check_mcp_project_trust
+        from niki_agent.main import _check_mcp_project_trust
 
         user_cfg = tmp_path / "profile" / ".mcp.json"
         self._write_config(user_cfg, {"user_srv": {"command": "uvx", "args": ["u"]}})
         monkeypatch.chdir(tmp_path)
 
         with patch(
-            "deepagents_code.mcp_tools.discover_mcp_config_sources",
+            "niki_agent.mcp_tools.discover_mcp_config_sources",
             return_value=[DiscoveredMCPConfig(user_cfg, MCPConfigScope.USER)],
         ):
             result = _check_mcp_project_trust(trust_flag=False)

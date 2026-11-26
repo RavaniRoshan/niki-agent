@@ -22,9 +22,9 @@ sources:
   - id: openwiki-source-6f5b1b7a043ee1d414708793
     resource: repo://libs/code/ARCHITECTURE.md
   - id: openwiki-source-a9eb680bb6bdae179f52a3ac
-    resource: repo://libs/code/deepagents_code/server_graph.py
+    resource: repo://libs/code/niki_agent/server_graph.py
   - id: openwiki-source-9b7dc6bc03826e98808c6a5c
-    resource: repo://libs/code/deepagents_code/tui/widgets/subagent_panel.py
+    resource: repo://libs/code/niki_agent/tui/widgets/subagent_panel.py
   - id: openwiki-source-5d8ba8d4a18a79ed18cff663
     resource: repo://libs/code/tests/unit_tests/smoke_tests/test_system_prompt.py
   - id: openwiki-source-6e1b5f814914e0803f7035eb
@@ -66,9 +66,9 @@ Use this page to find the **owner of a behavior** and its smallest useful regres
 | --- | --- | --- | --- |
 | SDK graph and default tools | `deepagents.create_deep_agent` | `libs/deepagents/deepagents/graph.py` | `libs/deepagents/tests/unit_tests/test_graph.py` |
 | SDK middleware behavior | `create_deep_agent(..., middleware=...)` | `libs/deepagents/deepagents/middleware/` | the feature's unit test plus `test_graph.py` |
-| Terminal client startup and commands | `dcode` / `deepagents-code` -> `deepagents_code:cli_main` | `libs/code/deepagents_code/main.py` and `client/` | `libs/code/tests/unit_tests/test_main.py` |
-| dcode agent construction and server workspace ownership | client -> local LangGraph server | `libs/code/deepagents_code/agent.py`, `server_graph.py` | `test_agent.py`, `test_server_graph.py` |
-| dcode TUI stream projection | Textual adapter and widgets | `libs/code/deepagents_code/tui/` | the corresponding `tests/unit_tests/tui/` test |
+| Terminal client startup and commands | `dcode` / `deepagents-code` -> `niki_agent:cli_main` | `libs/code/niki_agent/main.py` and `client/` | `libs/code/tests/unit_tests/test_main.py` |
+| dcode agent construction and server workspace ownership | client -> local LangGraph server | `libs/code/niki_agent/agent.py`, `server_graph.py` | `test_agent.py`, `test_server_graph.py` |
+| dcode TUI stream projection | Textual adapter and widgets | `libs/code/niki_agent/tui/` | the corresponding `tests/unit_tests/tui/` test |
 | Talon bootstrap and long-running coordination | `deepagents-talon` -> `deepagents_talon.__main__:main` | `__main__.py`, `host.py` | `libs/talon/tests/test_host.py`, `test_runtime.py` |
 | Talon channel policy | `ChannelAdapter` | `interfaces.py`, `channels/base.py`, provider adapter | `tests/channels/test_base.py` and provider tests |
 | Talon checkpoint, history, sandbox, MCP, and cron resources | model-host bootstrap | `checkpoint_backends.py`, `history_backends.py`, `sandbox.py`, `mcp.py`, `cron/` | resource-specific unit tests |
@@ -113,7 +113,7 @@ This construction flow is the central extension boundary: use middleware and pro
 
 ## dcode: client presentation versus server-owned execution
 
-`deepagents-code` and `dcode` both resolve to the lazily exported `deepagents_code.cli_main`. The lazy package export avoids importing command startup machinery during ordinary imports; an unresolvable Deep Agents home is converted into an actionable message and exit status 2. Command parsing and policy gates belong in `main.py`; agent composition, persistence routes, and tool/middleware policy belong in `agent.py` and server-side modules.
+`deepagents-code` and `dcode` both resolve to the lazily exported `niki_agent.cli_main`. The lazy package export avoids importing command startup machinery during ordinary imports; an unresolvable Deep Agents home is converted into an actionable message and exit status 2. Command parsing and policy gates belong in `main.py`; agent composition, persistence routes, and tool/middleware policy belong in `agent.py` and server-side modules.
 
 The dcode client and server are separate processes: the client owns terminal input, rendering, and human responses, while the server owns the agent graph, model/tool execution, streaming, checkpointing, and resume behavior. For a symptom, first identify that side of the boundary. `server_graph.py` is the neighborhood for workspace-bound runtime construction and server-scoped policy; `agent.py` is the neighborhood for composed agent behavior. Do not repair a server workspace invariant in a Textual widget.
 

@@ -10,7 +10,7 @@ import pytest
 if TYPE_CHECKING:
     from pathlib import Path
 
-from deepagents_code.tui.widgets.history import HistoryManager
+from niki_agent.tui.widgets.history import HistoryManager
 
 
 @pytest.fixture

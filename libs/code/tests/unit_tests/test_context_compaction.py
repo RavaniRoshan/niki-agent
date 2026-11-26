@@ -8,11 +8,11 @@ from typing import Any, cast
 
 from langchain_core.messages import HumanMessage
 
-from deepagents_code.goal_state_notice import (
+from niki_agent.goal_state_notice import (
     build_goal_state_notice,
     goal_state_notice_info,
 )
-from deepagents_code.goal_tools import GoalToolsMiddleware
+from niki_agent.goal_tools import GoalToolsMiddleware
 
 
 def _request_with_writer(

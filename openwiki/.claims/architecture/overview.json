@@ -129,7 +129,7 @@
           "version": "repo-file-v1:sha256:0fb5127f574feec00009b236b5963c819dc18658f2ef49b5a7d03738f195e0ae"
         },
         {
-          "resource": "repo://libs/code/deepagents_code/acp.py",
+          "resource": "repo://libs/code/niki_agent/acp.py",
           "version": "repo-file-v1:sha256:58225ca66bd453f957f32badbf7084495e931b9c4f63a01f94ad2117049bbb2f"
         }
       ]

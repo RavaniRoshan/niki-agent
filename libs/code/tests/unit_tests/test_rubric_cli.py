@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepagents_code._server_config import ServerConfig
+from niki_agent._server_config import ServerConfig
 
 
 class TestResolveRubricText:

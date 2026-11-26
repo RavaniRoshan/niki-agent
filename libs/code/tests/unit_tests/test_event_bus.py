@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from deepagents_code.event_bus import (
+from niki_agent.event_bus import (
     ExternalEvent,
     UnixSocketEventSource,
     decode_external_event,

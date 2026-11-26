@@ -1,11 +1,11 @@
 """V2 (branding) and L6 (outbound network) as executable checks.
 
-V2 is a naming discipline, so it is enforced two ways: the Niki package's own
-source must not spell an upstream name, and the committed first-run frame must
-not show one either.
+V2 is a naming discipline, so it is enforced two ways: Niki's package source
+must not spell a retired upstream name in a string literal, and the committed
+first-run frame must not show one either.
 
-L6 is a policy, so it is enforced by asserting the *defaults*: Niki's three
-network behaviors are off unless an owner opts in by name.
+L6 is a policy, so it is enforced by asserting the defaults and the owner
+opt-outs.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from deepagents_code.niki import branding, network
+from niki_agent.niki import branding, network
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,12 +35,12 @@ PACKAGE_ROOT = NIKI_ROOT.parents[1]
 SNAPSHOT_DIR = PACKAGE_ROOT / "tests" / "unit_tests" / "niki" / "__snapshots__"
 
 
-def test_version_line_names_niki_and_credits_deep_agents() -> None:
-    """`--version` must say Niki Agent and still credit what it is built on."""
+def test_version_line_names_niki() -> None:
+    """`--version` must say Niki Agent and nothing else."""
     line = branding.version_line()
     assert line.startswith("Niki Agent "), line
-    assert line.endswith(", built on Deep Agents"), line
-    assert re.match(r"^Niki Agent \d", line), f"no version number in {line!r}"
+    assert branding.VERSION_LINE_SUFFIX == ""
+    assert re.match(r"^Niki Agent \d+\.\d+\.\d+", line), f"no version in {line!r}"
 
 
 def test_product_version_never_imports_the_package() -> None:
@@ -88,16 +88,16 @@ def test_niki_source_does_not_spell_upstream_names(name: str) -> None:
     )
 
 
-def test_dcode_command_still_exists_and_is_unchanged() -> None:
-    """The fork adds `niki`; it must not have disturbed `dcode`."""
+def test_niki_is_the_primary_script_and_aliases_still_work() -> None:
+    """`niki` is primary; `dcode` and `deepagents-code` stay as deprecated aliases."""
     import tomllib
 
     pyproject = PACKAGE_ROOT / "pyproject.toml"
     scripts = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["scripts"]
 
-    assert scripts["dcode"] == "deepagents_code:cli_main"
-    assert scripts["deepagents-code"] == "deepagents_code:cli_main"
-    assert scripts["niki"] == "deepagents_code.niki.entry:niki_main"
+    assert scripts["niki"] == "niki_agent.niki.entry:niki_main"
+    assert scripts["dcode"] == "niki_agent:cli_main"
+    assert scripts["deepagents-code"] == "niki_agent:cli_main"
 
 
 @pytest.mark.parametrize(
@@ -111,12 +111,11 @@ def test_dcode_command_still_exists_and_is_unchanged() -> None:
 def test_network_matches_upstream_by_default_and_can_be_disabled(
     policy: Callable[[], bool], owner_env: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """L6: Niki matches upstream -- on by default -- with an owner opt-out.
+    """L6: Niki's network features are on by default, with an owner opt-out.
 
-    The owner chose parity over the opt-in posture this originally shipped. See
-    the module docstring in `network.py` for why the original reasoning was
-    wrong: the distribution was never renamed, so upstream's upgrade command
-    upgrades the package that provides `niki`.
+    The owner chose parity with what users expect from a terminal coding agent:
+    update checks, self-update, and remote managed config all work unless an
+    owner disables them by name.
     """
     monkeypatch.delenv(owner_env, raising=False)
     assert policy() is True, "Niki must match upstream's on-by-default posture"
@@ -130,31 +129,24 @@ def test_network_policy_never_overrides_an_explicit_owner_choice(
 ) -> None:
     """A value already in the environment is a decision, and must survive."""
     monkeypatch.delenv(network.NIKI_DISABLE_UPDATE_CHECK_ENV, raising=False)
-    monkeypatch.setenv("DEEPAGENTS_CODE_NO_UPDATE_CHECK", "0")
+    monkeypatch.setenv("NIKI_NO_UPDATE_CHECK", "0")
 
     network.apply_niki_network_policy()
 
     import os
 
-    assert os.environ["DEEPAGENTS_CODE_NO_UPDATE_CHECK"] == "0", (
+    assert os.environ["NIKI_NO_UPDATE_CHECK"] == "0", (
         "the policy overwrote an explicit owner setting; it must only supply defaults"
     )
 
 
-def test_the_upstream_install_script_is_identified_as_a_live_concern() -> None:
-    """The one network path that is still wrong for a fork.
+def test_the_install_script_is_nikis_own() -> None:
+    """The promoted install command must fetch Niki's installer, not a fork's."""
+    command = network.install_script_command()
 
-    `INSTALL_SCRIPT_COMMAND` fetches *upstream's* installer over curl. With
-    auto-update now on by default, a Niki user can be offered a script that
-    installs upstream's tooling. Asserted so the string cannot change without
-    this test noticing.
-    """
-    command = network.upstream_install_script_command()
-
-    assert "langch.in/dcode" in command, (
-        f"the upstream install script changed to {command!r}; re-check whether it "
-        "still installs upstream tooling rather than Niki"
-    )
+    assert "RavaniRoshan/niki-agent" in command, command
+    assert "langch.in/dcode" not in command, command
+    assert "install.sh" in command, command
 
 
 def test_snapshot_frames_do_not_show_the_upstream_product_name() -> None:
@@ -162,29 +154,32 @@ def test_snapshot_frames_do_not_show_the_upstream_product_name() -> None:
 
     The keymap body legitimately credits upstream ("built on Deep Agents"), the
     one attribution `branding.py` requires rather than forbids. The credit
-    wraps at narrow widths, so the phrase is stripped rather than the whole
-    sentence; a real leak still fails.
+    wraps at narrow widths, so the frame's text is joined, its whitespace
+    collapsed, and the whole credit phrase stripped; a real leak still fails.
     """
     frames = sorted(SNAPSHOT_DIR.rglob("*.raw"))
     assert frames, (
         "no committed snapshots; run the snapshot suite with --snapshot-update"
     )
 
+    def _plain(node: str) -> str:
+        # SVG stores spaces as non-breaking entities.
+        return node.replace("&#160;", " ").replace("&gt;", ">").replace("&amp;", "&")
+
+    def _collapse(text: str) -> str:
+        return re.sub(r"\s+", " ", text.replace("\u00a0", " ")).strip()
+
     offenders = []
     for frame in frames:
         text = frame.read_text(encoding="utf-8", errors="replace")
-        for node in re.findall(r">([^<>]{2,})</text>", text):
-            # SVG stores spaces as non-breaking entities.
-            plain = (
-                node.replace("&#160;", " ").replace("&gt;", ">").replace("&amp;", "&")
-            )
-            # The licence credit wraps at narrow widths, so the phrase is
-            # stripped rather than the whole sentence.
-            remainder = plain.replace("\u00a0", " ").replace(
-                branding.VERSION_LINE_SUFFIX.removeprefix(", "), ""
-            )
-            if "Deep Agents" in remainder:
-                offenders.append(f"{frame.name}: {plain!r}")
+        nodes = [_plain(node) for node in re.findall(r">([^<>]{2,})</text>", text)]
+        # Join before stripping: a narrow frame wraps the credit across text
+        # nodes, so a per-node strip cannot match it.
+        remainder = _collapse(" ".join(nodes))
+        for credit in (branding.VERSION_LINE_SUFFIX, branding.SDK_CREDIT):
+            remainder = remainder.replace(_collapse(credit.removeprefix(", ")), "")
+        if "Deep Agents" in remainder:
+            offenders.append(f"{frame.name}: {remainder!r}")
     assert not offenders, f"upstream product name visible in {offenders}"
 
 
@@ -205,9 +200,9 @@ async def test_niki_theme_is_registered_and_active() -> None:
     """V1/V13: Niki's palette must reach the running app, not just the module."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
-    from deepagents_code.niki.theme import NIKI_DARK
-    from deepagents_code.theme import get_theme_colors
+    from niki_agent.niki.app import NikiApp
+    from niki_agent.niki.theme import NIKI_DARK
+    from niki_agent.theme import get_theme_colors
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-theme")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -234,8 +229,8 @@ async def test_building_a_plain_upstream_app_does_not_inherit_the_niki_theme() -
     """
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.app import DeepAgentsApp
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.app import DeepAgentsApp
+    from niki_agent.niki.app import NikiApp
 
     async def _theme_for(cls: type[DeepAgentsApp]) -> str:
         app = cls(agent=MagicMock(), thread_id="niki-isolation")  # type: ignore[call-arg]

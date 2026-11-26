@@ -23,14 +23,14 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
 
 def _app() -> NikiApp:
     """A mounted-soon NikiApp, typed so its own attributes resolve."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp as _NikiApp
+    from niki_agent.niki.app import NikiApp as _NikiApp
 
     app = _NikiApp(agent=MagicMock(), thread_id="niki-k11")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -103,7 +103,7 @@ def test_f5_a_thread_selector_screen_exists() -> None:
     Upstream ships `ThreadSelectorScreen`; this proves it can actually be built
     rather than only that the module exists.
     """
-    from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+    from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
     assert ThreadSelectorScreen is not None
     assert hasattr(ThreadSelectorScreen, "BINDINGS"), (

@@ -10,15 +10,15 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from langchain_core.messages import BaseMessage, HumanMessage
 
-from deepagents_code.app import DeepAgentsApp, QueuedMessage, TextualSessionState
-from deepagents_code.hooks.client_lifecycle import ClientHookStopError
-from deepagents_code.hooks.models.domain import DcodeNotificationKind
-from deepagents_code.tui.modals.cold_cache import (
+from niki_agent.app import DeepAgentsApp, QueuedMessage, TextualSessionState
+from niki_agent.hooks.client_lifecycle import ClientHookStopError
+from niki_agent.hooks.models.domain import DcodeNotificationKind
+from niki_agent.tui.modals.cold_cache import (
     ColdCacheChoice,
     ColdCacheWarningScreen,
 )
-from deepagents_code.tui.widgets.messages import ErrorMessage
-from deepagents_code.tui.widgets.status import StatusBar
+from niki_agent.tui.widgets.messages import ErrorMessage
+from niki_agent.tui.widgets.status import StatusBar
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 @pytest.fixture(autouse=True)
 def checkpoint_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "deepagents_code.sessions.get_db_path", lambda: tmp_path / "sessions.db"
+        "niki_agent.sessions.get_db_path", lambda: tmp_path / "sessions.db"
     )
 
 
@@ -44,7 +44,7 @@ async def test_cache_expiring_notification_window(
     remaining: int | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     now = datetime.now(UTC)
-    monkeypatch.setattr("deepagents_code.app.datetime", MagicMock(now=lambda _: now))
+    monkeypatch.setattr("niki_agent.app.datetime", MagicMock(now=lambda _: now))
     app = DeepAgentsApp()
     app._lc_thread_id = "source"
     app._status_bar = StatusBar()
@@ -125,7 +125,7 @@ async def test_cache_expiring_timer_runs_without_prompt_or_refresh(
     monkeypatch.setattr(type(app._hooks), "notify", hook)
     monkeypatch.setattr(app, "_process_message", process)
     monkeypatch.setattr(app, "_handoff_expired_cache", handoff)
-    monkeypatch.setattr("deepagents_code.app._load_cache_prompt_mode", lambda: "off")
+    monkeypatch.setattr("niki_agent.app._load_cache_prompt_mode", lambda: "off")
     async with app.run_test(notifications=True) as pilot:
         await pilot.pause()
         _prepare(app, monkeypatch)
@@ -188,7 +188,7 @@ async def test_short_terminal_keeps_handoff_actions_visible(
     """Real app bindings must navigate visible choices without spending."""
     from textual.containers import Vertical, VerticalScroll
 
-    from deepagents_code.cold_cache import (
+    from niki_agent.cold_cache import (
         ColdCacheWarning,
         PromptCachePolicy,
         RewarmEstimate,
@@ -278,7 +278,7 @@ async def test_defers_busy_and_disabled_then_rearms_new_window(
         await pilot.pause()
         with monkeypatch.context() as config_patch:
             config_patch.setattr(
-                "deepagents_code.app._load_cache_prompt_mode",
+                "niki_agent.app._load_cache_prompt_mode",
                 lambda: "off",
             )
             app._check_cache_expiry()
@@ -304,7 +304,7 @@ async def test_expiry_defers_typing_without_consuming_submit(
 ) -> None:
     app = DeepAgentsApp()
     clock = MagicMock(return_value=100.0)
-    monkeypatch.setattr("deepagents_code.app._monotonic", clock)
+    monkeypatch.setattr("niki_agent.app._monotonic", clock)
     estimating = asyncio.Event()
     release = asyncio.Event()
     estimates = 0
@@ -386,10 +386,10 @@ async def test_handoff_failure_keeps_source_thread(
     if failure == "finish":
         remote.aupdate_state.side_effect = [None, RuntimeError("completion failed")]
     monkeypatch.setattr(
-        "deepagents_code.sessions.thread_exists", AsyncMock(return_value=True)
+        "niki_agent.sessions.thread_exists", AsyncMock(return_value=True)
     )
     monkeypatch.setattr(
-        "deepagents_code.sessions.set_thread_metadata",
+        "niki_agent.sessions.set_thread_metadata",
         AsyncMock(
             side_effect=RuntimeError("metadata failed")
             if failure == "metadata"
@@ -477,7 +477,7 @@ async def test_handoff_preserves_source_configuration_after_thread_switch(
 async def test_seeding_handoff_preserves_active_workspace(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.client.remote_client import RemoteAgent
+    from niki_agent.client.remote_client import RemoteAgent
 
     remote = RemoteAgent("http://localhost:8123")
     bindings: dict[str, str] = {}
@@ -492,7 +492,7 @@ async def test_seeding_handoff_preserves_active_workspace(
     monkeypatch.setattr(remote, "_request_workspace", AsyncMock(side_effect=bind))
     monkeypatch.setattr(remote, "aensure_thread", AsyncMock())
     monkeypatch.setattr(remote, "aupdate_state", AsyncMock())
-    monkeypatch.setattr("deepagents_code.sessions.set_thread_metadata", AsyncMock())
+    monkeypatch.setattr("niki_agent.sessions.set_thread_metadata", AsyncMock())
     # The user opened another workspace while the source was summarized.
     active_config = {"configurable": {"thread_id": "other"}}
     await remote.aswitch_workspace(active_config, "/other-project")
@@ -519,9 +519,9 @@ async def test_handoff_child_is_discoverable_and_resumable(
     from langchain.agents import create_agent
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-    from deepagents_code import sessions
-    from deepagents_code.app import DEFAULT_ASSISTANT_ID
-    from deepagents_code.resume_state import ResumeStateMiddleware
+    from niki_agent import sessions
+    from niki_agent.app import DEFAULT_ASSISTANT_ID
+    from niki_agent.resume_state import ResumeStateMiddleware
 
     app = DeepAgentsApp(assistant_id=assistant_id)
     owner = assistant_id or DEFAULT_ASSISTANT_ID
@@ -622,7 +622,7 @@ async def test_remote_handoff_activity_refreshes_resume_age(
     switch_during_sync: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Later remote requests keep an old discovery seed resumable."""
-    from deepagents_code import sessions
+    from niki_agent import sessions
 
     app = DeepAgentsApp(agent=MagicMock(), thread_id="child")
     old = (datetime.now(UTC) - timedelta(days=10)).isoformat()
@@ -688,10 +688,10 @@ async def test_handoff_with_separate_server_checkpoints(
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from deepagents_code import sessions
-    from deepagents_code.client.remote_client import RemoteAgent
-    from deepagents_code.resume_state import ResumeStateMiddleware
-    from deepagents_code.tui.widgets.thread_selector import ThreadSelectorScreen
+    from niki_agent import sessions
+    from niki_agent.client.remote_client import RemoteAgent
+    from niki_agent.resume_state import ResumeStateMiddleware
+    from niki_agent.tui.widgets.thread_selector import ThreadSelectorScreen
 
     if local_database_initialized:
         async with sessions.get_checkpointer() as checkpointer:
@@ -812,8 +812,8 @@ async def test_handoff_preserves_shell_context(
     from langchain.agents import create_agent
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-    from deepagents_code import sessions
-    from deepagents_code.resume_state import ResumeStateMiddleware
+    from niki_agent import sessions
+    from niki_agent.resume_state import ResumeStateMiddleware
 
     app = DeepAgentsApp()
     app._lc_thread_id = "source"
@@ -931,7 +931,7 @@ async def test_send_timing_restores_draft_without_spending(
     app = DeepAgentsApp()
     process = AsyncMock()
     monkeypatch.setattr(app, "_process_message", process)
-    monkeypatch.setattr("deepagents_code.app._load_cache_prompt_mode", lambda: mode)
+    monkeypatch.setattr("niki_agent.app._load_cache_prompt_mode", lambda: mode)
     async with app.run_test() as pilot:
         await pilot.pause()
         _prepare(app, monkeypatch)
@@ -979,7 +979,7 @@ async def test_handoff_honors_cost_threshold(
     expect_prompt: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepagents_code.cold_cache import (
+    from niki_agent.cold_cache import (
         ColdCacheWarning,
         PromptCachePolicy,
         RewarmEstimate,
@@ -1000,11 +1000,11 @@ async def test_handoff_honors_cost_threshold(
     )
     app = DeepAgentsApp()
     app._cold_cache_warning_threshold_usd = 10.0
-    monkeypatch.setenv("DEEPAGENTS_CODE_DEBUG_COLD_CACHE", str(int(debug_forced)))
+    monkeypatch.setenv("NIKI_DEBUG_COLD_CACHE", str(int(debug_forced)))
     process = AsyncMock()
     monkeypatch.setattr(app, "_process_message", process)
     monkeypatch.setattr(app, "_cold_cache_estimate", AsyncMock(return_value=warning))
-    monkeypatch.setattr("deepagents_code.app._load_cache_prompt_mode", lambda: mode)
+    monkeypatch.setattr("niki_agent.app._load_cache_prompt_mode", lambda: mode)
     async with app.run_test() as pilot:
         await pilot.pause()
         _prepare(app, monkeypatch)
@@ -1064,13 +1064,11 @@ async def test_handoff_distinguishes_cache_skips_from_missing_prices(
     config = MagicMock()
     config.get_effective_kwargs.return_value = {}
     config.get_base_url.return_value = None
-    monkeypatch.setattr("deepagents_code.model_config.ModelConfig.load", lambda: config)
+    monkeypatch.setattr("niki_agent.model_config.ModelConfig.load", lambda: config)
     monkeypatch.setattr(
-        "deepagents_code.model_config.is_warning_suppressed", lambda *_a: False
+        "niki_agent.model_config.is_warning_suppressed", lambda *_a: False
     )
-    monkeypatch.setattr(
-        "deepagents_code.cold_cache.estimate_rewarm_cost", lambda *_a: None
-    )
+    monkeypatch.setattr("niki_agent.cold_cache.estimate_rewarm_cost", lambda *_a: None)
     process = AsyncMock()
     monkeypatch.setattr(app, "_process_message", process)
     old = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
@@ -1144,7 +1142,7 @@ async def test_expiry_send_action_dispatches_once_in_current_thread(
     handoff = AsyncMock()
     monkeypatch.setattr(app, "_process_message", process)
     monkeypatch.setattr(app, "_handoff_expired_cache", handoff)
-    monkeypatch.setattr("deepagents_code.app._load_cache_prompt_mode", lambda: "send")
+    monkeypatch.setattr("niki_agent.app._load_cache_prompt_mode", lambda: "send")
     async with app.run_test() as pilot:
         await pilot.pause()
         _prepare(app, monkeypatch)
@@ -1326,7 +1324,7 @@ async def test_handoff_does_not_restore_draft_into_unrelated_thread(
     remote.aupdate_state = AsyncMock()
     monkeypatch.setattr(app, "_remote_agent", lambda: remote)
     monkeypatch.setattr(app, "_sync_session_cost_from_checkpoint", AsyncMock())
-    monkeypatch.setattr("deepagents_code.sessions.set_thread_metadata", AsyncMock())
+    monkeypatch.setattr("niki_agent.sessions.set_thread_metadata", AsyncMock())
     process = AsyncMock()
     monkeypatch.setattr(app, "_process_message", process)
     async with app.run_test() as pilot:
@@ -1354,8 +1352,8 @@ async def test_handoff_does_not_restore_draft_into_unrelated_thread(
 async def test_handoff_switch_cancellation_preserves_conversation(
     cancel: str, pause_at: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.app import _ThreadHistoryPayload
-    from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+    from niki_agent.app import _ThreadHistoryPayload
+    from niki_agent.tui.widgets.message_store import MessageData, MessageType
 
     app = DeepAgentsApp()
     paused = asyncio.Event()
@@ -1452,7 +1450,7 @@ async def test_unanswered_prompt_stays_without_error(
     app = DeepAgentsApp()
     handoff = AsyncMock()
     monkeypatch.setattr(app, "_handoff_expired_cache", handoff)
-    monkeypatch.setattr("deepagents_code.app._MODAL_WATCHDOG_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr("niki_agent.app._MODAL_WATCHDOG_TIMEOUT_SECONDS", 0.05)
     async with app.run_test() as pilot:
         await pilot.pause()
         _prepare(app, monkeypatch)
@@ -1474,8 +1472,8 @@ async def test_unanswered_prompt_stays_without_error(
 async def test_cold_cache_opt_out_suppresses_handoff(
     scope: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.cold_cache import COLD_CACHE_WARNING_KEY
-    from deepagents_code.model_config import suppress_warning
+    from niki_agent.cold_cache import COLD_CACHE_WARNING_KEY
+    from niki_agent.model_config import suppress_warning
 
     app = DeepAgentsApp()
     process = AsyncMock()
@@ -1501,8 +1499,8 @@ async def test_cold_cache_opt_out_suppresses_handoff(
 async def test_zero_threshold_disables_handoff_prompts(
     mode: str, submit: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.configuration.resolver import reset_config_resolver
-    from deepagents_code.model_config import DEFAULT_CONFIG_PATH
+    from niki_agent.configuration.resolver import reset_config_resolver
+    from niki_agent.model_config import DEFAULT_CONFIG_PATH
 
     DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     DEFAULT_CONFIG_PATH.write_text(
@@ -1593,7 +1591,7 @@ async def test_expiry_acknowledgment_expires_after_a_cold_request(
     dismissal: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A request without a cache hit must not inherit an earlier bypass."""
-    from deepagents_code.cold_cache import RewarmEstimate
+    from niki_agent.cold_cache import RewarmEstimate
 
     app = DeepAgentsApp()
     app._model_override = "openai:gpt-5.6"
@@ -1602,12 +1600,12 @@ async def test_expiry_acknowledgment_expires_after_a_cold_request(
     config = MagicMock()
     config.get_effective_kwargs.return_value = {}
     config.get_base_url.return_value = None
-    monkeypatch.setattr("deepagents_code.model_config.ModelConfig.load", lambda: config)
+    monkeypatch.setattr("niki_agent.model_config.ModelConfig.load", lambda: config)
     monkeypatch.setattr(
-        "deepagents_code.model_config.is_warning_suppressed", lambda *_a: False
+        "niki_agent.model_config.is_warning_suppressed", lambda *_a: False
     )
     monkeypatch.setattr(
-        "deepagents_code.cold_cache.estimate_rewarm_cost",
+        "niki_agent.cold_cache.estimate_rewarm_cost",
         lambda *_a: RewarmEstimate(cold_cost_usd=1.0, incremental_cost_usd=0.8),
     )
     if dismissal == "timeout":
@@ -1676,14 +1674,14 @@ async def test_expiry_acknowledgment_does_not_hide_identity_change(
     config = MagicMock()
     config.get_effective_kwargs.return_value = {}
     config.get_base_url.return_value = None
-    monkeypatch.setattr("deepagents_code.model_config.ModelConfig.load", lambda: config)
+    monkeypatch.setattr("niki_agent.model_config.ModelConfig.load", lambda: config)
     monkeypatch.setattr(
-        "deepagents_code.model_config.is_warning_suppressed", lambda *_a: False
+        "niki_agent.model_config.is_warning_suppressed", lambda *_a: False
     )
-    from deepagents_code.cold_cache import RewarmEstimate
+    from niki_agent.cold_cache import RewarmEstimate
 
     monkeypatch.setattr(
-        "deepagents_code.cold_cache.estimate_rewarm_cost",
+        "niki_agent.cold_cache.estimate_rewarm_cost",
         lambda *_a: RewarmEstimate(cold_cost_usd=1.0, incremental_cost_usd=0.8),
     )
     async with app.run_test() as pilot:
@@ -1713,14 +1711,14 @@ async def test_expiry_acknowledgment_does_not_hide_identity_change(
 def test_mode_resolution_rejects_unknown_values(
     line: str | None, expected: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepagents_code.app import _load_cache_prompt_mode
-    from deepagents_code.configuration.resolver import reset_config_resolver
-    from deepagents_code.model_config import DEFAULT_CONFIG_PATH
+    from niki_agent.app import _load_cache_prompt_mode
+    from niki_agent.configuration.resolver import reset_config_resolver
+    from niki_agent.model_config import DEFAULT_CONFIG_PATH
 
     DEFAULT_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     DEFAULT_CONFIG_PATH.write_text(f"[warnings]\n{line or ''}\n")
     reset_config_resolver()
-    monkeypatch.setattr("deepagents_code.app._warn_invalid_cache_prompt", MagicMock())
+    monkeypatch.setattr("niki_agent.app._warn_invalid_cache_prompt", MagicMock())
     try:
         assert _load_cache_prompt_mode() == expected
     finally:

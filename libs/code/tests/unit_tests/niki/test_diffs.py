@@ -41,7 +41,7 @@ LARGE_DIFF = "".join(f"+line {i}\n" for i in range(400))
 def _app() -> App:  # type: ignore[type-arg]
     from unittest.mock import AsyncMock, MagicMock
 
-    from deepagents_code.niki.app import NikiApp
+    from niki_agent.niki.app import NikiApp
 
     app = NikiApp(agent=MagicMock(), thread_id="niki-diff")
     app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
@@ -76,7 +76,7 @@ async def _scroll_to_end(app: App, pilot: Pilot[None]) -> None:  # type: ignore[
 
 async def test_v8_a_long_diff_is_truncated_rather_than_rendered_whole() -> None:
     """V8: a 400-line diff must not paint 400 rows into a 24-row viewport."""
-    from deepagents_code.tui.widgets.diff import compose_diff_lines
+    from niki_agent.tui.widgets.diff import compose_diff_lines
 
     app = _app()
     async with app.run_test(size=(80, 24)) as pilot:
@@ -98,7 +98,7 @@ async def test_v8_a_long_diff_is_truncated_rather_than_rendered_whole() -> None:
 
 def test_v8_niki_colours_the_diff_tokens() -> None:
     """V8: the + and - lines must actually carry Niki's semantic colours."""
-    from deepagents_code.niki.theme import NIKI_DARK
+    from niki_agent.niki.theme import NIKI_DARK
 
     assert NIKI_DARK["success"] != NIKI_DARK["error"], (
         "V8: success and error are the same colour, so a diff cannot "
@@ -109,7 +109,7 @@ def test_v8_niki_colours_the_diff_tokens() -> None:
 @pytest.mark.parametrize("token", ["error", "success"])
 def test_v8_diff_tokens_meet_the_glyph_contrast_floor(token: str) -> None:
     """V8: diff colours are UI, so they need 3:1 -- not the 4.5:1 text floor."""
-    from deepagents_code.niki.theme import NIKI_DARK, contrast_ratio
+    from niki_agent.niki.theme import NIKI_DARK, contrast_ratio
 
     for surface in ("background", "surface", "panel"):
         ratio = contrast_ratio(NIKI_DARK[token], NIKI_DARK[surface])

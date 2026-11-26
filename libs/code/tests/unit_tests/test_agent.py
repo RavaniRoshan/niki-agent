@@ -20,18 +20,19 @@ from langchain_core.messages import AIMessage
 from langgraph.errors import GraphInterrupt
 
 if TYPE_CHECKING:
-    from deepagents.backends.sandbox import SandboxBackendProtocol
     from langchain.agents.middleware.human_in_the_loop import InterruptOnConfig
     from langchain.agents.middleware.types import AgentMiddleware, AgentState
     from langchain.messages import ToolCall
     from langgraph.prebuilt.tool_node import ToolCallRequest
     from langgraph.runtime import Runtime
 
-from deepagents_code import _env_vars
-from deepagents_code._cli_context import CLIContextSchema
-from deepagents_code._paths import PATHS, get_built_in_skills_dir
-from deepagents_code._reserved_names import reserved_agent_dir_names
-from deepagents_code.agent import (
+    from niki_agent.sdk.backends.sandbox import SandboxBackendProtocol
+
+from niki_agent import _env_vars
+from niki_agent._cli_context import CLIContextSchema
+from niki_agent._paths import PATHS, get_built_in_skills_dir
+from niki_agent._reserved_names import reserved_agent_dir_names
+from niki_agent.agent import (
     _AGENT_DIR_MARKER,
     _MEMORY_READONLY_SYSTEM_PROMPT,
     DEFAULT_AGENT_NAME,
@@ -53,17 +54,17 @@ from deepagents_code.agent import (
     get_system_prompt,
     list_agents,
 )
-from deepagents_code.config import runtime_state
-from deepagents_code.configuration.interpreter import InterpreterConfig
-from deepagents_code.managed_tools import BIN_DIR
-from deepagents_code.offload import (
+from niki_agent.config import runtime_state
+from niki_agent.configuration.interpreter import InterpreterConfig
+from niki_agent.managed_tools import BIN_DIR
+from niki_agent.offload import (
     _FALLBACK_ARTIFACTS_ROOT,
     CONVERSATION_HISTORY_DIRNAME,
     _ArtifactsStorage,
     _filesystem_tool_path,
 )
-from deepagents_code.plugins.store import DEFAULT_PLUGIN_DIRNAME
-from deepagents_code.project_utils import ProjectContext
+from niki_agent.plugins.store import DEFAULT_PLUGIN_DIRNAME
+from niki_agent.project_utils import ProjectContext
 
 
 @pytest.fixture(autouse=True)
@@ -87,7 +88,7 @@ def _restore_runtime_state() -> Iterator[None]:
 @pytest.fixture(autouse=True)
 def _resolve_shell_policy_from_patched_credentials() -> Iterator[None]:
     """Translate credential mocks into the resolver-backed shell reader."""
-    import deepagents_code.agent as agent_module
+    import niki_agent.agent as agent_module
 
     def resolve() -> list[str] | None:
         return cast(
@@ -130,7 +131,7 @@ class _LoopBoundAsyncStore:
         self.error: Exception | None = None
 
     async def aget(self, namespace: tuple[str, ...], key: str) -> object:
-        from deepagents_code.approval_mode import APPROVAL_MODE_NAMESPACE
+        from niki_agent.approval_mode import APPROVAL_MODE_NAMESPACE
 
         assert namespace == APPROVAL_MODE_NAMESPACE
         assert key
@@ -175,29 +176,29 @@ def _patch_agent_paths(
 ) -> Iterator[None]:
     """Patch the free path helpers used while constructing an agent."""
     with (
-        patch("deepagents_code.agent.ensure_agent_dir", return_value=agent_dir),
+        patch("niki_agent.agent.ensure_agent_dir", return_value=agent_dir),
         patch(
-            "deepagents_code.agent.ensure_user_skills_dir",
+            "niki_agent.agent.ensure_user_skills_dir",
             return_value=skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_user_agent_skills_dir",
+            "niki_agent.agent.get_user_agent_skills_dir",
             return_value=user_agent_skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_project_skills_dir",
+            "niki_agent.agent.get_project_skills_dir",
             return_value=project_skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_project_agent_skills_dir",
+            "niki_agent.agent.get_project_agent_skills_dir",
             return_value=project_agent_skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_user_claude_skills_dir",
+            "niki_agent.agent.get_user_claude_skills_dir",
             return_value=user_claude_skills_dir,
         ),
         patch(
-            "deepagents_code.agent.get_project_claude_skills_dir",
+            "niki_agent.agent.get_project_claude_skills_dir",
             side_effect=lambda root: (
                 project_claude_skills_dir
                 if expected_project_claude_root is None
@@ -206,19 +207,19 @@ def _patch_agent_paths(
             ),
         ),
         patch(
-            "deepagents_code.agent.get_user_agent_md_path",
+            "niki_agent.agent.get_user_agent_md_path",
             return_value=agent_dir / "AGENTS.md",
         ),
         patch(
-            "deepagents_code.agent.get_project_agent_md_path",
+            "niki_agent.agent.get_project_agent_md_path",
             return_value=list(project_agent_md_paths),
         ),
         patch(
-            "deepagents_code.agent.get_user_agents_dir",
+            "niki_agent.agent.get_user_agents_dir",
             return_value=user_agents_dir,
         ),
         patch(
-            "deepagents_code.agent.get_project_agents_dir",
+            "niki_agent.agent.get_project_agents_dir",
             return_value=project_agents_dir,
         ),
     ):
@@ -237,10 +238,10 @@ def test_resolve_retry_owned_model_defers_without_credentials() -> None:
     the user has not authenticated must still let the CLI start, with the
     credential error surfacing if and when that subagent runs.
     """
-    from deepagents_code.model_config import MissingCredentialsError
+    from niki_agent.model_config import MissingCredentialsError
 
     with patch(
-        "deepagents_code.config.create_model",
+        "niki_agent.config.create_model",
         side_effect=MissingCredentialsError(
             "no creds", provider="anthropic", env_var="ANTHROPIC_API_KEY"
         ),
@@ -282,9 +283,7 @@ def test_local_conversation_history_route_is_persistent(tmp_path: Path) -> None:
     history_root = tmp_path / ".deepagents"
     model = _make_fake_chat_model()
 
-    with patch(
-        "deepagents_code.agent._offload_fallback_root", return_value=history_root
-    ):
+    with patch("niki_agent.agent._offload_fallback_root", return_value=history_root):
         _agent, backend = create_cli_agent(
             model=model,
             assistant_id="test-agent",
@@ -319,7 +318,7 @@ def test_local_large_tool_results_land_on_real_filesystem(tmp_path: Path) -> Non
     model = _make_fake_chat_model()
 
     with patch(
-        "deepagents_code.agent._artifacts_root",
+        "niki_agent.agent._artifacts_root",
         return_value=_ArtifactsStorage(root=tool_root),
     ):
         _agent, backend = create_cli_agent(
@@ -351,7 +350,7 @@ def test_fallback_artifacts_root_keeps_archive_path_resolvable(
 
     with (
         patch(
-            "deepagents_code.agent._artifacts_root",
+            "niki_agent.agent._artifacts_root",
             side_effect=[
                 _ArtifactsStorage(
                     root=_FALLBACK_ARTIFACTS_ROOT,
@@ -361,7 +360,7 @@ def test_fallback_artifacts_root_keeps_archive_path_resolvable(
             ],
         ),
         patch(
-            "deepagents_code.agent._offload_fallback_root",
+            "niki_agent.agent._offload_fallback_root",
             return_value=history_root,
         ),
     ):
@@ -467,7 +466,7 @@ async def test_ptc_authorizer_preserves_auto_review_and_live_yolo_mode() -> None
     """Auto still uses the normal classifier path; only live YOLO bypasses."""
     from langchain_core.tools import StructuredTool
 
-    from deepagents_code.approval_mode import (
+    from niki_agent.approval_mode import (
         APPROVAL_MODE_NAMESPACE,
         approval_mode_key,
         approval_mode_payload,
@@ -545,7 +544,7 @@ async def test_ptc_shell_calls_keep_the_restrictive_command_allow_list() -> None
 
 def test_should_interrupt_tool_call_prefers_live_approval_mode() -> None:
     """A live manual toggle overrides an auto-approve run-context snapshot."""
-    from deepagents_code.approval_mode import (
+    from niki_agent.approval_mode import (
         APPROVAL_MODE_NAMESPACE,
         approval_mode_key,
         approval_mode_payload,
@@ -593,7 +592,7 @@ async def test_live_approval_round_trip_flips_interrupt_decision() -> None:
     the seam catches that — a key mismatch would surface here as an unexpected
     fail-closed interrupt.
     """
-    from deepagents_code.approval_mode import approval_mode_key, awrite_approval_mode
+    from niki_agent.approval_mode import approval_mode_key, awrite_approval_mode
 
     store = _FakeStore()
 
@@ -634,7 +633,7 @@ async def test_live_approval_round_trip_flips_interrupt_decision() -> None:
 
 def test_should_interrupt_tool_call_fails_closed_when_live_mode_missing() -> None:
     """A configured but missing live mode should interrupt for safety."""
-    from deepagents_code.approval_mode import approval_mode_key
+    from niki_agent.approval_mode import approval_mode_key
 
     assert _should_interrupt_tool_call(
         _request_with_context(
@@ -646,7 +645,7 @@ def test_should_interrupt_tool_call_fails_closed_when_live_mode_missing() -> Non
 
 def test_should_interrupt_tool_call_fails_closed_without_live_mode_store() -> None:
     """A configured live-mode key with no runtime store should interrupt."""
-    from deepagents_code.approval_mode import approval_mode_key
+    from niki_agent.approval_mode import approval_mode_key
 
     assert _should_interrupt_tool_call(
         _request_with_context(
@@ -684,8 +683,8 @@ def test_genuine_async_routing_marker_bypasses_interrupt() -> None:
     actually drives a bypass, so a forged marker failing to bypass is meaningful
     rather than vacuously true.
     """
-    from deepagents_code.agent import _ASYNC_APPROVAL_ROUTING_KEY, _RoutingDecision
-    from deepagents_code.approval_mode import ApprovalMode
+    from niki_agent.agent import _ASYNC_APPROVAL_ROUTING_KEY, _RoutingDecision
+    from niki_agent.approval_mode import ApprovalMode
 
     request = _request_with_state(
         {_ASYNC_APPROVAL_ROUTING_KEY: _RoutingDecision(ApprovalMode.YOLO)},
@@ -699,7 +698,7 @@ def test_genuine_async_routing_marker_bypasses_interrupt() -> None:
     "forged",
     [
         (object(), "yolo"),  # right shape, foreign identity object
-        ("_deepagents_code_async_approval_routing", "yolo"),  # string masquerade
+        ("_niki_agent_async_approval_routing", "yolo"),  # string masquerade
         ["token", "yolo"],  # JSON list from a checkpoint round-trip
         {"mode": "yolo"},  # dict payload
         "yolo",  # bare string
@@ -713,7 +712,7 @@ def test_forged_async_routing_marker_cannot_bypass_interrupt(forged: object) -> 
     deserialized graph input can reconstruct. Any other value must be ignored so
     the predicate falls through to context/Store resolution (Manual here).
     """
-    from deepagents_code.agent import _ASYNC_APPROVAL_ROUTING_KEY
+    from niki_agent.agent import _ASYNC_APPROVAL_ROUTING_KEY
 
     request = _request_with_state(
         {_ASYNC_APPROVAL_ROUTING_KEY: forged},
@@ -742,7 +741,7 @@ def test_malformed_live_key_fails_closed_ignoring_legacy_auto(
     (which the pre-typed-mode path would otherwise have honored) and interrupt,
     surfacing the anomaly rather than silently degrading.
     """
-    with caplog.at_level("WARNING", logger="deepagents_code.agent"):
+    with caplog.at_level("WARNING", logger="niki_agent.agent"):
         assert _should_interrupt_tool_call(
             _request_with_context(context, store=_FakeStore())
         )
@@ -756,7 +755,7 @@ def test_sync_live_auto_record_respects_classifier_eligibility() -> None:
     is the one place the sync predicate resolves `ApprovalMode.AUTO` from a live
     Store record and branches on `auto_mode_enabled`.
     """
-    from deepagents_code.approval_mode import (
+    from niki_agent.approval_mode import (
         APPROVAL_MODE_NAMESPACE,
         ApprovalMode,
         approval_mode_key,
@@ -778,7 +777,7 @@ def test_sync_live_auto_record_respects_classifier_eligibility() -> None:
 
 def test_interrupt_predicate_binds_auto_eligibility() -> None:
     """`_interrupt_predicate` threads its eligibility into the shared predicate."""
-    from deepagents_code.approval_mode import (
+    from niki_agent.approval_mode import (
         APPROVAL_MODE_NAMESPACE,
         ApprovalMode,
         approval_mode_key,
@@ -832,7 +831,7 @@ def test_should_interrupt_tool_call_warns_on_unexpected_context_shape(
     (likely an SDK change); fail closed but surface it so a silently-degraded
     auto-approve is observable instead of looking like a feature that "broke".
     """
-    with caplog.at_level("WARNING", logger="deepagents_code.agent"):
+    with caplog.at_level("WARNING", logger="niki_agent.agent"):
         assert _should_interrupt_tool_call(_request_with_context("garbage"))
         assert _should_interrupt_tool_call(
             _request_with_context(SimpleNamespace(auto_approve=True))
@@ -841,7 +840,7 @@ def test_should_interrupt_tool_call_warns_on_unexpected_context_shape(
     assert "unexpected context type" in caplog.text
     # A legitimate absent context must stay silent — not every default is an anomaly.
     caplog.clear()
-    with caplog.at_level("WARNING", logger="deepagents_code.agent"):
+    with caplog.at_level("WARNING", logger="niki_agent.agent"):
         assert _should_interrupt_tool_call(_request_with_context(None))
     assert "unexpected context type" not in caplog.text
 
@@ -851,7 +850,7 @@ def _async_hitl_runtime(
     *,
     thread_id: str = "thread-1",
 ) -> SimpleNamespace:
-    from deepagents_code.approval_mode import approval_mode_key
+    from niki_agent.approval_mode import approval_mode_key
 
     return SimpleNamespace(
         context={
@@ -1035,7 +1034,7 @@ async def test_async_hitl_legacy_auto_approve_bypasses_without_store_read() -> N
 
 async def test_async_hitl_mismatched_key_fails_closed_without_store_read() -> None:
     """A thread-mismatched key interrupts without consulting the async Store."""
-    from deepagents_code.approval_mode import approval_mode_key
+    from niki_agent.approval_mode import approval_mode_key
 
     store = _LoopBoundAsyncStore({"mode": "auto"})
     middleware = AsyncApprovalHITLMiddleware(_add_interrupt_on())
@@ -1063,7 +1062,7 @@ async def test_async_hitl_mismatched_key_fails_closed_without_store_read() -> No
 
 def test_mismatched_live_key_cannot_fall_back_to_legacy_yolo() -> None:
     """A mismatched control key fails closed despite a legacy true snapshot."""
-    from deepagents_code.approval_mode import approval_mode_key
+    from niki_agent.approval_mode import approval_mode_key
 
     assert _should_interrupt_tool_call(
         _request_with_context(
@@ -1086,7 +1085,7 @@ def test_get_context_preserves_compaction_fields_from_dict() -> None:
     `profile_overrides`/`model_context_limit` (which `/offload` reads via the
     compaction middleware) are not silently dropped on that path.
     """
-    from deepagents_code.configurable_model import _get_context
+    from niki_agent.configurable_model import _get_context
 
     ctx = {
         "model": "anthropic:claude-haiku-4-5-20251001",
@@ -1166,7 +1165,7 @@ def test_format_execute_description_prefers_workspace_binding(
     server_context = ProjectContext(user_cwd=Path("/workspace/server"))
 
     with patch(
-        "deepagents_code.agent.get_server_project_context",
+        "niki_agent.agent.get_server_project_context",
         return_value=server_context,
     ):
         description = _format_execute_description(
@@ -1199,7 +1198,7 @@ def test_format_execute_description_without_workspace_uses_process_cwd(
     """With neither a workspace nor a server context, the process CWD is shown."""
     monkeypatch.chdir(tmp_path)
 
-    with patch("deepagents_code.agent.get_server_project_context", return_value=None):
+    with patch("niki_agent.agent.get_server_project_context", return_value=None):
         description = _format_execute_description(
             _EXECUTE_TOOL_CALL, cast("AgentState[Any]", None), _execute_runtime({})
         )
@@ -1240,10 +1239,10 @@ def test_format_execute_description_falls_back_on_malformed_workspace(
 
     with (
         patch(
-            "deepagents_code.agent.get_server_project_context",
+            "niki_agent.agent.get_server_project_context",
             return_value=server_context,
         ),
-        caplog.at_level(logging.WARNING, logger="deepagents_code.agent"),
+        caplog.at_level(logging.WARNING, logger="niki_agent.agent"),
     ):
         description = _format_execute_description(
             _EXECUTE_TOOL_CALL, cast("AgentState[Any]", None), _execute_runtime(context)
@@ -1292,7 +1291,7 @@ class TestWorkspacePromptCredentials:
 
     def test_model_result_override_controls_identity(self) -> None:
         """Workspace model metadata does not depend on global runtime state."""
-        from deepagents_code.config import ModelResult
+        from niki_agent.config import ModelResult
 
         workspace_model = ModelResult(
             model=Mock(),
@@ -1330,7 +1329,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = 200000
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Model Identity" in prompt
@@ -1346,7 +1345,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = 200000
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Model Identity" not in prompt
@@ -1357,7 +1356,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_name = None
         mock_settings.has_tavily = False
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         expected = PATHS.display(PATHS.profile.agent_skills_dir("test-agent"))
@@ -1373,7 +1372,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = 128000
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Model Identity" in prompt
@@ -1389,7 +1388,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Model Identity" in prompt
@@ -1405,7 +1404,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Model Identity" in prompt
@@ -1423,7 +1422,7 @@ class TestGetSystemPromptModelIdentity:
         )
         runtime_state.model_context_limit = 64000
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "Audio, image, pdf, and video input may not be available" in prompt
@@ -1436,7 +1435,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset({"audio"})
         runtime_state.model_context_limit = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "Audio input may not be available" in prompt
@@ -1449,7 +1448,7 @@ class TestGetSystemPromptModelIdentity:
         runtime_state.model_unsupported_modalities = frozenset()
         runtime_state.model_context_limit = 200000
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "may not be available" not in prompt
@@ -1463,7 +1462,7 @@ class TestGetSystemPromptWebSearch:
         runtime_state.model_name = None
         mock_settings.has_tavily = False
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Web Search Tool Usage" not in prompt
@@ -1474,7 +1473,7 @@ class TestGetSystemPromptWebSearch:
         runtime_state.model_name = None
         mock_settings.has_tavily = True
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "### Web Search Tool Usage" in prompt
@@ -1488,7 +1487,7 @@ class TestGetSystemPromptWebSearch:
         runtime_state.model_name = None
         mock_settings.has_tavily = True
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert (
@@ -1508,7 +1507,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=True)
 
         assert "interactive TUI" in prompt
@@ -1524,7 +1523,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert "non-interactive" in prompt
@@ -1534,7 +1533,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert "## Clarifying Requests" not in prompt
@@ -1577,7 +1576,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert "shell commands may be rejected" in prompt
@@ -1591,7 +1590,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert "Do NOT ask clarifying questions" in prompt
@@ -1601,7 +1600,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         assert "non-interactive command variants" in prompt
@@ -1611,7 +1610,7 @@ class TestGetSystemPromptNonInteractive:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "interactive TUI" in prompt
@@ -1626,7 +1625,7 @@ class TestGetSystemPromptNonInteractive:
         runtime_state.model_name = None
 
         for interactive in (True, False):
-            with patch("deepagents_code.agent.credentials", mock_settings):
+            with patch("niki_agent.agent.credentials", mock_settings):
                 prompt = get_system_prompt("test-agent", interactive=interactive)
 
             assert "Todo List Management" not in prompt
@@ -1644,8 +1643,8 @@ class TestGetSystemPromptCwdOSError:
         runtime_state.model_name = None
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.Path.cwd", side_effect=OSError("deleted")),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.Path.cwd", side_effect=OSError("deleted")),
         ):
             prompt = get_system_prompt("test-agent")
 
@@ -1659,7 +1658,7 @@ class TestGetSystemPromptSandbox:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", sandbox_type="modal")
 
         assert "do NOT have access to the user's local filesystem" in prompt
@@ -1668,7 +1667,7 @@ class TestGetSystemPromptSandbox:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", sandbox_type="modal")
 
         assert "tools run on the user's machine" not in prompt
@@ -1677,7 +1676,7 @@ class TestGetSystemPromptSandbox:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", sandbox_type="modal")
 
         assert "/workspace" in prompt
@@ -1687,7 +1686,7 @@ class TestGetSystemPromptSandbox:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", sandbox_type="daytona")
 
         assert "subagents" in prompt
@@ -1697,7 +1696,7 @@ class TestGetSystemPromptSandbox:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "do NOT have access to the user's local filesystem" not in prompt
@@ -1711,7 +1710,7 @@ class TestGetSystemPromptFilesystemTools:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt(
                 "test-agent",
                 fs_tools=["read_file", "execute"],
@@ -1725,7 +1724,7 @@ class TestGetSystemPromptFilesystemTools:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt(
                 "test-agent",
                 fs_tools=["read_file", "edit_file"],
@@ -1739,7 +1738,7 @@ class TestGetSystemPromptFilesystemTools:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent")
 
         assert "`edit_file` over" in prompt
@@ -1753,7 +1752,7 @@ class TestGetSystemPromptPlaceholderValidation:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=True)
 
         # No raw {placeholder} patterns should remain
@@ -1765,7 +1764,7 @@ class TestGetSystemPromptPlaceholderValidation:
         mock_settings = Mock()
         runtime_state.model_name = None
 
-        with patch("deepagents_code.agent.credentials", mock_settings):
+        with patch("niki_agent.agent.credentials", mock_settings):
             prompt = get_system_prompt("test-agent", interactive=False)
 
         import re
@@ -1785,10 +1784,10 @@ class TestCreateCliAgentInteractiveForwarding:
 
         Both the env var and `config.toml` are neutralized: `create_cli_agent`
         consults the real resolver, so a developer with an exported
-        `DEEPAGENTS_CODE_RECURSION_LIMIT` would otherwise redden this test.
+        `NIKI_RECURSION_LIMIT` would otherwise redden this test.
         """
-        from deepagents_code import model_config
-        from deepagents_code.configuration import service
+        from niki_agent import model_config
+        from niki_agent.configuration import service
 
         monkeypatch.delenv(_env_vars.RECURSION_LIMIT, raising=False)
         monkeypatch.delenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", raising=False)
@@ -1802,9 +1801,7 @@ class TestCreateCliAgentInteractiveForwarding:
         mock_agent = Mock()
 
         try:
-            with patch(
-                "deepagents_code.agent.create_deep_agent", return_value=mock_agent
-            ):
+            with patch("niki_agent.agent.create_deep_agent", return_value=mock_agent):
                 agent, _ = create_cli_agent(
                     model=model,
                     assistant_id="test",
@@ -1827,8 +1824,8 @@ class TestCreateCliAgentInteractiveForwarding:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The upstream default replaces the SDK's bound fallback limit."""
-        from deepagents_code import model_config
-        from deepagents_code.configuration import service
+        from niki_agent import model_config
+        from niki_agent.configuration import service
 
         monkeypatch.delenv(_env_vars.RECURSION_LIMIT, raising=False)
         monkeypatch.setenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "12000")
@@ -1847,9 +1844,7 @@ class TestCreateCliAgentInteractiveForwarding:
         configured = Mock()
         mock_agent.copy.return_value = configured
         try:
-            with patch(
-                "deepagents_code.agent.create_deep_agent", return_value=mock_agent
-            ):
+            with patch("niki_agent.agent.create_deep_agent", return_value=mock_agent):
                 create_cli_agent(
                     model=_make_fake_chat_model(),
                     assistant_id="test",
@@ -1883,7 +1878,7 @@ class TestCreateCliAgentInteractiveForwarding:
         configured = Mock()
         mock_agent.copy.return_value = configured
 
-        with patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent):
+        with patch("niki_agent.agent.create_deep_agent", return_value=mock_agent):
             agent, _ = create_cli_agent(
                 model=model,
                 assistant_id="test",
@@ -1927,15 +1922,15 @@ class TestCreateCliAgentInteractiveForwarding:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
-            patch("deepagents_code.agent.get_system_prompt") as mock_get_prompt,
+            patch("niki_agent.agent.get_system_prompt") as mock_get_prompt,
         ):
             create_cli_agent(
                 model="fake-model",
@@ -1971,7 +1966,7 @@ class TestListAgents:
         (other_dir / "AGENTS.md").touch()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         output: list[str] = []
 
@@ -1979,12 +1974,12 @@ class TestListAgents:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch(
-                "deepagents_code.agent.user_deepagents_dir",
+                "niki_agent.agent.user_niki_dir",
                 return_value=agents_dir,
             ),
-            patch("deepagents_code.agent.console") as mock_console,
+            patch("niki_agent.agent.console") as mock_console,
         ):
             mock_console.print = capture_print
             list_agents()
@@ -2012,7 +2007,7 @@ class TestListAgents:
         (custom_dir / "AGENTS.md").touch()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         output: list[str] = []
 
@@ -2020,8 +2015,8 @@ class TestListAgents:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.console") as mock_console,
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.console") as mock_console,
         ):
             mock_console.print = capture_print
             list_agents()
@@ -2053,13 +2048,13 @@ class TestListAgentsJson:
         (agents_dir / "not-an-agent").mkdir()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         buf = StringIO()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch(
-                "deepagents_code.agent.user_deepagents_dir",
+                "niki_agent.agent.user_niki_dir",
                 return_value=agents_dir,
             ),
             patch("sys.stdout", buf),
@@ -2089,13 +2084,13 @@ class TestListAgentsJson:
         agents_dir.mkdir()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         buf = StringIO()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch(
-                "deepagents_code.agent.user_deepagents_dir",
+                "niki_agent.agent.user_niki_dir",
                 return_value=agents_dir,
             ),
             patch("sys.stdout", buf),
@@ -2118,13 +2113,13 @@ class TestListAgentsJson:
         (agents_dir / ".state" / "sessions.db").touch()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         buf = StringIO()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch(
-                "deepagents_code.agent.user_deepagents_dir",
+                "niki_agent.agent.user_niki_dir",
                 return_value=agents_dir,
             ),
             patch("sys.stdout", buf),
@@ -2146,7 +2141,7 @@ class TestListAgentsJson:
         (agents_dir / ".state" / "sessions.db").touch()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         output: list[str] = []
 
@@ -2154,8 +2149,8 @@ class TestListAgentsJson:
             output.append(" ".join(str(a) for a in args))
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.console") as mock_console,
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.console") as mock_console,
         ):
             mock_console.print = capture_print
             list_agents()
@@ -2176,14 +2171,14 @@ class TestResetAgentJson:
         agents_dir.mkdir()
 
         mock_settings = Mock()
-        mock_settings.user_deepagents_dir = agents_dir
+        mock_settings.user_niki_dir = agents_dir
 
         buf = StringIO()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch("sys.stdout", buf),
         ):
-            from deepagents_code.agent import reset_agent
+            from niki_agent.agent import reset_agent
 
             reset_agent("coder", output_format="json")
 
@@ -2255,7 +2250,7 @@ class TestCreateCliAgentSkillsSources:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=skills_dir,
@@ -2266,11 +2261,11 @@ class TestCreateCliAgentSkillsSources:
                 project_claude_skills_dir=project_claude_skills_dir,
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -2286,9 +2281,9 @@ class TestCreateCliAgentSkillsSources:
         sources = captured_sources[0]
         assert sources == [
             (str(built_in_dir), "Built-in"),
-            (str(skills_dir), "User Deepagents"),
+            (str(skills_dir), "User Niki"),
             (str(user_agent_skills_dir), "User Agents"),
-            (str(project_skills_dir), "Project Deepagents"),
+            (str(project_skills_dir), "Project Niki"),
             (str(project_agent_skills_dir), "Project Agents"),
             (str(tmp_path / "user-claude-skills"), "User Claude"),
             (str(tmp_path / "project-claude-skills"), "Project Claude"),
@@ -2299,7 +2294,7 @@ class TestCreateCliAgentSkillsSources:
         # a regression that drops labels back to leaf-only derivation
         # (which would collapse user- vs project-scoped `.claude/skills`
         # and `.agents/skills` / `.deepagents/skills` directories).
-        from deepagents.middleware.skills import (
+        from niki_agent.sdk.middleware.skills import (
             SkillsMiddleware as RealSkillsMiddleware,
         )
 
@@ -2310,9 +2305,9 @@ class TestCreateCliAgentSkillsSources:
         rendered = real_middleware._format_skills_locations()
         for expected in (
             "**Built-in Skills**:",
-            "**User Deepagents Skills**:",
+            "**User Niki Skills**:",
             "**User Agents Skills**:",
-            "**Project Deepagents Skills**:",
+            "**Project Niki Skills**:",
             "**Project Agents Skills**:",
             "**User Claude Skills**:",
             "**Project Claude Skills**:",
@@ -2357,17 +2352,17 @@ class TestCreateCliAgentSkillsSources:
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=skills_dir,
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=_make_fake_chat_model(),
             ),
         ):
@@ -2382,7 +2377,7 @@ class TestCreateCliAgentSkillsSources:
         assert captured_sources == [
             [
                 (str(get_built_in_skills_dir()), "Built-in"),
-                (str(skills_dir), "User Deepagents"),
+                (str(skills_dir), "User Niki"),
             ]
         ]
 
@@ -2431,21 +2426,21 @@ class TestCreateCliAgentMemorySources:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=skills_dir,
                 project_agent_md_paths=(project_inner, project_root),
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware", FakeMemoryMiddleware),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware", FakeMemoryMiddleware),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -2501,20 +2496,20 @@ class TestCreateCliAgentMemorySources:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=skills_dir,
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware", FakeMemoryMiddleware),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware", FakeMemoryMiddleware),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -2575,15 +2570,15 @@ class TestCreateCliAgentMemoryAutoSave:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware", FakeMemoryMiddleware),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware", FakeMemoryMiddleware),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -2682,7 +2677,7 @@ class TestCreateCliAgentProjectContext:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=user_skills_dir,
@@ -2691,11 +2686,11 @@ class TestCreateCliAgentProjectContext:
                 expected_project_claude_root=project_root,
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.list_subagents", return_value=[]) as mock_list,
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
-            patch("deepagents._models.init_chat_model", return_value=fake_model),
+            patch("niki_agent.agent.PluginSkillsMiddleware", FakeSkillsMiddleware),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.list_subagents", return_value=[]) as mock_list,
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.sdk._models.init_chat_model", return_value=fake_model),
         ):
             create_cli_agent(
                 model="fake-model",
@@ -2769,16 +2764,16 @@ class TestCreateCliAgentProjectContext:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             _patch_agent_paths(
                 agent_dir=agent_dir,
                 skills_dir=user_skills_dir,
                 user_agents_dir=tmp_path / "agents",
             ),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware", FakeMemoryMiddleware),
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
-            patch("deepagents._models.init_chat_model", return_value=fake_model),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware", FakeMemoryMiddleware),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.sdk._models.init_chat_model", return_value=fake_model),
         ):
             create_cli_agent(
                 model="fake-model",
@@ -2803,7 +2798,7 @@ class TestCreateCliAgentProjectContext:
     ) -> tuple[Mock, Path, Mock]:
         """Build a shell-enabled CLI agent and return its shell/context mocks.
 
-        The agent's `deepagents-code` override is placed in `os.environ` so the
+        The agent's `niki-agent` override is placed in `os.environ` so the
         returned `call_args` reflect how the user's original `LANGSMITH_PROJECT`
         is restored or dropped for shell commands.
 
@@ -2843,11 +2838,11 @@ class TestCreateCliAgentProjectContext:
         mock_agent.with_config.return_value = mock_agent
         mock_backend = Mock()
         mock_backend.execute = Mock()
-        monkeypatch.setenv("LANGSMITH_PROJECT", "deepagents-code")
+        monkeypatch.setenv("LANGSMITH_PROJECT", "niki-agent")
         if "DEEPAGENTS_USER_LANGSMITH_ENV" not in os.environ:
             import json
 
-            import deepagents_code.config as config_mod
+            import niki_agent.config as config_mod
 
             values = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
             values["LANGSMITH_PROJECT"] = user_langchain_project
@@ -2858,15 +2853,15 @@ class TestCreateCliAgentProjectContext:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.LocalContextMiddleware") as mock_context,
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.LocalContextMiddleware") as mock_context,
             patch(
-                "deepagents_code.agent.LocalShellBackend", return_value=mock_backend
+                "niki_agent.agent.LocalShellBackend", return_value=mock_backend
             ) as mock_shell,
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
-            patch("deepagents._models.init_chat_model", return_value=fake_model),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.sdk._models.init_chat_model", return_value=fake_model),
         ):
             create_cli_agent(
                 model="fake-model",
@@ -2895,11 +2890,11 @@ class TestCreateCliAgentProjectContext:
         mock_settings = Mock(project_root=project_root, user_langchain_project=None)
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.LocalShellBackend") as backend,
-            patch("deepagents_code.agent.create_deep_agent") as create,
-            patch("deepagents._models.init_chat_model", return_value=fake_model),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.LocalShellBackend") as backend,
+            patch("niki_agent.agent.create_deep_agent") as create,
+            patch("niki_agent.sdk._models.init_chat_model", return_value=fake_model),
         ):
             create.return_value.with_config.return_value = create.return_value
             create_cli_agent(
@@ -2922,7 +2917,7 @@ class TestCreateCliAgentProjectContext:
         """Shell backend root follows the cwd; agent override is dropped.
 
         With no user `LANGSMITH_PROJECT` (`user_langchain_project is None`),
-        the agent's `deepagents-code` override must not leak into the shell
+        the agent's `niki-agent` override must not leak into the shell
         env — it is popped so the user's code does not trace into the agent's
         project.
         """
@@ -2974,7 +2969,7 @@ class TestCreateCliAgentProjectContext:
         """Prompt context follows the carrier instead of the agent snapshot."""
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         launch = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
         launch["LANGSMITH_PROJECT"] = "user-project"
@@ -2996,12 +2991,12 @@ class TestCreateCliAgentProjectContext:
         """The local shell gets user selectors without agent-only credentials."""
         import json
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original_done = config_mod._bootstrap_state.done
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_agent_override")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://agent.example.com")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "prefixed-key")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
         # Give the two mechanisms different values, so neither one alone can
         # satisfy the assertions below. `LANGSMITH_PROFILE` comes from the
         # launch shell and must win over the project `.env`;
@@ -3030,7 +3025,7 @@ class TestCreateCliAgentProjectContext:
 
         assert "LANGSMITH_API_KEY" not in env
         assert "LANGSMITH_ENDPOINT" not in env
-        assert "DEEPAGENTS_CODE_LANGSMITH_API_KEY" not in env
+        assert "NIKI_LANGSMITH_API_KEY" not in env
         assert config_mod._USER_LANGSMITH_ENV_CARRIER not in env
         assert env["LANGSMITH_PROFILE"] == "oauth"
         assert env["LANGSMITH_CONFIG_FILE"] == "/tmp/langsmith.json"
@@ -3039,7 +3034,7 @@ class TestCreateCliAgentProjectContext:
         self, tmp_path: Path
     ) -> None:
         """Filesystem backend root should follow the explicit working directory."""
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         user_cwd = tmp_path / "project" / "src"
         user_cwd.mkdir(parents=True)
@@ -3069,11 +3064,11 @@ class TestCreateCliAgentProjectContext:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.create_deep_agent", return_value=mock_agent),
-            patch("deepagents._models.init_chat_model", return_value=fake_model),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.create_deep_agent", return_value=mock_agent),
+            patch("niki_agent.sdk._models.init_chat_model", return_value=fake_model),
         ):
             _, composite_backend = create_cli_agent(
                 model="fake-model",
@@ -3124,13 +3119,13 @@ class TestEnableAskUser:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
+            patch("niki_agent.agent.credentials", mock_settings),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 side_effect=capture,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3261,7 +3256,7 @@ class TestShellAllowListMiddleware:
 
     def test_allows_approved_shell_command_sync(self) -> None:
         """Approved shell commands pass through in synchronous contexts."""
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3278,7 +3273,7 @@ class TestShellAllowListMiddleware:
 
     def test_allows_non_shell_tools_sync(self) -> None:
         """Non-shell tools pass through unconditionally in synchronous contexts."""
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3293,7 +3288,7 @@ class TestShellAllowListMiddleware:
         """Non-shell tools pass through unconditionally."""
         from unittest.mock import AsyncMock
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3308,7 +3303,7 @@ class TestShellAllowListMiddleware:
         """Shell commands in the allow-list pass through to the handler."""
         from unittest.mock import AsyncMock
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls", "cat"])
         request = Mock()
@@ -3329,7 +3324,7 @@ class TestShellAllowListMiddleware:
 
         from langchain_core.messages import ToolMessage
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls", "cat"])
         request = Mock()
@@ -3352,7 +3347,7 @@ class TestShellAllowListMiddleware:
         """Disallowed shell commands are rejected in synchronous contexts."""
         from langchain_core.messages import ToolMessage
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls", "cat"])
         request = Mock()
@@ -3375,7 +3370,7 @@ class TestShellAllowListMiddleware:
 
         from langchain_core.messages import ToolMessage
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3393,7 +3388,7 @@ class TestShellAllowListMiddleware:
 
         from langchain_core.messages import ToolMessage
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3411,7 +3406,7 @@ class TestShellAllowListMiddleware:
 
         from langchain_core.messages import ToolMessage
 
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         middleware = ShellAllowListMiddleware(allow_list=["ls"])
         request = Mock()
@@ -3425,8 +3420,8 @@ class TestShellAllowListMiddleware:
 
     def test_rejects_shell_allow_all(self) -> None:
         """Constructor rejects SHELL_ALLOW_ALL sentinel."""
-        from deepagents_code.agent import ShellAllowListMiddleware
-        from deepagents_code.config import SHELL_ALLOW_ALL
+        from niki_agent.agent import ShellAllowListMiddleware
+        from niki_agent.config import SHELL_ALLOW_ALL
 
         with pytest.raises(TypeError, match="SHELL_ALLOW_ALL"):
             ShellAllowListMiddleware(allow_list=SHELL_ALLOW_ALL)
@@ -3464,7 +3459,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """Middleware is added and `interrupt_on={}` with interrupt_shell_only."""
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
 
@@ -3473,15 +3468,15 @@ class TestCreateCliAgentShellMiddlewareWiring:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3503,7 +3498,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """When `auto_approve=True`, `interrupt_shell_only` has no effect."""
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
 
@@ -3512,15 +3507,15 @@ class TestCreateCliAgentShellMiddlewareWiring:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3543,7 +3538,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """Restrictive shell mode must cover delegated subagents too."""
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3558,19 +3553,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3601,7 +3596,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The environment flag defaults on and accepts a false opt-out."""
-        from deepagents_code._env_vars import FORKED_SUBAGENTS
+        from niki_agent._env_vars import FORKED_SUBAGENTS
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3609,16 +3604,16 @@ class TestCreateCliAgentShellMiddlewareWiring:
         fake_model = _make_fake_chat_model()
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.list_subagents", return_value=[]),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.list_subagents", return_value=[]),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3658,8 +3653,8 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """User-defined general-purpose subagent is not duplicated or rewritten."""
-        from deepagents_code._env_vars import FORKED_SUBAGENTS
-        from deepagents_code.agent import ShellAllowListMiddleware
+        from niki_agent._env_vars import FORKED_SUBAGENTS
+        from niki_agent.agent import ShellAllowListMiddleware
 
         monkeypatch.delenv(FORKED_SUBAGENTS, raising=False)
         mock_settings = self._build_mock_settings(tmp_path)
@@ -3675,19 +3670,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3712,8 +3707,8 @@ class TestCreateCliAgentShellMiddlewareWiring:
 
     def test_shell_allow_all_skips_subagent_middleware(self, tmp_path: Path) -> None:
         """`SHELL_ALLOW_ALL` sentinel should not inject middleware on subagents."""
-        from deepagents_code.agent import ShellAllowListMiddleware
-        from deepagents_code.config import SHELL_ALLOW_ALL
+        from niki_agent.agent import ShellAllowListMiddleware
+        from niki_agent.config import SHELL_ALLOW_ALL
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_settings._test_shell_allow_list = SHELL_ALLOW_ALL
@@ -3729,19 +3724,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3766,8 +3761,8 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """Runtime model switches should reach subagents without explicit models."""
-        from deepagents_code.agent import ShellAllowListMiddleware
-        from deepagents_code.configurable_model import ConfigurableModelMiddleware
+        from niki_agent.agent import ShellAllowListMiddleware
+        from niki_agent.configurable_model import ConfigurableModelMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3782,19 +3777,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3827,7 +3822,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """Subagents share the disk backend, so they get the managed-block guard."""
-        from deepagents_code.memory_guard import ManagedMemoryGuardMiddleware
+        from niki_agent.memory_guard import ManagedMemoryGuardMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3842,19 +3837,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3880,7 +3875,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """With memory off there is no managed block, so no guard is added."""
-        from deepagents_code.memory_guard import ManagedMemoryGuardMiddleware
+        from niki_agent.memory_guard import ManagedMemoryGuardMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3895,19 +3890,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3930,7 +3925,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """An empty `model:` spec should inherit the runtime model, not pin `""`."""
-        from deepagents_code.configurable_model import ConfigurableModelMiddleware
+        from niki_agent.configurable_model import ConfigurableModelMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3945,19 +3940,19 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -3984,7 +3979,7 @@ class TestCreateCliAgentShellMiddlewareWiring:
         self, tmp_path: Path
     ) -> None:
         """Explicit subagent models should not be replaced by runtime switches."""
-        from deepagents_code.configurable_model import ConfigurableModelMiddleware
+        from niki_agent.configurable_model import ConfigurableModelMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -3999,23 +3994,23 @@ class TestCreateCliAgentShellMiddlewareWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             patch(
-                "deepagents_code.agent._resolve_retry_owned_model",
+                "niki_agent.agent._resolve_retry_owned_model",
                 side_effect=_keep_model_spec,
             ),
         ):
@@ -4080,7 +4075,7 @@ class TestCreateCliAgentFsToolsWiring:
         passes — instead of the SDK-private `_enabled_tools` attribute (which an
         SDK-internal rename could silently break).
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         calls: list[dict[str, Any]] = []
 
@@ -4103,7 +4098,7 @@ class TestCreateCliAgentFsToolsWiring:
         `.tools` is public and already omits disallowed tools, so this pins the
         end-to-end restriction contract rather than just the constructor input.
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -4111,15 +4106,15 @@ class TestCreateCliAgentFsToolsWiring:
         fake_model = _make_fake_chat_model()
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4161,7 +4156,7 @@ class TestCreateCliAgentFsToolsWiring:
         must be injected into that subagent's own `middleware` list directly,
         otherwise `task` could bypass `--allow-fs-tools` entirely.
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
 
@@ -4171,19 +4166,19 @@ class TestCreateCliAgentFsToolsWiring:
         fs_calls, fs_factory = self._fs_middleware_spy()
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.FilesystemMiddleware",
+                "niki_agent.agent.FilesystemMiddleware",
                 side_effect=fs_factory,
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4231,7 +4226,7 @@ class TestCreateCliAgentFsToolsWiring:
         user subagent with an unrestricted filesystem — exactly the bypass this
         feature prevents.
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -4247,23 +4242,23 @@ class TestCreateCliAgentFsToolsWiring:
         fs_calls, fs_factory = self._fs_middleware_spy()
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[user_subagent],
             ),
             patch(
-                "deepagents_code.agent.FilesystemMiddleware",
+                "niki_agent.agent.FilesystemMiddleware",
                 side_effect=fs_factory,
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4310,7 +4305,7 @@ class TestCreateCliAgentFsToolsWiring:
         descriptions to every subagent (the pre-fix behavior all other tests
         missed) would give `researcher` the main sentinel and fail here.
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         researcher_model = "anthropic:claude-haiku-4-5-20251001"
 
@@ -4330,27 +4325,27 @@ class TestCreateCliAgentFsToolsWiring:
         }
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[user_subagent],
             ),
             patch(
-                "deepagents_code.agent._get_harness_tool_descriptions",
+                "niki_agent.agent._get_harness_tool_descriptions",
                 side_effect=fake_descriptions,
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             patch(
-                "deepagents_code.agent._resolve_retry_owned_model",
+                "niki_agent.agent._resolve_retry_owned_model",
                 side_effect=_keep_model_spec,
             ),
         ):
@@ -4392,7 +4387,7 @@ class TestCreateCliAgentFsToolsWiring:
         never adds one today, but the guard must raise rather than silently
         delegate `task` to it with an unrestricted filesystem.
         """
-        from deepagents_code.agent import _inject_fs_tools_into_subagents
+        from niki_agent.agent import _inject_fs_tools_into_subagents
 
         compiled = {"name": "precompiled", "runnable": object()}
         with pytest.raises(ValueError, match="compiled subagent"):
@@ -4411,7 +4406,7 @@ class TestCreateCliAgentFsToolsWiring:
         unaffected" invariant so a future refactor that widened the loop to all
         subagents would fail here.
         """
-        from deepagents.middleware.filesystem import FilesystemMiddleware
+        from niki_agent.sdk.middleware.filesystem import FilesystemMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -4425,15 +4420,15 @@ class TestCreateCliAgentFsToolsWiring:
 
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4519,19 +4514,19 @@ class TestAutoModeSubagentHITLWiring:
         }
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.list_subagents",
+                "niki_agent.agent.list_subagents",
                 return_value=[subagent_meta],
             ),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4629,7 +4624,7 @@ class TestGetAvailableAgentNames:
         (agents_dir / "skills-only" / "skills").mkdir()
 
         with patch(
-            "deepagents_code.agent.user_deepagents_dir",
+            "niki_agent.agent.user_niki_dir",
             return_value=agents_dir,
         ):
             assert get_available_agent_names() == ["agent"]
@@ -4648,7 +4643,7 @@ class TestGetAvailableAgentNames:
         (agents_dir / "broken").symlink_to(tmp_path / "ghost")
 
         with patch(
-            "deepagents_code.agent.user_deepagents_dir",
+            "niki_agent.agent.user_niki_dir",
             return_value=agents_dir,
         ):
             assert get_available_agent_names() == ["real"]
@@ -4665,7 +4660,7 @@ class TestGetAvailableAgentNames:
         (fake / _AGENT_DIR_MARKER).symlink_to(target)
 
         with patch(
-            "deepagents_code.agent.user_deepagents_dir",
+            "niki_agent.agent.user_niki_dir",
             return_value=agents_dir,
         ):
             assert get_available_agent_names() == ["agent"]
@@ -4686,7 +4681,7 @@ class TestGetAvailableAgentNames:
             (agents_dir / name).mkdir()
 
         with patch(
-            "deepagents_code.agent.user_deepagents_dir",
+            "niki_agent.agent.user_niki_dir",
             return_value=agents_dir,
         ):
             assert get_available_agent_names() == ["agent"]
@@ -4706,7 +4701,7 @@ class TestGetAvailableAgentNames:
             _seed_agent(agents_dir, name)
 
         with patch(
-            "deepagents_code.agent.user_deepagents_dir",
+            "niki_agent.agent.user_niki_dir",
             return_value=agents_dir,
         ):
             assert get_available_agent_names() == ["agent"]
@@ -4728,7 +4723,7 @@ class TestGetAvailableAgentNames:
 
         with (
             patch(
-                "deepagents_code.agent.user_deepagents_dir",
+                "niki_agent.agent.user_niki_dir",
                 return_value=agents_dir,
             ),
             patch.object(Path, "iterdir", boom),
@@ -4802,15 +4797,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -4833,9 +4828,9 @@ class TestCreateCliAgentInterpreterWiring:
         install the middleware and bind the canonical ask-user/compaction tools,
         ordered ahead of compaction.
         """
-        from deepagents_code.ask_user import AskUserMiddleware
-        from deepagents_code.auto_mode import AutoModeHITLMiddleware
-        from deepagents_code.offload_middleware import CLICompactionMiddleware
+        from niki_agent.ask_user import AskUserMiddleware
+        from niki_agent.auto_mode import AutoModeHITLMiddleware
+        from niki_agent.offload_middleware import CLICompactionMiddleware
 
         middleware = self._capture_middleware(tmp_path, auto_mode_enabled=True)
 
@@ -4866,8 +4861,8 @@ class TestCreateCliAgentInterpreterWiring:
             description="Get an issue",
         )
         mcp_tool.metadata = {
-            "_deepagents_code_mcp": True,
-            "_deepagents_code_mcp_server": "linear",
+            "_niki_agent_mcp": True,
+            "_niki_agent_mcp_server": "linear",
         }
 
         middleware = self._capture_middleware(tmp_path, mcp_tools=[mcp_tool])
@@ -4881,9 +4876,8 @@ class TestCreateCliAgentInterpreterWiring:
         classifier-backed auto-approval from engaging in a sandboxed session,
         so it is asserted directly rather than relying on upstream callers.
         """
-        from deepagents.backends.filesystem import FilesystemBackend
-
-        from deepagents_code.auto_mode import AutoModeHITLMiddleware
+        from niki_agent.auto_mode import AutoModeHITLMiddleware
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         sandbox = cast(
             "SandboxBackendProtocol",
@@ -4898,12 +4892,12 @@ class TestCreateCliAgentInterpreterWiring:
     def test_compiled_agent_preserves_canonical_compaction_tool_identity(
         self, tmp_path: Path
     ) -> None:
-        from deepagents import create_deep_agent
         from langgraph.prebuilt import ToolNode
 
-        from deepagents_code._fake_models import _ToolBindingFakeModel
-        from deepagents_code.auto_mode import AutoModeHITLMiddleware
-        from deepagents_code.offload_middleware import CLICompactionMiddleware
+        from niki_agent._fake_models import _ToolBindingFakeModel
+        from niki_agent.auto_mode import AutoModeHITLMiddleware
+        from niki_agent.offload_middleware import CLICompactionMiddleware
+        from niki_agent.sdk import create_deep_agent
 
         compaction = CLICompactionMiddleware(Mock())
         canonical_tool = compaction.tools[0]
@@ -4933,7 +4927,7 @@ class TestCreateCliAgentInterpreterWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Local subagent frontmatter cannot bypass model construction policy."""
-        from deepagents_code.model_config import ModelConfig, ModelNotAllowedError
+        from niki_agent.model_config import ModelConfig, ModelNotAllowedError
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -4945,7 +4939,7 @@ class TestCreateCliAgentInterpreterWiring:
             classmethod(lambda _cls, _path=None: policy),
         )
         monkeypatch.setattr(
-            "deepagents_code.agent.list_subagents",
+            "niki_agent.agent.list_subagents",
             lambda **_kwargs: [
                 {
                     "name": "blocked",
@@ -4963,7 +4957,7 @@ class TestCreateCliAgentInterpreterWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An explicit Auto classifier is checked before middleware creation."""
-        from deepagents_code.model_config import ModelConfig, ModelNotAllowedError
+        from niki_agent.model_config import ModelConfig, ModelNotAllowedError
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -4987,7 +4981,7 @@ class TestCreateCliAgentInterpreterWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A direct rubric model string is checked before middleware creation."""
-        from deepagents_code.model_config import ModelConfig, ModelNotAllowedError
+        from niki_agent.model_config import ModelConfig, ModelNotAllowedError
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -5015,7 +5009,7 @@ class TestCreateCliAgentInterpreterWiring:
         `config.create_model` -- so without this gate the one parameter most
         likely to carry a model would be the only unchecked one.
         """
-        from deepagents_code.model_config import ModelConfig, ModelNotAllowedError
+        from niki_agent.model_config import ModelConfig, ModelNotAllowedError
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -5034,7 +5028,7 @@ class TestCreateCliAgentInterpreterWiring:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The abort message identifies which agents file to edit."""
-        from deepagents_code.model_config import ModelConfig, ModelNotAllowedError
+        from niki_agent.model_config import ModelConfig, ModelNotAllowedError
 
         policy = ModelConfig(
             allowed_models=("anthropic:allowed",),
@@ -5046,7 +5040,7 @@ class TestCreateCliAgentInterpreterWiring:
             classmethod(lambda _cls, _path=None: policy),
         )
         monkeypatch.setattr(
-            "deepagents_code.agent.list_subagents",
+            "niki_agent.agent.list_subagents",
             lambda **_kwargs: [
                 {
                     "name": "reviewer",
@@ -5065,8 +5059,9 @@ class TestCreateCliAgentInterpreterWiring:
             self._capture_middleware(tmp_path, model=_make_fake_chat_model())
 
     def test_auto_approve_disables_rubric_context_hitl(self, tmp_path: Path) -> None:
-        from deepagents.middleware.rubric import RubricMiddleware
         from langchain_core.tools import StructuredTool
+
+        from niki_agent.sdk.middleware.rubric import RubricMiddleware
 
         def inspect_resource(resource_id: str) -> str:
             return resource_id
@@ -5080,15 +5075,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=_make_fake_chat_model(),
             ),
         ):
@@ -5115,8 +5110,8 @@ class TestCreateCliAgentInterpreterWiring:
     def test_untyped_sandbox_omits_rubric_repository_tools(
         self, tmp_path: Path
     ) -> None:
-        from deepagents.backends.filesystem import FilesystemBackend
-        from deepagents.middleware.rubric import RubricMiddleware
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.middleware.rubric import RubricMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -5129,15 +5124,15 @@ class TestCreateCliAgentInterpreterWiring:
             FilesystemBackend(root_dir=tmp_path, virtual_mode=False),
         )
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -5164,7 +5159,7 @@ class TestCreateCliAgentInterpreterWiring:
     def test_local_rubric_grep_skips_outside_symlink_target(
         self, tmp_path: Path
     ) -> None:
-        from deepagents.middleware.rubric import RubricMiddleware
+        from niki_agent.sdk.middleware.rubric import RubricMiddleware
 
         repository = tmp_path / "repository"
         repository.mkdir()
@@ -5178,19 +5173,19 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             patch(
-                "deepagents.backends.filesystem._resolve_ripgrep_path",
+                "niki_agent.sdk.backends.filesystem._resolve_ripgrep_path",
                 return_value=None,
             ),
         ):
@@ -5223,26 +5218,26 @@ class TestCreateCliAgentInterpreterWiring:
         self,
         tmp_path: Path,
     ) -> None:
-        from deepagents_code._glm_5p2_profile import _GlmTerminalStallRecovery
+        from niki_agent._glm_5p2_profile import _GlmTerminalStallRecovery
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             patch(
-                "deepagents_code.agent._resolve_retry_owned_model",
+                "niki_agent.agent._resolve_retry_owned_model",
                 side_effect=_keep_model_spec,
             ),
         ):
@@ -5282,26 +5277,26 @@ class TestCreateCliAgentInterpreterWiring:
         self,
         tmp_path: Path,
     ) -> None:
-        from deepagents_code._glm_5p2_profile import _GlmTerminalStallRecovery
+        from niki_agent._glm_5p2_profile import _GlmTerminalStallRecovery
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             patch(
-                "deepagents_code.agent._resolve_retry_owned_model",
+                "niki_agent.agent._resolve_retry_owned_model",
                 side_effect=_keep_model_spec,
             ),
         ):
@@ -5333,16 +5328,16 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.ReliableRubricMiddleware") as mock_rubric,
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.ReliableRubricMiddleware") as mock_rubric,
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -5365,8 +5360,8 @@ class TestCreateCliAgentInterpreterWiring:
         `<root>/large_tool_results/`, so the grader must allow that prefix and
         reject the old, unrelated `/large_tool_results/` path.
         """
-        from deepagents.backends import CompositeBackend
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends import CompositeBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         project = FilesystemBackend(root_dir=tmp_path / "project", virtual_mode=False)
         backend = CompositeBackend(
@@ -5387,8 +5382,8 @@ class TestCreateCliAgentInterpreterWiring:
             A `(tools_by_name, repo_root)` pair for exercising working-directory
             inspection.
         """
-        from deepagents.backends import CompositeBackend
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends import CompositeBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -5440,8 +5435,8 @@ class TestCreateCliAgentInterpreterWiring:
         Returns:
             A `(tools_by_name, repo_root)` pair for the given `fs_tools`.
         """
-        from deepagents.backends import CompositeBackend
-        from deepagents.backends.filesystem import FilesystemBackend
+        from niki_agent.sdk.backends import CompositeBackend
+        from niki_agent.sdk.backends.filesystem import FilesystemBackend
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -5520,15 +5515,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             _ignore_interpreter_beta_warning(),
@@ -5556,15 +5551,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -5587,11 +5582,11 @@ class TestCreateCliAgentInterpreterWiring:
         fake_model = _make_fake_chat_model()
         fake_sandbox = Mock()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             pytest.raises(ValueError, match="remote sandbox"),
@@ -5628,15 +5623,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             _ignore_interpreter_beta_warning(),
@@ -5672,11 +5667,11 @@ class TestCreateCliAgentInterpreterWiring:
             return ""
 
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             pytest.raises(ValueError, match="acknowledge_unsafe"),
@@ -5721,15 +5716,15 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent = Mock()
         mock_agent.with_config.return_value = mock_agent
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ) as mock_create,
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
             _ignore_interpreter_beta_warning(),
@@ -5768,16 +5763,16 @@ class TestCreateCliAgentInterpreterWiring:
         mock_agent.with_config.return_value = mock_agent
         fake_model = _make_fake_chat_model()
         with (
-            patch("deepagents_code.agent.credentials", mock_settings),
-            patch("deepagents_code.agent.PluginSkillsMiddleware"),
-            patch("deepagents_code.agent.MemoryMiddleware"),
-            patch("deepagents_code.agent.ReliableRubricMiddleware") as mock_rubric,
+            patch("niki_agent.agent.credentials", mock_settings),
+            patch("niki_agent.agent.PluginSkillsMiddleware"),
+            patch("niki_agent.agent.MemoryMiddleware"),
+            patch("niki_agent.agent.ReliableRubricMiddleware") as mock_rubric,
             patch(
-                "deepagents_code.agent.create_deep_agent",
+                "niki_agent.agent.create_deep_agent",
                 return_value=mock_agent,
             ),
             patch(
-                "deepagents._models.init_chat_model",
+                "niki_agent.sdk._models.init_chat_model",
                 return_value=fake_model,
             ),
         ):
@@ -5829,7 +5824,7 @@ class TestResolvePtcOption:
         built-in injected at runtime, so the resolved allowlist must still
         include it — the middleware bridges it against the live registry.
         """
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             "safe",
@@ -5840,7 +5835,7 @@ class TestResolvePtcOption:
         assert result == ["glob", "grep", "read_file"]
 
     def test_all_with_auto_approve_skips_ack_check(self) -> None:
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             "all",
@@ -5880,7 +5875,7 @@ class TestResolvePtcOption:
         return [read_file, glob, grep, task]
 
     def test_safe_in_list_expands_with_explicit_tool(self) -> None:
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["safe", "task"],
@@ -5891,7 +5886,7 @@ class TestResolvePtcOption:
         assert result == ["glob", "grep", "read_file", "task"]
 
     def test_safe_in_list_dedupes_preserving_order(self) -> None:
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["grep", "safe", "task", "grep"],
@@ -5902,7 +5897,7 @@ class TestResolvePtcOption:
         assert result == ["grep", "glob", "read_file", "task"]
 
     def test_all_in_list_raises(self) -> None:
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         with pytest.raises(ValueError, match="cannot include 'all'"):
             _resolve_ptc_option(
@@ -5919,7 +5914,7 @@ class TestResolvePtcOption:
         runtime (or be a genuine typo the middleware drops), so the resolver
         passes it through after expanding `"safe"`.
         """
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["safe", "nope"],
@@ -5931,7 +5926,7 @@ class TestResolvePtcOption:
 
     def test_safe_alone_in_list_equals_standalone(self) -> None:
         """`["safe"]` must resolve identically to the standalone `"safe"`."""
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         tools = self._tools_with_task()
         kwargs = {"acknowledge_unsafe": False, "auto_approve": False}
@@ -5941,7 +5936,7 @@ class TestResolvePtcOption:
 
     def test_safe_in_list_is_case_insensitive(self) -> None:
         """The `"safe"` sentinel is matched case-insensitively inside a list."""
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["SAFE", "task"],
@@ -5953,7 +5948,7 @@ class TestResolvePtcOption:
 
     def test_safe_sentinel_is_whitespace_tolerant(self) -> None:
         """Whitespace around the `"safe"` sentinel is tolerated and expanded."""
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             [" safe ", "task"],
@@ -5971,7 +5966,7 @@ class TestResolvePtcOption:
         it is forwarded verbatim (not trimmed) and the middleware resolves it
         against the runtime registry.
         """
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["safe", " task "],
@@ -5992,7 +5987,7 @@ class TestResolvePtcOption:
         """
         from langchain_core.tools import tool
 
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         @tool
         def fetch_url(url: str) -> str:  # noqa: ARG001
@@ -6009,7 +6004,7 @@ class TestResolvePtcOption:
 
     def test_duplicate_safe_tokens_dedupe(self) -> None:
         """Repeated `"safe"` tokens expand once; members are not duplicated."""
-        from deepagents_code.agent import _resolve_ptc_option
+        from niki_agent.agent import _resolve_ptc_option
 
         result = _resolve_ptc_option(
             ["safe", "safe", "task"],
@@ -6027,8 +6022,8 @@ class TestResolvePtcOption:
         of `INTERPRETER_PTC_SAFE_PRESET` against the live HITL map here is
         the forcing function for that invariant.
         """
-        from deepagents_code.agent import _add_interrupt_on
-        from deepagents_code.config import INTERPRETER_PTC_SAFE_PRESET
+        from niki_agent.agent import _add_interrupt_on
+        from niki_agent.config import INTERPRETER_PTC_SAFE_PRESET
 
         gated = set(_add_interrupt_on().keys())
         overlap = INTERPRETER_PTC_SAFE_PRESET & gated
@@ -6045,7 +6040,7 @@ class TestResolvePtcOption:
         restricted to non-gated, read-only file inspection; widening it
         without re-auditing the HITL surface should fail this test.
         """
-        from deepagents_code.config import INTERPRETER_PTC_SAFE_PRESET
+        from niki_agent.config import INTERPRETER_PTC_SAFE_PRESET
 
         assert frozenset({"read_file", "glob", "grep"}) == INTERPRETER_PTC_SAFE_PRESET
 
@@ -6068,7 +6063,7 @@ class TestSubagentRetryBudgetResolution:
 
     @staticmethod
     def _captured_kwargs(cli_max_retries: int | None) -> dict[str, object]:
-        from deepagents_code.agent import _resolve_retry_owned_model
+        from niki_agent.agent import _resolve_retry_owned_model
 
         captured: dict[str, object] = {}
 
@@ -6079,6 +6074,6 @@ class TestSubagentRetryBudgetResolution:
             captured.update(kwargs)
             return SimpleNamespace(model=SimpleNamespace())
 
-        with patch("deepagents_code.config.create_model", _fake_create_model):
+        with patch("niki_agent.config.create_model", _fake_create_model):
             _resolve_retry_owned_model("anthropic:claude-haiku-4-5", cli_max_retries)
         return captured

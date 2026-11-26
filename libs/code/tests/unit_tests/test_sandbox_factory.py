@@ -9,10 +9,9 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
-from deepagents.backends.protocol import ExecuteResponse
 
-from deepagents_code.integrations.sandbox_config import SandboxConfig
-from deepagents_code.integrations.sandbox_factory import (
+from niki_agent.integrations.sandbox_config import SandboxConfig
+from niki_agent.integrations.sandbox_factory import (
     _VERCEL_SANDBOX_TIMEOUT,
     _AgentCoreProvider,
     _get_provider,
@@ -22,13 +21,14 @@ from deepagents_code.integrations.sandbox_factory import (
     get_default_working_dir,
     verify_sandbox_deps,
 )
-from deepagents_code.integrations.sandbox_registry import SandboxRegistry
+from niki_agent.integrations.sandbox_registry import SandboxRegistry
+from niki_agent.sdk.backends.protocol import ExecuteResponse
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
     from pathlib import Path
 
-_FACTORY = "deepagents_code.integrations.sandbox_factory"
+_FACTORY = "niki_agent.integrations.sandbox_factory"
 
 
 @contextlib.contextmanager
@@ -36,7 +36,7 @@ def _bind_environment(environment: Mapping[str, str]) -> Iterator[None]:
     """Bind one workspace environment everywhere the factory reads it.
 
     `sandbox_factory` aliases `active_environment` at import, while
-    `resolve_env_var` calls it through `deepagents_code.config`. Both resolve
+    `resolve_env_var` calls it through `niki_agent.config`. Both resolve
     to the same binding in production, so a test that patches only the alias
     lets the two disagree.
 
@@ -46,7 +46,7 @@ def _bind_environment(environment: Mapping[str, str]) -> Iterator[None]:
     with (
         patch(f"{_FACTORY}.active_environment", return_value=environment),
         patch(
-            "deepagents_code.config.active_environment",
+            "niki_agent.config.active_environment",
             return_value=environment,
         ),
     ):
@@ -206,7 +206,7 @@ def test_get_provider_raises_helpful_error_for_missing_optional_dependency(
     )
     with (
         patch(
-            "deepagents_code.integrations.sandbox_factory.importlib.import_module",
+            "niki_agent.integrations.sandbox_factory.importlib.import_module",
             side_effect=ImportError("missing dependency"),
         ),
         pytest.raises(ImportError, match=error),
@@ -220,7 +220,7 @@ def test_create_sandbox_rejects_snapshot_name_for_other_providers() -> None:
 
     with (
         patch(
-            "deepagents_code.integrations.sandbox_factory._get_provider",
+            "niki_agent.integrations.sandbox_factory._get_provider",
             return_value=provider,
         ),
         pytest.raises(
@@ -243,7 +243,7 @@ def test_create_sandbox_rejects_snapshot_name_with_sandbox_id(
 
     with (
         patch(
-            "deepagents_code.integrations.sandbox_factory._get_provider",
+            "niki_agent.integrations.sandbox_factory._get_provider",
             return_value=provider,
         ),
         pytest.raises(ValueError, match="cannot be combined with sandbox_id"),
@@ -266,8 +266,8 @@ def test_runloop_provider_raises_sandbox_not_found_for_missing_id(
     `RunloopProvider` translates the SDK's `NotFoundError` to a `KeyError`, so the
     factory only ever sees the builtin and stays free of an SDK import.
     """
-    from deepagents_code.integrations.sandbox_factory import _RunloopProvider
-    from deepagents_code.integrations.sandbox_provider import SandboxNotFoundError
+    from niki_agent.integrations.sandbox_factory import _RunloopProvider
+    from niki_agent.integrations.sandbox_provider import SandboxNotFoundError
 
     fake_provider = MagicMock()
     fake_provider.get_or_create.side_effect = KeyError("missing-dev")
@@ -276,7 +276,7 @@ def test_runloop_provider_raises_sandbox_not_found_for_missing_id(
 
     monkeypatch.setenv("RUNLOOP_API_KEY", "test-key")
     with patch(
-        "deepagents_code.integrations.sandbox_factory._import_provider_module",
+        "niki_agent.integrations.sandbox_factory._import_provider_module",
         return_value=fake_module,
     ):
         provider = _RunloopProvider()
@@ -288,7 +288,7 @@ def test_runloop_provider_reraises_keyerror_without_sandbox_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A `KeyError` with no `sandbox_id` is not mislabeled as `SandboxNotFoundError`."""
-    from deepagents_code.integrations.sandbox_factory import _RunloopProvider
+    from niki_agent.integrations.sandbox_factory import _RunloopProvider
 
     fake_provider = MagicMock()
     fake_provider.get_or_create.side_effect = KeyError("unexpected")
@@ -297,7 +297,7 @@ def test_runloop_provider_reraises_keyerror_without_sandbox_id(
 
     monkeypatch.setenv("RUNLOOP_API_KEY", "test-key")
     with patch(
-        "deepagents_code.integrations.sandbox_factory._import_provider_module",
+        "niki_agent.integrations.sandbox_factory._import_provider_module",
         return_value=fake_module,
     ):
         provider = _RunloopProvider()
@@ -319,7 +319,7 @@ def test_agentcore_get_or_create_raises_for_missing_dep() -> None:
 
     with (
         patch(
-            "deepagents_code.integrations.sandbox_factory.importlib.import_module",
+            "niki_agent.integrations.sandbox_factory.importlib.import_module",
             side_effect=ImportError("missing dependency"),
         ),
         pytest.raises(ImportError, match=error),
@@ -379,7 +379,7 @@ def test_agentcore_uses_workspace_aws_session() -> None:
     client_module.CodeInterpreter.assert_called_once_with(
         region="us-test-1",
         session=session,
-        integration_source="deepagents-code",
+        integration_source="niki-agent",
     )
 
 
@@ -415,7 +415,7 @@ class TestVerifySandboxDeps:
         """Should not raise when the backend module is found."""
         spec_sentinel = object()
         with patch(
-            "deepagents_code.integrations.sandbox_factory.importlib.util.find_spec",
+            "niki_agent.integrations.sandbox_factory.importlib.util.find_spec",
             return_value=spec_sentinel,
         ):
             verify_sandbox_deps(provider)  # should not raise
@@ -428,7 +428,7 @@ class TestVerifySandboxDeps:
         """find_spec can raise ImportError/ValueError in corrupted envs."""
         with (
             patch(
-                "deepagents_code.integrations.sandbox_factory.importlib.util.find_spec",
+                "niki_agent.integrations.sandbox_factory.importlib.util.find_spec",
                 side_effect=exc_cls("broken"),
             ),
             pytest.raises(ImportError, match="Missing dependencies"),
@@ -493,13 +493,13 @@ class TestVercelProvider:
         """Remove Vercel env vars that affect SDK kwargs."""
         for name in (
             "VERCEL_TOKEN",
-            "DEEPAGENTS_CODE_VERCEL_TOKEN",
+            "NIKI_VERCEL_TOKEN",
             "VERCEL_OIDC_TOKEN",
-            "DEEPAGENTS_CODE_VERCEL_OIDC_TOKEN",
+            "NIKI_VERCEL_OIDC_TOKEN",
             "VERCEL_PROJECT_ID",
-            "DEEPAGENTS_CODE_VERCEL_PROJECT_ID",
+            "NIKI_VERCEL_PROJECT_ID",
             "VERCEL_TEAM_ID",
-            "DEEPAGENTS_CODE_VERCEL_TEAM_ID",
+            "NIKI_VERCEL_TEAM_ID",
         ):
             monkeypatch.delenv(name, raising=False)
 
@@ -524,7 +524,7 @@ class TestVercelProvider:
 
         with (
             patch(
-                "deepagents_code.integrations.sandbox_factory.importlib.import_module",
+                "niki_agent.integrations.sandbox_factory.importlib.import_module",
                 side_effect=ImportError("missing dependency"),
             ),
             pytest.raises(
@@ -546,9 +546,9 @@ class TestVercelProvider:
         """Create and attach failures use fixed messages."""
         secret = "sdk-leaked-secret"
         self._clear_vercel_env(monkeypatch)
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_TOKEN", "runtime-token")
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_PROJECT_ID", "runtime-project")
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_TEAM_ID", "runtime-team")
+        monkeypatch.setenv("NIKI_VERCEL_TOKEN", "runtime-token")
+        monkeypatch.setenv("NIKI_VERCEL_PROJECT_ID", "runtime-project")
+        monkeypatch.setenv("NIKI_VERCEL_TEAM_ID", "runtime-team")
         provider = _VercelProvider()
         vercel_sdk = MagicMock()
         if sandbox_id is None:
@@ -579,9 +579,9 @@ class TestVercelProvider:
         """Delete failures use fixed messages."""
         secret = "sdk-leaked-secret"
         self._clear_vercel_env(monkeypatch)
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_TOKEN", "runtime-token")
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_PROJECT_ID", "runtime-project")
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_TEAM_ID", "runtime-team")
+        monkeypatch.setenv("NIKI_VERCEL_TOKEN", "runtime-token")
+        monkeypatch.setenv("NIKI_VERCEL_PROJECT_ID", "runtime-project")
+        monkeypatch.setenv("NIKI_VERCEL_TEAM_ID", "runtime-team")
         provider = _VercelProvider()
         vercel_sdk = MagicMock()
         vercel_sdk.Sandbox.get.side_effect = RuntimeError(secret)
@@ -644,7 +644,7 @@ class TestVercelProvider:
 
         with (
             patch(
-                "deepagents_code.integrations.sandbox_factory._import_provider_module",
+                "niki_agent.integrations.sandbox_factory._import_provider_module",
                 side_effect=fake_import,
             ),
             pytest.raises(RuntimeError, match="terminal state"),
@@ -688,7 +688,7 @@ class TestVercelProvider:
     ) -> None:
         """A single prefixed override completes via canonical values."""
         self._clear_vercel_env(monkeypatch)
-        monkeypatch.setenv("DEEPAGENTS_CODE_VERCEL_TOKEN", "token_prefixed")
+        monkeypatch.setenv("NIKI_VERCEL_TOKEN", "token_prefixed")
         monkeypatch.setenv("VERCEL_PROJECT_ID", "project_canonical")
         monkeypatch.setenv("VERCEL_TEAM_ID", "team_canonical")
         provider = _get_provider("vercel")
@@ -739,7 +739,7 @@ class TestLangSmithSnapshotResolution:
         """Build `_LangSmithProvider` with its SandboxClient patched."""
         monkeypatch.setenv("LANGSMITH_API_KEY", "fake")
         with patch("langsmith.sandbox.SandboxClient", return_value=mock_client):
-            from deepagents_code.integrations.sandbox_factory import (
+            from niki_agent.integrations.sandbox_factory import (
                 _LangSmithProvider,
             )
 
@@ -748,7 +748,7 @@ class TestLangSmithSnapshotResolution:
 
 def test_setup_script_expands_workspace_environment() -> None:
     """The setup script sees the workspace `.env`, not the server process env."""
-    from deepagents_code.integrations.sandbox_factory import _run_sandbox_setup
+    from niki_agent.integrations.sandbox_factory import _run_sandbox_setup
 
     backend = MagicMock()
     backend.execute.return_value = MagicMock(exit_code=0, output="")
@@ -780,15 +780,15 @@ def test_setup_script_expands_workspace_environment() -> None:
 def test_vercel_override_gate_reads_workspace_environment() -> None:
     """A prefixed override from the workspace `.env` still triggers the gate."""
     environment = {
-        "DEEPAGENTS_CODE_VERCEL_TOKEN": "workspace-token",
-        "DEEPAGENTS_CODE_VERCEL_PROJECT_ID": "workspace-project",
-        "DEEPAGENTS_CODE_VERCEL_TEAM_ID": "workspace-team",
+        "NIKI_VERCEL_TOKEN": "workspace-token",
+        "NIKI_VERCEL_PROJECT_ID": "workspace-project",
+        "NIKI_VERCEL_TEAM_ID": "workspace-team",
     }
     with (
         patch(f"{_FACTORY}.active_environment", return_value=environment),
         patch(
-            "deepagents_code.model_config.resolve_env_var",
-            side_effect=lambda name: environment.get(f"DEEPAGENTS_CODE_{name}"),
+            "niki_agent.model_config.resolve_env_var",
+            side_effect=lambda name: environment.get(f"NIKI_{name}"),
         ),
         patch.dict("os.environ", {}, clear=True),
     ):
@@ -815,7 +815,7 @@ def test_vercel_uses_an_unprefixed_workspace_credential() -> None:
     with (
         patch(f"{_FACTORY}.active_environment", return_value=environment),
         patch(
-            "deepagents_code.model_config.resolve_env_var",
+            "niki_agent.model_config.resolve_env_var",
             side_effect=environment.get,
         ),
         patch.dict("os.environ", {}, clear=True),
@@ -907,7 +907,7 @@ def test_vercel_oidc_does_not_discard_workspace_identifiers(
 
 
 @pytest.mark.parametrize("oidc", [None, "test-oidc-token"])
-@pytest.mark.parametrize("prefix", ["", "DEEPAGENTS_CODE_"])
+@pytest.mark.parametrize("prefix", ["", "NIKI_"])
 def test_vercel_fails_closed_on_a_partial_workspace_credential_set(
     oidc: str | None,
     prefix: str,
@@ -941,8 +941,8 @@ def test_vercel_get_provider_fails_closed_on_a_partial_set() -> None:
     with (
         _bind_environment(
             {
-                "DEEPAGENTS_CODE_VERCEL_TOKEN": "workspace-token",
-                "DEEPAGENTS_CODE_VERCEL_TEAM_ID": "workspace-team",
+                "NIKI_VERCEL_TOKEN": "workspace-token",
+                "NIKI_VERCEL_TEAM_ID": "workspace-team",
             }
         ),
         patch.dict("os.environ", {}, clear=True),
@@ -951,7 +951,7 @@ def test_vercel_get_provider_fails_closed_on_a_partial_set() -> None:
         _get_provider("vercel")
 
 
-@pytest.mark.parametrize("prefix", ["", "DEEPAGENTS_CODE_"])
+@pytest.mark.parametrize("prefix", ["", "NIKI_"])
 @pytest.mark.parametrize(
     "overrides",
     [
@@ -986,7 +986,7 @@ def test_vercel_empty_workspace_overrides_cannot_restore_server_auth() -> None:
     """Explicitly clearing every credential must not reactivate ambient auth."""
     server = {"VERCEL_TOKEN": "server-token"}
     with (
-        _bind_environment({**server, "DEEPAGENTS_CODE_VERCEL_TOKEN": ""}),
+        _bind_environment({**server, "NIKI_VERCEL_TOKEN": ""}),
         patch.dict("os.environ", server, clear=True),
         pytest.raises(ValueError, match="workspace Vercel configuration is incomplete"),
     ):
@@ -998,9 +998,9 @@ def test_vercel_complete_prefixed_set_can_share_server_identifiers() -> None:
     server = {"VERCEL_PROJECT_ID": "shared-project", "VERCEL_TEAM_ID": "shared-team"}
     environment = {
         **server,
-        "DEEPAGENTS_CODE_VERCEL_TOKEN": "workspace-token",
-        "DEEPAGENTS_CODE_VERCEL_PROJECT_ID": "shared-project",
-        "DEEPAGENTS_CODE_VERCEL_TEAM_ID": "shared-team",
+        "NIKI_VERCEL_TOKEN": "workspace-token",
+        "NIKI_VERCEL_PROJECT_ID": "shared-project",
+        "NIKI_VERCEL_TEAM_ID": "shared-team",
     }
     with _bind_environment(environment), patch.dict("os.environ", server, clear=True):
         assert _VercelProvider._resolve_sdk_kwargs() == {
@@ -1034,7 +1034,7 @@ def test_agentcore_omits_session_when_it_could_not_be_built() -> None:
 
     client_module.CodeInterpreter.assert_called_once_with(
         region="us-test-1",
-        integration_source="deepagents-code",
+        integration_source="niki-agent",
     )
     assert "session" not in client_module.CodeInterpreter.call_args.kwargs
 
@@ -1157,7 +1157,7 @@ def test_agentcore_honors_a_prefixed_aws_credential_override() -> None:
             {
                 "AWS_REGION": "us-test-1",
                 "AWS_PROFILE": "canonical-profile",
-                "DEEPAGENTS_CODE_AWS_PROFILE": "prefixed-profile",
+                "NIKI_AWS_PROFILE": "prefixed-profile",
             }
         ),
         patch.dict(sys.modules, {"boto3": mock_boto3}),

@@ -150,7 +150,7 @@ async def web_search(query: str) -> str:
     ])
 
 
-from deepagents import create_deep_agent  # noqa: E402
+from niki_agent.sdk import create_deep_agent  # noqa: E402
 
 _agent = create_deep_agent(
     model=ChatAnthropic(model="claude-sonnet-4-5"),

@@ -13,9 +13,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from deepagents_code import _git as git_module, config as config_module, model_config
-from deepagents_code._paths import get_agent_dir, get_user_agent_md_path
-from deepagents_code.config import (
+from niki_agent import _git as git_module, config as config_module, model_config
+from niki_agent._paths import get_agent_dir, get_user_agent_md_path
+from niki_agent.config import (
     _MCP_SHUTDOWN_RACE_MESSAGES,
     _MCP_SSE_LOGGER_NAME,
     _MCP_STREAMABLE_HTTP_LOGGER_NAME,
@@ -50,14 +50,14 @@ from deepagents_code.config import (
     reset_langsmith_url_cache,
     runtime_state,
 )
-from deepagents_code.configuration.interpreter import InterpreterConfig
-from deepagents_code.model_config import (
+from niki_agent.configuration.interpreter import InterpreterConfig
+from niki_agent.model_config import (
     ModelConfig,
     ModelConfigError,
     ModelNotAllowedError,
     clear_caches,
 )
-from deepagents_code.project_utils import (
+from niki_agent.project_utils import (
     find_project_agent_md as _find_project_agent_md,
 )
 
@@ -73,8 +73,8 @@ class TestRuntimeDotenvReload:
         """Direct reload preserves user settings through the server handoff."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.client.launch.server import _build_server_env
+        import niki_agent.config as config_mod
+        from niki_agent.client.launch.server import _build_server_env
 
         monkeypatch.setattr(
             config_mod,
@@ -109,14 +109,14 @@ class TestRuntimeDotenvReload:
         """Reload un-does the agent's in-process override from the carrier."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
             tmp_path / "missing-global.env",
         )
-        monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_LANGSMITH_API_KEY", raising=False)
         # What the agent put on the canonical var in this process.
         monkeypatch.setenv("LANGSMITH_API_KEY", "agent-override")
         monkeypatch.setenv("LANGSMITH_PROFILE", "agent-profile")
@@ -153,7 +153,7 @@ class TestRuntimeDotenvReload:
         """An undecodable carrier leaves LangSmith settings alone, and reports."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(
             config_mod,
@@ -197,22 +197,22 @@ class TestRuntimeDotenvReload:
         """Runtime reload replaces managed `.env` values after a cwd switch."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         current = tmp_path / "current"
         target = tmp_path / "target"
         current.mkdir()
         target.mkdir()
         (current / ".env").write_text(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY=sk-current\n",
+            "NIKI_OPENAI_API_KEY=sk-current\n",
         )
         (target / ".env").write_text(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY=sk-target\n"
-            "DEEPAGENTS_CODE_ANTHROPIC_API_KEY=sk-target-anthropic\n",
+            "NIKI_OPENAI_API_KEY=sk-target\n"
+            "NIKI_ANTHROPIC_API_KEY=sk-target-anthropic\n",
         )
 
-        monkeypatch.delenv("DEEPAGENTS_CODE_OPENAI_API_KEY", raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_ANTHROPIC_API_KEY", "sk-shell")
+        monkeypatch.delenv("NIKI_OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("NIKI_ANTHROPIC_API_KEY", "sk-shell")
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -228,9 +228,9 @@ class TestRuntimeDotenvReload:
             changes = runtime.reload_from_environment(start_path=target)
 
             assert runtime.openai_api_key == "sk-target"
-            assert os.environ["DEEPAGENTS_CODE_OPENAI_API_KEY"] == "sk-target"
+            assert os.environ["NIKI_OPENAI_API_KEY"] == "sk-target"
             assert runtime.anthropic_api_key == "sk-shell"
-            assert os.environ["DEEPAGENTS_CODE_ANTHROPIC_API_KEY"] == "sk-shell"
+            assert os.environ["NIKI_ANTHROPIC_API_KEY"] == "sk-shell"
             assert "openai_api_key: set -> set" in changes
         finally:
             config_mod._dotenv_loaded_values.clear()
@@ -242,19 +242,19 @@ class TestRuntimeDotenvReload:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Runtime reload starts a new generation of resolution diagnostics."""
-        import deepagents_code.config as config_mod
-        from deepagents_code.model_config import (
+        import niki_agent.config as config_mod
+        from niki_agent.model_config import (
             reset_env_resolution_log,
             resolve_env_var,
         )
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-prefixed")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-prefixed")
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
             tmp_path / "missing-global.env",
         )
-        caplog.set_level(logging.DEBUG, logger="deepagents_code.model_config")
+        caplog.set_level(logging.DEBUG, logger="niki_agent.model_config")
         reset_env_resolution_log()
         try:
             runtime = Credentials.from_environment(start_path=tmp_path)
@@ -263,7 +263,7 @@ class TestRuntimeDotenvReload:
             assert resolve_env_var("OPENAI_API_KEY") == "sk-prefixed"
             assert (
                 caplog.messages.count(
-                    "Resolved OPENAI_API_KEY from DEEPAGENTS_CODE_OPENAI_API_KEY"
+                    "Resolved OPENAI_API_KEY from NIKI_OPENAI_API_KEY"
                 )
                 == 2
             )
@@ -278,18 +278,18 @@ class TestRuntimeDotenvReload:
         """Reload keeps the session key on the canonical SDK variable."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code import auth_store
+        import niki_agent.config as config_mod
+        from niki_agent import auth_store
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
             tmp_path / "missing-global.env",
         )
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "prefixed-key")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
         monkeypatch.setenv("LANGSMITH_API_KEY", "prefixed-key")
         auth_store.set_stored_key("langsmith", "stored-key")
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
@@ -318,15 +318,15 @@ class TestRuntimeDotenvReload:
     ) -> None:
         """Clearing the agent project on reload re-applies the default.
 
-        Regression: when a cwd switch unsets `DEEPAGENTS_CODE_LANGSMITH_PROJECT`
+        Regression: when a cwd switch unsets `NIKI_LANGSMITH_PROJECT`
         and the user has no original `LANGSMITH_PROJECT`, the reload must fall
-        back to `deepagents-code` (not leave the var unset) so trace ingestion
+        back to `niki-agent` (not leave the var unset) so trace ingestion
         keeps matching the name `get_langsmith_project_name` displays.
         """
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        import niki_agent.config as config_mod
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         current = tmp_path / "current"
         target = tmp_path / "target"
@@ -358,12 +358,12 @@ class TestRuntimeDotenvReload:
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
             monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
             # Agent-project override is active before the reload, cleared after.
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", "agent-project")
+            monkeypatch.setenv("NIKI_LANGSMITH_PROJECT", "agent-project")
 
             runtime = Credentials.from_environment(start_path=current)
             assert runtime.deepagents_langchain_project == "agent-project"
 
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
             runtime.reload_from_environment(start_path=target)
 
             assert os.environ["LANGSMITH_PROJECT"] == LANGSMITH_PROJECT_DEFAULT
@@ -383,9 +383,9 @@ class TestDotenvProvenance:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Text output names the global file without echoing the raw dotenv line."""
-        from deepagents_code.client.commands.config import _run_get
+        from niki_agent.client.commands.config import _run_get
 
-        name = "DEEPAGENTS_CODE_LANGSMITH_REDACT"
+        name = "NIKI_LANGSMITH_REDACT"
         global_dotenv = tmp_path / "global.env"
         global_dotenv.write_text(f"{name}=0\n", encoding="utf-8")
         monkeypatch.delenv(name, raising=False)
@@ -408,9 +408,9 @@ class TestDotenvProvenance:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """JSON output carries the project dotenv path in its source field."""
-        from deepagents_code.client.commands.config import _run_get
+        from niki_agent.client.commands.config import _run_get
 
-        name = "DEEPAGENTS_CODE_SHOW_HEADER"
+        name = "NIKI_SHOW_HEADER"
         project = tmp_path / "project"
         project.mkdir()
         dotenv = project / ".env"
@@ -429,9 +429,9 @@ class TestDotenvProvenance:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A launch environment value remains a bare env source."""
-        from deepagents_code.client.commands.config import _attribute_env_source
+        from niki_agent.client.commands.config import _attribute_env_source
 
-        name = "DEEPAGENTS_CODE_SHOW_HEADER"
+        name = "NIKI_SHOW_HEADER"
         global_dotenv = tmp_path / "global.env"
         global_dotenv.write_text(f"{name}=false\n", encoding="utf-8")
         monkeypatch.setenv(name, "true")
@@ -448,7 +448,7 @@ class TestDotenvProvenance:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """First-file-wins records the project file rather than the global file."""
-        name = "DEEPAGENTS_CODE_SHOW_HEADER"
+        name = "NIKI_SHOW_HEADER"
         project = tmp_path / "project"
         project.mkdir()
         project_dotenv = project / ".env"
@@ -484,7 +484,7 @@ class TestDotenvProvenance:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An injected whitespace-only value retains its source path."""
-        name = "DEEPAGENTS_CODE_SHOW_HEADER"
+        name = "NIKI_SHOW_HEADER"
         (tmp_path / ".env").write_text(f"{name}=   \n", encoding="utf-8")
         monkeypatch.delenv(name, raising=False)
         monkeypatch.setattr(config_module, "_dotenv_loaded_values", {})
@@ -501,9 +501,7 @@ class TestDotenvProvenance:
         """Workspace previews leave process-level attribution untouched."""
         project = tmp_path / "project"
         project.mkdir()
-        (project / ".env").write_text(
-            "DEEPAGENTS_CODE_SHOW_HEADER=false\n", encoding="utf-8"
-        )
+        (project / ".env").write_text("NIKI_SHOW_HEADER=false\n", encoding="utf-8")
         existing = {"EXISTING": tmp_path / "existing.env"}
         monkeypatch.setattr(config_module, "_dotenv_provenance", existing)
 
@@ -515,12 +513,12 @@ class TestDotenvProvenance:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An empty provenance map preserves source labels byte-for-byte."""
-        from deepagents_code.client.commands.config import _attribute_env_source
+        from niki_agent.client.commands.config import _attribute_env_source
 
         monkeypatch.setattr(config_module, "_dotenv_loaded_values", {})
         monkeypatch.setattr(config_module, "_dotenv_provenance", {})
 
-        source = "env (DEEPAGENTS_CODE_SHOW_HEADER)"
+        source = "env (NIKI_SHOW_HEADER)"
         assert _attribute_env_source(source) == source
 
 
@@ -533,27 +531,27 @@ class TestWorkspaceDotenvEnvironment:
         """Construction-time consumers read each workspace's immutable snapshot."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config_manifest import get_option
-        from deepagents_code.configuration.providers import EnvProvider
-        from deepagents_code.configuration.types import Found
-        from deepagents_code.mcp_config import resolve_mcp_server_env
-        from deepagents_code.model_config import resolve_env_var
+        import niki_agent.config as config_mod
+        from niki_agent.config_manifest import get_option
+        from niki_agent.configuration.providers import EnvProvider
+        from niki_agent.configuration.types import Found
+        from niki_agent.mcp_config import resolve_mcp_server_env
+        from niki_agent.model_config import resolve_env_var
 
         first = tmp_path / "first"
         second = tmp_path / "second"
         first.mkdir()
         second.mkdir()
         (first / ".env").write_text(
-            "OPENAI_API_KEY=first-key\nDEEPAGENTS_CODE_TEST_VALUE=first\nGOOGLE_CLOUD_LOCATION=first-region\n",
+            "OPENAI_API_KEY=first-key\nNIKI_TEST_VALUE=first\nGOOGLE_CLOUD_LOCATION=first-region\n",
             encoding="utf-8",
         )
         (second / ".env").write_text(
-            "OPENAI_API_KEY=second-key\nDEEPAGENTS_CODE_TEST_VALUE=second\nGOOGLE_CLOUD_LOCATION=second-region\n",
+            "OPENAI_API_KEY=second-key\nNIKI_TEST_VALUE=second\nGOOGLE_CLOUD_LOCATION=second-region\n",
             encoding="utf-8",
         )
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_VALUE", raising=False)
+        monkeypatch.delenv("NIKI_TEST_VALUE", raising=False)
         monkeypatch.setattr(
             config_mod, "_GLOBAL_DOTENV_PATH", tmp_path / "missing-global.env"
         )
@@ -565,9 +563,9 @@ class TestWorkspaceDotenvEnvironment:
             with config_mod.use_environment(env):
                 assert resolve_env_var("TEST_VALUE") == expected
                 assert (
-                    resolve_mcp_server_env(
-                        "srv", {"command": "${DEEPAGENTS_CODE_TEST_VALUE}"}
-                    )["command"]
+                    resolve_mcp_server_env("srv", {"command": "${NIKI_TEST_VALUE}"})[
+                        "command"
+                    ]
                     == expected
                 )
                 snapshot = config_mod.Credentials.snapshot_from_environment(
@@ -577,11 +575,11 @@ class TestWorkspaceDotenvEnvironment:
                 assert EnvProvider().get(option).result == Found(f"{expected}-region")
 
         assert "OPENAI_API_KEY" not in os.environ
-        assert "DEEPAGENTS_CODE_TEST_VALUE" not in os.environ
+        assert "NIKI_TEST_VALUE" not in os.environ
 
     def test_workspace_only_tracing_is_active(self) -> None:
         """Tracing flags and project resolve from the workspace snapshot."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         with config_mod.use_environment(
             {
@@ -596,7 +594,7 @@ class TestWorkspaceDotenvEnvironment:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Shells retain the caller's project after the agent override is applied."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(config_mod._bootstrap_state, "done", True)
         monkeypatch.setattr(
@@ -606,7 +604,7 @@ class TestWorkspaceDotenvEnvironment:
         )
         snapshot = config_mod.Credentials.snapshot_from_environment(
             environ={
-                "DEEPAGENTS_CODE_LANGSMITH_PROJECT": "agent-traces",
+                "NIKI_LANGSMITH_PROJECT": "agent-traces",
                 "LANGSMITH_PROJECT": "agent-traces",
             }
         )
@@ -618,7 +616,7 @@ class TestWorkspaceDotenvEnvironment:
         """Bindings copy inputs and reset after exceptions."""
         import os
 
-        from deepagents_code.config import active_environment, use_environment
+        from niki_agent.config import active_environment, use_environment
 
         source = {"VALUE": "workspace"}
         error = RuntimeError("boom")
@@ -639,8 +637,8 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Lowercase dotenv names normalize and cannot replace shell values."""
-        import deepagents_code.config as config_mod
-        import deepagents_code.config_manifest as manifest
+        import niki_agent.config as config_mod
+        import niki_agent.config_manifest as manifest
 
         (tmp_path / ".env").write_text("openai_api_key=dotenv-key\n")
         monkeypatch.setattr(sys, "platform", "win32")
@@ -671,8 +669,8 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A lowercase `${...}` reference finds the normalized key."""
-        import deepagents_code.config as config_mod
-        import deepagents_code.config_manifest as manifest
+        import niki_agent.config as config_mod
+        import niki_agent.config_manifest as manifest
 
         (tmp_path / ".env").write_text(
             "proxy_url=http://proxy:8080\nHTTPS_PROXY=${proxy_url}\n",
@@ -692,7 +690,7 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Later values interpolate earlier values from the same file."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -713,7 +711,7 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A reference resolves to the effective value, not the shadowed one."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         workspace = tmp_path / "workspace"
         workspace.mkdir()
@@ -736,7 +734,7 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Immutable snapshots retain existing first-write-wins behavior."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -771,7 +769,7 @@ class TestWorkspaceDotenvEnvironment:
         """
         import dotenv.main
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         dotenv_path = tmp_path / ".env"
         dotenv_path.write_text("PROXY_USER=café\n", encoding="utf-8")
@@ -793,7 +791,7 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A cloned repo cannot steer the trusted global file's references."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -817,7 +815,7 @@ class TestWorkspaceDotenvEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The baseline keeps trusted shell values available to the global file."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -842,7 +840,7 @@ class TestWorkspaceDotenvEnvironment:
         trusted_opt_in: bool,
     ) -> None:
         """An unreadable global dotenv blocks the project unless the shell opts in."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -851,9 +849,9 @@ class TestWorkspaceDotenvEnvironment:
         global_dotenv.write_text("GLOBAL_VALUE=global\n", encoding="utf-8")
         monkeypatch.delenv("PROJECT_VALUE", raising=False)
         monkeypatch.delenv("GLOBAL_VALUE", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_READ_PROJECT_DOTENV", raising=False)
+        monkeypatch.delenv("NIKI_READ_PROJECT_DOTENV", raising=False)
         if trusted_opt_in:
-            monkeypatch.setenv("DEEPAGENTS_CODE_READ_PROJECT_DOTENV", "true")
+            monkeypatch.setenv("NIKI_READ_PROJECT_DOTENV", "true")
         monkeypatch.setattr(config_mod, "_GLOBAL_DOTENV_PATH", global_dotenv)
 
         real_values_from = config_mod._dotenv_values_from
@@ -883,10 +881,10 @@ class TestProjectDotenvDeniedKeys:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A project `.env` cannot reach a denied key through the global file."""
-        import deepagents_code.config as config_mod
-        import deepagents_code.config_manifest as manifest
+        import niki_agent.config as config_mod
+        import niki_agent.config_manifest as manifest
 
-        denied = "DEEPAGENTS_CODE_DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS"
+        denied = "NIKI_DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS"
         project = tmp_path / "project"
         project.mkdir()
         (project / ".env").write_text("MY_SERVERS=evil-server\n", encoding="utf-8")
@@ -910,8 +908,8 @@ class TestProjectDotenvDeniedKeys:
         """One file cannot become trusted by also owning the active profile."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code._env_vars import (
+        import niki_agent.config as config_mod
+        from niki_agent._env_vars import (
             DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
             READ_PROJECT_DOTENV,
         )
@@ -920,12 +918,12 @@ class TestProjectDotenvDeniedKeys:
         dotenv.write_text(
             f"{READ_PROJECT_DOTENV}=0\n"
             f"{DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS}=attacker\n"
-            "DEEPAGENTS_CODE_TEST_PROJECT_VALUE=allowed\n",
+            "NIKI_TEST_PROJECT_VALUE=allowed\n",
             encoding="utf-8",
         )
         monkeypatch.delenv(DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, raising=False)
         monkeypatch.delenv(READ_PROJECT_DOTENV, raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_PROJECT_VALUE", raising=False)
+        monkeypatch.delenv("NIKI_TEST_PROJECT_VALUE", raising=False)
         monkeypatch.setattr(config_mod, "_GLOBAL_DOTENV_PATH", dotenv)
         config_mod._dotenv_loaded_values.clear()
 
@@ -935,8 +933,8 @@ class TestProjectDotenvDeniedKeys:
 
             assert DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS not in os.environ
             assert DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS not in preview
-            assert os.environ["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
-            assert preview["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
+            assert os.environ["NIKI_TEST_PROJECT_VALUE"] == "allowed"
+            assert preview["NIKI_TEST_PROJECT_VALUE"] == "allowed"
         finally:
             config_mod._dotenv_loaded_values.clear()
 
@@ -948,8 +946,8 @@ class TestProjectDotenvDeniedKeys:
         """An identity error cannot promote a project file to trusted input."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code._env_vars import (
+        import niki_agent.config as config_mod
+        from niki_agent._env_vars import (
             DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS,
         )
 
@@ -959,12 +957,12 @@ class TestProjectDotenvDeniedKeys:
         dotenv = project / ".env"
         dotenv.write_text(
             f"{DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS}=attacker\n"
-            "DEEPAGENTS_CODE_TEST_PROJECT_VALUE=allowed\n",
+            "NIKI_TEST_PROJECT_VALUE=allowed\n",
             encoding="utf-8",
         )
         profile_alias = alias_parent / ".." / ".env"
         monkeypatch.delenv(DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS, raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_PROJECT_VALUE", raising=False)
+        monkeypatch.delenv("NIKI_TEST_PROJECT_VALUE", raising=False)
         monkeypatch.setattr(config_mod, "_GLOBAL_DOTENV_PATH", profile_alias)
         monkeypatch.setattr(
             Path,
@@ -979,8 +977,8 @@ class TestProjectDotenvDeniedKeys:
 
             assert DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS not in os.environ
             assert DANGEROUSLY_ENABLE_PROJECT_MCP_SERVERS not in preview
-            assert os.environ["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
-            assert preview["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
+            assert os.environ["NIKI_TEST_PROJECT_VALUE"] == "allowed"
+            assert preview["NIKI_TEST_PROJECT_VALUE"] == "allowed"
         finally:
             config_mod._dotenv_loaded_values.clear()
 
@@ -992,18 +990,18 @@ class TestProjectDotenvDeniedKeys:
         """A repo cannot alter whether the built-in subagent inherits state."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code._env_vars import FORKED_SUBAGENTS
+        import niki_agent.config as config_mod
+        from niki_agent._env_vars import FORKED_SUBAGENTS
 
         project = tmp_path / "cloned-repo"
         project.mkdir()
         (project / ".env").write_text(
-            f"{FORKED_SUBAGENTS}=false\nDEEPAGENTS_CODE_TEST_PROJECT_VALUE=allowed\n",
+            f"{FORKED_SUBAGENTS}=false\nNIKI_TEST_PROJECT_VALUE=allowed\n",
             encoding="utf-8",
         )
 
         monkeypatch.delenv(FORKED_SUBAGENTS, raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_PROJECT_VALUE", raising=False)
+        monkeypatch.delenv("NIKI_TEST_PROJECT_VALUE", raising=False)
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -1017,8 +1015,8 @@ class TestProjectDotenvDeniedKeys:
 
             assert FORKED_SUBAGENTS not in os.environ
             assert FORKED_SUBAGENTS not in preview
-            assert os.environ["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
-            assert preview["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
+            assert os.environ["NIKI_TEST_PROJECT_VALUE"] == "allowed"
+            assert preview["NIKI_TEST_PROJECT_VALUE"] == "allowed"
         finally:
             config_mod._dotenv_loaded_values.clear()
 
@@ -1030,18 +1028,18 @@ class TestProjectDotenvDeniedKeys:
         """A repo cannot bypass the bounded Deep Agents recursion setting."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         upstream_env = "LANGGRAPH_DEFAULT_RECURSION_LIMIT"
         project = tmp_path / "cloned-repo"
         project.mkdir()
         (project / ".env").write_text(
-            f"{upstream_env}=0\nDEEPAGENTS_CODE_TEST_PROJECT_VALUE=allowed\n",
+            f"{upstream_env}=0\nNIKI_TEST_PROJECT_VALUE=allowed\n",
             encoding="utf-8",
         )
 
         monkeypatch.delenv(upstream_env, raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_PROJECT_VALUE", raising=False)
+        monkeypatch.delenv("NIKI_TEST_PROJECT_VALUE", raising=False)
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -1055,8 +1053,8 @@ class TestProjectDotenvDeniedKeys:
 
             assert upstream_env not in os.environ
             assert upstream_env not in preview
-            assert os.environ["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
-            assert preview["DEEPAGENTS_CODE_TEST_PROJECT_VALUE"] == "allowed"
+            assert os.environ["NIKI_TEST_PROJECT_VALUE"] == "allowed"
+            assert preview["NIKI_TEST_PROJECT_VALUE"] == "allowed"
         finally:
             config_mod._dotenv_loaded_values.clear()
 
@@ -1068,20 +1066,20 @@ class TestProjectDotenvDeniedKeys:
         """A lowercase spelling cannot bypass the project denial on Windows."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         upstream_env = "LANGGRAPH_DEFAULT_RECURSION_LIMIT"
         project = tmp_path / "cloned-repo"
         project.mkdir()
         (project / ".env").write_text(
             "langgraph_default_recursion_limit=0\n"
-            "deepagents_code_test_project_value=allowed\n",
+            "niki_agent_test_project_value=allowed\n",
             encoding="utf-8",
         )
 
         monkeypatch.delenv(upstream_env, raising=False)
-        monkeypatch.delenv("deepagents_code_test_project_value", raising=False)
-        monkeypatch.delenv("DEEPAGENTS_CODE_TEST_PROJECT_VALUE", raising=False)
+        monkeypatch.delenv("niki_agent_test_project_value", raising=False)
+        monkeypatch.delenv("NIKI_TEST_PROJECT_VALUE", raising=False)
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -1111,18 +1109,17 @@ class TestProjectDotenvDeniedKeys:
         """Trace terminal metadata must come from the launch environment."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "cloned-repo"
         project.mkdir()
         (project / ".env").write_text(
-            "TERM_PROGRAM=${LANGSMITH_API_KEY}\n"
-            "DEEPAGENTS_CODE_OPENAI_API_KEY=sk-from-project\n",
+            "TERM_PROGRAM=${LANGSMITH_API_KEY}\nNIKI_OPENAI_API_KEY=sk-from-project\n",
         )
 
         monkeypatch.delenv("TERM_PROGRAM", raising=False)
         monkeypatch.setenv("LANGSMITH_API_KEY", "test-value-not-for-tracing")
-        monkeypatch.delenv("DEEPAGENTS_CODE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("NIKI_OPENAI_API_KEY", raising=False)
         monkeypatch.setattr(
             config_mod,
             "_GLOBAL_DOTENV_PATH",
@@ -1138,7 +1135,7 @@ class TestProjectDotenvDeniedKeys:
                 "metadata"
             ]
             assert "dcode_term_program" not in metadata
-            assert os.environ["DEEPAGENTS_CODE_OPENAI_API_KEY"] == "sk-from-project"
+            assert os.environ["NIKI_OPENAI_API_KEY"] == "sk-from-project"
         finally:
             config_mod._dotenv_loaded_values.clear()
 
@@ -1226,7 +1223,7 @@ class TestProjectAgentMdFinding:
         link = project_root / "AGENTS.md"
         link.symlink_to(outside_target)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.project_utils"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.project_utils"):
             result = _find_project_agent_md(project_root)
 
         assert result == []
@@ -1245,7 +1242,7 @@ class TestProjectAgentMdFinding:
 
         (project_root / ".deepagents").symlink_to(outside, target_is_directory=True)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.project_utils"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.project_utils"):
             result = _find_project_agent_md(project_root)
 
         assert result == []
@@ -1277,7 +1274,7 @@ class TestProjectAgentMdFinding:
         a.symlink_to(b)
         b.symlink_to(a)
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.project_utils"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.project_utils"):
             result = _find_project_agent_md(project_root)
 
         assert result == []
@@ -1327,7 +1324,7 @@ class TestProjectAgentMdFinding:
 
 
 class TestUserDeepagentsDir:
-    """Test user-level paths derived from `DEEPAGENTS_HOME`."""
+    """Test user-level paths derived from `NIKI_HOME`."""
 
 
 class TestGetProjectAgentMdPath:
@@ -1374,7 +1371,7 @@ class TestDefaultModelSpecAllowlist:
         The message reaches the terminal verbatim, and `<default>` reads like a
         bug in dcode rather than a policy the user configured.
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         self._pin(
             monkeypatch,
@@ -1395,7 +1392,7 @@ class TestDefaultModelSpecAllowlist:
         Distinguishable from the bare no-credentials case because the remedy
         differs: only a credential for an allowlisted provider helps.
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         self._pin(
             monkeypatch,
@@ -1426,7 +1423,7 @@ class TestDefaultModelSpecAllowlist:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A stale `[models].default` outside policy does not win."""
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         self._pin(
             monkeypatch,
@@ -1458,7 +1455,7 @@ class TestDefaultModelSpecAllowlist:
         so a wildcard policy with valid credentials must not fall through to
         the "No discoverable models" error.
         """
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         self._pin(
             monkeypatch,
@@ -1490,7 +1487,7 @@ class TestDefaultModelSpecAllowlist:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A wildcard for a provider with no known models has no candidates."""
-        from deepagents_code.config import _get_default_model_spec
+        from niki_agent.config import _get_default_model_spec
 
         self._pin(
             monkeypatch,
@@ -1523,7 +1520,7 @@ class TestWorkspaceStoredCredentials:
         """Azure SDK-only workspace settings reach the model constructor."""
         import os
 
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock(profile=None)
         mock_init_chat_model.return_value = mock_model
@@ -1559,7 +1556,7 @@ class TestWorkspaceStoredCredentials:
         """AWS workspace settings reach Bedrock without process mutation."""
         import os
 
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock(profile=None)
         mock_init_chat_model.return_value = mock_model
@@ -1595,17 +1592,17 @@ class TestWorkspaceStoredCredentials:
         """Scoped model creation passes stored auth explicitly."""
         import os
 
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key",
+            "niki_agent.model_config.auth_store.get_stored_key",
             lambda provider: "stored-key" if provider == "openai" else None,
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url",
+            "niki_agent.model_config.auth_store.get_stored_base_url",
             lambda provider: (
                 "https://stored.example/v1" if provider == "openai" else None
             ),
@@ -1613,9 +1610,7 @@ class TestWorkspaceStoredCredentials:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
 
-        environment = (
-            {} if override is None else {"DEEPAGENTS_CODE_OPENAI_API_KEY": override}
-        )
+        environment = {} if override is None else {"NIKI_OPENAI_API_KEY": override}
         with use_environment(environment):
             create_model("openai:gpt-5.5")
 
@@ -1632,17 +1627,17 @@ class TestWorkspaceStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A stored native key is not sent to a workspace gateway URL."""
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key",
+            "niki_agent.model_config.auth_store.get_stored_key",
             lambda provider: "stored-key" if provider == "openai" else None,
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url",
+            "niki_agent.model_config.auth_store.get_stored_base_url",
             lambda _provider: None,
         )
 
@@ -1660,17 +1655,17 @@ class TestWorkspaceStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A caller-supplied key is not paired with another key's endpoint."""
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key",
+            "niki_agent.model_config.auth_store.get_stored_key",
             lambda provider: "stored-key" if provider == "openai" else None,
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url",
+            "niki_agent.model_config.auth_store.get_stored_base_url",
             lambda _provider: "https://stored.example/v1",
         )
         with use_environment({}):
@@ -1690,17 +1685,17 @@ class TestWorkspaceStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A native Anthropic key gets explicit native transport settings."""
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key",
+            "niki_agent.model_config.auth_store.get_stored_key",
             lambda provider: "stored-key" if provider == "anthropic" else None,
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url",
+            "niki_agent.model_config.auth_store.get_stored_base_url",
             lambda _provider: None,
         )
         with use_environment(
@@ -1729,7 +1724,7 @@ class TestWorkspaceStoredCredentials:
         still falls back to the environment key. Keeping `base_url` would send
         that key to a gateway a workspace `.env` chose.
         """
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
@@ -1740,10 +1735,10 @@ class TestWorkspaceStoredCredentials:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key", _corrupt
+            "niki_agent.model_config.auth_store.get_stored_key", _corrupt
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url", _corrupt
+            "niki_agent.model_config.auth_store.get_stored_base_url", _corrupt
         )
 
         with use_environment(
@@ -1764,7 +1759,7 @@ class TestWorkspaceStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Without the store, an explicit key's endpoint pairing is unknowable."""
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
@@ -1775,7 +1770,7 @@ class TestWorkspaceStoredCredentials:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_base_url", _corrupt
+            "niki_agent.model_config.auth_store.get_stored_base_url", _corrupt
         )
 
         with use_environment(
@@ -1805,7 +1800,7 @@ class TestWorkspaceStoredCredentials:
         """
         import logging
 
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
@@ -1816,11 +1811,11 @@ class TestWorkspaceStoredCredentials:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key", _corrupt
+            "niki_agent.model_config.auth_store.get_stored_key", _corrupt
         )
 
         with (
-            caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.config"),
             use_environment({"GOOGLE_CLOUD_LOCATION": "us-east5"}),
         ):
             create_model("google_anthropic_vertex:claude-sonnet-4-6")
@@ -1835,7 +1830,7 @@ class TestWorkspaceStoredCredentials:
 
     def test_bare_claude_provider_uses_workspace_credentials(self) -> None:
         """Bare model inference reads the active workspace snapshot."""
-        from deepagents_code.config import detect_provider, use_environment
+        from niki_agent.config import detect_provider, use_environment
 
         with use_environment(
             {
@@ -1852,13 +1847,13 @@ class TestWorkspaceStoredCredentials:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Vertex project settings come from the workspace snapshot."""
-        from deepagents_code.config import create_model, use_environment
+        from niki_agent.config import create_model, use_environment
 
         mock_model = Mock()
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
         monkeypatch.setattr(
-            "deepagents_code.model_config.auth_store.get_stored_key",
+            "niki_agent.model_config.auth_store.get_stored_key",
             lambda _provider: None,
         )
 
@@ -1887,7 +1882,7 @@ class TestCreateModelProfileExtraction:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -1908,18 +1903,18 @@ class TestCreateModelSplitCredentialWiring:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @pytest.fixture(autouse=True)
     def _isolate_openai_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         for var in (
             "OPENAI_API_KEY",
-            "DEEPAGENTS_CODE_OPENAI_API_KEY",
+            "NIKI_OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "OPENAI_API_BASE",
-            "DEEPAGENTS_CODE_OPENAI_BASE_URL",
-            "DEEPAGENTS_CODE_OPENAI_API_BASE",
+            "NIKI_OPENAI_BASE_URL",
+            "NIKI_OPENAI_API_BASE",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -1939,16 +1934,15 @@ class TestCreateModelSplitCredentialWiring:
         mock_model.profile = {"max_input_tokens": 128000, "tool_calling": True}
         mock_init_chat_model.return_value = mock_model
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_OPENAI_API_KEY", "sk-secret-value")
+        monkeypatch.setenv("NIKI_OPENAI_API_KEY", "sk-secret-value")
         monkeypatch.setenv("OPENAI_BASE_URL", "https://gateway.example/v1")
 
-        with caplog.at_level(logging.DEBUG, logger="deepagents_code.model_config"):
+        with caplog.at_level(logging.DEBUG, logger="niki_agent.model_config"):
             create_model("openai:gpt-5.5")
 
         messages = [r.getMessage() for r in caplog.records]
         assert any(
-            "DEEPAGENTS_CODE_OPENAI_API_KEY" in m and "OPENAI_BASE_URL" in m
-            for m in messages
+            "NIKI_OPENAI_API_KEY" in m and "OPENAI_BASE_URL" in m for m in messages
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -1969,11 +1963,11 @@ class TestCreateModelSplitCredentialWiring:
 
         manager = Mock()
         monkeypatch.setattr(
-            "deepagents_code.model_config.warn_on_split_credential_source",
+            "niki_agent.model_config.warn_on_split_credential_source",
             manager.warn,
         )
         monkeypatch.setattr(
-            "deepagents_code.model_config.apply_stored_credentials",
+            "niki_agent.model_config.apply_stored_credentials",
             manager.apply,
         )
 
@@ -2052,7 +2046,7 @@ class TestCreateModelMaxRetries:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
 
@@ -2062,7 +2056,7 @@ class TestCreateModelProfileOverrides:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -2089,7 +2083,7 @@ max_input_tokens = 4096
         clear_caches()
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.config"),
         ):
             result = create_model("anthropic:claude-sonnet-4-5")
 
@@ -2107,7 +2101,7 @@ class TestCreateModelCLIProfileOverrides:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
 
@@ -2211,7 +2205,7 @@ class TestGetLangsmithProjectName:
 
     @pytest.mark.parametrize(
         "flag",
-        ["LANGSMITH_TRACING", "DEEPAGENTS_CODE_LANGSMITH_TRACING"],
+        ["LANGSMITH_TRACING", "NIKI_LANGSMITH_TRACING"],
     )
     def test_returns_none_when_tracing_explicitly_disabled(self, flag: str) -> None:
         """Recognized tracing opt-outs should disable project resolution."""
@@ -2232,7 +2226,7 @@ class TestGetLangsmithProjectName:
         }
         with (
             patch.dict("os.environ", env, clear=False),
-            patch("deepagents_code.config._credentials_instance") as mock_credentials,
+            patch("niki_agent.config._credentials_instance") as mock_credentials,
         ):
             mock_credentials.deepagents_langchain_project = "credentials-project"
             assert get_langsmith_project_name() == "credentials-project"
@@ -2246,14 +2240,14 @@ class TestGetLangsmithProjectName:
         }
         with (
             patch.dict("os.environ", env, clear=False),
-            patch("deepagents_code.config._credentials_instance") as mock_credentials,
+            patch("niki_agent.config._credentials_instance") as mock_credentials,
         ):
             mock_credentials.deepagents_langchain_project = None
             assert get_langsmith_project_name() == "env-project"
 
     def test_accepts_langchain_api_key(self) -> None:
         """Should accept LANGCHAIN_API_KEY as alternative to LANGSMITH_API_KEY."""
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         env = {
             "LANGSMITH_API_KEY": "",
@@ -2262,7 +2256,7 @@ class TestGetLangsmithProjectName:
         }
         with (
             patch.dict("os.environ", env, clear=False),
-            patch("deepagents_code.config._credentials_instance") as mock_credentials,
+            patch("niki_agent.config._credentials_instance") as mock_credentials,
         ):
             mock_credentials.deepagents_langchain_project = None
             assert get_langsmith_project_name() == LANGSMITH_PROJECT_DEFAULT
@@ -2275,12 +2269,12 @@ class TestGetLangsmithProjectName:
         the bare-env and unset cases, catching future drift between the two
         resolution paths.
         """
-        from deepagents_code.config_manifest import (
+        from niki_agent.config_manifest import (
             LANGSMITH_PROJECT_DEFAULT,
             get_option,
         )
-        from deepagents_code.configuration.resolver import resolver_from_snapshots
-        from deepagents_code.configuration.types import (
+        from niki_agent.configuration.resolver import resolver_from_snapshots
+        from niki_agent.configuration.types import (
             ProviderHealth,
             ProviderStatus,
             TomlSnapshot,
@@ -2310,11 +2304,11 @@ class TestGetLangsmithProjectName:
             "LANGSMITH_API_KEY": "lsv2_test",
             "LANGSMITH_TRACING": "true",
             "LANGSMITH_PROJECT": "parity-bare",
-            "DEEPAGENTS_CODE_LANGSMITH_PROJECT": "",
+            "NIKI_LANGSMITH_PROJECT": "",
         }
         with (
             patch.dict("os.environ", bare_env, clear=False),
-            patch("deepagents_code.config._credentials_instance") as mock_credentials,
+            patch("niki_agent.config._credentials_instance") as mock_credentials,
         ):
             mock_credentials.deepagents_langchain_project = None
             manifest_value = resolve()
@@ -2325,11 +2319,11 @@ class TestGetLangsmithProjectName:
             "LANGSMITH_API_KEY": "lsv2_test",
             "LANGSMITH_TRACING": "true",
             "LANGSMITH_PROJECT": "",
-            "DEEPAGENTS_CODE_LANGSMITH_PROJECT": "",
+            "NIKI_LANGSMITH_PROJECT": "",
         }
         with (
             patch.dict("os.environ", default_env, clear=False),
-            patch("deepagents_code.config._credentials_instance") as mock_credentials,
+            patch("niki_agent.config._credentials_instance") as mock_credentials,
         ):
             mock_credentials.deepagents_langchain_project = None
             manifest_value = resolve()
@@ -2354,8 +2348,8 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         for var in (
             "LANGSMITH_API_KEY",
             "LANGCHAIN_API_KEY",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY",
-            "DEEPAGENTS_CODE_LANGCHAIN_API_KEY",
+            "NIKI_LANGSMITH_API_KEY",
+            "NIKI_LANGCHAIN_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)
 
@@ -2363,7 +2357,7 @@ class TestLangsmithKeyShadowedByEmptyOverride:
     def fake_state_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         """Redirect the credential store into a temp directory."""
         state = tmp_path / ".state"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state)
         return state
 
     def test_returns_none_without_empty_override(
@@ -2379,17 +2373,17 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An empty override with no underlying key is not a shadow."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult()
 
     def test_detects_shadowed_canonical_env_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An empty override shadowing a canonical env key is reported."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-            shadowing_var="DEEPAGENTS_CODE_LANGSMITH_API_KEY"
+            shadowing_var="NIKI_LANGSMITH_API_KEY"
         )
 
     def test_detects_shadowed_stored_key(
@@ -2398,12 +2392,12 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An empty override shadowing a `/auth`-stored key is reported."""
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
         auth_store.set_stored_key("langsmith", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-            shadowing_var="DEEPAGENTS_CODE_LANGSMITH_API_KEY"
+            shadowing_var="NIKI_LANGSMITH_API_KEY"
         )
 
     def test_langchain_override_does_not_consult_the_stored_key(
@@ -2419,9 +2413,9 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         so no shadow is reported. Pins the asymmetry against a future change that
         wrongly makes the `LANGCHAIN` path consult the store.
         """
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         auth_store.set_stored_key("langsmith", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult()
 
@@ -2429,17 +2423,17 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A non-empty prefixed override resolves normally, so no shadow."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_override")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_override")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult()
 
     def test_detects_shadowed_langchain_canonical_env_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The legacy `LANGCHAIN_API_KEY` override path is reported too."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-            shadowing_var="DEEPAGENTS_CODE_LANGCHAIN_API_KEY"
+            shadowing_var="NIKI_LANGCHAIN_API_KEY"
         )
 
     def test_reports_the_override_that_actually_shadows_the_key(
@@ -2454,23 +2448,23 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         unsetting the `LANGCHAIN` override -- not the `LANGSMITH` one -- is what
         restores tracing. The hint must name the `LANGCHAIN` override.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-            shadowing_var="DEEPAGENTS_CODE_LANGCHAIN_API_KEY"
+            shadowing_var="NIKI_LANGCHAIN_API_KEY"
         )
 
     def test_prefers_langsmith_when_both_overrides_shadow_a_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """When both overrides genuinely shadow a key, `LANGSMITH` wins."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-            shadowing_var="DEEPAGENTS_CODE_LANGSMITH_API_KEY"
+            shadowing_var="NIKI_LANGSMITH_API_KEY"
         )
 
     def test_ignores_empty_override_when_a_key_already_resolves(
@@ -2484,7 +2478,7 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         not the cause, so the generic hint -- not a false shadow claim -- is
         correct.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult()
 
@@ -2499,7 +2493,7 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         the user to unset the wrong variable, so nothing is reported.
         """
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_langsmith")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "lsv2_langchain")
         assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult()
 
@@ -2513,13 +2507,13 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         The warning must carry the underlying exception text (not a static
         guess) so logs point at the real fault.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
         with (
             patch(
-                "deepagents_code.auth_store.get_stored_key",
+                "niki_agent.auth_store.get_stored_key",
                 side_effect=RuntimeError("bad json at line 3"),
             ),
-            caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.config"),
         ):
             assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
                 store_unreadable=True
@@ -2538,15 +2532,15 @@ class TestLangsmithKeyShadowedByEmptyOverride:
         is the actionable answer and must win over the store uncertainty, which
         proves the loop continued past the exception rather than bailing.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "")
         monkeypatch.setenv("LANGCHAIN_API_KEY", "lsv2_test")
         with patch(
-            "deepagents_code.auth_store.get_stored_key",
+            "niki_agent.auth_store.get_stored_key",
             side_effect=RuntimeError("corrupt"),
         ):
             assert langsmith_key_shadowed_by_empty_override() == LangsmithShadowResult(
-                shadowing_var="DEEPAGENTS_CODE_LANGCHAIN_API_KEY"
+                shadowing_var="NIKI_LANGCHAIN_API_KEY"
             )
 
 
@@ -2558,8 +2552,8 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The redaction env var can opt out for local debugging."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_REDACT", "false")
-        with patch("deepagents_code.config_manifest.load_config_toml", return_value={}):
+        monkeypatch.setenv("NIKI_LANGSMITH_REDACT", "false")
+        with patch("niki_agent.config_manifest.load_config_toml", return_value={}):
             assert is_langsmith_redaction_enabled() is False
 
     def test_configures_langsmith_client_with_secret_anonymizer(
@@ -2568,13 +2562,13 @@ class TestLangsmithSecretRedaction:
     ) -> None:
         """Active tracing installs a client whose anonymizer scrubs secrets."""
         client = object()
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         # Exercise the real `create_secret_anonymizer` (network-free) so the test
         # fails if the installed anonymizer does not actually redact secrets.
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=client) as client_cls,
             patch("langsmith.configure") as configure,
         ):
@@ -2591,17 +2585,17 @@ class TestLangsmithSecretRedaction:
 
     def test_workspace_environment_configures_redaction(self) -> None:
         """Workspace-only tracing settings configure the SDK client."""
-        from deepagents_code.config import use_environment
+        from niki_agent.config import use_environment
 
         client = object()
         with (
             use_environment(
                 {
-                    "DEEPAGENTS_CODE_LANGSMITH_API_KEY": "lsv2_workspace",
-                    "DEEPAGENTS_CODE_LANGSMITH_TRACING": "true",
+                    "NIKI_LANGSMITH_API_KEY": "lsv2_workspace",
+                    "NIKI_LANGSMITH_TRACING": "true",
                 }
             ),
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=client) as client_cls,
             patch("langsmith.configure") as configure,
         ):
@@ -2615,12 +2609,12 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Opting out leaves the LangSmith client untouched."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_REDACT", "false")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_REDACT", "false")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client") as client_cls,
             patch("langsmith.configure") as configure,
         ):
@@ -2634,10 +2628,10 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Redaction is skipped when tracing is inactive, even if credentialed."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client") as client_cls,
             patch("langsmith.configure") as configure,
         ):
@@ -2651,14 +2645,14 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Redaction is skipped when tracing is active but uncredentialed."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             # No env key is set; ignore any LangSmith profile on the dev machine
             # so the no-credentials branch is exercised hermetically.
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=False,
             ),
             patch("langsmith.Client") as client_cls,
@@ -2674,11 +2668,11 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The legacy LANGCHAIN_API_KEY is used when LANGSMITH_API_KEY is absent."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGCHAIN_API_KEY", "lsv2_legacy")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGCHAIN_API_KEY", "lsv2_legacy")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=object()) as client_cls,
             patch("langsmith.configure"),
         ):
@@ -2692,12 +2686,12 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A custom tracing endpoint is forwarded to the client as `api_url`."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://eu.smith.example.com")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=object()) as client_cls,
             patch("langsmith.configure"),
         ):
@@ -2711,12 +2705,12 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The SDK default US SaaS URL is not forwarded as a custom `api_url`."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", LANGSMITH_US_ENDPOINT)
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=object()) as client_cls,
             patch("langsmith.configure"),
         ):
@@ -2735,8 +2729,8 @@ class TestLangsmithSecretRedaction:
         default US env value must not fall through to the profile when building
         the redacting client.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", LANGSMITH_US_ENDPOINT)
 
         profile = Mock()
@@ -2746,9 +2740,9 @@ class TestLangsmithSecretRedaction:
         profile.oauth_refresh_token = None
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch(
-                "deepagents_code.config._load_langsmith_profile_config",
+                "niki_agent.config._load_langsmith_profile_config",
                 return_value=profile,
             ),
             patch("langsmith.Client", return_value=object()) as client_cls,
@@ -2764,13 +2758,13 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Keyless default US endpoint is not treated as an upload target."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", f"{LANGSMITH_US_ENDPOINT}/")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=False,
             ),
             patch("langsmith.Client") as client_cls,
@@ -2787,13 +2781,13 @@ class TestLangsmithSecretRedaction:
     ) -> None:
         """Keyless custom endpoints still get the secret anonymizer installed."""
         client = object()
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "http://localhost:1984")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=False,
             ),
             patch("langsmith.Client", return_value=client) as client_cls,
@@ -2813,16 +2807,16 @@ class TestLangsmithSecretRedaction:
     ) -> None:
         """Replica trace endpoints still get the secret anonymizer installed."""
         client = object()
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv(
             "LANGSMITH_RUNS_ENDPOINTS",
             '[{"api_url":"https://replica.example.com","api_key":"lsv2_replica"}]',
         )
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=False,
             ),
             patch("langsmith.Client", return_value=client) as client_cls,
@@ -2846,13 +2840,13 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Only valid replica endpoint configs count as upload targets."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_RUNS_ENDPOINTS", value)
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=False,
             ),
             patch("langsmith.Client") as client_cls,
@@ -2868,11 +2862,11 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A redaction setup failure disables tracing to avoid leaking secrets."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", side_effect=RuntimeError("boom")),
             patch("langsmith.configure") as configure,
         ):
@@ -2886,19 +2880,19 @@ class TestLangsmithSecretRedaction:
     ) -> None:
         """Profile-only credentials (no env key) still install the anonymizer."""
         client = object()
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             # Credentials come only from an active LangSmith profile, not the env.
             # No endpoint either, so the profile credentials are the sole reason
             # the upload gate passes. The SDK client self-resolves that profile
             # auth when no key is forwarded.
             patch(
-                "deepagents_code.config._has_langsmith_profile_credentials",
+                "niki_agent.config._has_langsmith_profile_credentials",
                 return_value=True,
             ),
-            patch("deepagents_code.config._tracing_endpoint_from", return_value=None),
+            patch("niki_agent.config._tracing_endpoint_from", return_value=None),
             patch("langsmith.Client", return_value=client) as client_cls,
             patch("langsmith.configure") as configure,
         ):
@@ -2915,7 +2909,7 @@ class TestLangsmithSecretRedaction:
         tmp_path: Path,
     ) -> None:
         """A `[tracing] langsmith_redact = false` in config.toml opts out."""
-        monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_REDACT", raising=False)
+        monkeypatch.delenv("NIKI_LANGSMITH_REDACT", raising=False)
         (tmp_path / "config.toml").write_text(
             "[tracing]\nlangsmith_redact = false\n", encoding="utf-8"
         )
@@ -2927,7 +2921,7 @@ class TestLangsmithSecretRedaction:
         tmp_path: Path,
     ) -> None:
         """The redaction env var takes precedence over a conflicting config.toml."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_REDACT", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_REDACT", "true")
         (tmp_path / "config.toml").write_text(
             "[tracing]\nlangsmith_redact = false\n", encoding="utf-8"
         )
@@ -2942,12 +2936,12 @@ class TestLangsmithSecretRedaction:
         This is the worst-case fail-closed path: redaction setup raised and the
         SDK's `configure(enabled=False)` raised too, so the only remaining
         barrier is removing every env var the LangChain tracer falls back to —
-        both the canonical names and their `DEEPAGENTS_CODE_`-prefixed forms.
+        both the canonical names and their `NIKI_`-prefixed forms.
         """
         import os
 
-        from deepagents_code.config import _TRACING_ENABLE_ENV_VARS
-        from deepagents_code.model_config import _ENV_PREFIX
+        from niki_agent.config import _TRACING_ENABLE_ENV_VARS
+        from niki_agent.model_config import _ENV_PREFIX
 
         monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
         enable_vars = [
@@ -2958,7 +2952,7 @@ class TestLangsmithSecretRedaction:
             monkeypatch.setenv(var, "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", side_effect=RuntimeError("boom")),
             patch("langsmith.configure", side_effect=RuntimeError("nope")),
         ):
@@ -2977,12 +2971,12 @@ class TestLangsmithSecretRedaction:
         so even an unexpected exception there disables tracing rather than
         escaping the function and leaving tracing live but unredacted.
         """
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
             patch(
-                "deepagents_code.config.is_langsmith_redaction_enabled",
+                "niki_agent.config.is_langsmith_redaction_enabled",
                 side_effect=RuntimeError("boom"),
             ),
             patch("langsmith.configure") as configure,
@@ -2996,11 +2990,11 @@ class TestLangsmithSecretRedaction:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Each call reinstalls the redacting client (no fail-open caching)."""
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_test")
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_test")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
 
         with (
-            patch("deepagents_code.config_manifest.load_config_toml", return_value={}),
+            patch("niki_agent.config_manifest.load_config_toml", return_value={}),
             patch("langsmith.Client", return_value=object()),
             patch("langsmith.configure") as configure,
         ):
@@ -3053,7 +3047,7 @@ class TestDisableOrphanedTracing:
         env["LANGCHAIN_TRACING_V2"] = "true"
         with (
             patch.dict("os.environ", env, clear=False),
-            patch("deepagents_code.config.shutil.which", return_value="/bin/langsmith"),
+            patch("niki_agent.config.shutil.which", return_value="/bin/langsmith"),
         ):
             _disable_orphaned_tracing()
 
@@ -3067,7 +3061,7 @@ class TestDisableOrphanedTracing:
         env["LANGCHAIN_TRACING_V2"] = "true"
         with (
             patch.dict("os.environ", env, clear=False),
-            patch("deepagents_code.config.shutil.which", return_value=None),
+            patch("niki_agent.config.shutil.which", return_value=None),
         ):
             _disable_orphaned_tracing()
 
@@ -3282,7 +3276,7 @@ class TestApplyStoredLangSmithTracing:
     def fake_state_dir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         """Redirect the credential store into a temp directory."""
         state = tmp_path / ".state"
-        monkeypatch.setattr("deepagents_code.model_config.DEFAULT_STATE_DIR", state)
+        monkeypatch.setattr("niki_agent.model_config.DEFAULT_STATE_DIR", state)
         return state
 
     def test_enables_tracing_when_key_stored(
@@ -3293,7 +3287,7 @@ class TestApplyStoredLangSmithTracing:
         """A stored LangSmith key turns tracing on by default."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         for var in ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2"):
             monkeypatch.delenv(var, raising=False)
@@ -3309,7 +3303,7 @@ class TestApplyStoredLangSmithTracing:
         """An explicit falsy tracing flag is honored as a temporary opt-out."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.setenv("LANGSMITH_TRACING", "false")
         auth_store.set_stored_key("langsmith", "lsv2_test")
@@ -3324,9 +3318,9 @@ class TestApplyStoredLangSmithTracing:
         """The documented scoped opt-out wins over other truthy tracing flags."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "false")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "false")
         monkeypatch.setenv("LANGSMITH_TRACING", "false")
         monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
         auth_store.set_stored_key("langsmith", "lsv2_test")
@@ -3342,7 +3336,7 @@ class TestApplyStoredLangSmithTracing:
         """An already-truthy tracing flag is left as-is."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
@@ -3359,7 +3353,7 @@ class TestApplyStoredLangSmithTracing:
         """A stored custom project is applied when none is already set."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         for var in ("LANGSMITH_TRACING", "LANGSMITH_PROJECT"):
             monkeypatch.delenv(var, raising=False)
@@ -3375,7 +3369,7 @@ class TestApplyStoredLangSmithTracing:
         """An explicit LANGSMITH_PROJECT wins over the stored project."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_PROJECT", "from-env")
@@ -3391,7 +3385,7 @@ class TestApplyStoredLangSmithTracing:
         """Immediate `/auth` save applies the latest stored project."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_PROJECT", "old-project")
@@ -3407,7 +3401,7 @@ class TestApplyStoredLangSmithTracing:
         """Immediate `/auth` save clears the old project when the field is blank."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_PROJECT", "old-project")
@@ -3423,8 +3417,8 @@ class TestApplyStoredLangSmithTracing:
         """Clearing `/auth` project updates the active traced session."""
         import os
 
-        from deepagents_code import auth_store
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent import auth_store
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         redaction_env: list[dict[str, str]] = []
 
@@ -3436,7 +3430,7 @@ class TestApplyStoredLangSmithTracing:
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         auth_store.set_stored_key("langsmith", "lsv2_test")
         with patch(
-            "deepagents_code.config.configure_langsmith_secret_redaction",
+            "niki_agent.config.configure_langsmith_secret_redaction",
             side_effect=capture_redaction_env,
         ) as configure_redaction:
             apply_stored_langsmith_auth(replace_project=True)
@@ -3458,7 +3452,7 @@ class TestApplyStoredLangSmithTracing:
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         fake_state_dir.mkdir(parents=True, exist_ok=True)
         (fake_state_dir / "auth.json").write_text("{ not json", encoding="utf-8")
-        with caplog.at_level("WARNING", logger="deepagents_code.config"):
+        with caplog.at_level("WARNING", logger="niki_agent.config"):
             _apply_stored_langsmith_tracing()
         assert "LANGSMITH_TRACING" not in os.environ
         assert any("may be corrupt" in r.getMessage() for r in caplog.records)
@@ -3471,7 +3465,7 @@ class TestApplyStoredLangSmithTracing:
         """A stored endpoint is applied to LANGSMITH_ENDPOINT at startup."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         for var in ("LANGSMITH_TRACING", "LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT"):
             monkeypatch.delenv(var, raising=False)
@@ -3490,7 +3484,7 @@ class TestApplyStoredLangSmithTracing:
         """An explicit LANGSMITH_ENDPOINT wins over the stored endpoint at startup."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.delenv("LANGCHAIN_ENDPOINT", raising=False)
@@ -3509,7 +3503,7 @@ class TestApplyStoredLangSmithTracing:
         """A stored key without an endpoint never clears an existing env endpoint."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://self-hosted.example.com")
@@ -3525,7 +3519,7 @@ class TestApplyStoredLangSmithTracing:
         """A lone LANGCHAIN_ENDPOINT (the alternate) also wins over a stored one."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
@@ -3546,7 +3540,7 @@ class TestApplyStoredLangSmithTracing:
         """Immediate `/auth` save replaces the endpoint and clears the alternate."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://old.example.com")
@@ -3566,7 +3560,7 @@ class TestApplyStoredLangSmithTracing:
         """Immediate `/auth` save clears the endpoint when no base URL is stored."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://old.example.com")
@@ -3586,7 +3580,7 @@ class TestApplyStoredLangSmithTracing:
         """
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
         monkeypatch.delenv("LANGCHAIN_ENDPOINT", raising=False)
@@ -3605,11 +3599,11 @@ class TestApplyStoredLangSmithTracing:
         """A session-scoped key is not paired with a stale stored endpoint."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         for var in ("LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT"):
             monkeypatch.delenv(var, raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_prefixed")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_prefixed")
         auth_store.set_stored_key(
             "langsmith", "lsv2_stored", base_url=LANGSMITH_EU_ENDPOINT
         )
@@ -3625,11 +3619,11 @@ class TestApplyStoredLangSmithTracing:
         """A scoped key with the stored value still uses the stored endpoint."""
         import os
 
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         for var in ("LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT"):
             monkeypatch.delenv(var, raising=False)
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_stored")
+        monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_stored")
         auth_store.set_stored_key(
             "langsmith", "lsv2_stored", base_url=LANGSMITH_EU_ENDPOINT
         )
@@ -3667,21 +3661,21 @@ class TestGetTracingStatus:
         "LANGSMITH_ENDPOINT": "",
         "LANGCHAIN_ENDPOINT": "",
         "LANGSMITH_PROJECT": "",
-        "DEEPAGENTS_CODE_LANGSMITH_PROJECT": "",
-        "DEEPAGENTS_CODE_LANGSMITH_TRACING": "",
-        "DEEPAGENTS_CODE_LANGCHAIN_TRACING_V2": "",
-        "DEEPAGENTS_CODE_LANGSMITH_API_KEY": "",
-        "DEEPAGENTS_CODE_LANGCHAIN_API_KEY": "",
+        "NIKI_LANGSMITH_PROJECT": "",
+        "NIKI_LANGSMITH_TRACING": "",
+        "NIKI_LANGCHAIN_TRACING_V2": "",
+        "NIKI_LANGSMITH_API_KEY": "",
+        "NIKI_LANGCHAIN_API_KEY": "",
         "LANGSMITH_REPLICA_PROJECTS": "",
-        "DEEPAGENTS_CODE_LANGSMITH_REPLICA_PROJECTS": "",
+        "NIKI_LANGSMITH_REPLICA_PROJECTS": "",
         "LANGSMITH_PROFILE": "",
         "LANGSMITH_CONFIG_FILE": "/__deepagents_missing_langsmith_config__.json",
     }
 
     def test_disabled_when_no_flags(self) -> None:
         """A clean environment reports tracing off with configured project metadata."""
-        from deepagents_code.config import get_tracing_status
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config import get_tracing_status
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         with patch.dict("os.environ", self._CLEAN, clear=False):
             status = get_tracing_status()
@@ -3704,7 +3698,7 @@ class TestGetTracingStatus:
             ("LANGCHAIN_TRACING", "false", False, True),
             # Prefixed bridged falsy flag — exercises the prefix-aware
             # `_resolve_env_var_from` off path; doctor runs pre-bootstrap.
-            ("DEEPAGENTS_CODE_LANGSMITH_TRACING", "false", False, True),
+            ("NIKI_LANGSMITH_TRACING", "false", False, True),
             # An empty flag reads as not configured, not an explicit opt-out.
             ("LANGSMITH_TRACING_V2", "", False, False),
             # An unrecognized token is neither enabled nor an explicit opt-out.
@@ -3727,7 +3721,7 @@ class TestGetTracingStatus:
         across every recognized falsy token plus the empty and unrecognized
         cases.
         """
-        from deepagents_code.config import get_tracing_status
+        from niki_agent.config import get_tracing_status
 
         env = dict(self._CLEAN)
         env[var] = token
@@ -3737,18 +3731,18 @@ class TestGetTracingStatus:
         assert status.explicitly_disabled is expected_disabled
 
     def test_prefixed_flag_and_key_are_detected(self) -> None:
-        """`DEEPAGENTS_CODE_`-prefixed tracing/key vars resolve like the runtime.
+        """`NIKI_`-prefixed tracing/key vars resolve like the runtime.
 
         `dcode doctor` runs before bootstrap bridges these to canonical names,
         so a user with only the supported prefixed vars must still read as
         enabled/configured with the prefixed project resolved.
         """
-        from deepagents_code.config import get_tracing_status
+        from niki_agent.config import get_tracing_status
 
         env = dict(self._CLEAN)
-        env["DEEPAGENTS_CODE_LANGSMITH_TRACING"] = "true"
-        env["DEEPAGENTS_CODE_LANGSMITH_API_KEY"] = "lsv2_test"
-        env["DEEPAGENTS_CODE_LANGSMITH_PROJECT"] = "prefixed-proj"
+        env["NIKI_LANGSMITH_TRACING"] = "true"
+        env["NIKI_LANGSMITH_API_KEY"] = "lsv2_test"
+        env["NIKI_LANGSMITH_PROJECT"] = "prefixed-proj"
         with patch.dict("os.environ", env, clear=False):
             status = get_tracing_status()
         assert status.enabled is True
@@ -3760,15 +3754,15 @@ class TestGetTracingStatus:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Doctor tracing status sees the same dotenv values as bootstrap."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
         (project / ".env").write_text(
-            "DEEPAGENTS_CODE_LANGSMITH_TRACING=true\n"
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY=lsv2_dotenv\n"
-            "DEEPAGENTS_CODE_LANGSMITH_PROJECT=dotenv-proj\n"
-            "DEEPAGENTS_CODE_LANGSMITH_REPLICA_PROJECTS=replica\n",
+            "NIKI_LANGSMITH_TRACING=true\n"
+            "NIKI_LANGSMITH_API_KEY=lsv2_dotenv\n"
+            "NIKI_LANGSMITH_PROJECT=dotenv-proj\n"
+            "NIKI_LANGSMITH_REPLICA_PROJECTS=replica\n",
             encoding="utf-8",
         )
         monkeypatch.chdir(project)
@@ -3791,7 +3785,7 @@ class TestGetTracingStatus:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Doctor tracing status uses dotenv profile selectors for credentials."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         langsmith = tmp_path / "langsmith.json"
         langsmith.write_text(
@@ -3807,7 +3801,7 @@ class TestGetTracingStatus:
         project = tmp_path / "project"
         project.mkdir()
         (project / ".env").write_text(
-            "DEEPAGENTS_CODE_LANGSMITH_TRACING=true\n"
+            "NIKI_LANGSMITH_TRACING=true\n"
             f"LANGSMITH_CONFIG_FILE={langsmith}\n"
             "LANGSMITH_PROFILE=dotenv\n",
             encoding="utf-8",
@@ -3829,11 +3823,11 @@ class TestGetTracingStatus:
 
     def test_keyless_custom_endpoint_resolves_project(self) -> None:
         """A keyless custom endpoint counts as active and resolves the project."""
-        from deepagents_code.config import get_tracing_status
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config import get_tracing_status
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         env = dict(self._CLEAN)
-        env["DEEPAGENTS_CODE_LANGSMITH_TRACING"] = "true"
+        env["NIKI_LANGSMITH_TRACING"] = "true"
         env["LANGSMITH_ENDPOINT"] = "http://localhost:1984"
         with patch.dict("os.environ", env, clear=False):
             status = get_tracing_status()
@@ -3844,8 +3838,8 @@ class TestGetTracingStatus:
 
     def test_profile_credentials_are_detected(self, tmp_path: Path) -> None:
         """A LangSmith profile API key counts as credentials (no env key needed)."""
-        from deepagents_code.config import get_tracing_status
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config import get_tracing_status
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         config = tmp_path / "config.json"
         config.write_text(
@@ -3853,7 +3847,7 @@ class TestGetTracingStatus:
             encoding="utf-8",
         )
         env = dict(self._CLEAN)
-        env["DEEPAGENTS_CODE_LANGSMITH_TRACING"] = "true"
+        env["NIKI_LANGSMITH_TRACING"] = "true"
         env["LANGSMITH_CONFIG_FILE"] = str(config)
         with patch.dict("os.environ", env, clear=False):
             status = get_tracing_status()
@@ -3863,11 +3857,11 @@ class TestGetTracingStatus:
 
     def test_project_resolved_when_enabled_without_auth(self) -> None:
         """Tracing auth state does not hide configured project metadata."""
-        from deepagents_code.config import get_tracing_status
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config import get_tracing_status
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         env = dict(self._CLEAN)
-        env["DEEPAGENTS_CODE_LANGSMITH_TRACING"] = "true"
+        env["NIKI_LANGSMITH_TRACING"] = "true"
         with patch.dict("os.environ", env, clear=False):
             status = get_tracing_status()
         assert status.enabled is True
@@ -3876,7 +3870,7 @@ class TestGetTracingStatus:
 
     def test_enabled_and_explicitly_disabled_is_rejected(self) -> None:
         """The contradictory enabled/disabled pair fails loud at construction."""
-        from deepagents_code.config import TracingStatus
+        from niki_agent.config import TracingStatus
 
         with pytest.raises(ValueError, match="both enabled and explicitly disabled"):
             TracingStatus(
@@ -3897,7 +3891,7 @@ class TestQuietSdkLogging:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Without debug, SDK loggers get a NullHandler so logs stay off stderr."""
-        from deepagents_code._env_vars import DEBUG
+        from niki_agent._env_vars import DEBUG
 
         monkeypatch.delenv(DEBUG, raising=False)
         for name in _QUIET_SDK_LOGGER_NAMES:
@@ -4104,7 +4098,7 @@ class TestQuietSdkLogging:
         import anyio
         import mcp.client.streamable_http
 
-        from deepagents_code._env_vars import DEBUG
+        from niki_agent._env_vars import DEBUG
 
         monkeypatch.delenv(DEBUG, raising=False)
         transport_logger = mcp.client.streamable_http.logger
@@ -4136,7 +4130,7 @@ class TestQuietSdkLogging:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Debug mode configures a file handler for harness diagnostics."""
-        from deepagents_code._env_vars import DEBUG
+        from niki_agent._env_vars import DEBUG
 
         monkeypatch.setenv(DEBUG, "1")
         harness_logger = logging.getLogger(
@@ -4145,7 +4139,7 @@ class TestQuietSdkLogging:
         harness_logger.handlers.clear()
         monkeypatch.setattr(harness_logger, "propagate", True)
 
-        with patch("deepagents_code._debug.configure_debug_logging") as configure:
+        with patch("niki_agent._debug.configure_debug_logging") as configure:
             _quiet_sdk_logging()
 
         assert any(call.args == (harness_logger,) for call in configure.call_args_list)
@@ -4160,7 +4154,7 @@ class TestQuietSdkLogging:
         traceback back to `logging.lastResort` — i.e. straight over the
         alternate-screen TUI — instead of into the debug log.
         """
-        from deepagents_code._env_vars import DEBUG
+        from niki_agent._env_vars import DEBUG
 
         monkeypatch.setenv(DEBUG, "1")
         transport_loggers = [
@@ -4170,7 +4164,7 @@ class TestQuietSdkLogging:
             monkeypatch.setattr(transport_logger, "handlers", [])
             monkeypatch.setattr(transport_logger, "propagate", True)
 
-        with patch("deepagents_code._debug.configure_debug_logging") as configure:
+        with patch("niki_agent._debug.configure_debug_logging") as configure:
             _quiet_sdk_logging()
 
         for transport_logger in transport_loggers:
@@ -4183,7 +4177,7 @@ class TestQuietSdkLogging:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Actionable Deep Agents runtime warnings keep their normal routing."""
-        from deepagents_code._env_vars import DEBUG
+        from niki_agent._env_vars import DEBUG
 
         monkeypatch.delenv(DEBUG, raising=False)
         runtime_logger = logging.getLogger("deepagents.backends.filesystem")
@@ -4230,7 +4224,7 @@ class TestGetProviderKwargsConfigFallback:
         `base_url` constructor kwarg (which `ChatBaseten` accepts via its
         `base_url` alias) rather than being silently dropped.
         """
-        from deepagents_code import auth_store
+        from niki_agent import auth_store
 
         state_dir = tmp_path / ".state"
         config_path = tmp_path / "config.toml"
@@ -4349,7 +4343,7 @@ base_url = "https://ollama.example.com"
                 "os.environ",
                 {
                     "OLLAMA_API_KEY": "canonical",
-                    "DEEPAGENTS_CODE_OLLAMA_API_KEY": "prefixed",
+                    "NIKI_OLLAMA_API_KEY": "prefixed",
                 },
                 clear=True,
             ),
@@ -4474,9 +4468,8 @@ def _isolate_provider_profiles() -> Iterator[None]:
     custom profiles (or that exercise the CLI's lazy OpenRouter registration)
     must not leak state into other tests in the same session.
     """
-    from deepagents.profiles.provider import provider_profiles
-
-    from deepagents_code import config as cli_config
+    from niki_agent import config as cli_config
+    from niki_agent.sdk.profiles.provider import provider_profiles
 
     saved_profiles = dict(provider_profiles._PROVIDER_PROFILES)
     saved_cli_flag = cli_config._cli_openrouter_profile_registered
@@ -4498,7 +4491,7 @@ class TestOpenRouterVersionCheck:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
 
@@ -4512,7 +4505,7 @@ class TestOpenRouterHeaders:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -4523,8 +4516,8 @@ class TestOpenRouterHeaders:
         create_model("openrouter:deepseek/deepseek-chat")
 
         _, call_kwargs = mock_init.call_args
-        assert call_kwargs["app_url"] == "https://pypi.org/project/deepagents-code/"
-        assert call_kwargs["app_title"] == "Deep Agents Code"
+        assert call_kwargs["app_url"] == "https://pypi.org/project/niki-agent/"
+        assert call_kwargs["app_title"] == "Niki Agent"
         assert call_kwargs["app_categories"] == ["cli-agent"]
 
 
@@ -4544,7 +4537,7 @@ class TestCreateModelForwardsProviderProfile:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -4559,7 +4552,7 @@ class TestCreateModelForwardsProviderProfile:
         traceback to the user; the CLI's error path expects `ModelConfigError`
         for actionable rendering.
         """
-        from deepagents.profiles.provider import (
+        from niki_agent.sdk.profiles.provider import (
             ProviderProfile,
             register_provider_profile,
         )
@@ -4584,7 +4577,7 @@ class TestCreateModelAnthropicThinkingBinding:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -4678,7 +4671,7 @@ class TestCreateModelAnthropicThinkingBinding:
         """A malformed value must not disable the fix silently."""
         mock_init.return_value = _make_init_chat_model_mock()
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config"):
             create_model("anthropic:claude-opus-5", extra_kwargs=extra_kwargs)
 
         assert expected_log in caplog.text
@@ -4808,7 +4801,7 @@ models = ["my-model"]
         with (
             patch.object(model_config, "DEFAULT_CONFIG_PATH", config_path),
             patch(
-                "deepagents_code.config._create_model_from_class",
+                "niki_agent.config._create_model_from_class",
                 return_value=mock_instance,
             ) as mock_factory,
         ):
@@ -4827,7 +4820,7 @@ class TestCreateModelExtraKwargs:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     def test_google_anthropic_vertex_requires_location(self) -> None:
@@ -4842,7 +4835,7 @@ class TestCreateModelExtraKwargs:
             patch.object(owner, "_active", replacement),
             pytest.raises(
                 ModelConfigError,
-                match=r"GOOGLE_CLOUD_LOCATION.*DEEPAGENTS_CODE_GOOGLE_CLOUD_LOCATION",
+                match=r"GOOGLE_CLOUD_LOCATION.*NIKI_GOOGLE_CLOUD_LOCATION",
             ),
         ):
             create_model("google_anthropic_vertex:claude-sonnet-4-6")
@@ -4854,7 +4847,7 @@ class TestCreateModelEdgeCaseParsing:
     @pytest.fixture(autouse=True)
     def _bypass_credential_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "deepagents_code.model_config.has_provider_credentials", lambda _: True
+            "niki_agent.model_config.has_provider_credentials", lambda _: True
         )
 
     @patch("langchain.chat_models.init_chat_model")
@@ -4986,7 +4979,7 @@ class TestCreateModelViaInitImportError:
         with (
             patch("importlib.util.find_spec", return_value=None),
             patch(
-                "deepagents_code.extras_info.installed_extra_names",
+                "niki_agent.extras_info.installed_extra_names",
                 return_value=set(),
             ),
             pytest.raises(
@@ -5006,13 +4999,13 @@ class TestCreateModelViaInitImportError:
         user still gets an actionable message instead of an unhandled error
         leaking out of hint construction.
         """
-        from deepagents_code.extras_info import ExtrasIntrospectionError
+        from niki_agent.extras_info import ExtrasIntrospectionError
 
         mock_init.side_effect = ImportError("no module")
         with (
             patch("importlib.util.find_spec", return_value=None),
             patch(
-                "deepagents_code.extras_info.installed_extra_names",
+                "niki_agent.extras_info.installed_extra_names",
                 side_effect=ExtrasIntrospectionError("metadata unreadable"),
             ),
             pytest.raises(
@@ -5146,9 +5139,9 @@ class TestPrefixedLangsmithBridge:
         """`FOO=""` is an explicit disable, not an absent override."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
-        monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "")
+        monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "")
         monkeypatch.setenv("LANGSMITH_TRACING", "true")
 
         config_mod._apply_prefixed_langsmith_env()
@@ -5169,7 +5162,7 @@ class TestTracingEnvironmentReconcile:
         load_first: bool,
     ) -> None:
         """Repeated publication preserves each workspace's identity and opt-out."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setattr(config_mod, "_dotenv_loaded_values", {})
         for var in config_mod._TRACING_RECONCILED_ENV_VARS:
@@ -5179,7 +5172,7 @@ class TestTracingEnvironmentReconcile:
         empty = tmp_path / "empty"
         for workspace in (first, second, empty):
             workspace.mkdir()
-        prefix = "DEEPAGENTS_CODE_" if prefixed else ""
+        prefix = "NIKI_" if prefixed else ""
         (first / ".env").write_text(
             f"{prefix}LANGSMITH_TRACING=true\n"
             f"{prefix}LANGSMITH_API_KEY=first-key\n"
@@ -5213,7 +5206,7 @@ class TestTracingEnvironmentReconcile:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, published: str | None
     ) -> None:
         """Publishing or removing a selector does not erase its shell baseline."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("LANGSMITH_PROJECT", "shell-project")
         (tmp_path / ".env").write_text("LANGSMITH_PROJECT=dotenv-project\n")
@@ -5233,7 +5226,7 @@ class TestTracingEnvironmentReconcile:
         """Snapshot values are written under their canonical SDK names."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
         monkeypatch.setenv("LANGSMITH_API_KEY", "stale-key")
@@ -5241,8 +5234,8 @@ class TestTracingEnvironmentReconcile:
         config_mod.reconcile_tracing_environment(
             {
                 "LANGSMITH_TRACING": "true",
-                "DEEPAGENTS_CODE_LANGSMITH_API_KEY": "workspace-key",
-                "DEEPAGENTS_CODE_LANGSMITH_PROJECT": "agent-project",
+                "NIKI_LANGSMITH_API_KEY": "workspace-key",
+                "NIKI_LANGSMITH_PROJECT": "agent-project",
             }
         )
 
@@ -5257,14 +5250,14 @@ class TestTracingEnvironmentReconcile:
         """A prefixed endpoint ignored by redaction must also be ignored here."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://stale.example.com")
 
         config_mod.reconcile_tracing_environment(
             {
-                "DEEPAGENTS_CODE_LANGSMITH_TRACING": "true",
-                "DEEPAGENTS_CODE_LANGSMITH_ENDPOINT": "https://upload.example.com",
+                "NIKI_LANGSMITH_TRACING": "true",
+                "NIKI_LANGSMITH_ENDPOINT": "https://upload.example.com",
             }
         )
 
@@ -5277,7 +5270,7 @@ class TestTracingEnvironmentReconcile:
         """A var the workspace does not set is removed, not left behind."""
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("LANGSMITH_TRACING", "true")
         monkeypatch.setenv("LANGSMITH_API_KEY", "workspace-a-key")
@@ -5302,7 +5295,7 @@ class TestTracingEnvironmentReconcile:
         """A reconcile must not leave the SDK answering from a stale cache."""
         from langsmith import utils as ls_utils
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         monkeypatch.setenv("LANGSMITH_PROJECT", "workspace-a")
         assert ls_utils.get_env_var("PROJECT") == "workspace-a"
@@ -5320,7 +5313,7 @@ class TestUserLangsmithEnvironment:
     ) -> None:
         import os
 
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -5395,7 +5388,7 @@ class TestUserLangsmithEnvironment:
         self, encoded: str, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An undecodable carrier must not fall back to the agent's own key."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         agent_state = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS, "agent-value")
         original_launch = dict(config_mod._bootstrap_state.launch_langsmith_env)
@@ -5405,8 +5398,8 @@ class TestUserLangsmithEnvironment:
         env = {
             config_mod._USER_LANGSMITH_ENV_CARRIER: encoded,
             "LANGSMITH_API_KEY": "agent-session-key",
-            "LANGSMITH_PROJECT": "deepagents-code",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY": "prefixed-agent-key",
+            "LANGSMITH_PROJECT": "niki-agent",
+            "NIKI_LANGSMITH_API_KEY": "prefixed-agent-key",
             "PATH": "/usr/bin",
         }
 
@@ -5418,7 +5411,7 @@ class TestUserLangsmithEnvironment:
 
         for var in config_mod._USER_LANGSMITH_ENV_VARS:
             assert var not in env
-            assert f"DEEPAGENTS_CODE_{var}" not in env
+            assert f"NIKI_{var}" not in env
         assert config_mod._USER_LANGSMITH_ENV_CARRIER not in env
         # Unrelated variables survive.
         assert env["PATH"] == "/usr/bin"
@@ -5429,7 +5422,7 @@ class TestUserLangsmithEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Launch beats project `.env`, and the global `.env` is excluded."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -5458,7 +5451,7 @@ class TestUserLangsmithEnvironment:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A `.env` that cannot be read must not read as an empty one."""
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         project = tmp_path / "project"
         project.mkdir()
@@ -5483,7 +5476,7 @@ class TestUserLangsmithEnvironment:
         assert env["LANGSMITH_PROJECT"] == "carried-project"
 
     def test_restore_drops_agent_values_and_prefixed_settings(self) -> None:
-        import deepagents_code.config as config_mod
+        import niki_agent.config as config_mod
 
         original = dict(config_mod._bootstrap_state.user_langsmith_env)
         config_mod._bootstrap_state.user_langsmith_env = dict.fromkeys(
@@ -5493,8 +5486,8 @@ class TestUserLangsmithEnvironment:
             "LANGSMITH_API_KEY": "stored-key",
             "LANGSMITH_ENDPOINT": "https://stored.example.com",
             "LANGSMITH_PROJECT": "stored-project",
-            "DEEPAGENTS_CODE_LANGSMITH_API_KEY": "prefixed-key",
-            "DEEPAGENTS_CODE_LANGSMITH_PROFILE": "prefixed-profile",
+            "NIKI_LANGSMITH_API_KEY": "prefixed-key",
+            "NIKI_LANGSMITH_PROFILE": "prefixed-profile",
         }
 
         try:
@@ -5503,7 +5496,7 @@ class TestUserLangsmithEnvironment:
             config_mod._bootstrap_state.user_langsmith_env = original
 
         assert not any(
-            var in env or f"DEEPAGENTS_CODE_{var}" in env
+            var in env or f"NIKI_{var}" in env
             for var in config_mod._USER_LANGSMITH_ENV_VARS
         )
 
@@ -5513,7 +5506,7 @@ class TestLazySingletons:
 
     def test_getattr_returns_credentials(self) -> None:
         """The credentials accessor returns the typed singleton."""
-        from deepagents_code.config import _get_credentials
+        from niki_agent.config import _get_credentials
 
         result = _get_credentials()
         assert isinstance(result, Credentials)
@@ -5522,12 +5515,12 @@ class TestLazySingletons:
 
     def test_ensure_bootstrap_is_idempotent(self) -> None:
         """_ensure_bootstrap is a no-op on second call."""
-        from deepagents_code.config import _ensure_bootstrap
+        from niki_agent.config import _ensure_bootstrap
 
         # First call already ran (credentials were used above).
         # Calling again should be a harmless no-op.
         _ensure_bootstrap()
-        from deepagents_code.config import _get_credentials
+        from niki_agent.config import _get_credentials
 
         assert isinstance(_get_credentials(), Credentials)
 
@@ -5535,8 +5528,8 @@ class TestLazySingletons:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A failing project lookup still leaves an encodable launch snapshot."""
-        import deepagents_code.config as config_mod
-        from deepagents_code import project_utils
+        import niki_agent.config as config_mod
+        from niki_agent import project_utils
 
         def _boom() -> None:
             msg = "project context unavailable"
@@ -5577,8 +5570,8 @@ class TestLazySingletons:
         """A conflicting prefixed override logs a single explanatory warning."""
         import logging
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
 
         original_done = config_mod._bootstrap_state.done
         original_ls = config_mod._bootstrap_state.original_langsmith_project
@@ -5586,29 +5579,27 @@ class TestLazySingletons:
 
         try:
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_original")
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_override")
-            monkeypatch.delenv(
-                "DEEPAGENTS_CODE_SUPPRESS_ENV_OVERRIDE_WARNING", raising=False
-            )
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_override")
+            monkeypatch.delenv("NIKI_SUPPRESS_ENV_OVERRIDE_WARNING", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
-                caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.config"),
             ):
                 _ensure_bootstrap()
 
             warnings = [
                 r.getMessage()
                 for r in caplog.records
-                if "DEEPAGENTS_CODE_LANGSMITH_API_KEY" in r.getMessage()
+                if "NIKI_LANGSMITH_API_KEY" in r.getMessage()
             ]
             assert len(warnings) == 1
-            assert "DEEPAGENTS_CODE_SUPPRESS_ENV_OVERRIDE_WARNING=1" in warnings[0]
+            assert "NIKI_SUPPRESS_ENV_OVERRIDE_WARNING=1" in warnings[0]
         finally:
             config_mod._bootstrap_state.done = original_done
             config_mod._bootstrap_state.original_langsmith_project = original_ls
@@ -5620,8 +5611,8 @@ class TestLazySingletons:
         import logging
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
 
         original_done = config_mod._bootstrap_state.done
         original_ls = config_mod._bootstrap_state.original_langsmith_project
@@ -5629,26 +5620,24 @@ class TestLazySingletons:
 
         try:
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_original")
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_override")
-            monkeypatch.setenv("DEEPAGENTS_CODE_SUPPRESS_ENV_OVERRIDE_WARNING", "1")
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_override")
+            monkeypatch.setenv("NIKI_SUPPRESS_ENV_OVERRIDE_WARNING", "1")
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
-                caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.config"),
             ):
                 _ensure_bootstrap()
 
             # Override still applies; only the warning is silenced.
             assert os.environ["LANGSMITH_API_KEY"] == "lsv2_override"
             assert not [
-                r
-                for r in caplog.records
-                if "DEEPAGENTS_CODE_LANGSMITH_API_KEY" in r.getMessage()
+                r for r in caplog.records if "NIKI_LANGSMITH_API_KEY" in r.getMessage()
             ]
         finally:
             config_mod._bootstrap_state.done = original_done
@@ -5661,8 +5650,8 @@ class TestLazySingletons:
         import logging
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
 
         original_done = config_mod._bootstrap_state.done
         original_ls = config_mod._bootstrap_state.original_langsmith_project
@@ -5670,28 +5659,24 @@ class TestLazySingletons:
 
         try:
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_same")
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_same")
-            monkeypatch.delenv(
-                "DEEPAGENTS_CODE_SUPPRESS_ENV_OVERRIDE_WARNING", raising=False
-            )
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_same")
+            monkeypatch.delenv("NIKI_SUPPRESS_ENV_OVERRIDE_WARNING", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
-                caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+                caplog.at_level(logging.WARNING, logger="niki_agent.config"),
             ):
                 _ensure_bootstrap()
 
             # No conflict, so no warning; the shared value stays in place.
             assert os.environ["LANGSMITH_API_KEY"] == "lsv2_same"
             assert not [
-                r
-                for r in caplog.records
-                if "DEEPAGENTS_CODE_LANGSMITH_API_KEY" in r.getMessage()
+                r for r in caplog.records if "NIKI_LANGSMITH_API_KEY" in r.getMessage()
             ]
         finally:
             config_mod._bootstrap_state.done = original_done
@@ -5700,7 +5685,7 @@ class TestLazySingletons:
     def test_bootstrap_defaults_project_when_tracing_and_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Tracing on with a key but no project defaults to deepagents-code.
+        """Tracing on with a key but no project defaults to niki-agent.
 
         Exercises `_apply_default_langsmith_project` wired into the real
         `_ensure_bootstrap` flow (after the override and orphaned-tracing
@@ -5708,9 +5693,9 @@ class TestLazySingletons:
         """
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import _ensure_bootstrap
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         original_done = config_mod._bootstrap_state.done
         original_ls = config_mod._bootstrap_state.original_langsmith_project
@@ -5720,12 +5705,12 @@ class TestLazySingletons:
             monkeypatch.setenv("LANGSMITH_TRACING", "true")
             monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_test")
             monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
             ):
@@ -5745,12 +5730,12 @@ class TestLazySingletons:
         and `_apply_default_langsmith_project`: a tracing flag with no
         resolvable key must be flipped off *before* the default runs, so
         `LANGSMITH_PROJECT` is left unset (tracing never starts) rather than
-        pointed at `deepagents-code`.
+        pointed at `niki-agent`.
         """
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
 
         original_done = config_mod._bootstrap_state.done
         original_ls = config_mod._bootstrap_state.original_langsmith_project
@@ -5763,20 +5748,20 @@ class TestLazySingletons:
             monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
             monkeypatch.delenv("LANGCHAIN_ENDPOINT", raising=False)
             monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.config._has_langsmith_profile_credentials",
+                    "niki_agent.config._has_langsmith_profile_credentials",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.config._has_langsmith_profile_custom_endpoint",
+                    "niki_agent.config._has_langsmith_profile_custom_endpoint",
                     return_value=False,
                 ),
             ):
@@ -5802,12 +5787,12 @@ class TestLazySingletons:
         """
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code import auth_store
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent import auth_store
+        from niki_agent.config import _ensure_bootstrap
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
 
         original_done = config_mod._bootstrap_state.done
@@ -5821,24 +5806,24 @@ class TestLazySingletons:
                 "LANGSMITH_API_KEY",
                 "LANGCHAIN_API_KEY",
                 "LANGSMITH_PROJECT",
-                "DEEPAGENTS_CODE_LANGSMITH_TRACING",
-                "DEEPAGENTS_CODE_LANGSMITH_PROJECT",
+                "NIKI_LANGSMITH_TRACING",
+                "NIKI_LANGSMITH_PROJECT",
             ):
                 monkeypatch.delenv(var, raising=False)
             auth_store.set_stored_key("langsmith", "lsv2_stored")
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
                 patch(
-                    "deepagents_code.config._has_langsmith_profile_credentials",
+                    "niki_agent.config._has_langsmith_profile_credentials",
                     return_value=False,
                 ),
                 patch(
-                    "deepagents_code.config._has_langsmith_profile_custom_endpoint",
+                    "niki_agent.config._has_langsmith_profile_custom_endpoint",
                     return_value=False,
                 ),
             ):
@@ -5858,12 +5843,12 @@ class TestLazySingletons:
         """A session-scoped LangSmith key remains authoritative at bootstrap."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code import auth_store
-        from deepagents_code.config import _ensure_bootstrap
+        import niki_agent.config as config_mod
+        from niki_agent import auth_store
+        from niki_agent.config import _ensure_bootstrap
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
 
         original_done = config_mod._bootstrap_state.done
@@ -5871,21 +5856,21 @@ class TestLazySingletons:
         config_mod._bootstrap_state.done = False
 
         try:
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_API_KEY", "lsv2_prefixed")
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "true")
+            monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "lsv2_prefixed")
+            monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "true")
             monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
             monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
             monkeypatch.delenv("LANGSMITH_ENDPOINT", raising=False)
             monkeypatch.delenv("LANGCHAIN_ENDPOINT", raising=False)
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
             auth_store.set_stored_key(
                 "langsmith", "lsv2_stored", base_url=LANGSMITH_EU_ENDPOINT
             )
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
             ):
@@ -5902,18 +5887,18 @@ class TestLazySingletons:
     def test_scoped_tracing_opt_out_restores_user_tracing_for_shell_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Deep Agents Code opt-out does not leak into child command envs."""
+        """Niki Agent opt-out does not leak into child command envs."""
         import os
 
-        import deepagents_code.config as config_mod
-        from deepagents_code import auth_store
-        from deepagents_code.config import (
+        import niki_agent.config as config_mod
+        from niki_agent import auth_store
+        from niki_agent.config import (
             _ensure_bootstrap,
             restore_user_langsmith_env,
         )
 
         monkeypatch.setattr(
-            "deepagents_code.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
+            "niki_agent.model_config.DEFAULT_STATE_DIR", tmp_path / ".state"
         )
 
         original_done = config_mod._bootstrap_state.done
@@ -5921,17 +5906,17 @@ class TestLazySingletons:
         config_mod._bootstrap_state.done = False
 
         try:
-            monkeypatch.setenv("DEEPAGENTS_CODE_LANGSMITH_TRACING", "false")
+            monkeypatch.setenv("NIKI_LANGSMITH_TRACING", "false")
             monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
             monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
             monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
-            monkeypatch.delenv("DEEPAGENTS_CODE_LANGSMITH_PROJECT", raising=False)
+            monkeypatch.delenv("NIKI_LANGSMITH_PROJECT", raising=False)
             auth_store.set_stored_key("langsmith", "lsv2_stored")
 
             with (
-                patch("deepagents_code.config._load_dotenv"),
+                patch("niki_agent.config._load_dotenv"),
                 patch(
-                    "deepagents_code.project_utils.get_server_project_context",
+                    "niki_agent.project_utils.get_server_project_context",
                     return_value=None,
                 ),
             ):
@@ -5959,7 +5944,7 @@ class TestApplyDefaultLangsmithProject:
         """Tracing on with no project set routes to the default project."""
         import os
 
-        from deepagents_code.config_manifest import LANGSMITH_PROJECT_DEFAULT
+        from niki_agent.config_manifest import LANGSMITH_PROJECT_DEFAULT
 
         monkeypatch.setenv("LANGSMITH_TRACING", "true")
         monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
@@ -5999,7 +5984,7 @@ class TestFindDotenvFromStartPath:
 
     def test_continues_past_oserror_on_intermediate_dir(self, tmp_path: Path) -> None:
         """OSError on an intermediate .env candidate doesn't abort search."""
-        from deepagents_code.config import _find_dotenv_from_start_path
+        from niki_agent.config import _find_dotenv_from_start_path
 
         # Create .env in the grandparent
         env_file = tmp_path / ".env"
@@ -6039,8 +6024,8 @@ class TestInterpreterSettings:
 
     @staticmethod
     def _resolve() -> tuple[bool, InterpreterConfig]:
-        from deepagents_code.config_manifest import get_option
-        from deepagents_code.configuration.resolver import get_config_resolver
+        from niki_agent.config_manifest import get_option
+        from niki_agent.configuration.resolver import get_config_resolver
 
         option = get_option("interpreter.enable_interpreter")
         assert option is not None
@@ -6110,8 +6095,8 @@ class TestCreateModelCodex:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No stored token → `MissingCredentialsError` pointing at `/auth`."""
-        from deepagents_code.integrations import openai_codex
-        from deepagents_code.model_config import MissingCredentialsError
+        from niki_agent.integrations import openai_codex
+        from niki_agent.model_config import MissingCredentialsError
 
         monkeypatch.setattr(
             openai_codex, "default_store_path", lambda: tmp_path / "missing.json"
@@ -6129,7 +6114,7 @@ class TestCreateModelCodex:
         """A stored token → a `_ChatOpenAICodex` under the codex provider."""
         from langchain_openai.chat_models.codex import _ChatOpenAICodex
 
-        from deepagents_code.integrations import openai_codex
+        from niki_agent.integrations import openai_codex
 
         path = tmp_path / "auth.json"
         self._plant_token(path)
@@ -6154,7 +6139,7 @@ class TestCreateModelCodex:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        from deepagents_code.integrations import openai_codex as codex_mod
+        from niki_agent.integrations import openai_codex as codex_mod
 
         token_path = tmp_path / "auth.json"
         self._plant_token(token_path)
@@ -6194,7 +6179,7 @@ effort = "low"
         callable, so the cleanest check is that the codex branch drops the
         `api_key` kwarg before it reaches `build_chat_model`.
         """
-        from deepagents_code.integrations import openai_codex as codex_mod
+        from niki_agent.integrations import openai_codex as codex_mod
 
         path = tmp_path / "auth.json"
         self._plant_token(path)
@@ -6233,8 +6218,8 @@ effort = "low"
         sign-in recovery path as a missing token so the retry flow offers
         `/auth`, rather than wrapping it in a generic `ModelConfigError`.
         """
-        from deepagents_code.integrations import openai_codex as codex_mod
-        from deepagents_code.model_config import MissingCredentialsError
+        from niki_agent.integrations import openai_codex as codex_mod
+        from niki_agent.model_config import MissingCredentialsError
 
         path = tmp_path / "auth.json"
         self._plant_token(path)
@@ -6260,8 +6245,8 @@ effort = "low"
         are neither missing nor expired credentials; it must name the spec
         rather than leak a raw traceback.
         """
-        from deepagents_code.integrations import openai_codex as codex_mod
-        from deepagents_code.model_config import ModelConfigError
+        from niki_agent.integrations import openai_codex as codex_mod
+        from niki_agent.model_config import ModelConfigError
 
         path = tmp_path / "auth.json"
         self._plant_token(path)
@@ -6291,14 +6276,14 @@ class TestResolveGoalAutoAcceptCriteria:
         renamed or dropped key), so it must fail closed to review *and* leave a
         trail rather than silently ignoring a user's saved preference.
         """
-        from deepagents_code.config import resolve_goal_auto_accept_criteria
+        from niki_agent.config import resolve_goal_auto_accept_criteria
 
         with (
             patch(
-                "deepagents_code.config_manifest.get_option",
+                "niki_agent.config_manifest.get_option",
                 return_value=None,
             ) as get_option,
-            caplog.at_level(logging.WARNING, logger="deepagents_code.config"),
+            caplog.at_level(logging.WARNING, logger="niki_agent.config"),
         ):
             result = resolve_goal_auto_accept_criteria()
 
@@ -6315,7 +6300,7 @@ class TestCollectRetryConfigWarnings:
 
     @staticmethod
     def _warnings(tmp_path: Path, toml: str) -> list[str]:
-        from deepagents_code.config import collect_retry_config_startup
+        from niki_agent.config import collect_retry_config_startup
 
         config_path = tmp_path / "config.toml"
         config_path.write_text(toml)
@@ -6325,7 +6310,7 @@ class TestCollectRetryConfigWarnings:
 
 
 class TestDeniedHomeKeyReporting:
-    """A denied `DEEPAGENTS_HOME` must be loud in the user's own dotenv.
+    """A denied `NIKI_HOME` must be loud in the user's own dotenv.
 
     Denying it from a project `.env` is expected and stays at debug level. The
     global `.env` is the user's own trusted file, so silently dropping a key
@@ -6346,9 +6331,9 @@ class TestDeniedHomeKeyReporting:
         otherwise gets a setting that never takes effect, with the drop
         recorded only at debug level.
         """
-        from deepagents_code.config import _report_denied_env_key
+        from niki_agent.config import _report_denied_env_key
 
-        with caplog.at_level(logging.WARNING, logger="deepagents_code.config"):
+        with caplog.at_level(logging.WARNING, logger="niki_agent.config"):
             _report_denied_env_key(key, tmp_path / ".env", is_project=False)
 
         assert key in caplog.text
@@ -6397,7 +6382,7 @@ class TestAgentDirStaysOffTheHeavyImportPath:
 
     `AGENTS.md` § Startup performance forbids importing `deepagents` or
     LangChain on that path. The reserved-name check briefly imported
-    `deepagents_code.agent`, which pulls in both at module level and cost
+    `niki_agent.agent`, which pulls in both at module level and cost
     roughly 0.8s on commands that touch no model code.
     """
 
@@ -6415,9 +6400,9 @@ class TestBuildStreamConfigRecursionLimit:
         Sending an explicit value here would override `langgraph_api`'s own
         default, so the key must be absent rather than `None`.
         """
-        import deepagents_code.config as config_mod
-        from deepagents_code import _env_vars, model_config
-        from deepagents_code.configuration import service
+        import niki_agent.config as config_mod
+        from niki_agent import _env_vars, model_config
+        from niki_agent.configuration import service
 
         monkeypatch.delenv(_env_vars.RECURSION_LIMIT, raising=False)
         monkeypatch.delenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", raising=False)
@@ -6446,9 +6431,9 @@ class TestBuildStreamConfigRecursionLimit:
         compiled graph. The run config is the only channel that survives, so a
         regression here silently restores the server default.
         """
-        import deepagents_code.config as config_mod
-        from deepagents_code import _env_vars, model_config
-        from deepagents_code.configuration import service
+        import niki_agent.config as config_mod
+        from niki_agent import _env_vars, model_config
+        from niki_agent.configuration import service
 
         monkeypatch.setenv(_env_vars.RECURSION_LIMIT, "3000")
         empty = tmp_path / "config.toml"
@@ -6470,9 +6455,9 @@ class TestBuildStreamConfigRecursionLimit:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The upstream environment fallback is sent with each run."""
-        import deepagents_code.config as config_mod
-        from deepagents_code import _env_vars, model_config
-        from deepagents_code.configuration import service
+        import niki_agent.config as config_mod
+        from niki_agent import _env_vars, model_config
+        from niki_agent.configuration import service
 
         monkeypatch.delenv(_env_vars.RECURSION_LIMIT, raising=False)
         monkeypatch.setenv("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "12000")

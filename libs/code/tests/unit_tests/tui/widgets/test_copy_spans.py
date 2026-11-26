@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from textual.style import Style as TStyle
 
-from deepagents_code.tui.widgets._copy_spans import copy_span_style, copy_span_target
+from niki_agent.tui.widgets._copy_spans import copy_span_style, copy_span_target
 
 
 class TestCopySpanRoundTrip:
