@@ -8,7 +8,7 @@ Two checks:
    independence completion criterion.
 2. User-facing chrome -- `--version`, `--help`, the key reference, the default
    agent prompt, and the READMEs -- says Niki Agent, not `dcode` or
-   "Deep Agents", except for the SDK credit line.
+   "Deep Agents". Attribution lives in `NOTICE`, never in chrome.
 
 The vendored SDK and ACP trees are excluded: MIT requires their original
 prose to survive, and they are attributed through `PROVENANCE.md`.

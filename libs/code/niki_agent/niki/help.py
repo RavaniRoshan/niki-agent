@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from textual.app import App
 
-from niki_agent.niki.branding import SDK_CREDIT, product_version
+from niki_agent.niki.branding import product_version
 from niki_agent.niki.keymap import build_keymap
 
 if TYPE_CHECKING:
@@ -69,7 +69,6 @@ def _compose(entries: list[KeymapEntry]) -> str:
     lines: list[str] = [
         "",
         f"Niki Agent v{product_version()}",
-        SDK_CREDIT,
         "",
         "Usage:",
         *_section(HEADLINE_COMMANDS),

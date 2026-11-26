@@ -174,8 +174,9 @@ def test_snapshot_frames_do_not_show_the_upstream_product_name() -> None:
         # Join before stripping: a narrow frame wraps the credit across text
         # nodes, so a per-node strip cannot match it.
         remainder = _collapse(" ".join(nodes))
-        for credit in (branding.VERSION_LINE_SUFFIX, branding.SDK_CREDIT):
-            remainder = remainder.replace(_collapse(credit.removeprefix(", ")), "")
+        remainder = remainder.replace(
+            _collapse(branding.VERSION_LINE_SUFFIX.removeprefix(", ")), ""
+        )
         if "Deep Agents" in remainder:
             offenders.append(f"{frame.name}: {remainder!r}")
     assert not offenders, f"upstream product name visible in {offenders}"
