@@ -136,6 +136,7 @@ from niki_agent.goal_state_notice import (
     validated_summarization_cutoff as _validated_summarization_cutoff,
 )
 from niki_agent.iterm_cursor_guide import restore_iterm_cursor_guide
+from niki_agent.model_config import GATEWAY_DOCS_URL
 from niki_agent.notifications import (
     ActionId,
     MissingDepPayload,
@@ -2715,10 +2716,7 @@ def _build_model_switch_error_body(exc: BaseException) -> str | Content:
     return f"Failed to switch model: {format_agent_exception(exc)}"
 
 
-_GATEWAY_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/configuration"
-    "#endpoints-keys-and-gateways"
-)
+_GATEWAY_DOCS_URL = GATEWAY_DOCS_URL
 """Docs section on how a provider's API key and endpoint resolve together.
 
 Linked from `PermissionDeniedError` guidance: a common cause is a provider key

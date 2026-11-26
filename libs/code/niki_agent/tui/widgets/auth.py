@@ -54,6 +54,7 @@ from niki_agent.config import (
 )
 from niki_agent.model_config import (
     CODEX_PROVIDER,
+    GATEWAY_DOCS_URL,
     PROVIDER_API_KEY_ENV,
     PROVIDERS_DOCS_URL as _PROVIDERS_DOCS_URL,
     SERVICE_API_KEY_ENV,
@@ -86,9 +87,7 @@ class _EnvironmentReloadHost(Protocol):
         """Reload process settings without racing another environment mutation."""
 
 
-CONFIGURATION_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/configuration"
-)
+CONFIGURATION_DOCS_URL = GATEWAY_DOCS_URL
 
 
 class Region(StrEnum):
