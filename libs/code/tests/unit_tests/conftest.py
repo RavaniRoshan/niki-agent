@@ -726,7 +726,7 @@ def _provide_app_context() -> Generator[None]:
     c = theme.DARK_COLORS
     app.register_theme(
         Theme(
-            name="langchain",
+            name="classic",
             primary=c.primary,
             secondary=c.secondary,
             accent=c.accent,
@@ -740,7 +740,7 @@ def _provide_app_context() -> Generator[None]:
             dark=True,
         )
     )
-    app.theme = "langchain"
+    app.theme = "classic"
     token = active_app.set(app)
     try:
         yield

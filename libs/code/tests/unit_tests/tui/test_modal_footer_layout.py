@@ -114,7 +114,7 @@ FOOTER_CASES: list[tuple[str, Callable[[], ModalScreen], str]] = [
     ),
     (
         "theme_selector",
-        lambda: ThemeSelectorScreen(current_theme="langchain"),
+        lambda: ThemeSelectorScreen(current_theme="classic"),
         ".theme-selector-help",
     ),
     (

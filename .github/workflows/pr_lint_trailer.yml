@@ -237,8 +237,8 @@ jobs:
             } else {
               titleLine = '⚠️ **Banned trailer check could not inspect every PR commit.**';
               intro = listError
-                ? `The GitHub API call to list this PR's commits failed, so the workflow could not scan every commit message for the banned Claude Code co-author trailer: ${listError}`
-                : `This PR has more than ${MAX_COMMITS_TO_SCAN} commits, so the workflow stopped before it could inspect every commit message for the banned Claude Code co-author trailer.`;
+                ? `The GitHub API call to list this PR's commits failed, so the workflow could not scan every commit message for the banned co-author trailer: ${listError}`
+                : `This PR has more than ${MAX_COMMITS_TO_SCAN} commits, so the workflow stopped before it could inspect every commit message for the banned co-author trailer.`;
               foundBlock = listError
                 ? 'The commit list could not be retrieved; no commit messages were scanned.'
                 : `No matching trailer found in the first ${MAX_COMMITS_TO_SCAN} commits, but the PR has more commits than this workflow scans.`;

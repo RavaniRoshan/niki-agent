@@ -40,7 +40,7 @@ middleware that reads the shared location.
 
 | Method | Purpose |
 | --- | --- |
-| `register_middleware(class_or_instance)` | Add a LangChain `AgentMiddleware`. Classes must have a zero-argument constructor; use an instance otherwise. |
+| `register_middleware(class_or_instance)` | Add an `AgentMiddleware`. Classes must have a zero-argument constructor; use an instance otherwise. |
 | `register_tool(function_or_tool)` | Expose a callable or `BaseTool` to the model. |
 | `register_backend_route(prefix, storage)` | Make a `BackendProtocol` storage provider available under a virtual path. |
 | `on_shutdown(callback)` | Release session resources when the agent server stops. Sync and async callbacks are supported. |

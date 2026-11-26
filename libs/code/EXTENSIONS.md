@@ -90,7 +90,7 @@ durable data directory. The agent resolves plugin manifest entries inside the
 installed snapshot and rejects traversal, absolute paths, symlink escapes,
 missing files, and non-Python files. Entries without a plugin version are
 ignored. Installed Python distributions may also expose module entry points in
-the `niki.extensions` group; the pre-rename `dcode.extensions` group is still
+the `niki.extensions` group; the legacy `dcode.extensions` group is still
 read for distributions that have not re-declared their extensions, with one
 `INFO` deprecation line per distribution.
 

@@ -30,6 +30,9 @@ const RULES = [
   { term: 'dcode', pattern: /\bdcode\b/gi },
   // The graph runtime and its vendor.
   { term: 'LangGraph', pattern: /\blanggraph\b/gi },
+  // Underscored package ids (`langchain_openai`) stay allowed: the underscore
+  // is a word character, so this matches the framework name only as a word.
+  { term: 'LangChain', pattern: /\blangchain\b/gi },
   { term: 'langchain-ai', pattern: /langchain-ai/gi },
   { term: 'docs.langchain.com', pattern: /docs\.langchain\.com/gi },
   // A claim that Niki Agent is affiliated with, endorsed by, or built by

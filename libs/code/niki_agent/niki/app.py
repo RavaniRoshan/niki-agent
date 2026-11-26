@@ -137,7 +137,7 @@ class NikiApp(DeepAgentsApp):
     _turn_summary_events: dict[tuple[str, str], list[RunEvent]]
     _turn_summary_started_at: dict[tuple[str, str], float]
 
-    #: The theme Niki starts in. Upstream defaults to `"langchain"`
+    #: The theme Niki starts in. The base app defaults to `"classic"`
     #: (`theme.DEFAULT_THEME`); an owner can still switch with `/theme`.
     DEFAULT_THEME_NAME: ClassVar[str] = niki_theme.NIKI_THEME_NAME
 

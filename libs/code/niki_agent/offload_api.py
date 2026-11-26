@@ -693,12 +693,12 @@ def _hydrate_state(values: object) -> _OffloadState:
         TypeError: If the server returns an unexpected state shape.
     """
     if not isinstance(values, dict):
-        msg = "LangGraph returned non-object thread state."
+        msg = "The agent runtime returned non-object thread state."
         raise TypeError(msg)
     state = dict(values)
     messages = state.get("messages", [])
     if not isinstance(messages, list):
-        msg = "LangGraph returned a non-list messages channel."
+        msg = "The agent runtime returned a non-list messages channel."
         raise TypeError(msg)
     state["messages"] = convert_to_messages(messages)
 

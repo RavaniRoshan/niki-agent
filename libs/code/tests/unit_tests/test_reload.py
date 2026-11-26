@@ -1774,10 +1774,10 @@ class TestReloadThemeReapply:
         """A newly resolved preference should become the active theme."""
         active, text = await self._run_reload_theme(
             monkeypatch,
-            initial_theme="langchain",
-            resolved_theme="langchain-light",
+            initial_theme="classic",
+            resolved_theme="classic-light",
         )
-        assert active == "langchain-light"
+        assert active == "classic-light"
         assert "Switched theme to" in text
 
     async def test_no_switch_when_unchanged(
@@ -1786,10 +1786,10 @@ class TestReloadThemeReapply:
         """When the resolved preference matches the active theme, no switch."""
         active, text = await self._run_reload_theme(
             monkeypatch,
-            initial_theme="langchain",
-            resolved_theme="langchain",
+            initial_theme="classic",
+            resolved_theme="classic",
         )
-        assert active == "langchain"
+        assert active == "classic"
         assert "Switched theme to" not in text
 
     async def test_unregistered_preference_ignored(
@@ -1798,10 +1798,10 @@ class TestReloadThemeReapply:
         """A resolved name that isn't registered must not change the theme."""
         active, text = await self._run_reload_theme(
             monkeypatch,
-            initial_theme="langchain",
+            initial_theme="classic",
             resolved_theme="not-a-real-theme",
         )
-        assert active == "langchain"
+        assert active == "classic"
         assert "Switched theme to" not in text
 
 

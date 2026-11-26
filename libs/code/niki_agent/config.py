@@ -4925,7 +4925,7 @@ def _get_first_langsmith_replica_project(extras: list[str]) -> str | None:
     if len(extras) > 1:
         logger.warning(
             "NIKI_LANGSMITH_REPLICA_PROJECTS lists %d projects, but the "
-            "LangGraph server mirrors runs to only one extra project; tracing to "
+            "the agent server mirrors runs to only one extra project; tracing to "
             "%r and ignoring %s.",
             len(extras),
             extras[0],

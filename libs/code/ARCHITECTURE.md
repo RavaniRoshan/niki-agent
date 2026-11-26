@@ -36,13 +36,12 @@ that boundary narrow makes the UI responsive while letting the agent use the
 graph runtime's streaming, checkpointing, and resume behavior.
 
 The client launches the engine subprocess itself. `client/launch/server.py`
-starts the graph runtime's development server, generates the `langgraph.json`
-manifest that server loads, and points it at
+starts the agent engine's development server, generates the manifest that
+server loads, and points it at
 `niki_agent.server_graph:make_graph`. A contributor changing startup, ports, or
 graph loading works there; the rest of the package reaches the runtime through
-the streaming client in `client/remote_client.py`. The runtime is the
-`langgraph` package, which the code imports directly for checkpoints,
-interrupts, and message types.
+the streaming client in `client/remote_client.py`. The engine, imported as
+`langgraph`, provides checkpoints, interrupts, and message types.
 
 ## Request flow
 
