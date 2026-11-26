@@ -25,6 +25,14 @@ REPO="RavaniRoshan/niki-agent"
 log() { printf '  %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+# Extracted archives are removed on every exit path, including `die`.
+STAGE_DIR=""
+cleanup() {
+  if [ -n "${STAGE_DIR:-}" ]; then rm -rf "$STAGE_DIR"; fi
+  return 0
+}
+trap cleanup EXIT
+
 # --- integrity --------------------------------------------------------------
 # Every downloaded archive is checked against the release's SHA256SUMS before it
 # is unpacked. A missing file, a missing entry, or a mismatch is fatal: an
@@ -139,17 +147,8 @@ EOF
   printf '%s' "$tmp/$name"
 }
 
-main() {
-  local archive binary stage
-  archive="$(find_archive)"
-  log "installing $(basename "$archive")"
-
-  stage="$(mktemp -d)"
-  trap 'rm -rf "$stage"' EXIT
-  tar -xzf "$archive" -C "$stage" || die "could not unpack $(basename "$archive")"
-  binary="$(find "$stage" -type f -name niki | head -1)"
-  [ -n "$binary" ] || die "archive contained no niki binary"
-
+install_binary() {
+  local binary="$1"
   mkdir -p "$BINDIR"
   install -m 0755 "$binary" "$BINDIR/niki"
 
@@ -168,6 +167,34 @@ main() {
   log "installed to $PREFIX"
   log "add to PATH:  export PATH=\"$BINDIR:\$PATH\""
   log "re-run with NIKI_SHELL=1 to append that to your shell profile"
+}
+
+main() {
+  local archive binary source="${BASH_SOURCE[0]:-}" sibling=""
+
+  # An extracted release archive holds the installer beside the binary; that
+  # binary is already the one the archive shipped, so install it directly
+  # instead of downloading the same release again.
+  if [ -n "$source" ] && [ "$source" != "bash" ] && [ "$source" != "main" ]; then
+    local dir; dir="$(cd "$(dirname "$source")" && pwd)"
+    [ -x "$dir/niki" ] && sibling="$dir/niki"
+  fi
+
+  if [ -n "$sibling" ] && [ -z "$ARCHIVE" ]; then
+    log "installing $(basename "$(dirname "$sibling")")/niki"
+    install_binary "$sibling"
+    return 0
+  fi
+
+  archive="$(find_archive)"
+  log "installing $(basename "$archive")"
+
+  STAGE_DIR="$(mktemp -d)"
+  tar -xzf "$archive" -C "$STAGE_DIR" || die "could not unpack $(basename "$archive")"
+  binary="$(find "$STAGE_DIR" -type f -name niki | head -1)"
+  [ -n "$binary" ] || die "archive contained no niki binary"
+
+  install_binary "$binary"
 }
 
 main "$@"
