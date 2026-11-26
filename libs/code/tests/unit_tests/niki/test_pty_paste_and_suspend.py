@@ -734,7 +734,10 @@ def test_k6_tab_then_enter_runs_a_slash_command_in_a_real_terminal(
         buffer, _menu = _await_screen(child, before, "Show help and available commands")
         child.send("\t")
         child.send("\r")
-        buffer, after = _await_screen(child, buffer, "Usage:", deadline=15.0)
+        # A passing run shows the help body in well under a second; the bound is
+        # short on purpose, so a failure reports an assertion instead of running
+        # the test past the repo-wide 30 s timeout and killing the worker.
+        buffer, after = _await_screen(child, buffer, "Usage:", deadline=8.0)
         alive = child.isalive()
     finally:
         child.terminate(force=True)
