@@ -235,11 +235,10 @@ function init(github, owner, repo, config, core) {
   // breaking marker allowed on either side of the parens.
   const scopedTitlePattern = /^(\w+!?)\(([^)]+)\)(!?:\s*.*)$/;
 
-  // Rewrite package-component scopes (e.g. `deepagents-code`) to their
-  // canonical PR scope (`code`) per `scopeAliases`. Returns null when there is
-  // nothing to do: an unscoped title, a `release(...)` title (whose scope is a
-  // canonical version record and must not be touched), or scopes that are
-  // already canonical.
+  // Rewrite package-component scopes to their canonical PR scope per
+  // `scopeAliases`. Returns null when there is nothing to do: an unscoped
+  // title, a `release(...)` title (whose scope is a canonical version record
+  // and must not be touched), or scopes that are already canonical.
   function canonicalizeTitleScopes(title) {
     const match = (title ?? '').match(scopedTitlePattern);
     if (!match) return null;

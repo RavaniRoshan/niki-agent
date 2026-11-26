@@ -57,7 +57,7 @@ test('uses the gateway System One contract and ignores unsolicited labels', asyn
 });
 
 test('classifies the issue 6485 body without making topics compete', async () => {
-  const text = 'testing issue labeling\n\nopening an issue related to subagents memory :) hoping the right labels are applied\nthis is for deepagents';
+  const text = 'testing issue labeling\n\nopening an issue related to subagents memory :) hoping the right labels are applied\nthis is for niki-agent';
   let state;
   const labels = await classifyTopicLabels(text, ['topic:memory', 'topic:subagents', 'topic:models'], {
     apiKey: 'secret',

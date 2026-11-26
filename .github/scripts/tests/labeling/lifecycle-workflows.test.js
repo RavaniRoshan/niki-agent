@@ -47,7 +47,7 @@ for (const label of [null, 'ci:keep-open', 'do-not-close']) {
         update: async params => closed.push(params.issue_number),
       };
       await runStep('waiting_on_author.yml', 'Close issues and PRs awaiting an author response', {
-        context: { repo: { owner: 'langchain-ai', repo: 'deepagents' } },
+        context: { repo: { owner: 'RavaniRoshan', repo: 'niki-agent' } },
         github: { rest: { issues }, paginate: (method, params) => method(params) },
       });
       assert.deepEqual(closed, label ? [] : [42]);
@@ -63,7 +63,7 @@ function waitingFixture(labels, { pull = false, replied = false, eventName = 'is
   const item = {
     number: 42, state: 'open', updated_at: '2020-01-01T00:00:00Z',
     user: { login: 'contributor', type: 'User' },
-    labels: [...labels, 'package:deepagents'].map(name => ({ name })),
+    labels: [...labels, 'package:code'].map(name => ({ name })),
     ...(pull ? { pull_request: {} } : {}),
   };
   const events = labels.map(name => ({
@@ -71,8 +71,8 @@ function waitingFixture(labels, { pull = false, replied = false, eventName = 'is
   }));
   const response = {
     user: item.user, created_at: '2020-01-02T00:00:00Z', submitted_at: '2020-01-02T00:00:00Z',
-    issue_url: 'https://api.github.com/repos/langchain-ai/deepagents/issues/42',
-    pull_request_url: 'https://api.github.com/repos/langchain-ai/deepagents/pulls/42',
+    issue_url: 'https://api.github.com/repos/RavaniRoshan/niki-agent/issues/42',
+    pull_request_url: 'https://api.github.com/repos/RavaniRoshan/niki-agent/pulls/42',
   };
   const closed = [];
   const comments = [];
@@ -99,7 +99,7 @@ function waitingFixture(labels, { pull = false, replied = false, eventName = 'is
   };
   return {
     item, events, response, closed, comments,
-    context: { repo: { owner: 'langchain-ai', repo: 'deepagents' } },
+    context: { repo: { owner: 'RavaniRoshan', repo: 'niki-agent' } },
     github: { rest: { issues, pulls }, paginate: (method, params) => method(params) },
     require: name => {
       assert.equal(name, 'fs');
@@ -123,7 +123,7 @@ for (const labels of [[waitingLabels[0]], [waitingLabels[1]], waitingLabels]) {
       test(`${step[0]} clears ${labels} after ${eventName}`, async () => {
         const fixture = waitingFixture(labels, { pull: true, replied: true, eventName });
         await runStep(...step, fixture);
-        assert.deepEqual(fixture.item.labels, [{ name: 'package:deepagents' }]);
+        assert.deepEqual(fixture.item.labels, [{ name: 'package:code' }]);
         assert.deepEqual(fixture.closed, []);
       });
     }
@@ -137,7 +137,7 @@ for (const latest of waitingLabels) {
       fixture.events.push({ event: 'labeled', label: { name: latest }, created_at: new Date().toISOString() });
       await runStep(...step, fixture);
       assert.deepEqual(fixture.closed, []);
-      assert.deepEqual(fixture.item.labels.map(label => label.name), [...waitingLabels, 'package:deepagents']);
+      assert.deepEqual(fixture.item.labels.map(label => label.name), [...waitingLabels, 'package:code']);
     });
   }
 }
@@ -151,7 +151,7 @@ for (const step of [scanWorkflow, replyWorkflow]) {
       if (params.name === waitingLabels[0]) throw Object.assign(new Error('Absent'), { status: 404 });
     };
     await runStep(...step, fixture);
-    assert.deepEqual(fixture.item.labels, [{ name: 'package:deepagents' }]);
+    assert.deepEqual(fixture.item.labels, [{ name: 'package:code' }]);
     assert.deepEqual(fixture.closed, []);
   });
 }
@@ -186,7 +186,7 @@ function recoveryFixture(labels, { action = 'edited', assigned = true, reopenFai
   };
   const outputs = {};
   const context = {
-    repo: { owner: 'langchain-ai', repo: 'deepagents' },
+    repo: { owner: 'RavaniRoshan', repo: 'niki-agent' },
     payload: {
       action, pull_request: pr, sender: { login: 'maintainer' },
       issue: { number: 123 }, assignee: { login: 'contributor' },

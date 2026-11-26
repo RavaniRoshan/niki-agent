@@ -18,18 +18,18 @@ from check_pr_scope_files import (
 
 CONFIG = {
     "scopeToLabel": {
-        "ci": "infra",
-        "code": "dcode",
-        "deepagents-code": "dcode",
+        "ci": "ci",
+        "code": "code",
         "docs": "documentation",
-        "evals": "evals",
         "infra": "infra",
-        "sdk": "deepagents",
+        "niki-agent": "code",
+        "quickjs": "code",
+        "rust": "rust",
     },
     "fileRules": [
-        {"label": "deepagents", "prefix": "libs/deepagents/"},
-        {"label": "evals", "prefix": "libs/evals/"},
-        {"label": "dcode", "prefix": "libs/code/"},
+        {"label": "code", "prefix": "libs/code/"},
+        {"label": "rust", "prefix": "rust/"},
+        {"label": "infra", "prefix": "install/"},
         {"label": "github_actions", "prefix": ".github/workflows/"},
         {"label": "dependencies", "suffix": "pyproject.toml"},
     ],
@@ -42,32 +42,32 @@ def test_matching_scope_files_pass() -> None:
     assert find_offenders("fix(code): repair startup", changed, CONFIG) == []
 
 
-def test_sdk_scope_with_code_files_blocks() -> None:
-    """`fix(sdk):` does not cover files under `libs/code/`."""
+def test_rust_scope_with_code_files_blocks() -> None:
+    """`fix(rust):` does not cover files under `libs/code/`."""
     changed = ["libs/code/niki_agent/app.py"]
-    assert find_offenders("fix(sdk): repair startup", changed, CONFIG) == [
-        {"package": "dcode", "dirs": ["libs/code/"]}
+    assert find_offenders("fix(rust): repair startup", changed, CONFIG) == [
+        {"package": "code", "dirs": ["libs/code/"]}
     ]
 
 
 def test_multi_scope_title_covers_multiple_package_dirs() -> None:
     """Comma-separated scopes cover every matching package label."""
     changed = [
-        "libs/evals/deepagents_evals/main.py",
+        "rust/crates/niki-proto/src/lib.rs",
         "libs/code/niki_agent/app.py",
     ]
-    assert find_offenders("feat(evals,code): share option", changed, CONFIG) == []
+    assert find_offenders("feat(rust,code): share option", changed, CONFIG) == []
 
 
 def test_multi_scope_title_blocks_uncovered_package_dir() -> None:
     """A third package remains an offender when absent from a multi-scope title."""
     changed = [
-        "libs/evals/deepagents_evals/main.py",
+        "rust/crates/niki-proto/src/lib.rs",
         "libs/code/niki_agent/app.py",
-        "libs/deepagents/deepagents/graph.py",
+        "install/install.sh",
     ]
-    assert find_offenders("feat(evals,code): share option", changed, CONFIG) == [
-        {"package": "deepagents", "dirs": ["libs/deepagents/"]}
+    assert find_offenders("feat(rust,code): share option", changed, CONFIG) == [
+        {"package": "infra", "dirs": ["install/"]}
     ]
 
 
@@ -75,7 +75,7 @@ def test_unscoped_title_type_and_non_package_paths_pass() -> None:
     """Non-package scopes and non-package paths are ignored as unscoped."""
     assert (
         find_offenders(
-            "ci(infra): tune workflow",
+            "ci(docs): tune workflow",
             [".github/workflows/ci.yml", "README.md", "pyproject.toml"],
             CONFIG,
         )
@@ -83,7 +83,7 @@ def test_unscoped_title_type_and_non_package_paths_pass() -> None:
     )
     assert (
         find_offenders(
-            "ci(infra): tune package job",
+            "ci(docs): tune package job",
             ["libs/code/niki_agent/app.py"],
             CONFIG,
         )
@@ -93,17 +93,17 @@ def test_unscoped_title_type_and_non_package_paths_pass() -> None:
 
 def test_non_package_path_with_package_scope_passes() -> None:
     """A package scope plus only non-package paths has no touched package offender."""
-    assert find_offenders("fix(sdk): repair action", ["action.yml"], CONFIG) == []
+    assert find_offenders("fix(rust): repair action", ["action.yml"], CONFIG) == []
 
 
 def test_package_scope_aliases_resolve_to_same_package_label() -> None:
-    """Long package-name scopes are aliases for the same labels as short scopes."""
-    assert declared_packages("fix(deepagents-code): repair startup", CONFIG) == {
-        "dcode"
+    """Component scopes alias to the same package label as their short scope."""
+    assert declared_packages("fix(niki-agent): repair startup", CONFIG) == {
+        "code"
     }
     assert (
         find_offenders(
-            "fix(deepagents-code): repair startup",
+            "fix(niki-agent): repair startup",
             ["libs/code/niki_agent/app.py"],
             CONFIG,
         )
@@ -113,22 +113,22 @@ def test_package_scope_aliases_resolve_to_same_package_label() -> None:
 
 def test_parse_title_scopes_variants() -> None:
     """Scopes are parsed from conventional-commit-shaped titles only."""
-    assert parse_title_scopes("feat(evals, code): x") == ("evals", "code")
-    assert parse_title_scopes("fix(deepagents-code)!: x") == ("deepagents-code",)
+    assert parse_title_scopes("feat(rust, code): x") == ("rust", "code")
+    assert parse_title_scopes("fix(niki-agent)!: x") == ("niki-agent",)
     assert parse_title_scopes("fix: x") == ()
     assert parse_title_scopes("not conventional") == ()
 
 
 def test_changed_packages_returns_touched_package_dirs_only() -> None:
-    """Only `libs/**` prefix rules are treated as package dirs."""
+    """Only package-dir prefix rules (`libs/`, `rust/`, `install/`) count."""
     assert changed_packages(
         ["libs/code/niki_agent/app.py", ".github/workflows/ci.yml"], CONFIG
-    ) == {"dcode": ["libs/code/"]}
+    ) == {"code": ["libs/code/"]}
 
 
 def test_changed_packages_matches_bare_package_dir() -> None:
     """A path equal to the package dir (no trailing slash) still matches."""
-    assert changed_packages(["libs/code"], CONFIG) == {"dcode": ["libs/code/"]}
+    assert changed_packages(["libs/code"], CONFIG) == {"code": ["libs/code/"]}
 
 
 def test_changed_packages_ignores_prefix_collision() -> None:
@@ -139,8 +139,8 @@ def test_changed_packages_ignores_prefix_collision() -> None:
 def test_breaking_change_title_still_detects_offender() -> None:
     """A breaking-change `!` title parses its scope for offender detection."""
     assert find_offenders(
-        "feat(sdk)!: drop option", ["libs/code/niki_agent/app.py"], CONFIG
-    ) == [{"package": "dcode", "dirs": ["libs/code/"]}]
+        "feat(rust)!: drop option", ["libs/code/niki_agent/app.py"], CONFIG
+    ) == [{"package": "code", "dirs": ["libs/code/"]}]
 
 
 def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
@@ -169,10 +169,10 @@ def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
 def test_release_title_with_source_change_still_blocks_mismatch() -> None:
     """An author-controlled release title cannot hide ordinary package edits."""
     assert find_offenders(
-        "release(sdk): anything",
+        "release(rust): anything",
         ["libs/code/niki_agent/app.py"],
         CONFIG,
-    ) == [{"package": "dcode", "dirs": ["libs/code/"]}]
+    ) == [{"package": "code", "dirs": ["libs/code/"]}]
 
 
 def test_release_pr_change_requires_release_files_only() -> None:
@@ -213,8 +213,8 @@ def test_unmanaged_package_artifacts_do_not_trigger_release_bypass() -> None:
 
     assert not is_release_file("libs/unreleased/pyproject.toml")
     assert not is_release_file("libs/unreleased/anything/_version.py")
-    assert not is_release_pr_change("release(deepagents-code): 0.1.22", changed)
-    assert find_offenders("release(deepagents-code): 0.1.22", changed, config) == []
+    assert not is_release_pr_change("release(niki-agent): 0.1.22", changed)
+    assert find_offenders("release(niki-agent): 0.1.22", changed, config) == []
 
 
 def test_release_files_validates_structure(tmp_path) -> None:
@@ -242,7 +242,7 @@ def test_release_pr_change_fails_closed_on_malformed_release_config(tmp_path) ->
     bad.write_text(json.dumps({"packages": {}}), encoding="utf-8")
     with pytest.raises(ValueError, match="no non-empty 'packages' map"):
         is_release_pr_change(
-            "release(deepagents-code): 0.1.22",
+            "release(niki-agent): 0.1.22",
             ["libs/code/niki_agent/_version.py"],
             release_config_path=bad,
         )
@@ -259,8 +259,8 @@ def test_release_uv_lock_only_still_validates_release_config(tmp_path) -> None:
     bad.write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="could not read release-please config"):
         is_release_pr_change(
-            "release(deepagents-code): 0.1.22",
-            ["libs/code/uv.lock", "libs/evals/uv.lock"],
+            "release(niki-agent): 0.1.22",
+            ["libs/code/uv.lock", "rust/uv.lock"],
             release_config_path=bad,
         )
 
@@ -275,7 +275,7 @@ def test_main_malformed_release_config_fails_closed_and_attributes_correctly(
     release.write_text(json.dumps({"packages": {}}), encoding="utf-8")
 
     rc = main(
-        "release(deepagents-code): 0.1.22",
+        "release(niki-agent): 0.1.22",
         ["libs/code/niki_agent/_version.py"],
         config_path=labeler,
         release_config_path=release,
@@ -296,8 +296,8 @@ def test_main_uv_lock_only_fails_closed_on_bad_release_config(capsys, tmp_path) 
     release.write_text("{not json", encoding="utf-8")
 
     rc = main(
-        "release(deepagents-code): 0.1.22",
-        ["libs/code/uv.lock", "libs/evals/uv.lock"],
+        "release(niki-agent): 0.1.22",
+        ["libs/code/uv.lock", "rust/uv.lock"],
         config_path=labeler,
         release_config_path=release,
     )
@@ -337,21 +337,21 @@ def test_release_title_ignores_lockfile_churn_for_other_package_dirs() -> None:
         "libs/code/niki_agent/_version.py",
         "libs/code/pyproject.toml",
         "libs/code/uv.lock",
-        "libs/evals/uv.lock",
-        "libs/talon/uv.lock",
+        "rust/uv.lock",
+        "install/uv.lock",
     ]
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
 
-    assert not is_release_pr_change("release(deepagents-code): 0.1.23", changed)
-    assert find_offenders("release(deepagents-code): 0.1.23", changed, config) == []
+    assert not is_release_pr_change("release(niki-agent): 0.1.23", changed)
+    assert find_offenders("release(niki-agent): 0.1.23", changed, config) == []
 
 
 def test_release_title_with_mixed_files_does_not_bypass() -> None:
     """A release artifact cannot launder an accompanying source edit."""
     changed = ["libs/code/CHANGELOG.md", "libs/code/niki_agent/app.py"]
-    assert not is_release_pr_change("release(sdk): 0.1.22", changed)
-    assert find_offenders("release(sdk): 0.1.22", changed, CONFIG) == [
-        {"package": "dcode", "dirs": ["libs/code/"]}
+    assert not is_release_pr_change("release(rust): 0.1.22", changed)
+    assert find_offenders("release(rust): 0.1.22", changed, CONFIG) == [
+        {"package": "code", "dirs": ["libs/code/"]}
     ]
 
 
@@ -401,17 +401,17 @@ def test_non_dict_file_rule_raises() -> None:
     """A non-object `fileRules` entry is config corruption, not a skip."""
     config = {"scopeToLabel": CONFIG["scopeToLabel"], "fileRules": ["libs/code/"]}
     with pytest.raises(ValueError, match="not an object"):
-        find_offenders("fix(sdk): x", ["libs/code/file.py"], config)
+        find_offenders("fix(rust): x", ["libs/code/file.py"], config)
 
 
 def test_non_string_prefix_file_rule_raises() -> None:
     """A package rule with a malformed `prefix` type fails closed."""
     config = {
         "scopeToLabel": CONFIG["scopeToLabel"],
-        "fileRules": [{"label": "dcode", "prefix": 123}],
+        "fileRules": [{"label": "code", "prefix": 123}],
     }
     with pytest.raises(ValueError, match="non-string label/prefix"):
-        find_offenders("fix(sdk): x", ["libs/code/file.py"], config)
+        find_offenders("fix(rust): x", ["libs/code/file.py"], config)
 
 
 def test_main_partially_malformed_file_rules_returns_2(capsys, tmp_path) -> None:
@@ -422,14 +422,14 @@ def test_main_partially_malformed_file_rules_returns_2(capsys, tmp_path) -> None
             {
                 "scopeToLabel": CONFIG["scopeToLabel"],
                 "fileRules": [
-                    {"label": "dcode", "prefix": 123},
-                    {"label": "evals", "prefix": "libs/evals/"},
+                    {"label": "code", "prefix": 123},
+                    {"label": "rust", "prefix": "rust/"},
                 ],
             }
         ),
         encoding="utf-8",
     )
-    rc = main("fix(sdk): x", ["libs/code/file.py"], config_path=config_path)
+    rc = main("fix(rust): x", ["libs/code/file.py"], config_path=config_path)
     assert rc == 2
     assert "::error::" in capsys.readouterr().err
 
@@ -441,13 +441,13 @@ def test_main_release_bypass_validates_labeler_config(capsys, tmp_path) -> None:
         json.dumps(
             {
                 "scopeToLabel": CONFIG["scopeToLabel"],
-                "fileRules": [{"label": "dcode", "prefix": 123}],
+                "fileRules": [{"label": "code", "prefix": 123}],
             }
         ),
         encoding="utf-8",
     )
     rc = main(
-        "release(deepagents-code): 0.1.22",
+        "release(niki-agent): 0.1.22",
         ["libs/code/uv.lock"],
         config_path=config_path,
     )
@@ -464,14 +464,14 @@ def test_main_stdout_is_json_array(capsys, tmp_path) -> None:
     config_path.write_text(json.dumps(CONFIG), encoding="utf-8")
 
     rc = main(
-        "fix(sdk): repair startup",
+        "fix(rust): repair startup",
         ["libs/code/niki_agent/app.py"],
         config_path=config_path,
     )
     captured = capsys.readouterr()
 
     assert rc == 0
-    assert json.loads(captured.out) == [{"package": "dcode", "dirs": ["libs/code/"]}]
+    assert json.loads(captured.out) == [{"package": "code", "dirs": ["libs/code/"]}]
     assert "PR title scope does not cover" in captured.err
 
 
@@ -487,8 +487,8 @@ def test_main_clean_stdout_is_empty_json_array(capsys, tmp_path) -> None:
     config_path.write_text(json.dumps(CONFIG), encoding="utf-8")
 
     rc = main(
-        "fix(evals): repair startup",
-        ["libs/evals/deepagents_evals/main.py"],
+        "fix(rust): repair startup",
+        ["rust/crates/niki-proto/src/lib.rs"],
         config_path=config_path,
     )
     captured = capsys.readouterr()
@@ -509,8 +509,8 @@ def test_main_release_bypass_emits_notice(capsys, tmp_path) -> None:
     config_path.write_text(json.dumps(CONFIG), encoding="utf-8")
 
     rc = main(
-        "release(deepagents-code): 0.1.22",
-        ["libs/code/uv.lock", "libs/evals/uv.lock"],
+        "release(niki-agent): 0.1.22",
+        ["libs/code/uv.lock", "rust/uv.lock"],
         config_path=config_path,
     )
     captured = capsys.readouterr()
@@ -522,7 +522,7 @@ def test_main_release_bypass_emits_notice(capsys, tmp_path) -> None:
 
 def test_main_missing_config_returns_2(capsys, tmp_path) -> None:
     """A missing config fails closed instead of silently passing."""
-    rc = main("fix(sdk): x", ["libs/code/file.py"], config_path=tmp_path / "nope.json")
+    rc = main("fix(rust): x", ["libs/code/file.py"], config_path=tmp_path / "nope.json")
     assert rc == 2
     assert "::error::" in capsys.readouterr().err
 
@@ -531,7 +531,7 @@ def test_main_malformed_config_returns_2(capsys, tmp_path) -> None:
     """Invalid JSON fails closed."""
     config_path = tmp_path / "pr-labeler-config.json"
     config_path.write_text("{not json", encoding="utf-8")
-    rc = main("fix(sdk): x", ["libs/code/file.py"], config_path=config_path)
+    rc = main("fix(rust): x", ["libs/code/file.py"], config_path=config_path)
     assert rc == 2
     assert "::error::" in capsys.readouterr().err
 
@@ -543,7 +543,7 @@ def test_main_empty_file_rules_returns_2(capsys, tmp_path) -> None:
         json.dumps({"scopeToLabel": CONFIG["scopeToLabel"], "fileRules": []}),
         encoding="utf-8",
     )
-    rc = main("fix(sdk): x", ["libs/code/file.py"], config_path=config_path)
+    rc = main("fix(rust): x", ["libs/code/file.py"], config_path=config_path)
     assert rc == 2
     assert "fileRules" in capsys.readouterr().err
 
@@ -555,7 +555,7 @@ def test_main_missing_scope_map_returns_2(capsys, tmp_path) -> None:
         json.dumps({"scopeToLabel": {}, "fileRules": CONFIG["fileRules"]}),
         encoding="utf-8",
     )
-    rc = main("fix(sdk): x", ["libs/code/file.py"], config_path=config_path)
+    rc = main("fix(rust): x", ["libs/code/file.py"], config_path=config_path)
     assert rc == 2
     assert "scopeToLabel" in capsys.readouterr().err
 

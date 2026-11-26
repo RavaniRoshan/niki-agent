@@ -108,7 +108,7 @@ def is_release_title(title: str) -> bool:
     """Return whether `title` is a release PR title.
 
     Args:
-        title: PR title, e.g. `release(deepagents-code): 1.2.0`.
+        title: PR title, e.g. `release(niki-agent): 1.2.0`.
 
     Returns:
         `True` when the title uses the release PR conventional-commit shape.

@@ -98,24 +98,24 @@ function priorityEvent(state, pr, event) {
 for (const event of ['opened', 'edited', 'labeled', 'unlabeled']) {
   for (const labels of [[], ['priority:backlog', 'p2']]) {
     test(`${event} clears old PR priorities without propagating backlog (existing: ${labels})`, async () => {
-      const pr = { number: 20, body: 'Fixes #200', labels: [...labels, 'package:deepagents'] };
+      const pr = { number: 20, body: 'Fixes #200', labels: [...labels, 'package:code'] };
       const state = api({ prs: [pr], issues: { 200: ['priority:backlog'] } });
       await priorityEvent(state, pr, event);
-      assert.deepEqual(state.labelsOn(20), ['package:deepagents']);
+      assert.deepEqual(state.labelsOn(20), ['package:code']);
     });
   }
 
   test(`${event} propagates the highest escalation across all linked issues`, async () => {
     const pr = {
       number: 20, body: 'Fixes #200, fixes #201, fixes #202',
-      labels: ['priority:backlog', 'priority:high', 'package:deepagents'],
+      labels: ['priority:backlog', 'priority:high', 'package:code'],
     };
     const state = api({
       prs: [pr],
       issues: { 200: ['priority:backlog'], 201: ['priority:high'], 202: ['priority:urgent'] },
     });
     await priorityEvent(state, pr, event);
-    assert.deepEqual(state.labelsOn(20), ['package:deepagents', 'priority:urgent']);
+    assert.deepEqual(state.labelsOn(20), ['package:code', 'priority:urgent']);
   });
 }
 
@@ -125,11 +125,11 @@ for (const event of ['opened', 'edited', 'labeled', 'unlabeled']) {
 // purpose is to strip it. Deleting the `&& !stale.length` guard fails here.
 test('backfill strips a retired priority label when no new priority applies', async () => {
   const state = api({
-    prs: [{ number: 7, body: 'Fixes #100', labels: ['p2', 'package:deepagents'] }],
+    prs: [{ number: 7, body: 'Fixes #100', labels: ['p2', 'package:code'] }],
     issues: { 100: ['type:bug'] },
   });
   await backfill(state);
-  assert.deepEqual(state.labelsOn(7), ['package:deepagents']);
+  assert.deepEqual(state.labelsOn(7), ['package:code']);
   assert.deepEqual(failed, []);
 });
 
