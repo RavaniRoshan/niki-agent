@@ -43,6 +43,9 @@ if TYPE_CHECKING:
 _THREAD_LABEL_LIMIT = 80
 """Maximum initial-prompt label length shown in thread completion."""
 
+_COMPLETION_KEYS = frozenset({"tab", "enter", "space", "up", "down"})
+"""Keys the composer forwards to completion instead of editing the draft."""
+
 _THREAD_REFERENCE_PREFIX = "@@(thread:"
 """Prefix for durable thread-reference tokens."""
 
@@ -1154,7 +1157,32 @@ class MultiCompletionManager:
             CompletionResult from active controller, or IGNORED if none active.
         """
         if self._active is None:
-            return CompletionResult.IGNORED
+            # The popup and the controller are armed by different callbacks, so
+            # a key can land after the popup is painted but before the change
+            # that owns it has been delivered. Arm from the text in hand instead
+            # of dropping the key: dropping `tab` here sends it to focus
+            # navigation, which closes the popup and leaves the draft untouched.
+            if event.key not in _COMPLETION_KEYS:
+                return CompletionResult.IGNORED
+            for controller in self._controllers:
+                if controller.can_handle(text, cursor_index):
+                    self._active = controller
+                    controller.on_text_changed(text, cursor_index)
+                    break
+            else:
+                return CompletionResult.IGNORED
+
+        result = self._active.on_key(event, text, cursor_index)
+        if result is not CompletionResult.IGNORED or event.key not in _COMPLETION_KEYS:
+            return result
+
+        # The active controller can fall through with no suggestions even though
+        # the popup is still painted for the same draft, because the command
+        # list may have been rebuilt (skills discovered) between the last text
+        # change and this key — a rebuild resets suggestions without replaying
+        # the text. Recompute once from the text in hand, then retry, so `tab`
+        # completes instead of being dropped to focus navigation.
+        self._active.on_text_changed(text, cursor_index)
         return self._active.on_key(event, text, cursor_index)
 
     def is_active(self, controller: CompletionController) -> bool:

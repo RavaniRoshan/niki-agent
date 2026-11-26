@@ -7,11 +7,13 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from textual import events
 
 from deepagents_code.command_registry import CommandEntry, get_slash_commands
 from deepagents_code.tui.widgets import autocomplete as autocomplete_module
 from deepagents_code.tui.widgets.autocomplete import (
     CompletionController,
+    CompletionResult,
     FuzzyFileController,
     MultiCompletionManager,
     SlashCommandController,
@@ -189,6 +191,32 @@ class TestMultiCompletionManager:
         # list[CompletionController] even though both satisfy the protocol.
         controllers = cast("list[CompletionController]", [slash_ctrl, file_ctrl])
         return MultiCompletionManager(controllers)
+
+    def test_tab_still_completes_after_a_command_rebuild(self, manager, mock_view):
+        """Tab completes even when a rebuild emptied the visible suggestions.
+
+        Skills are discovered asynchronously and merged into the command list
+        after the popup is painted. `update_commands` resets the controller's
+        suggestions without replaying the draft, so the key that owns the
+        popup would otherwise fall through to focus navigation.
+        """
+        slash_ctrl = cast("SlashCommandController", manager._controllers[0])
+        manager.on_text_changed("/hel", 4)
+        slash_ctrl.update_commands(get_slash_commands())
+
+        result = manager.on_key(events.Key("tab", None), "/hel", 4)
+
+        assert result is CompletionResult.HANDLED
+        mock_view.replace_completion_range.assert_called_once_with(0, 4, "/help")
+
+    def test_tab_with_no_match_is_ignored(self, manager, mock_view):
+        """A draft that matches no command leaves the key to the default."""
+        manager.on_text_changed("/zzzz", 5)
+
+        result = manager.on_key(events.Key("tab", None), "/zzzz", 5)
+
+        assert result is CompletionResult.IGNORED
+        mock_view.replace_completion_range.assert_not_called()
 
 
 class TestSlashCommandControllerUpdateCommands:
