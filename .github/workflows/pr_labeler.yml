@@ -6,7 +6,7 @@
 # pr_labeler_title.yml, and PR-handling from tag-external-issues.yml
 # into one workflow to eliminate race conditions from concurrent label
 # mutations. tag-external-issues.yml remains active for issue-only
-# labeling. Backfill lives in pr_labeler_backfill.yml.
+# labeling.
 #
 # Config and shared logic live in .github/scripts/labeling/pr-labeler-config.json
 # and .github/scripts/labeling/pr-labeler.js — update those when adding
@@ -22,8 +22,10 @@
 #    - Variable ORG_MEMBERSHIP_APP_CLIENT_ID: Your app's Client ID
 #    - Secret ORG_MEMBERSHIP_APP_PRIVATE_KEY: Your app's private key
 #
-# The GitHub App token is required to check private organization membership
-# and to propagate label events to downstream workflows.
+# The GitHub App token is optional: it adds private organization membership
+# checks and lets label events propagate to downstream workflows. Without it,
+# the workflow falls back to GITHUB_TOKEN and the repository owner is treated
+# as internal.
 
 name: "🏷️ PR Labeler"
 
@@ -58,6 +60,9 @@ jobs:
       - name: Generate GitHub App token
         if: github.event.action == 'opened'
         id: app-token
+        # The App is optional on a personal repository; the fallback below
+        # keeps labeling working with the default token.
+        continue-on-error: true
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           client-id: ${{ vars.ORG_MEMBERSHIP_APP_CLIENT_ID }}
@@ -67,8 +72,7 @@ jobs:
         if: github.event.action == 'opened'
         run: |
           if [ -z "${{ steps.app-token.outputs.token }}" ]; then
-            echo "::error::GitHub App token generation failed — cannot classify contributor"
-            exit 1
+            echo "::warning::GitHub App token unavailable — falling back to GITHUB_TOKEN; label events will not trigger downstream workflows"
           fi
 
       - name: Check org membership
@@ -76,7 +80,7 @@ jobs:
         id: check-membership
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const { h } = require('./.github/scripts/labeling/pr-labeler.js').loadAndInit(github, owner, repo, core);
@@ -245,7 +249,7 @@ jobs:
         if: github.event.action == 'opened' && steps.check-membership.outputs.is-external == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const { h } = require('./.github/scripts/labeling/pr-labeler.js').loadAndInit(github, owner, repo, core);
@@ -260,7 +264,7 @@ jobs:
           # Use App token so the "labeled" event propagates to downstream
           # workflows (e.g. require_issue_link.yml). Events created by the
           # default GITHUB_TOKEN do not trigger additional workflow runs.
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const { h } = require('./.github/scripts/labeling/pr-labeler.js').loadAndInit(github, owner, repo, core);

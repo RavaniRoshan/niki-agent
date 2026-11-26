@@ -160,7 +160,7 @@ jobs:
               // Counted before the work, not after it: an issue that throws
               // still consumed an attempt. Leaving it uncounted lets a run
               // whose every issue failed walk the whole open backlog while
-              // reporting `Processed 0`. Matches pr_labeler_backfill.yml.
+              // reporting `Processed 0`.
               processed++;
 
               try {
@@ -169,7 +169,7 @@ jobs:
 
                 const labels = [info.isExternal ? 'org:external' : 'org:internal'];
                 // Tier unknown (the merged-PR search failed) — see the same
-                // guard in pr_labeler_backfill.yml. Reconciling against an
+                // guard in the live PR labeler. Reconciling against an
                 // incomplete set would strip `auto:trusted-contributor`.
                 if (!info.tierKnown) {
                   failures++;
@@ -217,7 +217,7 @@ jobs:
             // Without this the job is green however many issues threw, and
             // this is the workflow an operator runs to apply the taxonomy to
             // the existing backlog — a false success reads as "migration
-            // done". Matches the backfill in pr_labeler_backfill.yml.
+            // done".
             if (failures > 0) {
               core.setFailed(`${failures} issue(s) failed to process — check warnings above`);
             }

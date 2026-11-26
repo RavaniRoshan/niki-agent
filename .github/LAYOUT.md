@@ -10,7 +10,7 @@ One product, one pipeline. Every workflow below is live.
 | `pr_lint_trailer.yml` | Checks the required commit trailer. |
 | `branch_name_check.yml` | Enforces `<user>/<scope>/<description>` branch names. |
 | `block_fork_main_prs.yml` | Blocks PRs whose head ref is a fork's `main`/`master`. |
-| `markdown_file_check.yml` | Validates Markdown files. |
+| `markdown_file_check.yml` | Validates Markdown files; a non-docs PR adding Markdown needs the `ci:ack-markdown` label. |
 | `pr_labeler.yml` | Applies labels from changed paths. |
 | `pr_scope_file_check.yml` | Keeps a PR's changed paths inside its declared scope. |
 | `require_issue_link.yml` | Requires an issue link on external PRs. |

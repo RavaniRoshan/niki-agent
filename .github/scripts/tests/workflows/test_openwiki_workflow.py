@@ -15,10 +15,45 @@ WORKFLOW = ROOT / ".github" / "workflows" / "openwiki-update.yml"
 HEAD_SHA = "d77258dee4f5f0d7bbe6bb913e69767415948751"
 PR_ENDPOINT = "repos/langchain-ai/deepagents/pulls/6404"
 BASH = shutil.which("bash")
-JQ = shutil.which("jq")
+
+
+def _real_jq() -> str | None:
+    """Return a genuine jq binary, skipping wrappers that need another runtime.
+
+    The merged step runs with ``PATH`` limited to the stub directory, so a
+    ``jq`` shim whose shebang resolves another interpreter (for example a
+    Python script named ``jq`` earlier on ``PATH``) cannot run there.
+    """
+    candidates = dict.fromkeys(
+        [
+            shutil.which("jq"),
+            "/usr/bin/jq",
+            "/bin/jq",
+            "/usr/local/bin/jq",
+            "/opt/homebrew/bin/jq",
+        ]
+    )
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            proc = subprocess.run(
+                [candidate, "--version"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            continue
+        if proc.stdout.startswith("jq-"):
+            return candidate
+    return None
+
+
+JQ = _real_jq()
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32" or not BASH or not JQ,
-    reason="Requires POSIX bash and jq",
+    reason="Requires POSIX bash and a genuine jq",
 )
 STUB = """
 import json

@@ -149,7 +149,7 @@ Each unblocks a gate that is otherwise red. Every one is read-only and must be c
 ## Mechanics worth knowing
 
 - Labels applied by `pr_labeler.yml` are created on demand, taking their description from `labelDescriptions` and their color from `labelColors` (keyed by taxonomy prefix) in `pr-labeler-config.json`, so a label created on demand matches the ones already on the repo. Labels that workflows only read, including most `ci:*` labels, must already exist in the repository.
-- `labelColors` defines the color palette. `close-old-prs.js` and `normalize-release-labels.js` resolve colors from the config. `sync_priority_labels.yml` and `require_issue_link.yml` have no repository checkout from which to load the shared helper, so they inline colors. The palette test in `pr-labeler.test.js` rejects inline hex values outside the configured palette; it does not verify that each value matches the label's prefix.
+- `labelColors` defines the color palette. `close-old-prs.js` resolves colors from the config. `sync_priority_labels.yml` and `require_issue_link.yml` have no repository checkout from which to load the shared helper, so they inline colors. The palette test in `pr-labeler.test.js` rejects inline hex values outside the configured palette; it does not verify that each value matches the label's prefix.
 - All PR label changes belong in `pr_labeler.yml` to avoid workflows racing to update the same labels.
 - Workflows that must trigger follow-up label events use the GitHub App token because events created by the default `GITHUB_TOKEN` do not start other workflows.
 

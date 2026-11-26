@@ -1,5 +1,4 @@
 {
-  "org": "langchain-ai",
   "trustedThreshold": 5,
   "labelColor": "b76e79",
   "labelColors": {
@@ -78,8 +77,8 @@
     "auto:release-pr": "Pull request created or managed as a package release.",
     "auto:new-contributor": "Author is a first-time contributor to this repository.",
     "auto:trusted-contributor": "Author satisfies the repository's trusted-contributor criteria.",
-    "org:external": "Issue or pull request created by someone outside the `langchain-ai` GitHub organization.",
-    "org:internal": "Issue or pull request created by a member of the `langchain-ai` GitHub organization.",
+    "org:external": "Issue or pull request created by someone outside the repository owner's organization.",
+    "org:internal": "Issue or pull request created by the repository owner or a member of their organization.",
     "org:open-swe": "Pull request created from an `open-swe/` branch.",
     "priority:triage": "New issue awaiting maintainer review and priority assignment.",
     "package:deepagents": "Changes related to the `deepagents` SDK and agent harness.",

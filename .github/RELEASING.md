@@ -30,9 +30,11 @@ on drift.
 `Niki Release` builds on `ubuntu-latest`, `macos-14`, `macos-13`, and
 `windows-latest`. Each job runs `uv build --wheel --sdist` in `libs/code`,
 copies the wheel plus `install/install.sh` or `install/install.ps1` and
-`NOTICE`/`README.md` into `niki-<version>-<platform>.{tar.gz,zip}`, and uploads
-it. The `release` job attaches every artifact to a GitHub Release named
-`Niki Agent v<version>`, using `.github/RELEASE_NOTES_niki.md` as the body.
+`NOTICE`/`README.md` into `niki-<version>-<platform>.{tar.gz,zip}`, then runs
+the packaged installer into a scratch prefix and prints `niki --version` from
+the result. The `release` job attaches every artifact plus a `SHA256SUMS` file
+to a GitHub Release named `Niki Agent v<version>`, using
+`.github/RELEASE_NOTES_niki.md` as the body.
 
 ## Installing a release
 
