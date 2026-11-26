@@ -35,4 +35,9 @@ pub enum ToolError {
         command: String,
         timeout: std::time::Duration,
     },
+
+    /// A tool backed by an external service — an MCP server — failed, or the
+    /// server reported the tool's own `isError` result.
+    #[error("{0}")]
+    Mcp(String),
 }

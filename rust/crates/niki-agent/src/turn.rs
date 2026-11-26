@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use futures_util::StreamExt;
 use niki_policy::{AllowList, Decision, Mode, decide};
 use niki_provider::openai::ToolCallAssembler;
@@ -50,6 +52,9 @@ pub struct Agent {
     config: AgentConfig,
     mode: Mode,
     allow: AllowList,
+    /// Tools the person chose "always allow" for. The shell allow-list does not
+    /// apply to them; this is the equivalent record for external tools.
+    approved: BTreeSet<String>,
     approver: Option<Approver>,
     cancel: CancelHandle,
     messages: Vec<Message>,
@@ -69,6 +74,7 @@ impl Agent {
             config,
             mode: Mode::default(),
             allow: AllowList::parse(""),
+            approved: BTreeSet::new(),
             approver: None,
             cancel: CancelHandle::new(),
             messages: Vec::new(),
@@ -293,16 +299,50 @@ impl Agent {
 
     /// Gate one call against the live mode.
     ///
-    /// An [`Decision::Ask`] goes to the installed [`Approver`] and waits for the
+    /// `shell` keeps its command-level allow-list. Any other tool that declares
+    /// [`Tool::requires_approval`](niki_tools::Tool::requires_approval) — every
+    /// mutating MCP tool — takes the same callback: `Always` records the tool
+    /// name so a later call of the same tool does not ask again, and Auto asks
+    /// as Manual does because this client has no classifier. A
+    /// [`Decision::Ask`] goes to the installed [`Approver`] and waits for the
     /// person's answer. A run with no approver — a headless one — reports the
     /// request to the model as a refusal rather than silently allowing it.
     async fn gate(&mut self, name: &str, args: &Value) -> Result<(), String> {
-        if name != "shell" {
+        if name == "shell" {
+            let Some(command) = args.get("command").and_then(Value::as_str) else {
+                return Err("error: shell needs a command string".to_owned());
+            };
+            return self.gate_command(command).await;
+        }
+
+        let gated = self
+            .registry
+            .get(name)
+            .is_some_and(|tool| tool.requires_approval());
+        if !gated || self.approved.contains(name) || self.mode == Mode::Yolo {
             return Ok(());
         }
-        let Some(command) = args.get("command").and_then(Value::as_str) else {
-            return Err("error: shell needs a command string".to_owned());
+
+        let request = ApprovalRequest {
+            command: describe_call(name, args),
+            mode: self.mode,
         };
+        match self.ask(request).await {
+            None => Err(format!(
+                "refused: `{name}` needs approval and this run has nobody to ask (mode: {}). \
+                 Approve it in the full-screen app or set the mode to yolo.",
+                self.mode.label()
+            )),
+            Some(Approval::Once) => Ok(()),
+            Some(Approval::Always) => {
+                self.approved.insert(name.to_owned());
+                Ok(())
+            }
+            Some(Approval::Deny) => Err(format!("refused: `{name}` was not approved")),
+        }
+    }
+
+    async fn gate_command(&mut self, command: &str) -> Result<(), String> {
         match decide(self.mode, &self.allow, command) {
             Decision::Allow => Ok(()),
             Decision::Ask => {
@@ -310,11 +350,7 @@ impl Agent {
                     command: command.to_owned(),
                     mode: self.mode,
                 };
-                let answered = match self.approver.as_ref() {
-                    Some(approver) => Some(approver(request).await),
-                    None => None,
-                };
-                match answered {
+                match self.ask(request).await {
                     None => Err(format!(
                         "refused: `{command}` needs approval and this run has nobody to ask \
                          (mode: {}). Set the mode to auto, add the command to the allow-list, \
@@ -332,6 +368,25 @@ impl Agent {
             Decision::Deny => Err(format!("refused by policy: `{command}`")),
         }
     }
+
+    /// Put one request to the installed approver, or `None` when there is
+    /// nobody to ask.
+    async fn ask(&self, request: ApprovalRequest) -> Option<Approval> {
+        match self.approver.as_ref() {
+            Some(approver) => Some(approver(request).await),
+            None => None,
+        }
+    }
+}
+
+/// A one-line description of an external tool call for the approval prompt.
+fn describe_call(name: &str, args: &Value) -> String {
+    let rendered = serde_json::to_string(args).unwrap_or_else(|_| "{}".to_owned());
+    let mut text = format!("{name} {rendered}");
+    if text.chars().count() > 160 {
+        text = text.chars().take(157).collect::<String>() + "...";
+    }
+    text
 }
 
 /// The tool array for a request, read back from the registry's JSON form.

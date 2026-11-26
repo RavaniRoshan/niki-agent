@@ -894,6 +894,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "niki-mcp"
+version = "0.1.0"
+dependencies = [
+ "niki-config",
+ "niki-tools",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "niki-policy"
 version = "0.1.0"
 dependencies = [

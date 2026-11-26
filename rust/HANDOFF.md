@@ -3,18 +3,21 @@
 The Rust workspace in `rust/` is a second front end for the same engine, built
 one crate at a time. Python is still the product until the port reaches its
 cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
-[`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done;
-W4 (extensions) is next.
+[`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done.
+W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
+`[mcp_servers]`, and registers discovered tools in the existing registry.
+`niki-skills`, `niki-hooks` and `niki-commands` are next.
 
 ## What is implemented
 
 | Crate | What it answers from Rust |
 | --- | --- |
-| `niki-config` | `config.toml` parsing: provider blocks, `[models].default`, `[ui].theme` |
+| `niki-config` | `config.toml` parsing: provider blocks, `[models].default`, `[ui].theme`, `[mcp_servers.<name>]` |
 | `niki-provider` | one streaming turn against OpenAI-compatible or Anthropic endpoints |
-| `niki-tools` | read/write/edit/list, shell, grep, glob over a rooted workspace |
+| `niki-tools` | read/write/edit/list, shell, grep, glob over a rooted workspace; runtime tool registration |
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
+| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
 | `niki-render` | transcript view model, deterministic frame, `wrap` |
@@ -34,7 +37,7 @@ fixture and streams from the Python engine; it is unchanged.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 191 tests, 0 failures
+cargo test -j 2 --workspace        # 227 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
@@ -77,15 +80,63 @@ worker against a scripted provider and drives approvals end to end.
   they say at startup.
 - The binary is `niki-rs` until W6 (RULES.md 2).
 
+## M4 decisions
+
+- **Config types live in `niki-config`.** `McpServer` / `McpTransport` are
+  parsed there, so `niki-config` stays free of the JSON-RPC and process
+  implementation and `niki-mcp` depends on the shape rather than the other way
+  round. A malformed entry is `ConfigError::McpServer { server, .. }`, which
+  names the table the way provider failures name the file.
+- **Tool names are `mcp__<server>__<tool>`.** That is the name the Python
+  client uses in hooks and matchers (`format_mcp_wire_name`), so a saved matcher
+  carries over. The Python client's *provider-visible* name is
+  `{server}_{tool}`; the two differ, and this slice follows the wire form the
+  milestone names. Characters outside `[A-Za-z0-9_-]` become `_`, and a name
+  longer than the provider cap keeps an FNV-1a digest instead of SHA-256 (the
+  Python client's hash); only determinism matters here.
+- **A mutating MCP tool is gated; a built-in write is not (yet).** In this build
+  `write_file` runs without asking — the W1 headless gate depends on it — so
+  "the same approval path as a built-in write" cannot mean an existing write
+  prompt. The conservative reading is implemented instead: `Tool::requires_approval`
+  defaults to `false`, MCP bridges return `!readOnlyHint`, and the agent sends a
+  gated tool through the same `Approver` a shell command uses. `Always` records
+  the tool name in the agent, not in the shell allow-list. Auto asks as Manual
+  does because this client has no classifier; YOLO runs it. When built-in writes
+  are gated (a later slice), they can take the same flag.
+- **HTTP is streamable HTTP, not legacy SSE.** A POST is answered with a JSON
+  body or an SSE body; both are parsed, and a stream that never closes fails as
+  a timeout. `type = "sse"` (the long-lived GET transport) is rejected at load
+  with a message naming the server. The one-minute request budget is fixed for
+  this slice; a per-server `timeout` key is the next thing to add.
+- **One request at a time per server.** stdio responses are matched by id but a
+  lost response cannot be resynchronised, so the connection is serialised behind
+  one async mutex and marked closed after a timeout, exit or malformed line.
+  HTTP requests are independent and are not marked closed.
+
 ## Next: W4 — extensions
 
-`niki-mcp`, `niki-skills`, `niki-hooks`, `niki-commands`. Slash commands are
-currently four hard-coded strings in `App::slash`; W4 should move them into
-`niki-commands` and have `niki-tui-live` call it, keeping `/quit`, `/help`,
-`/model` and `/theme` as the built-ins.
+`niki-mcp` is done for stdio, HTTP, config and registration. It is not wired
+into `niki-rs` yet: the binary still builds `Registry::new()` and never calls
+`niki_mcp::load(&config.mcp_servers)`. Doing that in `headless` is easy (the
+runtime is already there); the screen's worker builds the agent in a synchronous
+closure, so it needs a runtime handle or a startup load before the worker
+starts. That is the next slice, together with `niki-skills`, `niki-hooks` and
+`niki-commands`. Slash commands are currently four hard-coded strings in
+`App::slash`; W4 should move them into `niki-commands` and have `niki-tui-live`
+call it, keeping `/quit`, `/help`, `/model` and `/theme` as the built-ins.
 
 ## Known gaps
 
+- `niki-mcp` is not called by either entry point yet (see above).
+- MCP: no OAuth (the Python client's `auth = "oauth"` has no Rust counterpart),
+  no `${VAR}` interpolation in `command`/`args`/`env`/`url`/`headers`, no
+  `tools/list` pagination (`nextCursor`), and no `DELETE` to end an HTTP session.
+- MCP HTTP has no integration test: a test server would need a listener. The SSE
+  parser, batch matching, server-request replies and JSON-RPC error decoding are
+  unit-tested; the six required protocol cases run against the stdio fixture.
+- Built-in writes — `write_file`, `edit_file` — are not approval-gated, unlike
+  the Python product. This slice deliberately did not change that (see M4
+  decisions).
 - No streaming cancel inside a provider request beyond the per-event check.
 - The live app has no session persistence yet: `niki-session` exists and is
   tested, but the screen does not write to it, so a restart loses the transcript.

@@ -5,7 +5,8 @@ use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
-use niki_tools::ToolContext;
+use niki_tools::{Registry, Tool, ToolContext, ToolError, ToolOutput};
+use serde_json::{Value, json};
 
 /// A provider that replays one scripted turn per request and records what it
 /// was asked. No network, so the loop is testable anywhere (RULES.md 8).
@@ -328,6 +329,112 @@ async fn denying_a_gated_command_is_a_refusal_the_model_reads() {
         "{}",
         agent.messages()[2].content
     );
+}
+
+/// An external tool that records whether it ran, so a refusal can be told
+/// apart from an execution.
+struct ExternalWrite {
+    name: &'static str,
+    gated: bool,
+    runs: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl Tool for ExternalWrite {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn description(&self) -> &str {
+        "An external tool for the approval tests."
+    }
+
+    fn schema(&self) -> Value {
+        json!({"type": "object"})
+    }
+
+    fn requires_approval(&self) -> bool {
+        self.gated
+    }
+
+    async fn run(&self, _args: Value, _ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
+        self.runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(ToolOutput::new("changed"))
+    }
+}
+
+fn external_registry(
+    name: &'static str,
+    gated: bool,
+) -> (Registry, Arc<std::sync::atomic::AtomicUsize>) {
+    let runs = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let mut registry = Registry::new();
+    registry.register(ExternalWrite {
+        name,
+        gated,
+        runs: Arc::clone(&runs),
+    });
+    (registry, runs)
+}
+
+#[tokio::test]
+async fn a_mutating_external_tool_asks_before_it_runs() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let (registry, runs) = external_registry("mcp__fixture__write", true);
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "mcp__fixture__write", r#"{"path":"note.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Once);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_registry(registry)
+        .with_approver(approver);
+
+    let outcome = agent.run("write it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 1);
+    assert!(requests[0].command.starts_with("mcp__fixture__write"));
+}
+
+#[tokio::test]
+async fn a_mutating_external_tool_without_an_approver_is_refused() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let (registry, runs) = external_registry("mcp__fixture__write", true);
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "mcp__fixture__write", "{}"),
+        text_turn("understood"),
+    ]);
+    let mut agent = agent(provider, dir.path(), config()).with_registry(registry);
+
+    let outcome = agent.run("write it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 0);
+    let refusal = &agent.messages()[2].content;
+    assert!(refusal.contains("refused"), "{refusal}");
+    assert!(refusal.contains("mcp__fixture__write"), "{refusal}");
+}
+
+#[tokio::test]
+async fn a_read_only_external_tool_runs_without_asking() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let (registry, runs) = external_registry("mcp__fixture__peek", false);
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "mcp__fixture__peek", "{}"),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_registry(registry)
+        .with_approver(approver);
+
+    let outcome = agent.run("look", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert!(seen.lock().expect("lock").is_empty());
 }
 
 #[tokio::test]
