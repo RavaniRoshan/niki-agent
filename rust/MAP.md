@@ -11,15 +11,17 @@ Read order for a new session: this file, then `DECISIONS.md`, `GLOSSARY.md`,
 | | |
 | --- | --- |
 | Source | `libs/code` — 377 files, ~250k lines, 41 analyzable units |
-| Rust today | `rust/crates/` — 1,861 lines: protocol, engine client, render, TUI state |
-| Fallback rate | 100% (no unit answers from Rust yet) |
+| Rust today | `rust/crates/` — 7,941 lines across 12 crates |
+| Fallback rate | 100% (the binary still runs the Python engine for a live turn) |
 | Cutover | not started; Python stays the product until W6 |
 
 The analysis (`rust-anything analyze libs/code`) reports 9 ready, 28 caution and
-4 blocked units, and **no Rust crate for the agent runtime, the UI toolkit, or
-the provider integrations**. That is the central fact of this port: it is a
-rewrite against the same external contracts, not a function-by-function
-translation. Recorded app cases are the equivalence proof.
+4 blocked units. The central fact of the port holds: it is a rewrite against the
+same external contracts, not a function-by-function translation. Recorded app
+cases are the equivalence proof.
+
+W0–W2 are green. The agent has its own model client, tool registry, approval
+policy, workspace and session store; the interactive TUI is W3.
 
 ## Waves
 
@@ -34,26 +36,28 @@ A unit is `open`, `claimed by <session> <date>`, or `done <gate/replay>`.
 | `niki-render` — transcript model, plain-text frame | done |
 | `niki-tui` — keymap, reader mode, view state | done |
 
-### W1 — core engine (the next wave)
+### W1 — core engine (done)
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-config` | `~/.niki/config.toml`, `NIKI_*`, provider blocks, defaults | open |
-| `niki-provider` | OpenAI-compatible Chat Completions and Anthropic Messages, SSE streaming, tool-call assembly, retries, usage | open |
-| `niki-agent` | turn loop: model → tool calls → results → model, cancel, max steps | open |
-| `niki-tools` | fs read/write/edit/list, shell exec, grep, glob, todo write | open |
-| `niki-policy` | Manual/Auto/YOLO, shell allow-list, path boundary | open |
+| `niki-config` | `~/.niki/config.toml`, `NIKI_*`, provider blocks, defaults | done — 10 tests |
+| `niki-provider` | OpenAI-compatible Chat Completions and Anthropic Messages, SSE streaming, tool-call assembly, retries, usage | done — 6 fixture tests |
+| `niki-agent` | turn loop: model → tool calls → results → model, cancel, max steps | done — 7 tests |
+| `niki-tools` | fs read/write/edit/list, shell exec, grep, glob, todo write | done — 14 tests |
+| `niki-policy` | Manual/Auto/YOLO, shell allow-list, path boundary | done — 13 tests |
 
 W1 ends when `niki-rs -n "prompt"` runs a real turn against a mock provider,
 writes a file, and exits with the same transcript shape as the Python headless
-mode.
+mode. That gate is `crates/niki/tests/niki_rs.rs`: a mock OpenAI SSE server
+drives `write_file`, the result goes back over the wire as a `tool` message, and
+the answer reaches stdout.
 
-### W2 — workspace and sessions
+### W2 — workspace and sessions (done)
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-workspace` | root detection, ignore rules, file index for grep/glob | open |
-| `niki-session` | SQLite store, transcript persistence, resume, checkpoints | open |
+| `niki-workspace` | root detection, ignore rules, file index for grep/glob | done — 11 tests |
+| `niki-session` | SQLite store, transcript persistence, resume, checkpoints | done — 9 tests |
 
 ### W3 — interactive TUI
 
@@ -86,9 +90,10 @@ renamed, Python retired to reference. Out of scope until W1–W5 are green.
 
 ## Blocked and kept
 
-- **Blocked:** `libs/partners/quickjs` (C++ interpreter, no Rust crate that keeps
-  the PTC API); `niki_agent/sdk/backends/` (filesystem and composite backends
-  depend on the vendored graph runtime).
+- **Blocked:** the JavaScript interpreter the Python product vendors (a C++
+  engine with a PTC authorizer hook and no Rust crate that keeps the API);
+  `niki_agent/sdk/backends/` (filesystem and composite backends depend on the
+  vendored graph runtime).
 - **Kept in Python (for now):** the syntax-highlighting grammar set and the
   `tiktoken` token-counting path. Rust replacements are chosen in W1 and recorded
   in `DECISIONS.md`.

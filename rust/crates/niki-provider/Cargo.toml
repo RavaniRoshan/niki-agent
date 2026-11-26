@@ -1,0 +1,20 @@
+[package]
+name = "niki-provider"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Model provider clients for the Niki agent"
+
+[dependencies]
+futures-util.workspace = true
+niki-config = { path = "../niki-config" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["time"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

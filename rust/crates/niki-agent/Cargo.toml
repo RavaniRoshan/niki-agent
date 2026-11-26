@@ -1,0 +1,21 @@
+[package]
+name = "niki-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Turn loop for the Niki agent: model, tool calls, results, model"
+
+[dependencies]
+futures-util.workspace = true
+niki-policy = { path = "../niki-policy" }
+niki-provider = { path = "../niki-provider" }
+niki-tools = { path = "../niki-tools" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+futures-util.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
