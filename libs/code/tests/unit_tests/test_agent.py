@@ -2016,6 +2016,10 @@ class TestListAgents:
 
         with (
             patch("niki_agent.agent.credentials", mock_settings),
+            patch(
+                "niki_agent.agent.user_niki_dir",
+                return_value=agents_dir,
+            ),
             patch("niki_agent.agent.console") as mock_console,
         ):
             mock_console.print = capture_print
@@ -2150,6 +2154,10 @@ class TestListAgentsJson:
 
         with (
             patch("niki_agent.agent.credentials", mock_settings),
+            patch(
+                "niki_agent.agent.user_niki_dir",
+                return_value=agents_dir,
+            ),
             patch("niki_agent.agent.console") as mock_console,
         ):
             mock_console.print = capture_print
