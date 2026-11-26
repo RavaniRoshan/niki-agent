@@ -152,7 +152,8 @@ runs; warnings go to stderr. `--acp` cannot be combined with `-n`:
 This build emits text and tool-call updates but no reasoning chunks, refuses
 image and audio prompt blocks, ignores `mcpServers` and `additionalDirectories`
 in the protocol, and `session/load` replays the transcript without seeding the
-model's context. Tools still come from `config.toml` at startup.
+model's context. Tools still come from `config.toml` at startup. The workspace
+comes from the editor's session `cwd`, not from `--root`.
 
 ## Where your session lives
 
