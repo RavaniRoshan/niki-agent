@@ -1,7 +1,7 @@
-"""Primary graph assembly module for Deep Agents.
+"""Primary graph assembly module for the Niki Agent SDK.
 
-Provides [`create_deep_agent`][deepagents.graph.create_deep_agent], the main entry
-point for constructing a fully configured deep agent with planning, filesystem,
+Provides [`create_deep_agent`][niki_agent.sdk.graph.create_deep_agent], the main entry
+point for constructing a fully configured agent with planning, filesystem,
 subagent, and summarization middleware.
 """
 
@@ -240,7 +240,7 @@ _REQUIRED_MIDDLEWARE: tuple[tuple[type[AgentMiddleware[Any, Any, Any]], tuple[st
     (FilesystemMiddleware, ()),
     (SubAgentMiddleware, ()),
 )
-"""Scaffolding middleware that core deep agent features depend on.
+"""Scaffolding middleware that core agent features depend on.
 
 Each entry pairs a class with any extra string aliases its `.name` may take
 beyond `__name__`. Removing any of these silently breaks core features:
@@ -287,7 +287,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
     name: str | None = None,
     cache: BaseCache | None = None,
 ) -> CompiledStateGraph[AgentState[ResponseT], ContextT, InputAgentState, OutputAgentState[ResponseT]]:  # ty: ignore[invalid-type-arguments]  # ty can't verify generic TypedDicts satisfy StateLike bound
-    r"""Create a deep agent.
+    r"""Create an agent.
 
     By default, this agent has access to the following tools:
 
@@ -296,7 +296,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
     - `task`: call subagents
 
     The `execute` tool allows running shell commands if the backend implements
-    [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol].
+    [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol].
     For non-sandbox backends, the `execute` tool will return an error message.
 
     Args:
@@ -335,16 +335,16 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
 
             Passing tools here is additive — it never removes a built-in.
             To stop offering a built-in tool to the model, register a
-            [`HarnessProfile`][deepagents.HarnessProfile] with
+            [`HarnessProfile`][niki_agent.sdk.HarnessProfile] with
             `excluded_tools`. To remove one entirely, pass your own
-            [`FilesystemMiddleware`][deepagents.middleware.filesystem.FilesystemMiddleware]
+            [`FilesystemMiddleware`][niki_agent.sdk.middleware.filesystem.FilesystemMiddleware]
             with `tools=[...]`.
         system_prompt: Caller-authored system instructions (`USER`) placed
             first in the system prompt sent to the model.
 
             The final authored prompt is assembled as `USER` -> `BASE` -> `SUFFIX`.
             `BASE` is empty unless the active
-            [`HarnessProfile`][deepagents.HarnessProfile] defines
+            [`HarnessProfile`][niki_agent.sdk.HarnessProfile] defines
             `base_system_prompt`, and `SUFFIX` is the profile's optional
             `system_prompt_suffix`. Parts are separated by blank lines.
 
@@ -365,31 +365,31 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
 
             Base stack:
 
-            - [`FilesystemMiddleware`][deepagents.middleware.filesystem.FilesystemMiddleware]
-            - [`SubAgentMiddleware`][deepagents.middleware.subagents.SubAgentMiddleware]
+            - [`FilesystemMiddleware`][niki_agent.sdk.middleware.filesystem.FilesystemMiddleware]
+            - [`SubAgentMiddleware`][niki_agent.sdk.middleware.subagents.SubAgentMiddleware]
                 (if any inline subagents — declarative
-                [`SubAgent`][deepagents.middleware.subagents.SubAgent] or
-                [`CompiledSubAgent`][deepagents.middleware.subagents.CompiledSubAgent]
+                [`SubAgent`][niki_agent.sdk.middleware.subagents.SubAgent] or
+                [`CompiledSubAgent`][niki_agent.sdk.middleware.subagents.CompiledSubAgent]
                 — are available)
             - [`SummarizationMiddleware`][langchain.agents.middleware.SummarizationMiddleware]
-            - [`PatchToolCallsMiddleware`][deepagents.middleware.patch_tool_calls.PatchToolCallsMiddleware]
-            - [`AsyncSubAgentMiddleware`][deepagents.middleware.async_subagents.AsyncSubAgentMiddleware] (if async `subagents` are provided)
+            - [`PatchToolCallsMiddleware`][niki_agent.sdk.middleware.patch_tool_calls.PatchToolCallsMiddleware]
+            - [`AsyncSubAgentMiddleware`][niki_agent.sdk.middleware.async_subagents.AsyncSubAgentMiddleware] (if async `subagents` are provided)
 
             *User middleware is inserted here.*
 
             Tail stack:
 
             - Harness profile `extra_middleware` (if any)
-            - [`SkillsMiddleware`][deepagents.middleware.skills.SkillsMiddleware] (if `skills` is provided)
+            - [`SkillsMiddleware`][niki_agent.sdk.middleware.skills.SkillsMiddleware] (if `skills` is provided)
             - [`AnthropicPromptCachingMiddleware`][langchain_anthropic.middleware.AnthropicPromptCachingMiddleware] (unconditional; no-ops for
                 non-Anthropic models)
             - [`BedrockPromptCachingMiddleware`](https://reference.langchain.com/python/langchain-aws/middleware/prompt_caching/BedrockPromptCachingMiddleware)
                 when `langchain-aws` is installed (no-ops for non-Bedrock models)
             - [`FireworksPromptCachingMiddleware`](https://reference.langchain.com/python/integrations/langchain_fireworks/middleware/prompt_caching/FireworksPromptCachingMiddleware)
                 when `langchain-fireworks` is installed (no-ops for non-Fireworks models)
-            - [`MemoryMiddleware`][deepagents.middleware.memory.MemoryMiddleware] (if `memory` is provided)
+            - [`MemoryMiddleware`][niki_agent.sdk.middleware.memory.MemoryMiddleware] (if `memory` is provided)
             - [`HumanInTheLoopMiddleware`][langchain.agents.middleware.HumanInTheLoopMiddleware] (if `interrupt_on` is provided)
-            - [`UnsupportedContentMiddleware`][deepagents.middleware.unsupported_content.UnsupportedContentMiddleware]
+            - [`UnsupportedContentMiddleware`][niki_agent.sdk.middleware.unsupported_content.UnsupportedContentMiddleware]
             - `_ToolExclusionMiddleware` (if profile has `excluded_tools`)
 
             `SkillsMiddleware` sits after user and profile middleware so that
@@ -409,8 +409,8 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             Entries that match nothing in the assembled stack raise
             `ValueError`, as does excluding any class in the harness's
             protected scaffolding set (e.g.,
-            [`FilesystemMiddleware`][deepagents.middleware.filesystem.FilesystemMiddleware]
-            or [`SubAgentMiddleware`][deepagents.middleware.subagents.SubAgentMiddleware]).
+            [`FilesystemMiddleware`][niki_agent.sdk.middleware.filesystem.FilesystemMiddleware]
+            or [`SubAgentMiddleware`][niki_agent.sdk.middleware.subagents.SubAgentMiddleware]).
 
             To run without the `task` tool, set
             `general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)`
@@ -420,9 +420,9 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
 
             This collection supports three forms:
 
-            - [`SubAgent`][deepagents.middleware.subagents.SubAgent]: A declarative synchronous subagent spec.
-            - [`CompiledSubAgent`][deepagents.middleware.subagents.CompiledSubAgent]: A pre-compiled runnable subagent.
-            - [`AsyncSubAgent`][deepagents.middleware.async_subagents.AsyncSubAgent]: A remote/background subagent spec.
+            - [`SubAgent`][niki_agent.sdk.middleware.subagents.SubAgent]: A declarative synchronous subagent spec.
+            - [`CompiledSubAgent`][niki_agent.sdk.middleware.subagents.CompiledSubAgent]: A pre-compiled runnable subagent.
+            - [`AsyncSubAgent`][niki_agent.sdk.middleware.async_subagents.AsyncSubAgent]: A remote/background subagent spec.
 
             `SubAgent` entries are invoked through the `task` tool. They should
             provide `name` and `description`, and may also override
@@ -498,7 +498,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             Pass a `Backend` instance (e.g. `StateBackend()`).
 
             For execution support, use a backend that
-            implements [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol].
+            implements [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol].
         interrupt_on: Mapping of tool names to interrupt configs.
 
             Pass to pause agent execution at specified tool calls for human
@@ -524,7 +524,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
         response_format: A structured output response format to use for the agent.
         state_schema: Custom state schema for the agent graph. Must be a
             `TypedDict` subclass of
-            [`DeepAgentState`][deepagents.graph.DeepAgentState] so the
+            [`DeepAgentState`][niki_agent.sdk.graph.DeepAgentState] so the
             built-in `DeltaChannel` reducer on `messages` is preserved.
 
             Generally, prefer defining state extensions with middleware so
@@ -534,16 +534,16 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             When provided, this schema is used as the base graph schema and
             is merged with state schemas contributed by middleware. It is
             also forwarded when compiling declarative
-            [`SubAgent`][deepagents.middleware.subagents.SubAgent] specs for
+            [`SubAgent`][niki_agent.sdk.middleware.subagents.SubAgent] specs for
             the `task` tool, so subagents see the same custom fields as the
             parent.
 
-            [`CompiledSubAgent`][deepagents.middleware.subagents.CompiledSubAgent]
+            [`CompiledSubAgent`][niki_agent.sdk.middleware.subagents.CompiledSubAgent]
             runnables do not inherit this schema because they are already
             compiled — compile those runnables with a compatible state
             schema if they need access to the same custom state fields.
             Remote
-            [`AsyncSubAgent`][deepagents.middleware.async_subagents.AsyncSubAgent]
+            [`AsyncSubAgent`][niki_agent.sdk.middleware.async_subagents.AsyncSubAgent]
             specs likewise use the schema configured on the remote graph.
 
             ```python
@@ -579,7 +579,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             Passed through to [`create_agent`][langchain.agents.create_agent].
 
     Returns:
-        A configured deep agent.
+        A configured agent.
 
     Raises:
         ImportError: If a required provider package is missing or below the
@@ -587,9 +587,9 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
         ValueError: If the active `HarnessProfile.excluded_middleware`
             references a class in the harness's protected scaffolding set
             (e.g.,
-            [`FilesystemMiddleware`][deepagents.middleware.filesystem.FilesystemMiddleware]
+            [`FilesystemMiddleware`][niki_agent.sdk.middleware.filesystem.FilesystemMiddleware]
             or
-            [`SubAgentMiddleware`][deepagents.middleware.subagents.SubAgentMiddleware]),
+            [`SubAgentMiddleware`][niki_agent.sdk.middleware.subagents.SubAgentMiddleware]),
             uses a private (underscore-prefixed) name, collides with multiple
             distinct middleware classes, or matches no entry in the assembled
             stack.
@@ -654,7 +654,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
         final_system_prompt = system_prompt + (f"\n\n{base_prompt}" if base_prompt else "")
 
     # The built-in tool-usage guidance prose duplicates the tools' own schema
-    # descriptions, so the deepagents-owned middleware (filesystem / subagent /
+    # descriptions, so the SDK-owned middleware (filesystem / subagent /
     # async-subagent) default to emitting none of it; only the essential dynamic
     # bits remain (filesystem's host-path routing, empty for non-composite
     # backends; the available-agent list, which reaches the model through the

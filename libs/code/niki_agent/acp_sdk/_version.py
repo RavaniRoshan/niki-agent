@@ -1,4 +1,4 @@
-"""Version information for `deepagents-acp`."""
+"""Version information for `niki_agent.acp_sdk`."""
 
 # Keep the `x-release-please-version` annotation — release-please uses it to
 # bump `__version__` in sync with `pyproject.toml` on every release PR.

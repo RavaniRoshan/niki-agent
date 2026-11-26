@@ -3,7 +3,7 @@
 These functions validate, apply, and audit exclusions against assembled
 middleware stacks. The set of *required scaffolding* — classes/names that
 must remain in the stack for the agent to function — is owned by
-`deepagents.graph` and threaded through as parameters so that policy stays
+`niki_agent.sdk.graph` and threaded through as parameters so that policy stays
 next to `create_deep_agent`.
 """
 

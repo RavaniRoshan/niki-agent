@@ -1,4 +1,4 @@
-"""Middleware for the Deep Agents agent.
+"""Middleware for the Niki Agent SDK agent.
 
 ## Overview
 

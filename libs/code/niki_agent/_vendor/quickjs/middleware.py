@@ -154,7 +154,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
             buffers `console.log/warn/error` calls and emits them in
             `<stdout>` blocks alongside the result. Default `True`.
         subagents: If `True`, expose the top-level `task(...)`
-            JavaScript API when the current agent has a Deep Agents `task`
+            JavaScript API when the current agent has a `task` subagent
             tool. Set to `False` to require subagent dispatch through the
             normal parent `task` tool path instead.
 

@@ -1,4 +1,4 @@
-"""Beta APIs for configuring deep agent runtime behavior.
+"""Beta APIs for configuring agent runtime behavior.
 
 !!! beta
 
@@ -10,7 +10,7 @@ prompt assembly, tool visibility, middleware, and default subagent behavior
 *after* the chat model has been constructed — orthogonal to
 `ProviderProfile`, which controls the model-construction phase.
 
-Users may register profiles via `register_harness_profile`. Deep Agents
+Users may register profiles via `register_harness_profile`. The SDK
 ships built-in harness profiles for several frontier model specs.
 They may be layered on top of via additive merge semantics.
 """
@@ -42,7 +42,7 @@ def _scaffolding_violation_label(entry: object) -> str | None:
     callers can collect violations across an entire `excluded_middleware`
     set and surface them in one error.
 
-    The required-scaffolding set is owned by `deepagents.graph` and imported
+    The required-scaffolding set is owned by `niki_agent.sdk.graph` and imported
     lazily to avoid a top-level cycle (`graph` already imports this module).
     By the time any `HarnessProfile`/`HarnessProfileConfig` is constructed,
     `graph` is loadable: the package `__init__` imports `graph` before
@@ -477,7 +477,7 @@ class HarnessProfileConfig:
 
 @dataclass(frozen=True)
 class HarnessProfile:
-    """Runtime configuration for deep agent behavior.
+    """Runtime configuration for agent behavior.
 
     !!! beta
 
@@ -575,7 +575,7 @@ class HarnessProfile:
     tool_description_overrides: Mapping[str, str] = field(default_factory=dict)
     """Per-tool description replacements keyed by tool name.
 
-    Applied only where Deep Agents has a stable description hook: built-in
+    Applied only where the SDK has a stable description hook: built-in
     filesystem tools, the `task` tool, and user-supplied `BaseTool` or dict
     tools. Plain callable tools are left unchanged.
 
@@ -610,7 +610,7 @@ class HarnessProfile:
 
     Applied via a tool-exclusion middleware after tool-injecting middleware
     has run, so it can remove both user-supplied tools and tools added by
-    Deep Agents middleware from the visible tool set.
+    SDK middleware from the visible tool set.
 
     When profiles are merged, exclusions are additive rather than replacing
     each other. For example, if a provider profile excludes `execute` and an
@@ -1018,15 +1018,15 @@ def register_harness_profile(key: str, profile: HarnessProfile | HarnessProfileC
 
     from niki_agent.sdk import create_deep_agent
 
-    # Deep Agents constructs the model from a string.
+    # The SDK constructs the model from a string.
     agent = create_deep_agent(model="my_provider:my-model:tag")
 
-    # Or construct a model object first, then pass it to Deep Agents.
+    # Or construct a model object first, then pass it to the SDK.
     model = init_chat_model("my-model:tag", model_provider="my_provider")
     agent = create_deep_agent(model=model)
     ```
 
-    For the model object, Deep Agents looks up the harness profile using the
+    For the model object, the SDK looks up the harness profile using the
     provider and model identifier reported by that object. If it reports
     `my_provider` and `my-model:tag`, it matches the same registration above.
 
@@ -1044,7 +1044,7 @@ def register_harness_profile(key: str, profile: HarnessProfile | HarnessProfileC
     An agent created afterward with this model excludes both `execute` and
     `grep` and still receives the 100-word prompt suffix.
 
-    Deep Agents also ships **built-in profiles**: default harness settings
+    The SDK also ships **built-in profiles**: default harness settings
     registered automatically for selected models. Registering under one of
     those keys customizes the shipped settings using the same merge rules.
 

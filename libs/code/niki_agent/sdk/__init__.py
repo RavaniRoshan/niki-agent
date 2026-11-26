@@ -1,4 +1,4 @@
-"""Deep Agents package."""
+"""Vendored agent SDK."""
 
 from niki_agent.sdk._version import __version__
 from niki_agent.sdk.graph import (

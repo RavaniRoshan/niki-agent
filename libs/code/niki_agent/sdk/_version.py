@@ -1,4 +1,4 @@
-"""Version information for `deepagents` (SDK)."""
+"""Version information for the vendored SDK."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def _editable_source_root(dist: Distribution) -> Path | None:
 
 
 def _running_package_root() -> Path | None:
-    """Return the directory of the `deepagents` package being imported.
+    """Return the directory of the SDK package being imported.
 
     `None` when the location cannot be determined — `__file__` is absent in some
     frozen and embedded interpreters. Separate function so tests can substitute a
@@ -118,7 +118,7 @@ def _running_package_root() -> Path | None:
     try:
         return Path(__file__).resolve().parent
     except (NameError, OSError, ValueError):
-        logger.debug("Could not locate the running deepagents package", exc_info=True)
+        logger.debug("Could not locate the running SDK package", exc_info=True)
         return None
 
 
@@ -133,9 +133,9 @@ def _is_under(root: Path, candidate: Path) -> bool:
 
 
 def _is_editable_install() -> bool:
-    """Whether the `deepagents` package being imported is an editable install.
+    """Whether the SDK package being imported is an editable install.
 
-    Scans every installed distribution named `deepagents` for PEP 610
+    Scans every installed distribution for PEP 610
     `direct_url.json` with `dir_info.editable: true`, and reports `True` only for
     a record whose source root actually contains the module this code is running
     from.
@@ -144,13 +144,13 @@ def _is_editable_install() -> bool:
 
     - Scanning, rather than a single `importlib.metadata.distribution` lookup,
       avoids a false negative. `setuptools` leaves a gitignored
-      `deepagents.egg-info/` in the source tree after any local build, and the cwd
+      `*.egg-info/` in the source tree after any local build, and the cwd
       is on `sys.path` for `-c`, `-m`, and the REPL, so that `*.egg-info` is found
       *first* when running from the checkout. It carries no `direct_url.json`, so
       the single-lookup form reports "not editable" and never consults the real
       editable install in site-packages.
     - Correlating against the running module avoids a false positive. An
-      environment can hold more than one `deepagents` record — a wheel earlier on
+      environment can hold more than one SDK record — a wheel earlier on
       `sys.path` and an unrelated editable checkout later on it. Only the wheel's
       code is actually imported, so marking it `+editable` because some other
       checkout exists would attribute a workspace build to a published install.

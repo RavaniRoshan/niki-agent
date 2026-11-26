@@ -1,7 +1,7 @@
 """Video frame extraction for filesystem reads.
 
-This module is the boundary between Deep Agents middleware and the optional
-video backend (PyAV). It imports PyAV lazily so a `deepagents` install without
+This module is the boundary between SDK middleware and the optional
+video backend (PyAV). It imports PyAV lazily so an SDK install without
 the `[video]` extra stays lightweight; the import only fires when the agent
 actually tries to read a video.
 

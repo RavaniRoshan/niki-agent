@@ -833,7 +833,7 @@ class CompositeBackend(BackendProtocol):
 
         Raises:
             NotImplementedError: If the default backend is not a
-                [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol]
+                [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol]
                 (i.e., it doesn't support execution).
         """
         if isinstance(self.default, SandboxBackendProtocol):

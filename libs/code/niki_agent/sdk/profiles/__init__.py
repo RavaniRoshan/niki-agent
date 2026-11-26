@@ -4,7 +4,7 @@
 
     This profiles API may receive minor changes in future releases.
 
-Profiles let Deep Agents tailor behavior to a specific provider or model spec
+Profiles let the SDK tailor behavior to a specific provider or model spec
 across two orthogonal phases:
 
 - **Provider profiles** (`ProviderProfile`) control the *model-construction*

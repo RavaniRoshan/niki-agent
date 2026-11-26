@@ -1,4 +1,4 @@
-"""Helpers for working with Deep Agents state schemas."""
+"""Helpers for working with SDK state schemas."""
 
 from __future__ import annotations
 

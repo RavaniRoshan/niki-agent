@@ -78,9 +78,9 @@ def _profile_accepts(block: ContentBlock, profile: Mapping[str, Any], *, in_tool
     return profile.get(field) is not False
 
 
-# deepagents-specific: behavior `ModelProfile` can't express yet. Outside this
+# SDK-specific: behavior `ModelProfile` can't express yet. Outside this
 # section and the `_OPENAI_FILE_MIME_TYPES` / `langchain_openai` imports it uses,
-# the module has no deepagents dependencies.
+# the module has no SDK dependencies.
 
 
 def _is_inline_document(block: ContentBlock) -> bool:
@@ -120,7 +120,7 @@ class UnsupportedContentMiddleware(AgentMiddleware[AgentState[ResponseT], Contex
     Place this middleware last in the `middleware` list, so that if
     `ModelRequest.model` changes, this middleware will apply to the correct one.
 
-    [`create_deep_agent`][deepagents.graph.create_deep_agent] adds it automatically.
+    [`create_deep_agent`][niki_agent.sdk.graph.create_deep_agent] adds it automatically.
 
     Example:
         ```python

@@ -53,7 +53,7 @@ by path from the markdown, so the history file stays text-only (see
 ## Summary prompt
 
 `DEEPAGENTS_DEFAULT_SUMMARY_PROMPT` augments LangChain's `DEFAULT_SUMMARY_PROMPT`
-with a deepagents-specific addendum explaining the media reference tags that the
+with an SDK-specific addendum explaining the media reference tags that the
 offloading behavior introduces, so the summarizing model knows to preserve them.
 It is the default `summary_prompt` for `SummarizationMiddleware` and both
 factories.
@@ -590,7 +590,7 @@ class _DeepAgentsSummarizationMiddleware(AgentMiddleware):
                 defaults to `None`, this constructor defaults to 4000.
             truncate_args_settings: Settings for truncating large tool arguments in old messages.
 
-                Provide a [`TruncateArgsSettings`][deepagents.middleware.summarization.TruncateArgsSettings]
+                Provide a [`TruncateArgsSettings`][niki_agent.sdk.middleware.summarization.TruncateArgsSettings]
                 dictionary to configure when and how to truncate tool arguments. If `None`,
                 argument truncation is disabled.
 
@@ -640,7 +640,7 @@ class _DeepAgentsSummarizationMiddleware(AgentMiddleware):
         # signature could not be introspected, so `_count_tokens` probes instead.
         self._counter_accepts_tools = _token_counter_accepts_tools(self.token_counter)
 
-        # Deep Agents specific attributes
+        # SDK-specific attributes
         self._backend = backend
 
         artifacts_root = backend.artifacts_root if isinstance(backend, CompositeBackend) else "/"
@@ -1777,11 +1777,11 @@ def create_summarization_middleware(
     trim_tokens_to_summarize: int | None = None,
     token_counter: TokenCounter = count_tokens_approximately,
 ) -> _DeepAgentsSummarizationMiddleware:
-    """Create a Deep Agents `SummarizationMiddleware` with model-aware defaults.
+    """Create an SDK `SummarizationMiddleware` with model-aware defaults.
 
-    ## Why this exists in `deepagents`
+    ## Why this exists in this SDK
 
-    The Deep Agents `SummarizationMiddleware` wraps
+    The SDK `SummarizationMiddleware` wraps
     `langchain.agents.middleware.SummarizationMiddleware` to add behavior
     long-running, file-aware agents need. Prefer LangChain's middleware
     directly if none of the below apply:
@@ -1810,7 +1810,7 @@ def create_summarization_middleware(
         `keep=("messages", 20)`. This factory picks fraction-based
         defaults from the model's profile when `max_input_tokens` is
         exposed, falling back to fixed counts otherwise — see
-        [`compute_summarization_defaults`][deepagents.middleware.summarization.compute_summarization_defaults].
+        [`compute_summarization_defaults`][niki_agent.sdk.middleware.summarization.compute_summarization_defaults].
 
     Args:
         model: Resolved `BaseChatModel` instance.
@@ -1866,7 +1866,7 @@ def create_summarization_tool_middleware(
     """Create a `SummarizationToolMiddleware` with model-aware defaults.
 
     Convenience factory: builds a `SummarizationMiddleware` via
-    [`create_summarization_middleware`][deepagents.middleware.summarization.create_summarization_middleware]
+    [`create_summarization_middleware`][niki_agent.sdk.middleware.summarization.create_summarization_middleware]
     and wraps it in a `SummarizationToolMiddleware`. Saves a step and
     accepts a model string.
 

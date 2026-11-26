@@ -1,1 +1,1 @@
-"""Agent Client Protocol integration for Deep Agents."""
+"""Agent Client Protocol integration for Niki Agent."""

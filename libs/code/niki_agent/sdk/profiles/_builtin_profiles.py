@@ -65,7 +65,7 @@ _BOOTSTRAP_HARNESS_KEYS: frozenset[str] = frozenset()
 
 Populated once by `_ensure_builtin_profiles_loaded`. Captures every
 harness key in the registry immediately after the built-in and
-entry-point phases complete — so both Deep Agents' own defaults and any
+entry-point phases complete — so both the SDK's own defaults and any
 third-party harness plugins the user has installed are treated
 uniformly as "bootstrap-provided." `_has_any_harness_profile` subtracts
 this set from the live registry to distinguish those defaults from
@@ -106,7 +106,7 @@ def _ensure_builtin_profiles_loaded() -> None:
     Runs two phases, both idempotent:
 
     1. Call the built-in provider `register` functions directly.
-        Any exception propagates — a broken built-in is a deepagents
+        Any exception propagates — a broken built-in is an SDK
         bug and must surface loudly, not degrade silently.
     2. Iterate `importlib.metadata` entry points in the
         `deepagents.provider_profiles` and `deepagents.harness_profiles`

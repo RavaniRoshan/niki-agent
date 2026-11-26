@@ -462,7 +462,7 @@ class BackendProtocol(abc.ABC):  # noqa: B024
         Implementations must tolerate degenerate windows rather than raising:
         a negative `offset` reads from the first line, and a non-positive
         `limit` returns empty content with every pagination field unset.
-        `deepagents.backends.utils.normalize_read_bounds` clamps both bounds for
+        `niki_agent.sdk.backends.utils.normalize_read_bounds` clamps both bounds for
         implementations that slice in Python.
 
         Implementations must also set `start_line` whenever they return
@@ -725,12 +725,12 @@ class BackendProtocol(abc.ABC):  # noqa: B024
         This method is optional. Backends that do not implement it inherit this
         default, which raises `NotImplementedError`. Callers that need to support
         a mix of backends should guard with
-        [`supports_delete`][deepagents.backends.protocol.supports_delete] before
+        [`supports_delete`][niki_agent.sdk.backends.protocol.supports_delete] before
         calling, or catch `NotImplementedError`.
 
         Deletion is recursive: it removes `file_path` plus everything nested
         under it. On hierarchical backends (e.g.
-        [`FilesystemBackend`][deepagents.backends.filesystem.FilesystemBackend])
+        [`FilesystemBackend`][niki_agent.sdk.backends.filesystem.FilesystemBackend])
         that means a directory and its contents; on key-value backends it means
         the exact key plus every key sharing the `file_path` + "/" prefix.
 
@@ -849,7 +849,7 @@ class ExecuteArtifact(TypedDict):
 
 @dataclass(frozen=True, slots=True)
 class ExecuteOffloadResult:
-    """Result of [`BaseSandbox.execute_with_offload`][deepagents.backends.sandbox.BaseSandbox.execute_with_offload].
+    """Result of [`BaseSandbox.execute_with_offload`][niki_agent.sdk.backends.sandbox.BaseSandbox.execute_with_offload].
 
     `offloaded` describes the capture mechanism and is kept off `ExecuteResponse`
     (which an ordinary `execute` never sets).
@@ -965,7 +965,7 @@ def execute_accepts_timeout(cls: type[SandboxBackendProtocol]) -> bool:
 
     Older backend packages didn't lower-bound their SDK dependency, so they
     may not accept the `timeout` keyword added to
-    [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol].
+    [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol].
 
     Results are cached per class to avoid repeated introspection overhead.
     """
@@ -987,7 +987,7 @@ def _supports_delete(backend: BackendProtocol) -> bool:
 
     `delete` is optional: backends that don't override it inherit the
     `NotImplementedError` default from
-    [`BackendProtocol`][deepagents.backends.protocol.BackendProtocol]. This
+    [`BackendProtocol`][niki_agent.sdk.backends.protocol.BackendProtocol]. This
     helper lets callers detect support without invoking the method and
     triggering the error.
 
