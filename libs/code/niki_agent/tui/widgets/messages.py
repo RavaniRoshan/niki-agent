@@ -5384,8 +5384,19 @@ class LazyToolGroupSummary(Vertical):
         yield Vertical(classes="lazy-tool-group-details")
 
     def on_mount(self) -> None:
-        """Render the summary and restore deferred expansion when requested."""
-        self._details = self.query_one(".lazy-tool-group-details", Vertical)
+        """Render the summary and restore deferred expansion when requested.
+
+        Textual dispatches `Mount` for a widget whose composed children it
+        never mounted: `Widget.mount()` is a no-op while the widget is
+        closing, being pruned, or the app is exiting, yet the pump still runs
+        `Compose` and then `Mount`. A transcript batch removed between mount
+        and its first pump slice lands here with no detail container, so treat
+        it as already gone instead of raising `NoMatches` from `on_mount`.
+        """
+        try:
+            self._details = self.query_one(".lazy-tool-group-details", Vertical)
+        except NoMatches:
+            return
         self._details.display = False
         self._update_header()
         if self._deferred_expanded:

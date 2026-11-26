@@ -3796,6 +3796,58 @@ class TestToolGroupSummary:
             assert "2 files" not in rendered.plain
 
 
+class TestLazyToolGroupSummaryPruneRace:
+    """A lazy group pruned before its first pump slice must mount cleanly."""
+
+    async def test_pruned_before_compose_does_not_raise(self) -> None:
+        """Pruning between `mount()` and the pump's `Compose` must not crash.
+
+        Textual does not mount `compose()`'s children for a widget that is
+        already closing or being pruned, but it still dispatches `Compose` and
+        `Mount` when the widget's pump eventually runs. `on_mount` used to
+        query its detail container unconditionally and raise `NoMatches`,
+        which `App._handle_exception` turns into an app exit. Transcript
+        batches mounted by history hydration reach exactly this state when
+        they are pruned -- or the app exits -- before their first pump slice.
+        """
+        from textual.containers import Vertical
+
+        from niki_agent.tui.widgets.message_store import MessageType, ToolStatus
+        from niki_agent.tui.widgets.messages import LazyToolGroupSummary
+
+        class _HostApp(App[None]):
+            def compose(self) -> ComposeResult:
+                yield Vertical(id="host")
+
+        app = _HostApp()
+        payload = MessageData(
+            type=MessageType.TOOL_GROUP,
+            content="",
+            id="lazy-pruned",
+            tool_group_messages=[
+                MessageData(
+                    type=MessageType.TOOL,
+                    content="",
+                    id="lazy-pruned-tool",
+                    tool_name="read_file",
+                    tool_status=ToolStatus.SUCCESS,
+                )
+            ],
+        )
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            host = pilot.app.query_one("#host")
+            group = LazyToolGroupSummary(payload.tool_group_messages, id="lazy-pruned")
+            # Deliberately not awaited: the group's pump has not started, so
+            # `remove()` prunes it before it has composed anything.
+            host.mount(group)
+            await group.remove()
+            await pilot.pause()
+
+            assert app._exception is None, app._exception
+            assert group._details is None
+
+
 class TestSummarizeToolGroupPresentTense:
     """Present-tense phrasing used while a step's tools are still running."""
 
