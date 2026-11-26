@@ -29,7 +29,7 @@ on:
     inputs:
       version:
         required: true
-        description: "Version without the leading v (e.g. 0.1.80)"
+        description: "Version without the leading v (e.g. 1.1.2)"
 
 permissions:
   contents: write
@@ -205,7 +205,10 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: Niki Agent v${{ steps.version.outputs.value }}
-          generate_release_notes: true
+          # The release body is written for the person installing it. GitHub's
+          # generated notes are a list of merged pull-request titles, which is
+          # development bookkeeping, so it stays off.
+          generate_release_notes: false
           body_path: .github/RELEASE_NOTES_niki.md
           files: |
             artifacts/**/*.tar.gz
