@@ -9,7 +9,7 @@ export default defineConfig({
   title: 'Niki Agent',
   titleTemplate: ':title — Niki Agent',
   description:
-    'Documentation for Niki Agent, a terminal coding agent that runs in your terminal, on your machine, with the model you already pay for.',
+    'Documentation for Niki Agent, a Rust terminal coding agent that runs on your machine with the model you already use.',
   srcDir: './docs',
   cleanUrls: true,
   appearance: true,
@@ -44,16 +44,16 @@ export default defineConfig({
         text: 'Using Niki',
         items: [
           { text: 'Providers', link: '/providers/' },
-          { text: 'Permissions and sandboxing', link: '/permissions' },
+          { text: 'Permissions', link: '/permissions' },
           { text: 'Keyboard reference', link: '/keyboard' },
         ],
       },
       {
         text: 'Extending Niki',
         items: [
-          { text: 'Extensions and hooks', link: '/extensions/' },
+          { text: 'Extensions', link: '/extensions/' },
           { text: 'Hooks', link: '/extensions/hooks' },
-          { text: 'Python extensions', link: '/extensions/python' },
+          { text: 'Skills', link: '/extensions/skills' },
         ],
       },
       {

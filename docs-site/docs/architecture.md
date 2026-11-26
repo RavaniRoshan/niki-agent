@@ -1,77 +1,117 @@
 <!--
   Mirrored from docs/niki/ARCHITECTURE.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 6e2f9256370cc243589866895a08c4c605b60c5b695b534eef460fa2ec8d093d
+  source-sha256: f3e6b5d82195be6bf6493ce5d9e02ee1f23b4f9b490a2400b4ae9d9bbca9c7a4
 -->
 # How Niki Agent fits together
 
-Niki is one Python package, `libs/code/niki_agent`, with a small set of internal
-boundaries. The boundaries exist so the terminal UI, the headless mode, and the
-editor-protocol adapter can share one agent loop without each of them growing its
-own copy.
+Niki Agent is a Rust workspace in `rust/`. One binary, `niki`, links the turn
+loop, the tool registry, the approval policy, the provider adapters, the MCP
+client, the session store and the terminal UI. Nothing else has to be installed
+to run it.
 
 ## The shape of a turn
 
 ```
-Entry points (TUI, headless, ACP)
-  -> Application layer (run coordinator, ports)
-    -> Domain (run events, sessions, turn status)
-  <- Runtime adapters (agent stream, ACP)
-
-Server composition (server_graph.py)
-  -> agent graph + provider model + tools + MCP + workspace policy
+niki                      niki -n "prompt"
+  -> load config, provider, workspace, tools, policy, MCP, hooks, skills
+  -> Agent::run (niki-agent)
+       UserPromptSubmit hook
+       provider request  <-- model streams text and tool calls
+       tool call
+         PreToolUse hook
+         policy gate (mode, allow-list, path boundary, MCP approval)
+         tool runs
+         PostToolUse hook
+       tool result back to the model
+     until the model stops calling tools, the step budget runs out, or a cancel
+  -> AgentEvent stream -> full-screen app or stdout
 ```
 
-A request enters through one of the entry points, the application layer
-coordinates the turn, and the runtime adapter streams events back. Both the
-terminal client and the headless client consume the same event stream, so a
-behavior added to the loop reaches every surface.
+A turn is a loop of model requests and tool calls. The provider streams events;
+the agent assembles each tool call from the fragments the wire format splits it
+into, asks the policy, runs the tool, and sends the result back as a message.
+The loop ends when the model returns no tool calls, when `--max-steps` is
+reached, or when the person cancels.
 
-## Layers
+## Crates
 
-- `niki_agent.domain` and `niki_agent.application` import only the standard
-  library. They define the events and the turn contract, not the machinery that
-  produces them.
-- `AgentRuntime` (`niki_agent/application/run_turn.py`) is the application
-  boundary for a complete streamed turn; its adapters live under
-  `niki_agent/adapters/runtime/`.
-- `server_graph.py` is the composition root. It owns graph execution and wires
-  the active provider, tools, MCP servers, workspace policy, and checkpoints
-  together.
-- Tool invocation and approval stay on the same side of the boundary. A client
-  cannot register a tool that bypasses the approval policy.
-- Provider execution stays inside the graph, so streamed text, tool calls,
-  retries, usage accounting, and checkpoint resumes share one path.
-- Presentation stays in Textual widgets and client adapters. Provider, MCP,
-  skill, and hook integrations never import UI classes.
+| Crate | Responsibility |
+| --- | --- |
+| `niki` | The binary: `niki` opens the full-screen app, `niki -n` runs one prompt headlessly. |
+| `niki-config` | `config.toml`: provider blocks, `[models].default`, `[ui].theme`, `[mcp_servers.<name>]`, and `NIKI_HOME`. |
+| `niki-provider` | One streaming turn against an OpenAI Chat Completions or Anthropic Messages endpoint, including retries and usage. |
+| `niki-agent` | The turn loop, the event callback, the approval callback, the step budget, hooks and cancellation. |
+| `niki-tools` | `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, all rooted at the workspace. |
+| `niki-policy` | Manual/Auto/YOLO, the shell allow-list, and the workspace path boundary. |
+| `niki-workspace` | Root detection, ignore rules, and the file index. |
+| `niki-session` | The SQLite transcript store: create, append, list, load. |
+| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and streamable HTTP; tool bridges. |
+| `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, and blocking verdicts. |
+| `niki-skills` | Skill discovery from the project, the user directory and the built-ins, and the system-prompt section. |
+| `niki-commands` | The slash command grammar the composer and help overlay read. |
+| `niki-render` | The transcript view model and the deterministic frame. |
+| `niki-tui` | The keymap, reader mode, and view state. |
+| `niki-tui-live` | The full-screen app: composer, transcript, status bar, worker, and session persistence. |
+| `niki-tui-modals` | The approval prompt, model picker, and help overlay. |
+| `niki-tui-themes` | Four palettes, the contrast gate, and glyph and motion modes. |
+| `niki-proto`, `niki-engine-client` | The engine wire vocabulary and client. They are not on the product turn path. |
+
+## The agent loop
+
+`niki-agent` owns the conversation and the loop. It has no opinion about
+transport: any provider streams the events it already normalises, and any
+registered tool is dispatched through the same gate.
+
+- A tool failure and a policy refusal are **tool results**, not agent errors, so
+  the model can read them and react.
+- A provider failure aborts the run.
+- The transcript is append-only. A cancelled turn keeps what it already
+  produced.
+- `Decision::Ask` goes to the approval callback the host installed. A headless
+  run installs none, so the request is reported to the model as a refusal
+  instead of silently running.
 
 ## Entry points
 
 | Surface | Owns |
 | --- | --- |
-| TUI (`niki`) | Input, approvals, the transcript, and presentation. |
-| Headless (`niki -n`) | One turn, plain output on stdout. |
-| ACP (`niki_agent.acp`) | The editor-protocol adapter for editors that speak ACP. |
+| Full-screen (`niki`) | Input, approvals, the transcript, and presentation. |
+| Headless (`niki -n`) | One prompt and exit; the answer goes to stdout, tool activity to stderr. |
 
-The client owns input, approvals, and presentation. The server side owns graph
-execution, tools, workspace policy, and checkpoints. ACP stays a separate
-adapter until its behavior is expressed in the shared contracts.
+Both entry points build the same agent from the same configuration. The
+full-screen app runs the turn on a worker thread with its own runtime, talks to
+it over a channel, and answers approvals over a one-shot reply. Dropping that
+reply unblocks the turn with a refusal, which is what Esc and Ctrl-C rely on.
+The app offers the model picker, themes, sessions and slash commands; the
+headless path prints the answer and a one-line summary.
 
-## The event contract
+## Extensions
 
-`RunEvent` is the single envelope between the runtime and every Python client
-surface, defined in `niki_agent/domain/events.py`:
+Three surfaces extend a session without changing the binary:
 
-- `schema_version` is `1`. An event with another version is rejected, not
-  guessed at.
-- `sequence` starts at 1 for each turn and keeps counting across an
-  approval/resume pause.
-- `encode_run_event` rejects an envelope larger than 65,536 UTF-8 bytes, so a
-  single malformed tool result cannot stall a stream.
+- **MCP servers** from `[mcp_servers.<name>]`. Their tools join the built-in
+  registry under `mcp__<server>__<tool>`.
+- **Hooks** from `.niki/hooks.json` and `~/.niki/hooks.json`. They run shell
+  commands around a prompt and a tool call, and may block either.
+- **Skills** from `.niki/skills/<name>/SKILL.md`, `~/.niki/skills/<name>/SKILL.md`
+  and two built-ins. Their names and descriptions are injected into the system
+  prompt; the model reads the body only when a skill applies.
 
-The TUI, headless mode, and ACP adapter all read this envelope. The Rust client
-in `rust/` speaks the engine's HTTP/SSE protocol directly instead; its wire
-vocabulary is defined in `rust/crates/niki-proto`.
+## State
+
+Everything Niki writes lives under `NIKI_HOME` when set, otherwise `~/.niki`:
+
+```
+~/.niki/
+  config.toml            # providers, default model, theme, MCP servers
+  hooks.json             # user hooks
+  skills/                # user skills
+  sessions.db            # SQLite transcript store
+```
+
+A project may also carry `.niki/hooks.json` and `.niki/skills/`. The workspace
+root is the current directory unless `--root` names another one.
 
 ---
 

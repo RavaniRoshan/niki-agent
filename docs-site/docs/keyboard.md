@@ -1,71 +1,94 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 0db2fa10eba3d97e990d3979edf8f3ce86f7b4e8c595efc38dccacdbc8847daa
+  source-sha256: c2b6b28cf458f8c09de69f80108f7fbba51869dd2590e51d55e33f5c395766e1
 -->
 # Niki Agent -- Keymap
 
-Generated from the live binding registry by
-`libs/code/niki_agent/niki/keymap.py`. **Do not edit by hand.**
+The keymap is the `BINDINGS` table in
+`rust/crates/niki-tui/src/lib.rs`; the help overlay draws the same table from
+`rust/crates/niki-tui-modals/src/help.rs`. A binding that is listed here and not
+acted on by the full-screen app is marked **not in this build** rather than
+described as working.
 
-Regenerate with:
+## Ownership
 
-```bash
-cd libs/code && uv run python scripts/gen_keymap.py
-```
+The composer and the app claim different keys:
 
-Every row below exists because a mounted widget class actually binds it.
-`test_every_advertised_action_has_a_handler` fails the build if a row has no
-`action_*` handler to dispatch to, and Niki's footer hints and Help render from
-this same registry -- so no surface can advertise a dead key.
+- The composer claims characters, arrows, Home and End, Enter (send) and
+  Alt+Enter (newline).
+- The app claims Ctrl-C, Ctrl-D, PageUp and PageDown, Shift+Tab, and the wheel.
+- A modal claims every key while it is open, except Ctrl-C and Ctrl-D.
 
-| Key | Action | Description | Source |
-| --- | --- | --- | --- |
-| `1` | `approval_position(0)` | Select first | `NikiApp` |
-| `2` | `approval_position(1)` | Select second | `NikiApp` |
-| `3` | `approval_position(2)` | Select third | `NikiApp` |
-| `a` | `approval_auto` | Auto | `NikiApp` |
-| `ctrl+backslash` | `toggle_debug_console` | Debug Console | `NikiApp` |
-| `ctrl+backspace,alt+backspace` | `delete_word_left` | Delete left to start of word | `ChatTextArea` |
-| `ctrl+c` | `quit_or_interrupt` | Quit/Interrupt | `NikiApp` |
-| `ctrl+c,super+c` | `screen.copy_text` | Copy selected text | `_MainScreen` |
-| `ctrl+d` | `quit_app` | Quit | `NikiApp` |
-| `ctrl+g` | `open_editor` | Open Editor | `NikiApp` |
-| `ctrl+n` | `open_notifications` | Notifications | `NikiApp` |
-| `ctrl+o` | `toggle_tool_output` | Toggle Tool Output | `NikiApp` |
-| `ctrl+pagedown` | `page_right` | Page Right | `VerticalScroll` |
-| `ctrl+pageup` | `page_left` | Page Left | `VerticalScroll` |
-| `ctrl+r` | `open_prompt_clipboard` | Prompt Clipboard | `NikiApp` |
-| `ctrl+shift+p` | `open_command_palette` | Command Palette | `NikiApp` |
-| `ctrl+shift+z` | `undo` | Undo | `ChatTextArea` |
-| `ctrl+t` | `toggle_subagent_panel` | Toggle Subagents | `NikiApp` |
-| `ctrl+z` | `suspend_process` | Suspend | `ChatTextArea` |
-| `down` | `approval_down` | Down | `NikiApp` |
-| `down` | `scroll_down` | Scroll Down | `VerticalScroll` |
-| `end` | `scroll_end` | Scroll End | `VerticalScroll` |
-| `enter` | `approval_select` | Select | `NikiApp` |
-| `escape` | `abandon_search` | Cancel | `PromptSearchInput` |
-| `escape` | `interrupt` | Interrupt | `NikiApp` |
-| `f2` | `toggle_mouse_release` | Release Mouse | `NikiApp` |
-| `home` | `scroll_home` | Scroll Home | `VerticalScroll` |
-| `j` | `approval_down` | Down | `NikiApp` |
-| `k` | `approval_up` | Up | `NikiApp` |
-| `left` | `scroll_left` | Scroll Left | `VerticalScroll` |
-| `n` | `approval_no` | No | `NikiApp` |
-| `pagedown` | `page_down` | Page Down | `VerticalScroll` |
-| `pagedown` | `page_transcript_down` | Page Down | `NikiApp` |
-| `pageup` | `page_transcript_up` | Page Up | `NikiApp` |
-| `pageup` | `page_up` | Page Up | `VerticalScroll` |
-| `question_mark` | `show_help` | Help | `NikiApp` |
-| `right` | `scroll_right` | Scroll Right | `VerticalScroll` |
-| `shift+enter,alt+enter,ctrl+enter,ctrl+j` | `insert_newline` | New Line | `ChatTextArea` |
-| `shift+tab` | `app.focus_previous` | Focus Previous | `_MainScreen` |
-| `shift+tab` | `toggle_auto_approve` | Toggle Approval Mode | `NikiApp` |
-| `tab` | `app.focus_next` | Focus Next | `_MainScreen` |
-| `tab` | `approval_reject_with_reason` | Reject with feedback | `NikiApp` |
-| `up` | `approval_up` | Up | `NikiApp` |
-| `up` | `scroll_up` | Scroll Up | `VerticalScroll` |
-| `y` | `approval_yes` | Yes | `NikiApp` |
+## App bindings
+
+| Key | Action | What it does |
+| --- | --- | --- |
+| `ctrl+c` | `QuitOrInterrupt` | Stop the running turn; leaves when nothing is running |
+| `ctrl+d` | `Quit` | Leave the app |
+| `escape` | `Interrupt` | Clear the draft, then stop the running turn |
+| `ctrl+shift+p` | `CommandPalette` | Start a slash command in the composer |
+| `?` | `Help` | This list |
+| `shift+tab` | `ToggleAutoApprove` | Cycle manual, auto and yolo |
+| `ctrl+o` | `ToggleToolOutput` | Show or hide tool output (**not in this build**) |
+| `ctrl+t` | `ToggleSubagents` | Show or hide subagent activity (**not in this build**) |
+| `ctrl+n` | `OpenNotifications` | Show notifications (**not in this build**) |
+| `ctrl+g` | `OpenEditor` | Edit the prompt in your editor (**not in this build**) |
+| `up` | `ScrollUp` | Move the cursor up a line in the composer |
+| `down` | `ScrollDown` | Move the cursor down a line in the composer |
+| `pageup` | `PageUp` | Move the transcript back one page |
+| `pagedown` | `PageDown` | Move the transcript forward one page |
+| `home` | `ScrollHome` | Move the cursor to the start of its line |
+| `end` | `ScrollEnd` | Move the cursor to the end of its line |
+| `y` | `ApprovalYes` | Allow the command that is waiting |
+| `n` | `ApprovalNo` | Refuse the command that is waiting |
+
+The four keys marked **not in this build** are in the registry and the help
+overlay, but the live app does not act on them yet. Treat them as unbound until
+the overlay stops saying so.
+
+## Composer
+
+| Key | What it does |
+| --- | --- |
+| `Enter` | Send the prompt. |
+| `Alt+Enter` | Insert a newline instead of sending. |
+| `Up` / `Down` | Move the cursor between lines. |
+| `Home` / `End` | Move the cursor to the start or end of its line. |
+| `Esc` | Clear the draft, then stop the running turn. |
+
+Bracketed paste is enabled, so a multi-line paste arrives as one paste and is
+inserted literally. A paste never sends the prompt.
+
+## Slash commands
+
+Type these in the composer. `/help` lists the same set.
+
+| Command | What it does |
+| --- | --- |
+| `/clear` | Start a fresh session and empty the view |
+| `/compact` | Fold older rows out of the view; the session store keeps them |
+| `/help` | This list |
+| `/model` | Choose a model, or name one with `/model provider:model` |
+| `/quit` | Leave the app |
+| `/resume` | List saved sessions, or resume one by id or index |
+| `/skills` | List project and user skills |
+| `/theme` | Choose a palette, or cycle to the next one |
+| `/tools` | List the registered tools |
+| `/version` | Show the version |
+
+`/compact` does not summarise: this build has no summarising model, so it only
+hides older rows. The session store keeps the full transcript.
+
+## Themes
+
+`/theme` cycles the four palettes; `/theme <name>` selects one. The names are
+`niki`, `high-contrast`, `colorblind`, and `mono`; the aliases `dark`,
+`default`, `light`, `colour-blind`, `monochrome`, `grey` and `gray` resolve to
+the same palettes. `[ui].theme` sets the startup palette.
+
+`NIKI_ASCII=1` draws the app with ASCII characters only.
+`NIKI_REDUCED_MOTION=1` stops the spinner without changing the layout.
 
 ---
 

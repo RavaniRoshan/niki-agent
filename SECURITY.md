@@ -1,7 +1,8 @@
 # Security policy
 
 Niki Agent runs commands and edits files on your machine, so its security
-boundary is worth stating plainly.
+boundary is worth stating plainly. This page describes what the Niki Agent
+binary actually does, including the gaps.
 
 ## Report a vulnerability
 
@@ -28,24 +29,33 @@ Reporters are credited in the advisory unless they ask not to be.
 
 | Version | Supported |
 | --- | --- |
-| 1.1.x | Yes |
-| 1.0.x | Security fixes only |
-| < 1.0 | No |
+| 2.0.x | Yes |
+| < 2.0 | No |
 
 ## What the agent can do
 
-Niki executes shell commands and writes files with your user's permissions. It
-is not a sandbox by itself.
+Niki runs shell commands and reads and writes files with your user's
+permissions. It is not a sandbox by itself.
 
-- **Manual** asks before every gated action.
-- **Auto** runs routine actions and sends anything uncertain to a classifier;
-  a failed review still asks.
-- **YOLO** runs what the policy allows without asking. The first switch shows a
-  one-time acknowledgement per state directory, and `startup.yolo_switcher` can
-  keep it out of the cycle.
+- **Manual** asks before each shell command that is not on the allow-list.
+- **Auto** asks the same way. This build has no classifier, so Auto and Manual
+  differ only in the label the status bar shows.
+- **YOLO** runs every shell command the policy does not deny, without asking.
+- **Built-in writes are not gated yet.** `write_file` and `edit_file` run
+  without an approval prompt even in Manual mode. Gate them with your own
+  filesystem permissions, or run Niki in a container or a dedicated account.
+- **Mutating MCP tools are gated.** A tool whose server does not declare a
+  coherent `readOnlyHint` goes through the same approval callback a shell
+  command uses. A tool the server marks read-only is not gated.
+- **The path boundary is enforced.** Every tool path is resolved against the
+  workspace root; `..`, symlinks or an absolute path that leaves the root are
+  refused, not clamped.
+- **A headless run has nobody to ask.** `niki -n` installs no approval callback,
+  so a gated action is reported to the model as a refusal.
 
-For a hard boundary, use `--sandbox` with a sandbox backend, restrict the shell
-allow-list, or run Niki inside a container or a dedicated user account.
+For a hard boundary, run Niki inside a container or a dedicated user account,
+keep the shell allow-list narrow, and stay in Manual mode. There is no sandbox
+flag in this build.
 
 ## Trust boundaries
 
@@ -53,27 +63,43 @@ allow-list, or run Niki inside a container or a dedicated user account.
 | --- | --- |
 | Model provider | Your prompt, the context Niki assembles, and tool results. |
 | MCP servers you configure | They run as you, with your filesystem and network access. |
-| Skills and hooks | Local code. Read one before you install it. |
-| Release artifacts | `SHA256SUMS` covers every archive; the installers verify it before installing. |
-| Update and pricing checks | A version request to `pypi.org`, an hourly model-pricing catalog refresh, and an optional self-update. Turn them off with `NIKI_DISABLE_UPDATE_CHECK=1`, `NIKI_DISABLE_AUTO_UPDATE=1`, `NIKI_PRICES_AUTO_UPDATE=0`, or the matching `[update]` settings. A remote `managed_config.toml` is fetched only when a deployment configures one; `NIKI_DISABLE_REMOTE_CONFIG=1` blocks it. |
-| Configuration | `~/.niki/config.toml` is written `0600`, and credentials stored by `/auth` live in `~/.niki/.state/auth.json` with the same mode. A system administrator can pin policy in `/etc/niki/managed_config.toml`, which the user configuration cannot override. |
+| Hooks | `hooks.json` commands are shell code and run as you. Read a project hook before you trust the repository. |
+| Skills | Instruction files the model reads. A skill cannot execute code by itself, but it can direct the model to call a tool, and those calls meet the same policy gate. |
+| Release artifacts | `SHA256SUMS` covers every archive; the installer verifies it before installing. |
+| Configuration and keys | Niki reads `config.toml` and reads provider keys from the environment variables it names. It does not write the configuration and does not store keys. |
+| Network | The only outbound requests are to the provider endpoint and the MCP endpoints you configure. This build makes no update check, telemetry request, pricing refresh, or remote-configuration fetch. |
+| Session data | `sessions.db` holds prompts, answers and tool output under `~/.niki` (or `NIKI_HOME`). Protect that directory like any other transcript. |
 
 ## Out of scope
 
 - Actions you approve in Manual mode, or that a policy you configured allows.
 - Vulnerabilities in a model provider's service.
-- A malicious MCP server, skill, or hook that you installed deliberately.
+- A malicious MCP server, hook or skill that you installed deliberately.
 - Prompt injection that only produces actions your policy already permits;
   report the policy gap instead.
+
+## Known gaps in this build
+
+- No sandbox and no sandbox flag.
+- No classifier; Auto asks like Manual.
+- `write_file` and `edit_file` are not approval-gated.
+- Loading `.niki/hooks.json` from a repository is not gated by a trust prompt.
+- MCP `permissionDecision` values other than `deny` are not implemented; the
+  hook runner reports them as warnings.
+- A post-handshake MCP request uses a fixed one-minute budget; a per-server
+  `timeout` key is not implemented.
 
 ## Hardening checklist
 
 ```bash
-niki --version                          # confirm the version you run
-ls -l ~/.niki/config.toml               # expect -rw------- (0600)
-ls -l ~/.niki/.state/auth.json          # expect -rw------- (0600)
-niki doctor                             # environment and managed-policy report
+niki --version                       # confirm the version you run
+niki --mode manual                   # ask before every non-allow-listed command
+niki --allow 'git*,cargo*'           # a narrow shell allow-list
 ```
 
-Keep `NIKI_SHELL_ALLOW_LIST` narrow. Setting it to `all` disables pattern checks
-and is intended for throwaway containers.
+- Do not set the shell allow-list to `all` outside a throwaway container.
+- Review `.niki/hooks.json` and every `.niki/skills/` directory in a repository
+  before you run Niki there.
+- Keep provider keys in the environment, not in a file Niki reads.
+- Run Niki as a user that cannot write outside the project when you need a hard
+  boundary.
