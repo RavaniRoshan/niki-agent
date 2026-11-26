@@ -13,7 +13,7 @@ use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_config::{Config, Protocol, config_home};
 use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
 use niki_tools::ToolContext;
-use niki_tui_live::{App, SessionInfo, WorkerHandle, run as run_screen};
+use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
 
 const USAGE: &str = "\
@@ -170,6 +170,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         cwd: root,
     });
     app.set_palette(palette_or_default(config.theme.as_deref()));
+    app.set_models(ModelPicker::from_config(&config));
     app.set_glyphs(GlyphMode::from_value(env_value("NIKI_ASCII").as_deref()));
     app.set_motion(Motion::from_value(
         env_value("NIKI_REDUCED_MOTION").as_deref(),

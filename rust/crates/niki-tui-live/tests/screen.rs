@@ -224,3 +224,60 @@ fn a_tiny_terminal_still_draws() {
     let buffer = render(&mut app, 1, 1);
     assert_eq!(buffer.area.height, 1);
 }
+
+#[test]
+fn an_approval_prompt_covers_the_screen_and_names_the_command() {
+    let mut app = app();
+    app.request_approval(niki_agent::ApprovalRequest {
+        command: "cargo publish --dry-run".to_owned(),
+        mode: Mode::Manual,
+    });
+    let buffer = render(&mut app, 80, 20);
+    let screen = text(&buffer);
+    assert!(screen.contains("Approve a command"), "{screen}");
+    assert!(screen.contains("cargo publish --dry-run"), "{screen}");
+    assert!(screen.contains("> Allow this once"), "{screen}");
+    assert!(screen.contains("Always allow this command"), "{screen}");
+    assert!(screen.contains("Refuse it"), "{screen}");
+    assert!(screen.contains("waiting for you"), "{screen}");
+}
+
+#[test]
+fn the_keymap_overlay_lists_the_shared_bindings() {
+    let mut app = app();
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE));
+    let buffer = render(&mut app, 90, 30);
+    let screen = text(&buffer);
+    assert!(screen.contains("Keys"), "{screen}");
+    assert!(screen.contains("ctrl+c"), "{screen}");
+    assert!(screen.contains("Leave the app"), "{screen}");
+    assert!(screen.contains("Cycle manual, auto and yolo"), "{screen}");
+}
+
+#[test]
+fn the_model_picker_lists_the_configured_models() {
+    let mut app = app();
+    let config = niki_config::Config::from_str(
+        "[models]\ndefault = \"mock:mock-model\"\n\n\
+         [providers.mock]\ndisplay_name = \"Mock\"\nmodels = [\"mock-model\", \"mock-large\"]\n",
+    )
+    .expect("config");
+    app.set_models(niki_tui_live::ModelPicker::from_config(&config));
+    app.open_models();
+    let buffer = render(&mut app, 80, 20);
+    let screen = text(&buffer);
+    assert!(screen.contains("> mock:mock-model"), "{screen}");
+    assert!(screen.contains("mock:mock-large"), "{screen}");
+    assert!(screen.contains("Mock"), "{screen}");
+}
+
+#[test]
+fn an_ascii_terminal_draws_the_overlay_without_box_drawing() {
+    let mut app = app();
+    app.set_glyphs(GlyphMode::Ascii);
+    app.open_help();
+    let buffer = render(&mut app, 90, 30);
+    for line in text(&buffer).lines() {
+        assert!(line.is_ascii(), "non-ASCII in {line:?}");
+    }
+}

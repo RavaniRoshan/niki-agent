@@ -968,15 +968,29 @@ dependencies = [
  "crossterm 0.29.0",
  "futures-util",
  "niki-agent",
+ "niki-config",
  "niki-policy",
  "niki-provider",
  "niki-render",
  "niki-tools",
  "niki-tui",
+ "niki-tui-modals",
  "niki-tui-themes",
  "ratatui",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "niki-tui-modals"
+version = "0.1.0"
+dependencies = [
+ "crossterm 0.29.0",
+ "niki-agent",
+ "niki-config",
+ "niki-tui",
+ "niki-tui-themes",
+ "ratatui",
 ]
 
 [[package]]

@@ -30,10 +30,15 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let [body, composer, status] = [areas[0], areas[1], areas[2]];
 
     draw_transcript(frame, app, body);
-    if let Some(position) = draw_composer(frame, app, composer) {
+    let cursor = draw_composer(frame, app, composer);
+    draw_status(frame, app, status);
+    // A modal owns the keys while it is open, so the composer cursor would be a
+    // promise the screen cannot keep.
+    if let Some(modal) = &app.modal {
+        modal.draw(frame, area, app.palette, app.glyphs);
+    } else if let Some(position) = cursor {
         frame.set_cursor_position(position);
     }
-    draw_status(frame, app, status);
 }
 
 fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect) {

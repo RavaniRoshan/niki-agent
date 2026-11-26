@@ -14,11 +14,13 @@ niki-agent = { path = "../niki-agent" }
 niki-policy = { path = "../niki-policy" }
 niki-render = { path = "../niki-render" }
 niki-tui = { path = "../niki-tui" }
+niki-tui-modals = { path = "../niki-tui-modals" }
 niki-tui-themes = { path = "../niki-tui-themes" }
 ratatui.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+niki-config = { path = "../niki-config" }
 niki-provider = { path = "../niki-provider" }
 niki-tools = { path = "../niki-tools" }
 tempfile.workspace = true

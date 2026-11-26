@@ -350,3 +350,170 @@ fn a_model_the_provider_cannot_build_is_reported_without_killing_the_screen() {
     assert!(app.transcript.rows().last().is_some());
     assert_eq!(worker.model(), "mock:missing");
 }
+
+/// Drive keys on the screen and pass the answer back over the reply channel,
+/// which is what the event loop does.
+fn pump_answering(app: &mut App, worker: &WorkerHandle, keys: &[KeyCode]) -> Vec<AgentEvent> {
+    let mut seen = Vec::new();
+    let mut pending_keys: Vec<KeyCode> = keys.iter().rev().copied().collect();
+    loop {
+        match worker.recv_timeout(Duration::from_secs(10)) {
+            Some(WorkerEvent::Agent(event)) => {
+                seen.push(event.clone());
+                app.apply(event);
+            }
+            Some(WorkerEvent::Approval { request, reply }) => {
+                app.request_approval(request);
+                let key = pending_keys.pop().expect("a key for every question");
+                match app.handle_key(KeyEvent::new(key, KeyModifiers::NONE)) {
+                    Some(Command::Answer(answer)) => reply.send(answer).expect("answer"),
+                    other => panic!("expected an answer, got {other:?}"),
+                }
+            }
+            Some(WorkerEvent::Finished(result)) => {
+                app.finish(result.map_err(|message| message.to_string()));
+                return seen;
+            }
+            None => panic!("the worker went quiet before the turn finished"),
+        }
+    }
+}
+
+#[test]
+fn an_approval_answer_lets_the_gated_command_run() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn(
+            "call-1",
+            "shell",
+            r#"{"command":"echo approved > approved.txt"}"#,
+        ),
+        text_turn("done"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel)
+        .with_approver(parts.approver))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "echo it");
+
+    let seen = pump_answering(&mut app, &worker, &[KeyCode::Char('y')]);
+
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("approved.txt")).expect("file"),
+        "approved\n"
+    );
+    let tool_end = seen
+        .iter()
+        .find_map(|event| match event {
+            AgentEvent::ToolEnd {
+                name,
+                output,
+                is_error,
+            } => Some((name.as_str(), output.as_str(), *is_error)),
+            _ => None,
+        })
+        .expect("a tool result");
+    assert_eq!(tool_end.0, "shell");
+    assert!(!tool_end.2, "the command succeeded: {}", tool_end.1);
+    assert!(tool_end.1.contains("exit_code: 0"), "{}", tool_end.1);
+    assert!(app.modal.is_none());
+    assert!(app.pending.is_none());
+    assert_eq!(app.status.turn, TurnState::Idle);
+}
+
+#[test]
+fn always_answers_the_next_identical_command_without_asking() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo once > twice.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo once > twice.txt"}"#),
+        text_turn("done"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel)
+        .with_approver(parts.approver))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "twice");
+
+    // One key only: the second identical command must not ask again.
+    pump_answering(&mut app, &worker, &[KeyCode::Char('a')]);
+
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("twice.txt")).expect("file"),
+        "once\n"
+    );
+    assert_eq!(app.status.turn, TurnState::Idle);
+}
+
+#[test]
+fn refusing_a_gated_command_reports_it_to_the_model() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn("call-1", "shell", r#"{"command":"touch refused.txt"}"#),
+        text_turn("understood"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel)
+        .with_approver(parts.approver))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "touch it");
+    pump_answering(&mut app, &worker, &[KeyCode::Char('n')]);
+
+    assert!(!workspace.path().join("refused.txt").exists());
+    let failed = app
+        .transcript
+        .rows()
+        .iter()
+        .find(|row| row.kind == niki_tui_live::RowKind::Error)
+        .expect("a refused result");
+    assert!(failed.text.contains("not approved"), "{}", failed.text);
+    assert_eq!(app.status.turn, TurnState::Idle);
+}

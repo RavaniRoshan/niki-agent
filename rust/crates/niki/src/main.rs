@@ -7,12 +7,11 @@
 use std::io::{IsTerminal, Write};
 
 use anyhow::{Context, Result, bail};
-use crossterm::event::{KeyCode, KeyModifiers};
 use crossterm::terminal;
 use niki_engine_client::{EngineClient, RunRequest, collect_transcript};
 use niki_proto::{Frame, Transcript};
 use niki_render::{TranscriptModel, display_width};
-use niki_tui::{AppState, BINDINGS, Binding};
+use niki_tui::{AppState, BINDINGS, chord_label};
 
 /// The Python engine release this client speaks to.
 const ENGINE_VERSION: &str = "1.0.0";
@@ -275,25 +274,4 @@ fn env_flag(name: &str) -> bool {
             .as_deref(),
         Some("1" | "true" | "yes" | "on")
     )
-}
-
-fn chord_label(binding: &Binding) -> String {
-    let mut parts = Vec::new();
-    if binding.modifiers.contains(KeyModifiers::CONTROL) {
-        parts.push("ctrl".to_owned());
-    }
-    if binding.modifiers.contains(KeyModifiers::SHIFT) {
-        parts.push("shift".to_owned());
-    }
-    if binding.modifiers.contains(KeyModifiers::ALT) {
-        parts.push("alt".to_owned());
-    }
-    parts.push(match binding.key {
-        KeyCode::Char(' ') => "space".to_owned(),
-        KeyCode::Char(character) => character.to_string(),
-        KeyCode::Esc => "escape".to_owned(),
-        KeyCode::BackTab => "backtab".to_owned(),
-        other => format!("{other:?}").to_ascii_lowercase(),
-    });
-    parts.join("+")
 }

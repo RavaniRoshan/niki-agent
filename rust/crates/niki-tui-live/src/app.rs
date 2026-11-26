@@ -8,9 +8,10 @@
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use niki_agent::{AgentEvent, ApprovalRequest, RunOutcome, StopReason, Usage};
+use niki_agent::{AgentEvent, Approval, ApprovalRequest, RunOutcome, StopReason, Usage};
 use niki_policy::Mode;
 use niki_render::Glyphs;
+use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
 use niki_tui_themes::{GlyphMode, Motion, NIKI, Palette};
 
 use crate::composer::Composer;
@@ -47,6 +48,10 @@ pub enum Command {
     Quit,
     /// The approval mode changed.
     Mode(Mode),
+    /// The person answered the approval prompt.
+    Answer(Approval),
+    /// The person chose a model spec.
+    SelectModel(String),
 }
 
 /// The whole screen state.
@@ -67,6 +72,10 @@ pub struct App {
     pub motion: Motion,
     /// The command waiting for the person's answer, if one is.
     pub pending: Option<ApprovalRequest>,
+    /// The overlay on top of the screen, if one is open.
+    pub modal: Option<Modal>,
+    /// The models the configuration offers, for `/model`.
+    pub models: ModelPicker,
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
     /// one screenful.
     pub page: usize,
@@ -86,6 +95,8 @@ impl App {
             glyphs: GlyphMode::default(),
             motion: Motion::default(),
             pending: None,
+            modal: None,
+            models: ModelPicker::default(),
             page: 10,
             spinner: 0,
         }
@@ -94,6 +105,11 @@ impl App {
     /// Switch palette, which is what `/theme` does.
     pub fn set_palette(&mut self, palette: &'static Palette) {
         self.palette = palette;
+    }
+
+    /// Offer these models to the model picker.
+    pub fn set_models(&mut self, models: ModelPicker) {
+        self.models = models;
     }
 
     /// Switch the marker registry.
@@ -163,9 +179,15 @@ impl App {
     pub fn handle_key(&mut self, key: KeyEvent) -> Option<Command> {
         let control = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
-            KeyCode::Char('c') if control => return Some(Command::Cancel),
+            KeyCode::Char('c') if control => {
+                self.cancel();
+                return Some(Command::Cancel);
+            }
             KeyCode::Char('d') if control => return Some(Command::Quit),
             _ => {}
+        }
+        if self.modal.is_some() {
+            return self.modal_key(key);
         }
         match key.code {
             KeyCode::Enter
@@ -223,11 +245,56 @@ impl App {
                 self.status.mode = mode;
                 Some(Command::Mode(mode))
             }
+            KeyCode::Char('?') if self.composer.is_empty() => {
+                self.open_help();
+                None
+            }
             KeyCode::Char(character) if !control && !key.modifiers.contains(KeyModifiers::ALT) => {
                 self.composer.insert_char(character);
                 None
             }
             _ => None,
+        }
+    }
+
+    /// Open the keymap overlay.
+    pub fn open_help(&mut self) {
+        self.modal = Some(Modal::Help(HelpOverlay::new()));
+    }
+
+    /// Open the model picker over the configured models.
+    pub fn open_models(&mut self) {
+        self.modal = Some(Modal::Models(self.models.clone()));
+    }
+
+    fn modal_key(&mut self, key: KeyEvent) -> Option<Command> {
+        let outcome = self.modal.as_mut()?.handle_key(key);
+        match outcome {
+            Outcome::Stay => None,
+            Outcome::Close => {
+                self.modal = None;
+                self.pending = None;
+                None
+            }
+            Outcome::Answer(answer) => {
+                self.modal = None;
+                self.pending = None;
+                self.status.turn = TurnState::Working;
+                Some(Command::Answer(answer))
+            }
+            Outcome::Model(spec) => {
+                self.modal = None;
+                Some(Command::SelectModel(spec))
+            }
+        }
+    }
+
+    /// Drop the overlay and any answer it was waiting for.
+    fn cancel(&mut self) {
+        self.modal = None;
+        self.pending = None;
+        if self.status.turn == TurnState::Waiting {
+            self.status.turn = TurnState::Working;
         }
     }
 
@@ -260,8 +327,9 @@ impl App {
         }
     }
 
-    /// Record that the policy needs an answer before a command runs.
+    /// Record that the policy needs an answer before a command runs, and ask.
     pub fn request_approval(&mut self, request: ApprovalRequest) {
+        self.modal = Some(Modal::Approval(ApprovalModal::new(request.clone())));
         self.pending = Some(request);
         self.status.turn = TurnState::Waiting;
     }
@@ -315,12 +383,26 @@ impl App {
 
     fn slash(&mut self, text: &str) -> Option<Command> {
         self.composer.clear();
-        let name = text.split_whitespace().next().unwrap_or_default();
+        let mut words = text.split_whitespace();
+        let name = words.next().unwrap_or_default();
+        let argument = words.next();
         match name {
             "/quit" | "/exit" => Some(Command::Quit),
+            "/help" | "/keys" => {
+                self.open_help();
+                None
+            }
+            "/model" => match argument {
+                Some(spec) => Some(Command::SelectModel(spec.to_owned())),
+                None => {
+                    self.open_models();
+                    None
+                }
+            },
             other => {
-                self.transcript
-                    .push_notice(format!("there is no {other} command; try /quit"));
+                self.transcript.push_notice(format!(
+                    "there is no {other} command; try /help, /model or /quit"
+                ));
                 None
             }
         }
@@ -579,6 +661,113 @@ mod tests {
             Some("rm -rf build")
         );
         assert!(app.status_line().contains("waiting for you"));
+    }
+
+    #[test]
+    fn an_approval_request_opens_a_prompt_that_y_answers() {
+        let mut app = app();
+        app.request_approval(ApprovalRequest {
+            command: "cargo publish".to_owned(),
+            mode: Mode::Manual,
+        });
+        assert!(matches!(app.modal, Some(Modal::Approval(_))));
+        let command = press(&mut app, KeyCode::Char('y'));
+        assert_eq!(command, Some(Command::Answer(Approval::Once)));
+        assert!(app.modal.is_none());
+        assert!(app.pending.is_none());
+        assert_eq!(app.status.turn, TurnState::Working);
+    }
+
+    #[test]
+    fn an_approval_prompt_can_be_refused_with_n_or_escape() {
+        let mut app = app();
+        app.request_approval(ApprovalRequest {
+            command: "rm -rf build".to_owned(),
+            mode: Mode::Auto,
+        });
+        assert_eq!(
+            press(&mut app, KeyCode::Char('n')),
+            Some(Command::Answer(Approval::Deny))
+        );
+
+        app.request_approval(ApprovalRequest {
+            command: "rm -rf build".to_owned(),
+            mode: Mode::Auto,
+        });
+        assert_eq!(
+            press(&mut app, KeyCode::Esc),
+            Some(Command::Answer(Approval::Deny))
+        );
+        assert!(app.modal.is_none());
+    }
+
+    #[test]
+    fn a_modal_keeps_the_composer_to_itself() {
+        let mut app = app();
+        app.open_help();
+        type_text(&mut app, "hello");
+        assert!(
+            app.composer.is_empty(),
+            "typing must not reach the composer"
+        );
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert!(app.modal.is_none());
+
+        app.open_help();
+        type_text(&mut app, "?");
+        assert!(app.modal.is_none(), "? closes the keymap");
+    }
+
+    #[test]
+    fn question_mark_opens_help_only_on_an_empty_draft() {
+        let mut app = app();
+        type_text(&mut app, "why?");
+        assert!(app.modal.is_none(), "? belongs to the draft while typing");
+        assert_eq!(app.composer.text(), "why?");
+        app.composer.clear();
+        stroke(&mut app, KeyCode::Char('?'));
+        assert!(matches!(app.modal, Some(Modal::Help(_))));
+    }
+
+    #[test]
+    fn the_model_commands_open_the_picker_or_switch_directly() {
+        let mut app = app();
+        app.set_models(ModelPicker::from_config(&niki_config::Config::default()));
+        type_text(&mut app, "/model");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(matches!(app.modal, Some(Modal::Models(_))));
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert!(app.modal.is_none());
+
+        type_text(&mut app, "/model groq:llama");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::SelectModel("groq:llama".to_owned()))
+        );
+        assert!(app.modal.is_none());
+    }
+
+    #[test]
+    fn the_help_command_opens_the_keymap() {
+        let mut app = app();
+        type_text(&mut app, "/help");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(matches!(app.modal, Some(Modal::Help(_))));
+        assert!(app.composer.is_empty());
+    }
+
+    #[test]
+    fn cancelling_closes_a_prompt_without_leaving_the_turn_waiting() {
+        let mut app = app();
+        app.request_approval(ApprovalRequest {
+            command: "cargo publish".to_owned(),
+            mode: Mode::Manual,
+        });
+        let cancel = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        assert_eq!(app.handle_key(cancel), Some(Command::Cancel));
+        assert!(app.modal.is_none());
+        assert!(app.pending.is_none());
+        assert_eq!(app.status.turn, TurnState::Working);
     }
 
     #[test]

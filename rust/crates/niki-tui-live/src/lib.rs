@@ -21,6 +21,7 @@ mod worker;
 
 pub use app::{App, Command, SessionInfo};
 pub use composer::Composer;
+pub use niki_tui_modals::{Modal, ModelPicker, Outcome};
 pub use run::run;
 pub use scroll::Scroll;
 pub use status::{Status, TurnState};

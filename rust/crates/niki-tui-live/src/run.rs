@@ -17,6 +17,9 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
+use niki_agent::Approval;
+use tokio::sync::oneshot;
+
 use crate::app::{App, Command};
 use crate::ui;
 use crate::worker::{WorkerEvent, WorkerHandle};
@@ -89,14 +92,25 @@ fn event_loop(
     app: &mut App,
     worker: &mut WorkerHandle,
 ) -> io::Result<i32> {
+    // The channel the turn waits on while the person decides. Dropping it
+    // without an answer makes the turn read a refusal, which is the safe way to
+    // leave a question nobody answered.
+    let mut reply: Option<oneshot::Sender<Approval>> = None;
     loop {
         while let Some(message) = worker.try_recv() {
             match message {
                 WorkerEvent::Agent(event) => app.apply(event),
-                // The approval prompt belongs to the modal layer; dropping the
-                // reply channel declines the command, which is the safe answer.
-                WorkerEvent::Approval { .. } => {}
-                WorkerEvent::Finished(result) => app.finish(result),
+                WorkerEvent::Approval {
+                    request,
+                    reply: answer,
+                } => {
+                    reply = Some(answer);
+                    app.request_approval(request);
+                }
+                WorkerEvent::Finished(result) => {
+                    reply = None;
+                    app.finish(result);
+                }
             }
         }
 
@@ -113,9 +127,21 @@ fn event_loop(
                 Some(Command::Submit(prompt)) => {
                     worker.submit(prompt);
                 }
-                Some(Command::Cancel) => worker.cancel(),
+                Some(Command::Cancel) => {
+                    reply = None;
+                    worker.cancel();
+                }
                 Some(Command::Mode(mode)) => {
                     worker.set_mode(mode);
+                }
+                Some(Command::Answer(answer)) => {
+                    if let Some(answer_to) = reply.take() {
+                        let _ = answer_to.send(answer);
+                    }
+                }
+                Some(Command::SelectModel(spec)) => {
+                    app.status.model.clone_from(&spec);
+                    worker.select_model(spec);
                 }
                 Some(Command::Quit) => return Ok(exit_code(app)),
                 None => {}
