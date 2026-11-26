@@ -523,3 +523,24 @@ before the fix, and the merged tree is verified again below.
 - `RELEASE_NOTES_niki.md` still described a presentation-layer fork with an
   untouched `dcode`, a 26/33/11 checklist, `main`-branch links, and two macOS
   artifacts. Rewritten.
+
+### First release and the 1.0.1 follow-up
+- `v1.0.0` was the first tag through the new pipeline. Its `SHA256SUMS` recorded
+  nested paths (`./niki-1.0.0-linux/...`), so `sha256sum -c` failed; the file
+  was rebuilt against the flat asset names and re-uploaded.
+- The checksum step now strips the directory (`basename`) before writing, so
+  `v1.0.1` verified with `sha256sum -c SHA256SUMS` → OK for all three archives
+  straight from the release.
+- This account has no macOS runner entitlement: `macos-14` / `macos-latest` jobs
+  are cancelled at queue time with an empty `runner_name` and zero steps. The
+  CI matrix builds the macOS archive on `ubuntu-latest` instead; the wheel is
+  pure Python, so the archive is the same artifact. Documented in `RELEASING.md`.
+- `v1.0.1` carries the config-hint fix: `niki doctor` and the missing-key
+  message in `niki config` name the launched command instead of a hardcoded
+  `dcode`.
+- **Installed from the published release** into a fresh prefix
+  (`NIKI_PREFIX=/tmp/niki-user2 bash install/install.sh`): the installer
+  downloads `niki_agent-1.0.1-py3-none-any.whl`, prints `Niki Agent 1.0.1`,
+  `niki --version` → `Niki Agent 1.0.1` (exit 0), `niki doctor` → exit 0 with
+  the tips reading `niki config`. This is the end-to-end proof for the 1.0.1
+  artifact, not just the tree it was built from.
