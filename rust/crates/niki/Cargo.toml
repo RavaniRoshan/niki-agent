@@ -11,11 +11,24 @@ description = "Niki Agent terminal client"
 name = "niki"
 path = "src/main.rs"
 
+[[bin]]
+name = "niki-rs"
+path = "src/bin/niki_rs.rs"
+
 [dependencies]
 anyhow.workspace = true
 crossterm.workspace = true
+niki-agent = { path = "../niki-agent" }
+niki-config = { path = "../niki-config" }
 niki-engine-client = { path = "../niki-engine-client" }
+niki-policy = { path = "../niki-policy" }
 niki-proto = { path = "../niki-proto" }
+niki-provider = { path = "../niki-provider" }
 niki-render = { path = "../niki-render" }
+niki-tools = { path = "../niki-tools" }
 niki-tui = { path = "../niki-tui" }
 tokio.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

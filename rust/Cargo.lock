@@ -628,10 +628,31 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossterm",
+ "niki-agent",
+ "niki-config",
  "niki-engine-client",
+ "niki-policy",
  "niki-proto",
+ "niki-provider",
  "niki-render",
+ "niki-tools",
  "niki-tui",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "niki-agent"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "niki-policy",
+ "niki-provider",
+ "niki-tools",
+ "serde_json",
+ "tempfile",
+ "thiserror",
  "tokio",
 ]
 
@@ -671,6 +692,19 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "niki-provider"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "niki-config",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

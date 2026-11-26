@@ -2,10 +2,12 @@
 resolver = "3"
 members = [
     "crates/niki",
+    "crates/niki-agent",
     "crates/niki-config",
     "crates/niki-engine-client",
     "crates/niki-policy",
     "crates/niki-proto",
+    "crates/niki-provider",
     "crates/niki-render",
     "crates/niki-tools",
     "crates/niki-tui",
