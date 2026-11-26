@@ -48,7 +48,6 @@ body:
         - label: dcode
         - label: talon
         - label: acp
-        - label: evals
         - label: daytona
         - label: modal
         - label: quickjs

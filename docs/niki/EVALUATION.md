@@ -13,10 +13,9 @@ initialize (`default OCI runtime "crun" not found`, `/run/user/1000` missing),
 and both keys are unset. A run without them cannot produce a matched result, and
 an SDK-level run of the same task is not a substitute.
 
-The Harness code (`libs/evals/deepagents_harbor`, `harbor_adapters`,
-`compare_niki_terminal_bench.py`, the `run-*-terminal-bench` targets) is being
-removed as part of detaching this fork from upstream; re-adding it is a one-PR
-change when the comparison is scheduled.
+The harness package (`libs/evals`) and the workflows that drove it were
+removed on 2026-11-26 as part of detaching this fork from upstream. Re-adding
+it is a one-PR change when the comparison is scheduled.
 
 ## Protocol (for that later session)
 

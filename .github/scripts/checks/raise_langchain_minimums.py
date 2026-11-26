@@ -569,7 +569,7 @@ def stale_lock_dirs(changed_manifests: Collection[str]) -> list[str]:
     A lockfile embeds the requirement specifiers of each package it resolves
     from a local `[tool.uv.sources]` path, so raising a floor in
     `libs/deepagents` staleness-marks the lockfile of every package that path-
-    depends on it — `libs/evals/uv.lock` and friends — not only its own. This
+    depends on it — a sibling package's `uv.lock` and friends — not only its own. This
     closes over those path edges transitively. `check_lockfiles.yml` inspects
     only the packages a PR diff touches, so a lockfile omitted here would go
     stale on `main` and fail later for an unrelated contributor.

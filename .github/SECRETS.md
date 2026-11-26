@@ -57,51 +57,11 @@ Create this environment for the `label-by-package` job in
 | --- | --- |
 | `GROQ_API_KEY` | Classify issue titles and bodies into topic labels. |
 
-Provision a dedicated Groq inference key for labeling, separate from the evals
-credential, with model and spending limits where supported. Store it only in
+Provision a dedicated Groq inference key for labeling, separate from any
+benchmarking credential, with model and spending limits where supported. Store it only in
 this environment; the issue workflow injects it only into its classification step.
 Do not require reviewers, so automatic labeling can run unattended. Restrict
 deployments to the default branch, which the issue workflow uses.
-
-### `evals`
-
-This environment is used by standard evals, Harbor evals, unified evals, and clbench.
-
-| Secret | Purpose |
-| --- | --- |
-| `LANGSMITH_API_KEY` | Eval datasets, examples, experiments, traces, feedback, and—temporarily—LangSmith sandbox lifecycle. |
-| `ANTHROPIC_API_KEY` | Anthropic models selected by an eval matrix. |
-| `BASETEN_API_KEY` | Baseten-hosted models selected by an eval matrix. |
-| `FIREWORKS_API_KEY` | Fireworks-hosted models selected by an eval matrix. |
-| `GOOGLE_API_KEY` | Google models selected by an eval matrix. |
-| `GROQ_API_KEY` | Groq-hosted models selected by an eval matrix. |
-| `NVIDIA_API_KEY` | Custom NVIDIA model runs. The generated NVIDIA presets are currently empty. |
-| `OLLAMA_API_KEY` | Ollama Cloud models selected by an eval matrix. |
-| `OPENAI_API_KEY` | OpenAI models and Harbor judges or verifiers. |
-| `OPENROUTER_API_KEY` | OpenRouter-hosted models selected by an eval matrix. |
-| `TAVILY_API_KEY` | Tavily-backed `web_search` (under OSS integrations account). |
-| `XAI_API_KEY` | xAI models selected by an eval matrix. |
-
-The current `LANGSMITH_API_KEY` needs this practical permission union for the repository's locked eval clients:
-
-```text
-datasets:read
-datasets:create
-datasets:update
-projects:read
-projects:create
-projects:update
-runs:create
-feedback:create
-sandboxes:create
-sandboxes:read
-sandboxes:delete
-```
-
-The sandbox permissions are temporary on this key. See [Harbor sandbox credential isolation](#harbor-sandbox-credential-isolation).
-
-> [!NOTE] Current Harbor security exception
-> `_harbor_run.yml` uses this key for host-side result synchronization and passes it to the evaluated agent for tracing. The evaluated agent therefore receives the full permission union above rather than a trace-ingestion-only credential. Until a dedicated agent tracing key exists, run Harbor only against trusted task sources. Separating the agent tracing key is a required least-privilege follow-up.
 
 ### `integration-tests`
 
@@ -171,41 +131,3 @@ actions: write
 The App's actual installed permissions are external configuration and must be verified separately. Workflow-level `permissions` restrict `GITHUB_TOKEN`; they do not restrict a separately minted GitHub App installation token.
 
 Several current `actions/create-github-app-token` calls omit explicit `permission-*` inputs and therefore receive the App installation's default permission set. These are known exceptions. Each call should be narrowed to the permissions its job uses.
-
-## Harbor sandbox credential isolation
-
-The intended eval architecture separates:
-
-- `LANGSMITH_API_KEY` for datasets, examples, experiment projects, traces, and feedback.
-- `LANGSMITH_SANDBOX_API_KEY` for LangSmith snapshot and sandbox lifecycle.
-
-Deep Agents PR #4723 restored this separation by passing an explicit Harbor environment kwarg. The final tree merged by PR #4745 later removed that wiring, so current workflows again use `LANGSMITH_API_KEY` for both result synchronization and LangSmith sandbox access.
-
-Upstream [harbor-framework/harbor#2344](https://github.com/harbor-framework/harbor/pull/2344) adds safe `${VAR}` resolution for environment and plugin kwargs while keeping the value out of process arguments and serialized job or trial configuration.
-
-Until compatible support ships:
-
-- Harbor uses `LANGSMITH_API_KEY` for both eval tracking and LangSmith sandbox lifecycle.
-- Do not configure `LANGSMITH_SANDBOX_API_KEY`; no current workflow consumes it.
-
-Reintroduce the split only after all of these conditions hold:
-
-1. Harbor PR #2344, or equivalent support, is merged.
-2. A Harbor release contains the change.
-3. This repository's constraint and lock file select that release.
-
-Then:
-
-1. Create a workspace-scoped LangSmith service key with `sandboxes:create`, `sandboxes:read`, and `sandboxes:delete`.
-2. Add it to the `evals` environment as `LANGSMITH_SANDBOX_API_KEY`.
-3. Pass it only to the Harbor environment provider through:
-
-   ```text
-   --environment-kwarg 'langsmith_api_key=${LANGSMITH_SANDBOX_API_KEY}'
-   ```
-
-4. Keep it out of dependency installation, agent and verifier environments, the LangSmith results plugin, command-line values, and serialized Harbor configuration.
-5. Confirm that general LangSmith client resolution ignores `LANGSMITH_SANDBOX_API_KEY`.
-6. Run a one-task LangSmith-sandbox smoke test before removing sandbox permissions from the eval-tracking service key.
-
-Separately, introduce a trace-ingestion-only key with `runs:create` for the evaluated agent. The host-side eval tracking key should not be passed into the agent environment after that migration.

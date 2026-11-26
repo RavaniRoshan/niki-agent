@@ -27,7 +27,7 @@
 #   `uv.lock` for each affected package. That is not only the edited packages: a
 #   lockfile embeds the specifiers of anything it resolves from a local
 #   `[tool.uv.sources]` path, so raising a floor in `libs/deepagents` also
-#   staleness-marks `libs/evals/uv.lock` and friends. The script computes that
+#   staleness-marks sibling lockfiles and friends. The script computes that
 #   closure and reports it as `lock_specs`.
 # - The PR body lists every raised bound, and — when a PyPI lookup or a manifest
 #   rewrite failed — says explicitly what was *not* raised, so a partial run

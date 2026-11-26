@@ -113,7 +113,6 @@ Avoid broad repository searches during normal SDK work. Target these paths:
 - Coding agent: `libs/code`
 - ACP: `libs/acp`
 - Talon: `libs/talon`
-- Evals: `libs/evals`
 - Partner packages: `libs/partners/<partner>`
 
 Exclude package `.venv` directories, hidden worktrees, `deepagents.egg-info`, generated metadata, benchmark results, and scratch files unless needed. For dependency internals, find the exact environment file instead of searching all of `site-packages`.
@@ -121,7 +120,6 @@ Exclude package `.venv` directories, hidden worktrees, `deepagents.egg-info`, ge
 ### Scoped guides
 
 - [`libs/code/AGENTS.md`](libs/code/AGENTS.md) — Textual, startup performance, slash commands, providers, and the SDK pin.
-- [`libs/evals/AGENTS.md`](libs/evals/AGENTS.md) — eval commands, reports, and Harbor integration.
 - [`libs/partners/AGENTS.md`](libs/partners/AGENTS.md) — partner-package CI and release wiring.
 - [`libs/code/DEVELOPMENT.md`](libs/code/DEVELOPMENT.md) — coding-agent setup and local development.
 - [`.github/LAYOUT.md`](.github/LAYOUT.md) — map of CI workflows, composite actions, and labeling.

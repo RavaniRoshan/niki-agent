@@ -10,7 +10,6 @@ from pathlib import Path
 _SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 _DOMAIN_DIRS = (
     _SCRIPTS_DIR / "checks",
-    _SCRIPTS_DIR / "evals",
     _SCRIPTS_DIR / "labeling",
     _SCRIPTS_DIR / "release",
     _SCRIPTS_DIR,

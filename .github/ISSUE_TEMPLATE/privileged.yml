@@ -33,8 +33,6 @@ body:
         - label: dcode
         - label: talon
         - label: acp
-        - label: evals
-        - label: harbor
         - label: daytona
         - label: modal
         - label: quickjs

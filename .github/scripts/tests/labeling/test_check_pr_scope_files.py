@@ -209,14 +209,12 @@ def test_release_file_covers_partner_generated_files() -> None:
 def test_unmanaged_package_artifacts_do_not_trigger_release_bypass() -> None:
     """Only package roots declared in release-please config are release artifacts."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
-    changed = ["libs/evals/pyproject.toml"]
+    changed = ["libs/unreleased/pyproject.toml"]
 
-    assert not is_release_file("libs/evals/pyproject.toml")
-    assert not is_release_file("libs/evals/deepagents_evals/_version.py")
+    assert not is_release_file("libs/unreleased/pyproject.toml")
+    assert not is_release_file("libs/unreleased/anything/_version.py")
     assert not is_release_pr_change("release(deepagents-code): 0.1.22", changed)
-    assert find_offenders("release(deepagents-code): 0.1.22", changed, config) == [
-        {"package": "package:evals", "dirs": ["libs/evals/"]}
-    ]
+    assert find_offenders("release(deepagents-code): 0.1.22", changed, config) == []
 
 
 def test_release_files_validates_structure(tmp_path) -> None:

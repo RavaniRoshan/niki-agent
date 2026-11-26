@@ -280,12 +280,12 @@ class TestStaleLockDirs:
         stale = stale_lock_dirs(["libs/deepagents/pyproject.toml"])
 
         assert "libs/deepagents" in stale
-        assert "libs/evals" in stale
+        assert "libs/talon" in stale
         assert "libs/code" in stale
         assert "libs/partners/quickjs" in stale
 
     def test_leaf_package_only_invalidates_itself(self) -> None:
-        assert stale_lock_dirs(["libs/evals/pyproject.toml"]) == ["libs/evals"]
+        assert stale_lock_dirs(["libs/talon/pyproject.toml"]) == ["libs/talon"]
 
     def test_can_skip_reverse_dependents(self) -> None:
         assert lock_dirs_for(["libs/code/pyproject.toml"], skip_dependents=True) == [

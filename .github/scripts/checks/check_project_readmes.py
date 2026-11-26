@@ -51,7 +51,6 @@ PROJECT_READMES = frozenset(
         "libs/acp/README.md",
         "libs/code/README.md",
         "libs/deepagents/README.md",
-        "libs/evals/README.md",
         "libs/partners/daytona/README.md",
         "libs/partners/modal/README.md",
         "libs/partners/quickjs/README.md",

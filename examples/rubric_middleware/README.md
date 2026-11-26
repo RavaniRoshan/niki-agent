@@ -26,7 +26,7 @@ The script also finds a `.env` higher up the tree, so an existing repo-root one
 works without copying anything. To point at a specific file instead:
 
 ```bash
-python rubric_agent.py --env-file ../../libs/evals/.env
+python rubric_agent.py --env-file .env
 ```
 
 ## Run

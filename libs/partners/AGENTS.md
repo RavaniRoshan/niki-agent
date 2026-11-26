@@ -16,7 +16,6 @@ Wire a new partner into all relevant repository surfaces:
 - Release detection in `.github/workflows/release-please.yml`
 - Package entries in `release-please-config.json` and `.release-please-manifest.json`
 - The managed-packages table in `.github/RELEASING.md`
-- Sandbox options and credential checks in `.github/workflows/harbor.yml` when the partner is sandbox-backed
 - Matrix entries and per-partner secret gating in `.github/workflows/integration_tests.yml`
 - The distribution-to-path map in `.github/scripts/release/build_release_notes.py`
 - The package list in `.github/workflows/raise_langchain_minimums.yml`
