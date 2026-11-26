@@ -108,7 +108,7 @@ Rule of thumb: say **chat input** for the main composer and name any other surfa
 
 ## Vendored SDK
 
-The Deep Agents SDK lives at `niki_agent/sdk/` and the ACP runtime at
+The vendored agent SDK lives at `niki_agent/sdk/` and the ACP runtime at
 `niki_agent/acp_sdk/`. They are copies, not dependencies. `PROVENANCE.md` in
 each directory names the upstream version, commit, and the mechanical changes.
 
@@ -151,13 +151,12 @@ The `niki-agent --help` screen is hand-maintained in `ui.show_help()`, separate 
 
 Hints that tell the user to run something (for example the teardown `-r <thread>`
 resume hint) must render `_invocation.invoked_name()` rather than a literal
-command name. The package ships `niki` plus the deprecated `dcode` and
-`deepagents-code` aliases, and per-checkout shims are a common way to run several
-installs side by side, so a hardcoded name sends those users to a command they
-do not have. `invoked_name()` resolves from `sys.argv[0]` (an internal env
-sentinel carries it across the auto-update re-exec, which drops argv[0]) and
-falls back to `niki` when the launch name is not a plausible command. The
-hand-maintained `--help` usage lines use `niki`.
+command name. The package ships only `niki`, and per-checkout shims are a common
+way to run several installs side by side, so a hardcoded name sends those users
+to a command they do not have. `invoked_name()` resolves from `sys.argv[0]` (an
+internal env sentinel carries it across the auto-update re-exec, which drops
+argv[0]) and falls back to `niki` when the launch name is not a plausible
+command. The hand-maintained `--help` usage lines use `niki`.
 
 ## Splash screen tips
 

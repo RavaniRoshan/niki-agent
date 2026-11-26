@@ -1,7 +1,7 @@
 """The product name, in one place.
 
-Upstream's onboarding, version line, and headers each used to spell "Deep Agents
-Code" independently. They now share this constant so the copy cannot disagree
+The onboarding, version line, and headers each used to name the product
+independently. They now share this constant so the copy cannot disagree
 with the version line. Kept separate from `branding.py` because onboarding runs
 before the rest of Niki is necessarily loaded, and an import cycle through
 `branding` would be the wrong way to solve that.

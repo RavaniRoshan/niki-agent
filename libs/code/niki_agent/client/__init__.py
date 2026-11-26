@@ -1,1 +1,1 @@
-"""Client-side transport and headless execution for Deep Agents Code."""
+"""Client-side transport and headless execution for Niki Agent."""

@@ -40,8 +40,7 @@ runtime are vendored under `niki_agent/` with their MIT notices intact (see
 `niki_agent/sdk/PROVENANCE.md` and `niki_agent/acp_sdk/PROVENANCE.md`); there is
 no runtime dependency on an upstream distribution.
 
-The old `dcode` and `deepagents-code` console scripts remain as deprecated
-aliases for two minor versions, and `DEEPAGENTS_CODE_*` environment variables are
+`niki` is the only console script. `DEEPAGENTS_CODE_*` environment variables are
 read as deprecated aliases of `NIKI_*`.
 
 The user profile moves from `~/.deepagents` to `~/.niki` on first launch, with

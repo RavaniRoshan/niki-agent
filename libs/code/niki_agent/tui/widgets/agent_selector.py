@@ -146,7 +146,7 @@ class AgentSelectorScreen(ModalScreen[str | None]):
                 yield Static(
                     "No agents found in "
                     f"{PATHS.display(PATHS.profile.root)}.\n"
-                    "Run dcode with -a <name> to create one.",
+                    "Run niki with -a <name> to create one.",
                     classes="agent-selector-help",
                     markup=False,
                 )

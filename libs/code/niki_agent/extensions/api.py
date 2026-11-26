@@ -32,7 +32,7 @@ class ExtensionAPI:
     """Factory-scoped registrar and read-only session context.
 
     Each extension receives a dedicated instance, which attributes every
-    registration to the extension's source without exposing mutable dcode
+    registration to the extension's source without exposing mutable niki
     application state.
     """
 

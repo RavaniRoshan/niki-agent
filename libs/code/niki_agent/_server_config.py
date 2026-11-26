@@ -231,7 +231,7 @@ def _read_env_allow_fs_tools() -> list[FsToolName] | None:
 
     `[]` and unknown tool names are rejected here, not deferred downstream, so
     the returned list genuinely satisfies `list[FsToolName]` and the `cast`
-    asserts membership that was actually checked. Importing `deepagents` here is
+    asserts membership that was actually checked. Importing the vendored SDK here is
     fine: the subprocess already imports the SDK to build the agent (this is not
     the arg-parsing hot path guarded in `main`). The `"read_file"` requirement
     is not checked here: `ServerConfig.__post_init__` enforces it when the

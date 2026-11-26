@@ -44,10 +44,10 @@ import pytest
 HEAVY_MODULES = frozenset(
     {
         # SDK — importing these pulls in large dependency trees
-        "deepagents",
-        "deepagents._models",
-        "deepagents.backends",
-        "deepagents.backends.utils",
+        "niki_agent.sdk",
+        "niki_agent.sdk._models",
+        "niki_agent.sdk.backends",
+        "niki_agent.sdk.backends.utils",
         # langchain / langgraph stack
         "langchain",
         "langchain.chat_models",

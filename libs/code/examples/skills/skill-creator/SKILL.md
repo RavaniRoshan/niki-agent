@@ -5,15 +5,15 @@ description: "Guide for creating effective skills that extend agent capabilities
 
 # Skill Creator
 
-### Skill Location for Deep Agents Code
+### Skill Location for Niki Agent
 
-Deep Agents Code loads skills from four directories, listed here from lowest to highest precedence:
+Niki Agent loads skills from four directories, listed here from lowest to highest precedence:
 
 | # | Directory | Scope | Notes |
 |---|-----------|-------|-------|
-| 1 | `~/.deepagents/<agent>/skills/` | User (deepagents alias) | Default for `dcode skills create` |
+| 1 | `~/.niki/<agent>/skills/` | User | Default for `niki skills create` |
 | 2 | `~/.agents/skills/` | User | Shared across agent tools |
-| 3 | `.deepagents/skills/` | Project (deepagents alias) | Default for `dcode skills create --project` |
+| 3 | `.niki/skills/` | Project | Default for `niki skills create --project` |
 | 4 | `.agents/skills/` | Project | Shared across agent tools |
 
 `<agent>` is the agent configuration name (default: `agent`). When two directories contain a skill with the same name, the higher-precedence version wins — project skills override user skills.
@@ -21,12 +21,12 @@ Deep Agents Code loads skills from four directories, listed here from lowest to 
 Example directory layout:
 
 ```
-~/.deepagents/agent/skills/     # user skills (lowest precedence)
+~/.niki/agent/skills/     # user skills (lowest precedence)
 ├── skill-name-1/
 │   └── SKILL.md
 └── ...
 
-<project-root>/.deepagents/skills/   # project skills (higher precedence)
+<project-root>/.niki/skills/   # project skills (higher precedence)
 ├── skill-name-2/
 │   └── SKILL.md
 └── ...
@@ -281,14 +281,14 @@ Usage:
 scripts/init_skill.py <skill-name> --path <output-directory>
 ```
 
-For Deep Agents Code, use any of the skill directories listed in "Skill Location for Deep Agents Code" above:
+For Niki Agent, use any of the skill directories listed in "Skill Location for Niki Agent" above:
 
 ```bash
 # User skills (default)
-scripts/init_skill.py <skill-name> --path ~/.deepagents/agent/skills
+scripts/init_skill.py <skill-name> --path ~/.niki/agent/skills
 
 # Project skills
-scripts/init_skill.py <skill-name> --path .deepagents/skills
+scripts/init_skill.py <skill-name> --path .niki/skills
 ```
 
 The script:
@@ -300,19 +300,19 @@ The script:
 
 After initialization, customize or remove the generated SKILL.md and example files as needed.
 
-#### Option B: `dcode skills create` (quick start)
+#### Option B: `niki skills create` (quick start)
 
 The built-in CLI command creates a minimal skill with just a `SKILL.md` template — no resource directories. Use this for simple skills that only need instructions and no bundled scripts, references, or assets.
 
 ```bash
 # Create in user skills directory
-dcode skills create <skill-name>
+niki skills create <skill-name>
 
 # Create in project skills directory
-dcode skills create <skill-name> --project
+niki skills create <skill-name> --project
 ```
 
-Use `init_skill.py` when the skill will include bundled resources (`scripts/`, `references/`, `assets/`). Use `dcode skills create` for a quick, minimal starting point.
+Use `init_skill.py` when the skill will include bundled resources (`scripts/`, `references/`, `assets/`). Use `niki skills create` for a quick, minimal starting point.
 
 ### Step 4: Edit the Skill
 

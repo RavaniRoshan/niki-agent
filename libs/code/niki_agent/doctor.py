@@ -1,11 +1,11 @@
-"""The `dcode doctor` command: report install health and diagnostics.
+"""The `niki doctor` command: report install health and diagnostics.
 
 Inspired by `claude doctor`, this prints a grouped, tree-style summary of the
 running install, update status, and configuration locations so the output is
 safe to paste into a bug report. It stays offline: the update section reads
 only the local cache and never contacts PyPI.
 
-Help rendering for `dcode doctor -h` is served by `ui.show_doctor_help`, which
+Help rendering for `niki doctor -h` is served by `ui.show_doctor_help`, which
 does not import this module, so the help path stays light.
 """
 
@@ -377,7 +377,7 @@ def _endpoint_gateway_state(endpoint: str) -> str:
         host = urlsplit(endpoint.strip()).hostname or ""
     except ValueError:
         # urlsplit raises on bracket-malformed IPv6 (e.g. `http://[::1`); a
-        # diagnostic must degrade to "unknown" rather than crash `dcode doctor`.
+        # diagnostic must degrade to "unknown" rather than crash `niki doctor`.
         return "unknown"
     # A host of only a root dot carries no name, so it stays `"unknown"` rather
     # than being reported as a definite non-gateway.
@@ -673,7 +673,7 @@ def _managed_config_row() -> DiagnosticItem:
         detail += f" - ignores {', '.join(health.rejections)}"
     stale = ""
     if retained:
-        # Naming the keys would duplicate `dcode config`; what an administrator
+        # Naming the keys would duplicate `niki config`; what an administrator
         # needs here is that the session is not unprotected while the source is
         # down.
         stale = (
@@ -809,8 +809,7 @@ def _render_text(sections: list[DiagnosticSection]) -> None:
             )
         console.print()
 
-    # Name the command the user actually launched: the package also ships the
-    # deprecated `dcode` alias, and a per-checkout shim is common.
+    # Name the command the user actually launched: a per-checkout shim is common.
     command = escape(invoked_name())
     console.print(
         f"  Tip: Run `{command} config` or `{command} config get <key>` "
@@ -828,7 +827,7 @@ def _render_text(sections: list[DiagnosticSection]) -> None:
 
 
 def run_doctor_command(args: argparse.Namespace) -> int:
-    """Run `dcode doctor`, printing diagnostics as text or JSON.
+    """Run `niki doctor`, printing diagnostics as text or JSON.
 
     Args:
         args: Parsed CLI namespace. Only `output_format` is read.

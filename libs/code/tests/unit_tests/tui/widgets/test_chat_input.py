@@ -2261,7 +2261,7 @@ class TestCtrlZContract:
     """Ctrl+Z is suspend only where an app opts in.
 
     The binding lives on the shared `ChatTextArea`, so the default must leave
-    Textual's undo in charge; otherwise `dcode` users would suspend the process
+    Textual's undo in charge; otherwise `niki` users would suspend the process
     instead of undoing a draft.
     """
 

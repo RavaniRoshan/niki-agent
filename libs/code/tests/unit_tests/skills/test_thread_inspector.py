@@ -1,4 +1,4 @@
-"""Tests for the built-in Deep Agents thread inspector script."""
+"""Tests for the built-in Niki Agent thread inspector script."""
 
 import importlib.util
 import json

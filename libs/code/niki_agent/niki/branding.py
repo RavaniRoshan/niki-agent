@@ -3,11 +3,11 @@
 Kept in one module so a rename is one edit, and so the brand gate has a single
 place to check against. The rules:
 
-- User-visible chrome says **Niki Agent**. Never "Deep Agents" or "dcode".
+- User-visible chrome says **Niki Agent**. Never an upstream or pre-rename
+  product name.
 - Attribution lives in `NOTICE`, `LICENSE`, the vendored SDK's
   `PROVENANCE.md`, and the About view -- not in the version line.
-- `dcode` and `deepagents-code` remain working console scripts for two minor
-  versions. They print a deprecation line and hand off to the same app.
+- `niki` is the only console script; there are no compatibility aliases.
 """
 
 from __future__ import annotations

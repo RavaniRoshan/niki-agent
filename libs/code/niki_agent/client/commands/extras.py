@@ -1,14 +1,14 @@
 """CLI install path for optional niki-agent extras.
 
-`dcode install <name>` installs a curated optional extra (for example a sandbox
-or model-provider dependency) into the current `dcode` environment. The legacy
-global flags `dcode --install <name>` / `--package` / `--yes` remain as
+`niki install <name>` installs a curated optional extra (for example a sandbox
+or model-provider dependency) into the current `niki` environment. The legacy
+global flags `niki --install <name>` / `--package` / `--yes` remain as
 compatible aliases and call the same implementation.
 
 `tools install` is intentionally separate: that group provisions managed host
-binaries (ripgrep), while this command manages Python package extras for dcode.
+binaries (ripgrep), while this command manages Python package extras for niki.
 
-Help rendering for `dcode install -h` is served by `ui.show_install_help`, which
+Help rendering for `niki install -h` is served by `ui.show_install_help`, which
 does not import this module, so the help path stays light.
 """
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_uninstall_command(args: argparse.Namespace) -> int:
-    """Dispatch `dcode uninstall <name>`.
+    """Dispatch `niki uninstall <name>`.
 
     Args:
         args: Parsed CLI namespace; `uninstall_target` names the extra.
@@ -45,9 +45,9 @@ def run_uninstall_command(args: argparse.Namespace) -> int:
 
 
 def run_uninstall_request(*, name: str) -> int:
-    """Remove one selected optional extra from the dcode tool environment.
+    """Remove one selected optional extra from the niki tool environment.
 
-    Shared by `dcode uninstall NAME` and the `dcode --uninstall NAME` alias.
+    Shared by `niki uninstall NAME` and the `niki --uninstall NAME` alias.
 
     Args:
         name: Extra name to remove, as the user typed it.
@@ -144,7 +144,7 @@ def run_uninstall_request(*, name: str) -> int:
 
 
 def run_install_command(args: argparse.Namespace) -> int:
-    """Dispatch `dcode install <name>`.
+    """Dispatch `niki install <name>`.
 
     Args:
         args: Parsed CLI namespace.
@@ -159,7 +159,7 @@ def run_install_command(args: argparse.Namespace) -> int:
         ui.show_install_help()
         return 2
     # Accept modifiers on the subcommand or as global root flags that precede
-    # it, e.g. `dcode --yes install daytona`.
+    # it, e.g. `niki --yes install daytona`.
     package = bool(
         getattr(args, "install_package", False) or getattr(args, "package", False)
     )
@@ -170,7 +170,7 @@ def run_install_command(args: argparse.Namespace) -> int:
 def run_install_request(*, name: str, package: bool, yes: bool) -> int:
     """Install an optional extra or an arbitrary package via `uv --with`.
 
-    Shared by `dcode install` and the legacy `dcode --install` flag.
+    Shared by `niki install` and the legacy `niki --install` flag.
 
     Args:
         name: Extra or package name to install.
@@ -231,7 +231,7 @@ def _run_install_package(*, name: str, yes: bool) -> int:
         # confirm before pulling third-party code into the tool env.
         console.print(
             f"This will install the package '{escape(package)}' into "
-            "the dcode environment (this runs third-party "
+            "the niki environment (this runs third-party "
             "code).",
             highlight=False,
         )

@@ -22,7 +22,7 @@ dedicated typed loaders elsewhere; the manifest references those tables as
 `STRUCTURED` options for discovery only. Tables that can carry credentials —
 `[async_subagents]` headers, `[models.providers]` auth/`params`, and
 `[sandboxes.providers]` settings — are additionally flagged `redacted`, so
-`dcode config` reports their source and presence but never prints the table.
+`niki config` reports their source and presence but never prints the table.
 
 Import discipline: the module top level stays stdlib + `_env_vars` only (both
 light) so it is safe to import from `config.py` at class-definition time without
@@ -127,7 +127,7 @@ and falls through to the next layer / default.
 """
 
 _LANGGRAPH_DEFAULT_RECURSION_LIMIT_ENV = "LANGGRAPH_DEFAULT_RECURSION_LIMIT"
-"""Upstream recursion default inherited when no Deep Agents override wins."""
+"""Upstream recursion default inherited when no Niki Agent override wins."""
 
 COMPACT_ON_RESUME_THRESHOLD_DEFAULT = 400_000
 """Context size above which a resumed thread is offered compaction.
@@ -772,7 +772,7 @@ class ConfigOption[T]:
         if self.kind is OptionKind.BOOL_MODE_DEFAULT:
             # Resolution computes this kind's default from debug/experimental
             # mode and returns before reading `default`, so a declared value would
-            # be dead -- yet `dcode config` still renders it, advertising a default
+            # be dead -- yet `niki config` still renders it, advertising a default
             # that contradicts the real one.
             msg = (
                 f"{self.key}: BOOL_MODE_DEFAULT options must not declare a "
@@ -902,7 +902,7 @@ _warned_non_table_paths: set[tuple[str, ...]] = set()
 """Source-level rejections already logged for the current config generation.
 
 Deduplicates the `shadowed` / `unusable` / `retained` diagnostics so one
-`dcode config` sweep over the whole manifest reports a bad file once rather
+`niki config` sweep over the whole manifest reports a bad file once rather
 than once per option. Cleared by `reset_source_diagnostics` wherever a
 generation is replaced: each generation gets to report its own problems, so a
 repeated `/reload` of a file the user is still repairing keeps telling them it
@@ -1002,7 +1002,7 @@ def _resolver_for_option_sources(
     user_data = load_config_toml() if toml_data is None else toml_data
     # The CLI tier is process-wide and is not part of the caller's generation,
     # so it carries over unchanged. Omitting it made every bounded reader on
-    # this path -- and `dcode config` -- report `default` for options a flag in
+    # this path -- and `niki config` -- report `default` for options a flag in
     # the current argv was setting.
     return resolver_from_snapshots(
         managed=TomlSnapshot.from_table("managed config", managed_data),
@@ -1093,7 +1093,7 @@ def _warn_cli_flag_masked(
     Written to stderr rather than logged. `niki_agent/__init__.py`
     installs an always-on buffer handler on the package logger, so
     `logging.lastResort` never fires and a `logger.warning` reaches nothing but
-    that buffer. Deduped per config generation because `dcode config` resolves
+    that buffer. Deduped per config generation because `niki config` resolves
     the whole manifest in one pass.
 
     Args:
@@ -1148,7 +1148,7 @@ def _warn_cli_value_rejected(option: ConfigOption[object], reason: str) -> None:
     """Tell the user the value they passed on a flag was rejected.
 
     A rejected CLI value falls through to the next tier, so without this the
-    flag silently does nothing: `dcode --interpreter-tools 'x,all' config`
+    flag silently does nothing: `niki --interpreter-tools 'x,all' config`
     exits 0 and reports the option as coming from `default`, which actively
     confirms the wrong hypothesis for anyone debugging the flag.
 
@@ -1408,7 +1408,7 @@ def load_bool_display_preference(
 
     Warnings from this path only reach the TUI Debug Console or a
     `NIKI_DEBUG` log file, so by default a rejected value has no
-    reader; `dcode config get <key>` shows one as source `default`. Pass
+    reader; `niki config get <key>` shows one as source `default`. Pass
     `on_rejected` where that silence is itself the bug — see `on_rejected`
     below.
 
@@ -1458,7 +1458,7 @@ def load_bool_display_preference(
     resolved = bool(ranked.value)
     # Keep the source: a display option turned off by managed policy is
     # otherwise indistinguishable from one the user turned off themselves.
-    # Visible under `NIKI_DEBUG`; `dcode config get` is the answer
+    # Visible under `NIKI_DEBUG`; `niki config get` is the answer
     # without it.
     logger.debug("Resolved %s to %r from %s", key, resolved, _ranked_source(ranked))
     if on_rejected is not None:
@@ -1754,7 +1754,7 @@ def resolve_auto_classifier_model_with_source(
     """Resolve the effective Auto classifier model spec and its source.
 
     Shares the blank-env veto with
-    `config.resolve_auto_classifier_model_with_problem` so `dcode config` cannot
+    `config.resolve_auto_classifier_model_with_problem` so `niki config` cannot
     report a classifier the runtime does not use. Managed values and explicit
     CLI arguments outrank that veto. `None` means the classifier inherits the
     main agent model; a blank managed value means inherit, credited to
@@ -1825,7 +1825,7 @@ def resolve_startup_mode_with_source(
     Mirrors `model_config.load_startup_mode`. An explicit `[startup].mode`
     wins, from the user file or from managed policy. Otherwise the app-managed
     `[startup].recent` value restores `manual` or notice-approved `auto`. So
-    `dcode config get startup.mode` reports the mode the next bare launch reads
+    `niki config get startup.mode` reports the mode the next bare launch reads
     from configuration, instead of the manifest default.
 
     `startup.mode` declares no environment variable, so no env tier applies
@@ -1963,7 +1963,7 @@ def resolve_recursion_limit(
 
     Resolves `runtime.recursion_limit` through the standard managed → CLI → env →
     `config.toml` precedence, then inherits LangGraph's environment default when
-    no Deep Agents override wins. Explicit CLI values retain the documented
+    no Niki Agent override wins. Explicit CLI values retain the documented
     `>= 1` contract. Other out-of-range values (below `RECURSION_LIMIT_FLOOR` or
     above `RECURSION_LIMIT_CEILING`) are discarded with a logged warning and the
     next lower-precedence layer is tried.
@@ -1978,7 +1978,7 @@ def resolve_recursion_limit(
 
     Returns:
         The resolved recursion limit, or `None` when nothing valid is configured.
-            CLI values are `>= 1`; Deep Agents managed, env, and TOML values are
+            CLI values are `>= 1`; Niki Agent managed, env, and TOML values are
             within `[RECURSION_LIMIT_FLOOR, RECURSION_LIMIT_CEILING]`.
     """
     data = toml_data
@@ -2453,7 +2453,7 @@ _STATIC_OPTIONS: tuple[ConfigOption[object], ...] = (
         group="Models",
         summary=(
             "Model specs ('provider:model', or 'provider:*' for a whole "
-            "provider) dcode may use; unset allows all, empty list allows none."
+            "provider) niki may use; unset allows all, empty list allows none."
         ),
         kind=OptionKind.MODEL_LIST_DELEGATE,
         toml_keys=("models", "allowed"),
@@ -2598,7 +2598,7 @@ _STATIC_OPTIONS: tuple[ConfigOption[object], ...] = (
     ConfigOption(
         key="tracing.langsmith_project",
         group="Tracing",
-        summary="LangSmith project name for deepagents agent traces.",
+        summary="LangSmith project name for agent traces.",
         kind=OptionKind.STR,
         default=LANGSMITH_PROJECT_DEFAULT,
         env_var=_env_vars.LANGSMITH_PROJECT,
@@ -2694,7 +2694,7 @@ _STATIC_OPTIONS: tuple[ConfigOption[object], ...] = (
     ConfigOption(
         key="features.experimental",
         group="Tools",
-        summary="Opt into experimental, unstable dcode behavior.",
+        summary="Opt into experimental, unstable niki behavior.",
         kind=OptionKind.BOOL,
         default=False,
         env_var=_env_vars.EXPERIMENTAL,

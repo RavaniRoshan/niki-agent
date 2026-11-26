@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import socket
 import tempfile
 from pathlib import Path
@@ -14,6 +15,7 @@ from niki_agent.event_bus import (
     ExternalEvent,
     UnixSocketEventSource,
     decode_external_event,
+    default_unix_socket_path,
 )
 
 # Unix socket paths are capped at ~104 bytes on macOS / ~108 on Linux. Pytest's
@@ -49,6 +51,73 @@ class TestDecodeExternalEvent:
 
 class TestDefaultUnixSocketPath:
     """`default_unix_socket_path` resolution."""
+
+    def test_lives_under_the_product_runtime_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """The socket is namespaced under `.niki` in the runtime directory."""
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+
+        path = default_unix_socket_path()
+
+        assert path.parent == tmp_path / ".niki"
+        assert path.name == f"events-{os.getpid()}.sock"
+
+    def test_falls_back_to_the_temp_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Without `XDG_RUNTIME_DIR` the socket still lands under `.niki`."""
+        monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+        monkeypatch.setattr(
+            "niki_agent.event_bus.tempfile.gettempdir", lambda: str(tmp_path)
+        )
+
+        path = default_unix_socket_path()
+
+        assert path.parent == tmp_path / ".niki"
+
+
+class TestStaleSocketHandling:
+    """Start must clear a dead socket without touching a live listener."""
+
+    async def test_stale_socket_is_replaced(self) -> None:
+        """A socket file left by a dead process does not block the bind."""
+        tmp_dir = _short_tmp_dir()
+        path = Path(tmp_dir.name) / ".niki" / "events.sock"
+        path.parent.mkdir(parents=True)
+        dead = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        dead.bind(str(path))
+        dead.close()
+        source = UnixSocketEventSource(path)
+
+        async def sink(event: ExternalEvent) -> None:  # noqa: RUF029
+            del event
+
+        await source.start(sink)
+        try:
+            assert path.exists()
+        finally:
+            await source.stop()
+            tmp_dir.cleanup()
+
+    async def test_live_socket_is_not_removed(self) -> None:
+        """A second listener on the same path fails instead of stealing it."""
+        tmp_dir = _short_tmp_dir()
+        path = Path(tmp_dir.name) / ".niki" / "events.sock"
+        path.parent.mkdir(parents=True)
+
+        async def sink(event: ExternalEvent) -> None:  # noqa: RUF029
+            del event
+
+        first = UnixSocketEventSource(path)
+        await first.start(sink)
+        try:
+            with pytest.raises(FileExistsError, match="still listening"):
+                await UnixSocketEventSource(path).start(sink)
+            assert path.exists()
+        finally:
+            await first.stop()
+            tmp_dir.cleanup()
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires Unix sockets")

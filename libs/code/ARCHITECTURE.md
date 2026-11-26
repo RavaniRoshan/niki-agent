@@ -1,14 +1,14 @@
-# Deep Agents Code Architecture
+# Niki Agent Architecture
 
 ## What this package is
 
-`niki-agent` is a prebuilt terminal coding agent built on top of the `deepagents` SDK. It is a reference implementation: one design for packaging the SDK into a useful coding-agent product, based on patterns that have worked well in our experience.
+`niki-agent` is a prebuilt terminal coding agent built on top of the vendored agent SDK. It is a reference implementation: one design for packaging the SDK into a useful coding-agent product, based on patterns that have worked well in our experience.
 
 The SDK provides the agent harness. This package shows how to combine that harness with a terminal experience, persistence, tools, skills, and optional sandboxed execution.
 
 ## The big picture
 
-Deep Agents Code has two runtime halves:
+Niki Agent has two runtime halves:
 
 ```text
 ┌──────────────────── Terminal client ─────────────────────┐
@@ -47,7 +47,7 @@ An edit to `config.toml` while the app runs has no effect on those readers until
 
 The app does not watch files for edits. A partly applied configuration is a worse failure than a stale one.
 
-Some readers sit outside the shared generation. Callers that take their own snapshot inspect one file generation instead of process state, and report it next to its health: `get_config_sources`, the `dcode config` command, and the `dcode doctor` command, which reads the managed file against an empty user tier. A few readers parse a file on each call, because the shared generation cannot serve them: `resolve_read_project_dotenv` runs before the project `.env` is layered into the environment, `resolve_startup_mode_with_source` needs the raw user table, and `update_check` reports the value next to the file health it just read. The reload preview also reads the user file fresh, because a dry run must show the edit under review.
+Some readers sit outside the shared generation. Callers that take their own snapshot inspect one file generation instead of process state, and report it next to its health: `get_config_sources`, the `niki config` command, and the `niki doctor` command, which reads the managed file against an empty user tier. A few readers parse a file on each call, because the shared generation cannot serve them: `resolve_read_project_dotenv` runs before the project `.env` is layered into the environment, `resolve_startup_mode_with_source` needs the raw user table, and `update_check` reports the value next to the file health it just read. The reload preview also reads the user file fresh, because a dry run must show the edit under review.
 
 The environment tier is always live. `EnvProvider` reads `os.environ` at resolution time, because the process changes it during dotenv bootstrap and on each cwd switch.
 

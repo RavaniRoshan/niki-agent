@@ -2293,7 +2293,7 @@ class TestCreateCliAgentSkillsSources:
         # labels when formatted by the real middleware. Guards against
         # a regression that drops labels back to leaf-only derivation
         # (which would collapse user- vs project-scoped `.claude/skills`
-        # and `.agents/skills` / `.deepagents/skills` directories).
+        # and `.agents/skills` / `.niki/skills` directories).
         from niki_agent.sdk.middleware.skills import (
             SkillsMiddleware as RealSkillsMiddleware,
         )
@@ -5820,7 +5820,7 @@ class TestResolvePtcOption:
     def test_safe_includes_builtin_preset_members(self) -> None:
         """`"safe"` resolves to the full preset even when members are SDK built-ins.
 
-        `glob` is not in the passed `tools` here, but it is a Deep Agents
+        `glob` is not in the passed `tools` here, but it is an SDK
         built-in injected at runtime, so the resolved allowlist must still
         include it — the middleware bridges it against the live registry.
         """

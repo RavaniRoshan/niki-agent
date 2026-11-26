@@ -19,7 +19,7 @@ Run the bundled Python script using the absolute skills directory path from your
 ### Example
 
 ```bash
-.venv/bin/python ~/.deepagents/agent/skills/arxiv-search/arxiv_search.py "deep learning drug discovery" --max-papers 5
+.venv/bin/python ~/.niki/agent/skills/arxiv-search/arxiv_search.py "deep learning drug discovery" --max-papers 5
 ```
 
 Returns title and abstract for each matching paper, sorted by relevance.

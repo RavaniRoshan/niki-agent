@@ -1,7 +1,7 @@
 """Internal fake chat models for local integration tests.
 
 The tool-binding base these build on (`_fake_models._ToolBindingFakeModel`) is
-factored out into a use-neutral module so the `dcode tools list` enumeration
+factored out into a use-neutral module so the `niki tools list` enumeration
 path can reuse it without importing this test-named module.
 """
 

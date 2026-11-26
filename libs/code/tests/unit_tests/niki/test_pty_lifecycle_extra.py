@@ -25,7 +25,7 @@ import pyte
 import pytest
 
 VENV_BIN = Path(__file__).resolve().parents[3] / ".venv" / "bin"
-DCODE = str(VENV_BIN / "dcode")
+NIKI = str(VENV_BIN / "niki")
 
 
 def _env(home: Path) -> dict[str, str]:

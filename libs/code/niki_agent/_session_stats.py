@@ -1418,7 +1418,7 @@ def _warn_rejected_usage_stats_value(reason: str) -> None:
     fall through to *showing the table* — the single outcome the user was
     trying to prevent — and the log has no reader outside the TUI Debug
     Console, so a quoted `"false"` or a bare `no` would otherwise look exactly
-    like never having set the option. `dcode config set` does not exist, so
+    like never having set the option. `niki config set` does not exist, so
     hand-edited TOML is the only input path and typos are the expected case.
 
     Both call sites are at teardown, where stderr is a plain stream rather than
@@ -1429,7 +1429,7 @@ def _warn_rejected_usage_stats_value(reason: str) -> None:
     disables the table the outcome half would contradict what the user sees.
 
     Deduped per reason rather than per process: resolving once per session is
-    the norm, but `dcode config` walks the whole manifest, and a line repeated
+    the norm, but `niki config` walks the whole manifest, and a line repeated
     verbatim reads as two separate problems. Two *different* reasons — managed
     config and the user file both rejected — really are two problems and both
     print.

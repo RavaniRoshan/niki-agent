@@ -155,9 +155,6 @@ quickjs = []
 
 [project.scripts]
 niki = "niki_agent.niki.entry:niki_main"
-# Deprecated aliases, kept for two minor versions (see docs/niki/INDEPENDENCE.md).
-dcode = "niki_agent:cli_main"
-deepagents-code = "niki_agent:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/RavaniRoshan/niki-agent"

@@ -76,7 +76,7 @@ class SessionEndCause(StrEnum):
 
 
 class DcodeNotificationKind(StrEnum):
-    """dcode lifecycle notifications with compatible wire mappings."""
+    """niki lifecycle notifications with compatible wire mappings."""
 
     PERMISSION_REQUIRED = "permission_required"
     AGENT_NEEDS_INPUT = "agent_needs_input"
@@ -112,7 +112,7 @@ class AgentIdentity(_DomainModel):
 
 
 class DcodeNotification(_DomainModel):
-    """A notification emitted by a dcode lifecycle owner."""
+    """A notification emitted by a niki lifecycle owner."""
 
     type: str
     message: str

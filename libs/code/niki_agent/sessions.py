@@ -232,7 +232,7 @@ class _CheckpointSummary(NamedTuple):
     `None` means the latest checkpoint did not inline the `messages` channel
     value, so the count is unknown and must be reconstructed from the `writes`
     table. This happens when `messages` uses a `DeltaChannel` (a LangGraph
-    channel the deepagents SDK applies to `messages` as of v0.6) and the latest
+    channel the vendored SDK applies to `messages` as of v0.6) and the latest
     checkpoint falls between periodic snapshots. An `int` (including `0`) is a
     trustworthy count.
     """
@@ -837,7 +837,7 @@ def _thread_freshness(thread: ThreadInfo) -> str | None:
     writes-reconstructed `message_count` includes pending writes on the latest
     checkpoint, which in principle can change without a new checkpoint ID — so
     this token does not capture intra-checkpoint write churn. In practice that
-    is benign: dcode only mutates `messages` through the agent graph, and every
+    is benign: niki only mutates `messages` through the agent graph, and every
     batch of message writes culminates in a new checkpoint (each superstep,
     `aupdate_state`, interrupt, and cancellation all advance
     `latest_checkpoint_id`). The only window where a cached count can lag is
@@ -949,7 +949,7 @@ async def _populate_checkpoint_fields(
 
     # Phase 3: apply inline results, deferring threads whose latest checkpoint
     # does not inline the `messages` channel value. When `messages` uses a
-    # `DeltaChannel` (LangGraph channel applied by the deepagents SDK as of
+    # `DeltaChannel` (LangGraph channel applied by the vendored SDK as of
     # v0.6) the full list is only snapshotted into `channel_values` periodically,
     # so the latest checkpoint usually omits it; the count must then be
     # reconstructed from the `writes` table.
@@ -1153,7 +1153,7 @@ async def _load_message_counts_from_writes_batch(
     """Reconstruct message counts from the LangGraph `writes` table.
 
     For threads whose latest checkpoint does not inline the `messages` channel
-    value — a `DeltaChannel` between snapshots, where the deepagents SDK (>= 0.6)
+    value — a `DeltaChannel` between snapshots, where the vendored SDK (>= 0.6)
     applies LangGraph's `DeltaChannel` to `messages` — the full list is rebuilt
     by replaying every `messages` write, then counted. We replay through
     `add_messages` as a count-equivalent stand-in for the channel's actual
@@ -1175,14 +1175,14 @@ async def _load_message_counts_from_writes_batch(
     subgraph (subagent) writes under the same `thread_id` are excluded.
 
     Folding the *entire* write history (rather than walking the head
-    checkpoint's parent chain) is intentional and matches what dcode shows when
+    checkpoint's parent chain) is intentional and matches what niki shows when
     a thread is opened: it reads state via `aget_state` without a
     `checkpoint_id`, which applies pending writes (`apply_pending_writes=True`),
     so the latest checkpoint's not-yet-committed `messages` writes are part of
-    the user-visible list and must be counted. dcode only ever appends to the
+    the user-visible list and must be counted. niki only ever appends to the
     latest checkpoint (no time travel, no `checkpoint_id`-targeted
     `aupdate_state`), so histories are linear and the full fold equals the
-    head-of-chain reconstruction. A forked/abandoned branch (which dcode does
+    head-of-chain reconstruction. A forked/abandoned branch (which niki does
     not create) is the only case where this could over-count.
 
     Args:
@@ -1294,7 +1294,7 @@ def _count_messages_from_deltas(deltas: list[Any]) -> int:
     `add_messages` raise (the target ID may be absent at that buffer position),
     and we do not rely on unproven count-equivalence of batched removal. In
     practice the two folds still agree on the count for these histories; the
-    sequential fold simply guarantees it. Such deletes are rare in linear dcode
+    sequential fold simply guarantees it. Such deletes are rare in linear niki
     histories, so the common case stays on the fast path.
 
     Returns:
@@ -1387,7 +1387,7 @@ def _checkpoint_messages(data: object) -> list[object] | None:
     """Return inlined checkpoint messages, or `None` when not inlined.
 
     A `None` return distinguishes a checkpoint that omits the `messages`
-    channel entirely (a `DeltaChannel` between snapshots, where the deepagents
+    channel entirely (a `DeltaChannel` between snapshots, where the vendored
     SDK applies LangGraph's `DeltaChannel` to `messages` as of v0.6) from one
     that inlines an empty list. The former requires reconstructing the count
     from the `writes` table; the latter is a genuine zero.

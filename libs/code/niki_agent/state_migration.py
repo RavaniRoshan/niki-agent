@@ -2,7 +2,7 @@
 
 Earlier versions wrote internal state directly under `~/.niki/`,
 mixing it with user-facing agent directories (so e.g. `mcp-tokens/`
-showed up in `deepagents agents list`). State now lives in a dedicated
+showed up in `niki agents list`). State now lives in a dedicated
 `.state/` subdirectory; this module moves any legacy files into place
 on startup.
 

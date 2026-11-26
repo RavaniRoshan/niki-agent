@@ -404,7 +404,7 @@ class TestConfigurationSection:
     """The Configuration section is the only report of which paths are live.
 
     `managed_tools` and the update-lock warnings both tell the user to run
-    `dcode doctor` to find out which of two locations is in use, so a missing
+    `niki doctor` to find out which of two locations is in use, so a missing
     row leaves that question unanswerable.
     """
 
@@ -468,7 +468,7 @@ class TestRunDoctorCommand:
         assert "Configuration" in output
         assert "niki-agent" in output
         # The tips name the command the process was launched with, not a fixed
-        # one: `dcode` remains a deprecated alias and shims are common.
+        # one: per-checkout shims are common.
         assert "niki config get <key>" in output
         assert "niki --version" in output
         assert "niki -v" in output

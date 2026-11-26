@@ -1,4 +1,4 @@
-"""GLM-5.2 harness profile for Deep Agents Code.
+"""GLM-5.2 harness profile for Niki Agent.
 
 Bundles a concise execution-focused prompt suffix with one-shot recovery for the
 measured Fireworks headless terminal-stall failure mode.
@@ -108,7 +108,7 @@ approach.
 Fix only failures caused by your work. Stop immediately once every requested artifact \
 is complete and the assertions pass; do not add speculative extras.
 </execution>"""
-"""Text appended to the Deep Agents system prompt for GLM-5.2."""
+"""Text appended to the Niki Agent system prompt for GLM-5.2."""
 
 _TERMINAL_STALL_RECOVERY_SUFFIX = """\
 <terminal_stall_recovery>
@@ -186,7 +186,7 @@ class _GlmTerminalStallRecovery(AgentMiddleware):
             else f"{prompt}\n\n{_TERMINAL_STALL_RECOVERY_SUFFIX}"
         )
         # Recovery is Fireworks-only (`_should_recover`), and Fireworks reads
-        # `reasoning_effort` nested under `model_kwargs` (see dcode
+        # `reasoning_effort` nested under `model_kwargs` (see niki
         # `reasoning_effort._fireworks_model_params`), not at the top level. This
         # middleware runs inner to `ConfigurableModelMiddleware`, so a top-level
         # key set here would never be translated into the nested form the model
@@ -287,7 +287,7 @@ def _ensure_glm_5p2_profile_registered() -> None:
     override or a built-in) would have its suffix clobbered; the explicit skip
     below is a deliberate countermeasure so an existing suffix is left alone
     rather than silently replaced. In the common case no GLM profile exists yet,
-    so the dcode profile is registered for each spec.
+    so the niki profile is registered for each spec.
 
     This mutates the process-global harness registry without a lock. Concurrent
     first-calls are benign: `register_harness_profile` is additive/idempotent and

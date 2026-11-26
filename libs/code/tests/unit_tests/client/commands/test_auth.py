@@ -694,7 +694,7 @@ class TestStatus:
         assert code == 1
         err = capsys.readouterr().err
         assert "requires a provider" in err
-        assert "dcode auth list" in err
+        assert "niki auth list" in err
 
     def test_status_unknown_provider(self, capsys: pytest.CaptureFixture[str]) -> None:
         """An unrecognized provider is not an error: defer auth to the SDK.

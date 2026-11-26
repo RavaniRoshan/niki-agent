@@ -333,7 +333,7 @@ class TestAuthPromptScreen:
             assert get_glyphs().checkmark in str(title.content)
             assert "Replace key for OpenAI" in str(title.content)
             assert "set from environment variable OPENAI_API_KEY" in str(status.content)
-            assert "use a different key for dcode" in str(status.content)
+            assert "use a different key for niki" in str(status.content)
             content = cast("Content", status.content)
             assert any("$success" in str(span.style) for span in content.spans)
 
@@ -392,7 +392,7 @@ class TestAuthPromptScreen:
             assert "Sign in to Azure OpenAI" not in text
 
     async def test_openai_instructions_name_minimum_key_permissions(self) -> None:
-        """OpenAI keys note the minimum Restricted scopes Deep Agents Code needs."""
+        """OpenAI keys note the minimum Restricted scopes Niki Agent needs."""
         app = _AuthHostApp()
         async with app.run_test() as pilot:
             app.show_prompt("openai", "OPENAI_API_KEY")
@@ -1924,7 +1924,7 @@ api_key_url = "javascript:alert(1)"
             meta = app.screen.query_one("#auth-prompt-key-meta", Static)
             text = str(meta.content)
             assert "NIKI_OPENAI_API_KEY" in text
-            assert "dcode only, highest priority" in text
+            assert "niki only, highest priority" in text
             assert "OPENAI_API_KEY" in text
             assert "shared, lowest priority" in text
             dotenv_display = PATHS.display(PATHS.profile.dotenv_file)

@@ -66,7 +66,7 @@ _SHUTDOWN_TIMEOUT = 5
 
 The server spends up to two seconds flushing buffered LangSmith traces inside
 this window. The remaining margin lets LangGraph finish its own lifespan
-teardown before dcode escalates; `TestFlushBudget` guards that margin.
+teardown before niki escalates; `TestFlushBudget` guards that margin.
 """
 
 _SIGKILL_TIMEOUT = 2
@@ -205,7 +205,7 @@ def generate_langgraph_json(
 ) -> Path:
     """Generate a `langgraph.json` config file for `langgraph dev`.
 
-    Registers the interactive `agent` graph and dcode's custom HTTP operations,
+    Registers the interactive `agent` graph and niki's custom HTTP operations,
     which opt into LangGraph's route-auth layer (`enable_custom_route_auth`) so a
     deployment that configures auth gates them. Production runs `noop` auth and
     relies on the loopback bind, so that gate is inert there -- see
@@ -498,7 +498,7 @@ def _server_process_group(pid: int) -> int | None:
     Returns `None` on Windows (which uses a console process group instead) and
     whenever the server is not the leader of its own dedicated POSIX group. As
     a defensive check, the `pgid == os.getpgid(0)` clause also refuses to return
-    dcode's own group, so the group handed back can never be the one whose
+    niki's own group, so the group handed back can never be the one whose
     termination would take down the TUI.
 
     Args:
@@ -610,7 +610,7 @@ def _terminate_server_process(process: subprocess.Popen[Any]) -> None:
     path is the only one that escalates group-wide.
 
     If no dedicated group is available on POSIX, only the root process is
-    signaled. `_server_process_group` guarantees dcode's own POSIX process
+    signaled. `_server_process_group` guarantees niki's own POSIX process
     group is never targeted.
 
     Args:

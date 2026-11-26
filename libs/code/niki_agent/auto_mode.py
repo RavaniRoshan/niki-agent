@@ -202,7 +202,7 @@ _TEMP_ARTIFACT_SUFFIX_RE = re.compile(r"(?:\.[A-Za-z0-9][A-Za-z0-9._-]{0,31})?")
 
 
 class _ClassifierDeadlineExceededError(TimeoutError):
-    """Raised when dcode's local classifier wait budget expires.
+    """Raised when niki's local classifier wait budget expires.
 
     Distinct from a provider-raised `TimeoutError` so agent/UI text can name
     the app-imposed deadline without mislabeling socket-level failures.
@@ -712,7 +712,7 @@ def mcp_tool_is_coherently_read_only(tool: object) -> bool:
 
 
 def is_mcp_tool(tool: object) -> bool:
-    """Return whether a tool carries dcode's MCP wrapper marker.
+    """Return whether a tool carries niki's MCP wrapper marker.
 
     Args:
         tool: Resolved LangChain tool.
@@ -831,7 +831,7 @@ def classifier_unavailable_reason(
     noisy HTML). Only real local deadline expiry
     (`_ClassifierDeadlineExceededError`) says the classifier did not respond
     within the configured wait budget; a bare provider `TimeoutError` stays
-    type-only so we do not claim dcode's deadline fired when the model failed
+    type-only so we do not claim niki's deadline fired when the model failed
     first. A configured classifier model that cannot be built is named as such
     so the user fixes the setting instead of waiting out a nonexistent outage.
 
@@ -1756,7 +1756,7 @@ def _classifier_context(
 
 
 _CLASSIFIER_POLICY = (
-    "You are dcode's action authorization classifier.\n"
+    "You are niki's action authorization classifier.\n"
     "Return exactly one verdict for each action in current_actions, identified "
     "by its action_index, without a tool_call_id. Indexes are local to this "
     "request; never copy a verdict from an earlier request for the same index. "
@@ -1856,7 +1856,7 @@ _CLASSIFIER_POLICY = (
     "for alternative credentials, credential sharing, credentials embedded in "
     "destinations, or transmitting credentials; sending local content outside the "
     "worktree except to the existing repository remote in a requested source-control "
-    "workflow or to a tool that trusted_metadata marks dcode-configured; disabling "
+    "workflow or to a tool that trusted_metadata marks niki-configured; disabling "
     "logging, safeguards, verification, hooks, or permission controls; installing or "
     "persisting startup files, SSH keys, schedulers, services, or repository hooks; "
     "production or shared-resource changes; outside-worktree file changes or reads "
@@ -1880,7 +1880,7 @@ _CLASSIFIER_POLICY = (
     "escalation merely because the user did not name that implementation step or its "
     "exact target. This includes routine task-related in-worktree changes, "
     "dependency updates, and verification, credential-free public reads that send "
-    "no local content, and tools that trusted_metadata marks dcode-configured "
+    "no local content, and tools that trusted_metadata marks niki-configured "
     "operating on task context. A request to open a pull "
     "request may imply staging, committing, pushing the current working branch to the "
     "existing repository remote, and opening that pull request. When "
@@ -2502,7 +2502,7 @@ class AutoModeHITLMiddleware(HumanInTheLoopMiddleware[AutoModeState, Any, Any]):
             """Create a private OS-temp text file for this request.
 
             Use this instead of `write_file` when a command needs a temporary input
-            file, such as a pull-request body passed with `--body-file`. Dcode chooses
+            file, such as a pull-request body passed with `--body-file`. Niki chooses
             and exclusively allocates the path; callers cannot select or overwrite one.
 
             Returns:
@@ -2621,7 +2621,7 @@ class AutoModeHITLMiddleware(HumanInTheLoopMiddleware[AutoModeState, Any, Any]):
         if trusted_tool is not None and request.tool is not trusted_tool:
             return ToolMessage(
                 content=(
-                    "Denied a tool-name collision with dcode's managed temporary "
+                    "Denied a tool-name collision with niki's managed temporary "
                     "artifact tools."
                 ),
                 name=tool_name,

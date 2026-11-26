@@ -49,8 +49,8 @@ bash tools/m2_session.sh      # M2: live PTY session vs the replay frame
 - Keep user-visible language Niki Agent. Attribution belongs in `NOTICE`,
   `LICENSE`, and the vendored `PROVENANCE.md` files; the version line and help
   screen do not credit another product.
-- `dcode` and `deepagents-code` are deprecated console scripts for two minor
-  versions. Do not add new references to them outside the deprecation path.
+- `niki` is the only console script. Do not add compatibility aliases for the
+  pre-rename product names.
 - Do not edit the vendored trees for style. They are excluded from ruff and ty so
   their diff against `PROVENANCE.md` stays auditable.
 

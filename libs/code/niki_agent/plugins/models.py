@@ -63,7 +63,7 @@ class PluginManifest:
         inline_mcp: Inline MCP servers declared in the manifest.
         inline_hooks: Inline hook configuration declared in the manifest, in
             `hooks.json` document form.
-        python_extensions: Python extension entry files declared in dcode's
+        python_extensions: Python extension entry files declared in niki's
             namespaced manifest settings.
         auto_update: Whether this plugin permits automatic updates.
     """
@@ -95,7 +95,7 @@ class ComponentInventory:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PluginInstance:
-    """A discovered plugin ready to feed dcode adapters.
+    """A discovered plugin ready to feed niki adapters.
 
     Attributes:
         plugin_id: Stable id in `{name}@{marketplace}` form.

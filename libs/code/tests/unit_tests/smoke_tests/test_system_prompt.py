@@ -231,7 +231,7 @@ def _capture_system_prompt(
     # machines and CI checkouts with different repo roots.
     actual = actual.replace(str(tmp_path), "<tmp_path>")
     actual = actual.replace(str(get_built_in_skills_dir()), "<built_in_skills_dir>")
-    return actual.replace(str(PATHS.profile.root), "<deepagents_home>")
+    return actual.replace(str(PATHS.profile.root), "<niki_home>")
 
 
 @pytest.mark.parametrize(

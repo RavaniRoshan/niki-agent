@@ -32,7 +32,7 @@ If the user does not know the ID, list recent threads first:
 python3 "$SKILL_DIR/scripts/inspect_sessions.py" --list 20
 ```
 
-Pass `--db PATH` only for a non-default session store. The default is `$NIKI_HOME/.state/sessions.db`, or `~/.deepagents/.state/sessions.db` when that variable is unset. `DEEPAGENTS_SESSIONS_DB` overrides both. The script applies the same rules dcode does, so a relative or `~user` value is rejected rather than resolved to a database dcode never writes.
+Pass `--db PATH` only for a non-default session store. The default is `$NIKI_HOME/.state/sessions.db` when `NIKI_HOME` is set, or `~/.niki/.state/sessions.db` otherwise. `DEEPAGENTS_SESSIONS_DB` overrides both. The script applies the same rules `niki` does, so a relative or `~user` value is rejected rather than resolved to a database `niki` never writes.
 
 ## Explain the result
 
@@ -47,4 +47,4 @@ Synthesize the JSON rather than pasting it verbatim.
 
 ## Safety
 
-Keep inspection read-only. Do not deserialize an untrusted database: checkpoint deserialization is intended for trusted local Deep Agents state. Do not mutate or delete session rows unless the user separately and explicitly requests it.
+Keep inspection read-only. Do not deserialize an untrusted database: checkpoint deserialization is intended for trusted local agent state. Do not mutate or delete session rows unless the user separately and explicitly requests it.

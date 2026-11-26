@@ -815,7 +815,7 @@ class AuthPromptScreen(ModalScreen[AuthResult]):
                     "This scoped env var takes priority. A saved key will be used "
                     f"only when {env_var} is unset."
                     if is_scoped_env
-                    else ("Paste a key below to use a different key for dcode.")
+                    else ("Paste a key below to use a different key for niki.")
                 )
                 yield Static(
                     Content.assemble(
@@ -890,7 +890,7 @@ class AuthPromptScreen(ModalScreen[AuthResult]):
                     Content.assemble(
                         "Environment variables: ",
                         (f"NIKI_{self._env_var}", TStyle(bold=True)),
-                        " (dcode only, highest priority) or ",
+                        " (niki only, highest priority) or ",
                         (self._env_var, TStyle(bold=True)),
                         " (shared, lowest priority). Put either in the project .env "
                         f"or {PATHS.display(PATHS.profile.dotenv_file)}; press ",
@@ -1090,7 +1090,7 @@ class AuthPromptScreen(ModalScreen[AuthResult]):
                 (
                     (
                         "Subscription plans (Claude Pro/Max, Claude Code) cannot "
-                        "be used for Anthropic calls in dcode. Only a "
+                        "be used for Anthropic calls in niki. Only a "
                         "standard API key with pay-as-you-go billing works here."
                     ),
                     "italic $text-muted",
@@ -2009,7 +2009,7 @@ class AuthManagerScreen(ModalScreen[None]):
         }
 
         # Show well-known providers whenever their LangChain package is
-        # installed, even if none of the package's model profiles pass dcode's
+        # installed, even if none of the package's model profiles pass niki's
         # tool-calling filter. Stored and config-defined providers are always
         # shown too, so stale credentials can still be cleaned up and an
         # explicitly-declared provider stays visible.

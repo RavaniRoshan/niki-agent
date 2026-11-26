@@ -1062,7 +1062,7 @@ class TestBuildStreamConfig:
         assert "ls_subagent_type" not in metadata
 
     def test_dcode_agent_fields_present(self) -> None:
-        """Selected dcode agent metadata should be present."""
+        """Selected niki agent metadata should be present."""
         config = build_stream_config("t-456", assistant_id="my-agent")
         assert "assistant_id" not in config["metadata"]
         assert config["metadata"]["dcode_agent_name"] == "my-agent"
@@ -1071,7 +1071,7 @@ class TestBuildStreamConfig:
         assert "cwd" in config["metadata"]
 
     def test_no_dcode_agent_fields_when_none(self) -> None:
-        """Selected dcode agent fields should be absent when unset."""
+        """Selected niki agent fields should be absent when unset."""
         config = build_stream_config("t-789", assistant_id=None)
         metadata = config["metadata"]
         assert "assistant_id" not in metadata
@@ -1108,7 +1108,7 @@ class TestBuildStreamConfig:
         assert config["metadata"]["lc_versions"] == {"niki-agent": __version__}
 
     def test_versions_marks_editable_cli_version(self) -> None:
-        """Editable dcode installs should be visible in metadata.lc_versions."""
+        """Editable niki installs should be visible in metadata.lc_versions."""
         from niki_agent._version import __version__
 
         with (

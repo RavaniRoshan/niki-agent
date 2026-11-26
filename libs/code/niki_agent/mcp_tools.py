@@ -886,7 +886,7 @@ def filter_trusted_project_servers(
 
 MCP_CONFIG_DISCOVERY_PATHS: tuple[tuple[str, str], ...] = (
     (PATHS.display(PATHS.profile.mcp_config_file), "user-level"),
-    ("<project-root>/.deepagents/.mcp.json", "project subdir"),
+    ("<project-root>/.niki/.mcp.json", "project subdir"),
     ("<project-root>/.mcp.json", "project root"),
 )
 """Display strings for the auto-discovered MCP config paths.
@@ -2003,7 +2003,7 @@ def _classify_connect_failure(
             if reauth is not None
             else (
                 f"MCP server {server_name!r} requires authentication; "
-                f"run `dcode mcp login {server_name}`."
+                f"run `niki mcp login {server_name}`."
             )
         )
         logger.warning("MCP server '%s' skipped: %s", server_name, error)
@@ -2080,7 +2080,7 @@ async def _load_tools_from_config(
     await asyncio.to_thread(_warm_mcp_adapter_imports)
 
     # Imported here, not at module scope: pulling FastMCP in eagerly would put
-    # it on the `dcode mcp --help` startup path.
+    # it on the `niki mcp --help` startup path.
     from fastmcp.client.transports import ClientTransport as _ClientTransport
 
     server_items: list[tuple[str, dict[str, Any]]] = list(config["mcpServers"].items())

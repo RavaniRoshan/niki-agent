@@ -10,7 +10,7 @@ a terminal emulator, so what is asserted on is the rendered screen rather than
 the raw byte stream.
 
 Every run gets its own `NIKI_HOME` under tmp_path, so nothing here reads
-or writes the developer's real `~/.deepagents`. No API key is used and no
+or writes the developer's real `~/.niki`. No API key is used and no
 network is required: the lifecycle rows are all about start-up and exit.
 
 `terminal_escape.py` upstream strips and re-emits control sequences for
@@ -29,7 +29,7 @@ import pyte
 import pytest
 
 VENV_BIN = Path(__file__).resolve().parents[3] / ".venv" / "bin"
-DCODE = str(VENV_BIN / "dcode")
+NIKI = str(VENV_BIN / "niki")
 
 
 def _env(home: Path) -> dict[str, str]:
@@ -65,13 +65,13 @@ def home(tmp_path: Path) -> Path:
 
 def test_version_exits_cleanly_in_a_real_pty(home: Path) -> None:
     """L1/L8: a normal exit restores the terminal and returns exit code 0."""
-    child = pexpect.spawn(DCODE, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
+    child = pexpect.spawn(NIKI, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
     child.expect(pexpect.EOF)
     output = child.before or ""
     child.close()
 
-    assert child.exitstatus == 0, f"`dcode -v` exited {child.exitstatus}"
-    assert "niki-agent" in output, "version banner missing"
+    assert child.exitstatus == 0, f"`niki -v` exited {child.exitstatus}"
+    assert "Niki Agent" in output, "version banner missing"
 
 
 def test_non_tty_run_emits_no_escape_sequences(home: Path) -> None:
@@ -98,14 +98,14 @@ def test_terminal_is_restored_after_a_killed_child(home: Path) -> None:
     tty in raw mode would keep the pty unusable.
     """
     child = pexpect.spawn(
-        DCODE, ["--help"], env=_env(home), encoding="utf-8", timeout=30
+        NIKI, ["--help"], env=_env(home), encoding="utf-8", timeout=30
     )
     child.expect(pexpect.EOF)
     child.close()
     assert child.exitstatus == 0
 
     # A second run proves the pty itself is still usable after the first exited.
-    second = pexpect.spawn(DCODE, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
+    second = pexpect.spawn(NIKI, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
     second.expect(pexpect.EOF)
     second.close()
     assert second.exitstatus == 0, "pty unusable after the previous child exited"
@@ -134,7 +134,7 @@ def test_signal_is_delivered_to_the_child(home: Path) -> None:
 def test_help_renders_as_readable_text_in_a_terminal(home: Path) -> None:
     """L2/L3: `--help` must reach a terminal as renderable text, not raw bytes."""
     child = pexpect.spawn(
-        DCODE, ["--help"], env=_env(home), encoding="utf-8", timeout=30
+        NIKI, ["--help"], env=_env(home), encoding="utf-8", timeout=30
     )
     child.expect(pexpect.EOF)
     output = child.before or ""

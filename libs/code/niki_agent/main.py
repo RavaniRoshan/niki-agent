@@ -54,7 +54,7 @@ _SANDBOX_DEFAULT_SENTINEL = "\x00default"
 """Marker stored by `--sandbox` with no value, resolved to `[sandboxes].default`."""
 
 _UNPERSISTED_AUTO_UPDATE_FAILURE_NOTE = (
-    "\n[yellow]Note:[/yellow] this failure could not be recorded, so dcode will "
+    "\n[yellow]Note:[/yellow] this failure could not be recorded, so niki will "
     "retry this update on the next launch until the state directory becomes writable."
 )
 
@@ -91,7 +91,7 @@ _PROJECT_MCP_PICKER_VISIBLE_ROWS = 8
 
 
 def _handle_termination_signal(signum: int, _frame: object) -> NoReturn:
-    """Unwind dcode on a terminating signal so owned resources are cleaned up.
+    """Unwind niki on a terminating signal so owned resources are cleaned up.
 
     Args:
         signum: Received signal number.
@@ -248,7 +248,7 @@ def _restart_current_process(*, restart_path: Path | None = None) -> NoReturn:
         executable = str(restart_path)
         argv = [executable, *sys.argv[1:]]
     # `-m` discards argv[0], so the launch name would be lost across the exec
-    # and post-update resume hints would fall back to `dcode`. Hand it to the
+    # and post-update resume hints would fall back to `niki`. Hand it to the
     # next generation explicitly.
     os.environ[INVOKED_AS] = invoked_name()
     # Re-exec the trusted current interpreter or uv-managed shim with the
@@ -393,8 +393,8 @@ def _render_teardown_thread_hints(
 
     console.print()
     console.print("[dim]Resume this thread with:[/dim]")
-    # Echo the command the user actually launched (a shim or the
-    # `niki-agent` alias), not a hardcoded `dcode` they may not have.
+    # Echo the command the user actually launched (a shim or a renamed
+    # executable), not a hardcoded name they may not have.
     resume_command = shlex.join([invoked_name(), "-r", str(thread_id)])
     # A shell alias that exports `TERM_PROGRAM` (to select a theme, say) is
     # invisible to `invoked_name`, since an alias does not change `argv[0]`, so
@@ -694,11 +694,11 @@ def _run_startup_auto_update(console: "Console") -> None:
             # console and is the lesser evil versus an unbounded re-nag.
             acknowledged = mark_auto_update_default_acknowledged()
             message = (
-                "[bold]dcode now updates automatically by default.[/bold] "
+                "[bold]niki now updates automatically by default.[/bold] "
                 f"v{latest} will be installed on the next launch.\n"
                 "To opt out, set [cyan][update].auto_update = false[/cyan] in "
                 "config.toml or [cyan]NIKI_AUTO_UPDATE=0[/cyan] "
-                "(or run [cyan]dcode --auto-update[/cyan] to toggle it off now).\n"
+                "(or run [cyan]niki --auto-update[/cyan] to toggle it off now).\n"
                 f"Continuing with v{cli_version} for now."
             )
             if not acknowledged:
@@ -725,7 +725,7 @@ def _run_startup_auto_update(console: "Console") -> None:
         with update_install_lock() as holding_update_lock:
             if not holding_update_lock:
                 console.print(
-                    f"Another dcode session is updating to v{latest}; "
+                    f"Another niki session is updating to v{latest}; "
                     f"continuing with v{cli_version}.",
                     style="dim",
                     highlight=False,
@@ -733,7 +733,7 @@ def _run_startup_auto_update(console: "Console") -> None:
                 return
             release_age = format_release_age_parenthetical(latest)
             console.print(
-                f"Updating dcode from v{cli_version} to v{latest}{release_age}..."
+                f"Updating niki from v{cli_version} to v{latest}{release_age}..."
             )
             if os.environ.get(DEBUG_UPDATE):
                 console.print("Skipped update install (debug mode).", style="dim")
@@ -876,7 +876,7 @@ def _reject_reserved_agent_arg(name: str) -> None:
 
     console.print(
         f"[bold red]Error:[/bold red] Agent name {name!r} is reserved for "
-        f"dcode's own state.",
+        f"niki's own state.",
         markup=True,
         highlight=False,
     )
@@ -999,7 +999,7 @@ def _parse_interpreter_tools_flag(
 
 # Aliased from the dependency-free `_constants` module (see its docstring for
 # why the set is hardcoded, how the drift guard pins it, and why importing it
-# here keeps the arg-parsing hot path free of a `deepagents` import).
+# here keeps the arg-parsing hot path free of a vendored-SDK import).
 from niki_agent._constants import FS_TOOL_NAMES as _FS_TOOL_NAMES
 
 _PLAN_MODE_FS_TOOLS: "tuple[FsToolName, ...]" = (
@@ -1162,7 +1162,7 @@ def _install_cli_provider(args: argparse.Namespace) -> None:
 
     Uses the deferred install: building the full resolver here would import
     `niki_agent.model_config` and read both TOML snapshots, which the
-    help-only fast paths (`dcode help`, bare command groups) must not pay
+    help-only fast paths (`niki help`, bare command groups) must not pay
     before they return.
     """
     from niki_agent.configuration.provider import CliProvider
@@ -1201,7 +1201,7 @@ def _resolve_interpreter_enabled(
     Args:
         args: Parsed CLI arguments.
         strict: Whether an unsatisfiable choice stops the process. Read-only
-            callers such as `dcode tools` pass `False` and get `False`, which
+            callers such as `niki tools` pass `False` and get `False`, which
             is what the catalog would actually contain; only a launch has
             something to abort.
 
@@ -1273,7 +1273,7 @@ def _exit_interpreter_conflicts_with_sandbox(
 def _interpreter_sandbox_conflict(sandbox_type: str, deciding_rank: int) -> str:
     """Describe the interpreter/sandbox conflict and how to resolve it.
 
-    Shared so the launch abort and the `dcode tools` warning cannot drift into
+    Shared so the launch abort and the `niki tools` warning cannot drift into
     telling the user two different things about one conflict.
 
     Args:
@@ -1529,7 +1529,7 @@ def _resolve_rubric_text(rubric: str | None) -> str | None:
     """Resolve the rubric from `--rubric` into one string.
 
     `--rubric` accepts literal text, or `@path` to read a file. File paths
-    may be absolute, relative to the `dcode` process working directory, or
+    may be absolute, relative to the `niki` process working directory, or
     `~`-expanded home paths.
 
     Args:
@@ -1548,7 +1548,7 @@ def _resolve_rubric_text(rubric: str | None) -> str | None:
         return None
 
     # An `@`-prefixed value is always read as a file path. The path may be
-    # absolute, relative to the `dcode` process working directory, or `~`-based.
+    # absolute, relative to the `niki` process working directory, or `~`-based.
     # There is no way to pass a literal rubric that begins with `@` (put such
     # text in a file).
     if rubric.startswith("@"):
@@ -1671,11 +1671,13 @@ def check_cli_dependencies() -> None:
 
     if missing:
         print("\nMissing required dependencies!")  # noqa: T201  # App output for missing dependencies
-        print("\nThe following packages are required to use dcode:")  # noqa: T201  # App output for missing dependencies
+        print("\nThe following packages are required to use niki:")  # noqa: T201  # App output for missing dependencies
         for pkg in missing:
             print(f"  - {pkg}")  # noqa: T201  # CLI output for missing dependencies
-        print("\nReinstall dcode with the recommended installer:")  # noqa: T201  # CLI output for missing dependencies
-        print("  curl -LsSf https://langch.in/dcode | bash")  # noqa: T201  # CLI output for missing dependencies
+        print("\nReinstall niki with the recommended installer:")  # noqa: T201  # CLI output for missing dependencies
+        from niki_agent.update_check import INSTALL_SCRIPT_COMMAND
+
+        print(f"  {INSTALL_SCRIPT_COMMAND}")  # noqa: T201  # CLI output for missing dependencies
         print("\nOr install the tool directly via uv:")  # noqa: T201  # CLI output for missing dependencies
         print("  uv tool install -U niki-agent")  # noqa: T201  # CLI output for missing dependencies
         sys.exit(1)
@@ -2187,7 +2189,7 @@ def parse_args() -> argparse.Namespace:
     # Factory that builds an argparse Action whose __call__ invokes the
     # supplied *help_fn* instead of argparse's default help text.  Each
     # subcommand can pass its own Rich-formatted help screen so that
-    # `deepagents <subcommand> -h` shows context-specific help.
+    # `niki <subcommand> -h` shows context-specific help.
     def _make_help_action(
         help_fn: Callable[[], None],
     ) -> type[argparse.Action]:
@@ -2251,7 +2253,7 @@ def parse_args() -> argparse.Namespace:
         return [parent]
 
     parser = argparse.ArgumentParser(
-        description=("Deep Agents - AI Coding Assistant"),
+        description=("Niki Agent - AI Coding Assistant"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
     )
@@ -2792,7 +2794,7 @@ def parse_args() -> argparse.Namespace:
         "--mcp-config",
         help="Path to MCP servers JSON configuration file (Claude Desktop format). "
         "Merged on top of auto-discovered configs (highest precedence). "
-        "Run `dcode mcp config` to see discovery paths.",
+        "Run `niki mcp config` to see discovery paths.",
     )
     parser.add_argument(
         "--no-mcp",
@@ -2968,7 +2970,7 @@ def _resolve_and_validate_sandbox(
     `parser.error` (which exits) on invalid input.
 
     Because `--sandbox` takes an optional value (`nargs="?"`), placing it
-    immediately before a subcommand (e.g. `dcode --sandbox agents`) makes
+    immediately before a subcommand (e.g. `niki --sandbox agents`) makes
     argparse consume the subcommand as the flag's value. Pass an explicit
     provider (`--sandbox daytona`) or keep the bare form last on the command
     line.
@@ -3706,7 +3708,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
         piped text to it (the CLI still runs non-interactively):
 
         ```bash
-        cat context.txt | dcode -n "summarize this"
+        cat context.txt | niki -n "summarize this"
         # non_interactive_message = "{contents of context.txt}\n\nsummarize this"
         ```
 
@@ -3714,7 +3716,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
         the piped text to it (the CLI still runs interactively):
 
         ```bash
-        cat error.log | dcode -m "explain this"
+        cat error.log | niki -m "explain this"
         # initial_prompt = "{contents of error.log}\n\nexplain this"
         ```
 
@@ -3724,7 +3726,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
         interactive TUI:
 
         ```bash
-        cat diff.txt | dcode --skill code-review
+        cat diff.txt | niki --skill code-review
         # initial_prompt = "{contents of diff.txt}"
         ```
 
@@ -3733,7 +3735,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
         headless (see below):
 
         ```bash
-        cat diff.txt | dcode --skill code-review --stdin
+        cat diff.txt | niki --skill code-review --stdin
         # non_interactive_message = "{contents of diff.txt}"
         ```
 
@@ -3741,7 +3743,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
         the CLI to run non-interactively with it as the prompt:
 
         ```bash
-        echo "fix the typo in README.md" | dcode
+        echo "fix the typo in README.md" | niki
         # non_interactive_message = "fix the typo in README.md"
         ```
 
@@ -3777,7 +3779,7 @@ def apply_stdin_pipe(args: argparse.Namespace) -> None:
             console.print(
                 "[bold red]Error:[/bold red] --stdin was passed but stdin "
                 "is a terminal. Pipe input or use -n instead.\n"
-                "  cat prompt.txt | dcode --stdin -q"
+                "  cat prompt.txt | niki --stdin -q"
             )
             sys.exit(1)
         return
@@ -4187,7 +4189,7 @@ def prompt_for_dep_floor_mismatch(
     """
     console.print()
     console.print(
-        "[bold yellow]This editable dcode install is behind the checkout's "
+        "[bold yellow]This editable niki install is behind the checkout's "
         "dependency floors:[/bold yellow]",
         highlight=False,
     )
@@ -4277,7 +4279,7 @@ def _select_trust_action(
     # refresh / continue / mute / abort, and a hardcoded "allow once / deny" would
     # misdescribe what the default does. Both lines go to stderr, where the
     # rest of the prompt already went; passing the question to `input()`
-    # instead would split it onto stdout, so `dcode 2>log` would show a bare
+    # instead would split it onto stdout, so `niki 2>log` would show a bare
     # question with all of its context redirected away.
     if refresh_label is None:
         choices = separator.join(
@@ -5235,7 +5237,7 @@ def _apply_managed_sandbox(
         # Policy named a backend and this launch is not using one. That is the
         # documented meaning of the key, but an administrator who set it
         # believing it forces containment would otherwise get an unsandboxed
-        # launch, exit 0, and a green `dcode doctor` row.
+        # launch, exit 0, and a green `niki doctor` row.
         if isinstance(value, str) and value not in {"", "none"}:
             sys.stderr.write(
                 f"Note: managed config sets [sandboxes].default to '{value}', "
@@ -5289,16 +5291,6 @@ def cli_main() -> None:
         KeyboardInterrupt: Re-raised out of the TUI teardown block so the
             outer handler can print the interruption notice and exit 130.
     """
-    from niki_agent._invocation import invoked_name
-
-    launched_as = invoked_name()
-    if launched_as in {"dcode", "deepagents-code"}:
-        print(  # noqa: T201 - deprecation notice on the console, not library output
-            f"{launched_as} is deprecated; use `niki`. The alias is removed "
-            "after two minor versions.",
-            file=sys.stderr,
-        )
-
     # Fix for gRPC fork issue on macOS
     # https://github.com/grpc/grpc/issues/37642
     if sys.platform == "darwin":
@@ -5335,7 +5327,7 @@ def cli_main() -> None:
     # The app-owned server runs in a detached session so terminal job-control
     # signals do not suspend or kill it. Replace terminating signals' immediate
     # default behavior with an exception so the app/server cleanup finally
-    # blocks run when dcode's process group is stopped.
+    # blocks run when niki's process group is stopped.
     _install_termination_signal_handlers()
 
     try:
@@ -5409,7 +5401,7 @@ def cli_main() -> None:
             sys.exit(run_uninstall_command(args))
 
         # Best-effort, idempotent migration. Placed after parse_args and the
-        # bare-help fast path so --help / --version / `deepagents <group>`
+        # bare-help fast path so --help / --version / `niki <group>`
         # exit before any I/O. Wrapped broadly so an unexpected non-OSError
         # (e.g., RuntimeError from `Path.home()` when $HOME is unset on a CI
         # runner) cannot crash startup — state migration has zero functional
@@ -5426,7 +5418,7 @@ def cli_main() -> None:
 
         # Initialize credentials AFTER arg parsing and after the bare-help
         # fast path so neither argparse's `--help`/`-h` exit nor
-        # `deepagents <group>` pays the credentials bootstrap cost. The explicit
+        # `niki <group>` pays the credentials bootstrap cost. The explicit
         # accessor triggers `_ensure_bootstrap()` (dotenv loading), and
         # commands dispatched below — notably `auth status` — resolve
         # credentials from the environment expecting `.env` to be loaded.
@@ -5477,7 +5469,7 @@ def cli_main() -> None:
         # the debug buffer, which the user never sees.
         _print_retry_config_warnings(retry_config_warnings)
 
-        # dcode's model-node middleware owns the retry budget, so `create_model`
+        # niki's model-node middleware owns the retry budget, so `create_model`
         # forces the provider's own retry kwarg to its disable value. A
         # `--model-params` retry count is therefore always overridden. Say so
         # here: the override is logged into the debug buffer, which the user
@@ -5495,7 +5487,7 @@ def cli_main() -> None:
                     _Text.assemble(
                         ("Warning:", "bold yellow"),
                         f" --model-params {', '.join(supplied)} is ignored; "
-                        "dcode owns the retry budget. Use --max-retries or "
+                        "niki owns the retry budget. Use --max-retries or "
                         "[retries].max_retries in config.toml instead.",
                     ),
                     soft_wrap=True,
@@ -5578,8 +5570,8 @@ def cli_main() -> None:
                 msg = (
                     "Error: --no-mcp and --mcp-config are mutually exclusive."
                     " Use one or the other.\n"
-                    "  dcode --mcp-config path/to/config.json\n"
-                    "  dcode --no-mcp\n"
+                    "  niki --mcp-config path/to/config.json\n"
+                    "  niki --no-mcp\n"
                 )
                 sys.stderr.write(msg)
                 sys.stderr.flush()
@@ -5644,7 +5636,7 @@ def cli_main() -> None:
         #
         # `_trust_picker_has_terminal()` is part of the condition because a
         # piped-stdin interactive launch still mounts the TUI: per
-        # `apply_stdin_pipe`, `cat x | dcode -m ...` and `cat x | dcode
+        # `apply_stdin_pipe`, `cat x | niki -m ...` and `cat x | niki
         # --skill ...` set `initial_prompt`, not `non_interactive_message`.
         # Prompting there would find no TTY for the picker, read EOF from the
         # text fallback, and abort the launch outright — with no way to answer
@@ -5696,7 +5688,7 @@ def cli_main() -> None:
                 "[bold red]Error:[/bold red] --auto-classifier-model is only "
                 "supported in the interactive TUI, where Auto approval mode "
                 f"runs; {unavailable_because}.\n"
-                "  dcode --auto-classifier-model anthropic:claude-haiku-4-5"
+                "  niki --auto-classifier-model anthropic:claude-haiku-4-5"
             )
             sys.exit(2)
 
@@ -5740,8 +5732,8 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 "[bold red]Error:[/bold red] --no-mcp and --mcp-config "
                 "are mutually exclusive. Use one or the other.\n"
-                "  dcode --mcp-config path/to/config.json\n"
-                "  dcode --no-mcp"
+                "  niki --mcp-config path/to/config.json\n"
+                "  niki --no-mcp"
             )
             sys.exit(2)
 
@@ -5756,8 +5748,8 @@ def cli_main() -> None:
                 "[bold red]Error:[/bold red] --skill requires "
                 "--non-interactive (-n) when combined with --quiet or "
                 "--no-stream.\n"
-                "  dcode --skill code-review -m 'review this patch'\n"
-                "  dcode --skill code-review -n 'review this patch'"
+                "  niki --skill code-review -m 'review this patch'\n"
+                "  niki --skill code-review -n 'review this patch'"
             )
             sys.exit(2)
 
@@ -5768,7 +5760,7 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 "[bold red]Error:[/bold red] --max-turns requires "
                 "--non-interactive (-n) or piped stdin\n"
-                "  dcode -n 'refactor auth module' --max-turns 5"
+                "  niki -n 'refactor auth module' --max-turns 5"
             )
             sys.exit(2)
 
@@ -5779,7 +5771,7 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 "[bold red]Error:[/bold red] --timeout requires "
                 "--non-interactive (-n) or piped stdin\n"
-                "  dcode -n 'run the test suite' --timeout 120"
+                "  niki -n 'run the test suite' --timeout 120"
             )
             sys.exit(2)
 
@@ -5817,7 +5809,7 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 "[bold red]Error:[/bold red] --goal is only supported in "
                 "interactive mode for now.\n"
-                "  dcode --goal 'add OAuth refresh handling'"
+                "  niki --goal 'add OAuth refresh handling'"
             )
             sys.exit(2)
         if goal_text is not None and (
@@ -5829,7 +5821,7 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 "[bold red]Error:[/bold red] --goal cannot be combined with "
                 "-m/--message or --skill.\n"
-                "  dcode --goal 'add OAuth refresh handling'"
+                "  niki --goal 'add OAuth refresh handling'"
             )
             sys.exit(2)
 
@@ -5848,7 +5840,7 @@ def cli_main() -> None:
                 "[bold red]Error:[/bold red] --rubric/--rubric-model/"
                 "--rubric-max-iterations require "
                 "--non-interactive (-n) or piped stdin\n"
-                "  dcode -n 'implement X' --rubric 'tests pass'"
+                "  niki -n 'implement X' --rubric 'tests pass'"
             )
             sys.exit(2)
 
@@ -5867,7 +5859,7 @@ def cli_main() -> None:
             _Console(stderr=True).print(
                 f"[bold red]Error:[/bold red] {flag} requires "
                 "--non-interactive (-n) or piped stdin\n"
-                "  dcode -n 'summarize README.md' --quiet"
+                "  niki -n 'summarize README.md' --quiet"
             )
             sys.exit(2)
 
@@ -5964,7 +5956,7 @@ def cli_main() -> None:
                 with update_install_lock() as holding_update_lock:
                     if not holding_update_lock:
                         console.print(
-                            "Another dcode session is currently updating. "
+                            "Another niki session is currently updating. "
                             "Try again after it finishes.",
                             style="dim",
                         )
@@ -6041,13 +6033,13 @@ def cli_main() -> None:
         if args.package and not args.install:
             console.print(
                 "[bold red]Error:[/bold red] --package requires "
-                "`dcode install <package> --package` "
+                "`niki install <package> --package` "
                 "(or the `--install <package>` alias).",
             )
             sys.exit(2)
 
         # Handle --install <name> [--package] flag (headless, no session).
-        # Alias for `dcode install`. Always exits.
+        # Alias for `niki install`. Always exits.
         if args.install:
             from niki_agent.client.commands.extras import run_install_request
 
@@ -6679,7 +6671,7 @@ def cli_main() -> None:
                         console.print(cmd_hint)
                         if not is_auto_update_enabled():
                             auto_hint = Text("Enable auto-updates: ", style="dim")
-                            auto_hint.append("dcode --auto-update", style="cyan")
+                            auto_hint.append("niki --auto-update", style="cyan")
                             console.print(auto_hint)
                         mark_update_notified(latest)
             except Exception:

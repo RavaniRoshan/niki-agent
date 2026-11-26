@@ -936,7 +936,7 @@ RETRY_PARAM_BY_PROVIDER: dict[str, str | None] = {
     "together": "max_retries",
     "xai": "max_retries",
     # `None` means "checked, and this integration has no retry-count kwarg" --
-    # distinct from a provider absent from the table, which means dcode does
+    # distinct from a provider absent from the table, which means niki does
     # not know. Only the absent case warrants the "SDK retries stay active"
     # warning: a `None` provider has no SDK retry loop to multiply, so warning
     # about it told the user to set `[retries.<provider>].param` to a kwarg
@@ -954,11 +954,11 @@ RETRY_PARAM_BY_PROVIDER: dict[str, str | None] = {
 }
 """Constructor kwargs used to disable provider-owned retry loops.
 
-dcode's model-node middleware owns the retry budget, so integrations with a
+niki's model-node middleware owns the retry budget, so integrations with a
 known retry-count parameter receive their provider-specific disable value at
 construction time. A `None` value records an integration reported to
 have no retry-count parameter. Providers absent from this mapping are unknown
-to dcode and must declare one with `[retries.<provider>].param` in
+to niki and must declare one with `[retries.<provider>].param` in
 `config.toml`.
 
 A kwarg name is verified against that integration's chat model constructor,

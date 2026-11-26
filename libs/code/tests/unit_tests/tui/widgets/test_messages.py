@@ -2231,7 +2231,7 @@ class TestToolCallMessageFileOutput:
     def test_format_output_compacts_legacy_cat_n_gutter(self) -> None:
         r"""Legacy `cat -n` gutters are tightened, all rows aligned to one column.
 
-        deepagents versions predating #4561 emitted `f"{line_num:6d}\t{line}"` —
+        SDK versions predating #4561 emitted `f"{line_num:6d}\t{line}"` —
         a 6-wide right-justified number plus a tab — which renders far from the
         line numbers and (when the first row's padding was stripped) misaligned.
         Such output may still surface from cached or persisted transcripts. The

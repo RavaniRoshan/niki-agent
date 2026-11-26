@@ -374,7 +374,7 @@ def test_unstamped_model_falls_back_to_the_default_budget(
         assert retry_model_call(SimpleNamespace(), call) == "ok"
 
     assert attempts == 3
-    assert "carries no dcode retry metadata" in caplog.text
+    assert "carries no niki retry metadata" in caplog.text
 
 
 def test_max_delay_gives_up_rather_than_sleeping_past_a_deadline() -> None:

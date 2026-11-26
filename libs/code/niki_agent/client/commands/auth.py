@@ -55,7 +55,7 @@ def setup_auth_parser(
     *,
     make_help_action: Callable[[Callable[[], None]], type[argparse.Action]],
 ) -> None:
-    """Register the `dcode auth` command group.
+    """Register the `niki auth` command group.
 
     Args:
         subparsers: The `argparse` subparsers object from the top-level CLI
@@ -168,7 +168,7 @@ def setup_auth_parser(
 
 
 def run_auth_command(args: argparse.Namespace) -> int:
-    """Dispatch a parsed `dcode auth` invocation.
+    """Dispatch a parsed `niki auth` invocation.
 
     Returns:
         Process exit code (`0` on success, non-zero on error).
@@ -360,7 +360,7 @@ def _run_status(provider: str | None) -> int:
     if provider is None:
         print(  # noqa: T201
             "Error: auth status requires a provider. "
-            "Use `dcode auth list` to show all providers.",
+            "Use `niki auth list` to show all providers.",
             file=sys.stderr,
         )
         return 1
@@ -438,7 +438,7 @@ def _run_set(
         if sys.stdin.isatty():
             print(  # noqa: T201
                 "Error: refusing to read an API key from an interactive terminal.\n"
-                f"Pipe the key via stdin (e.g. `echo $KEY | dcode auth set {provider}`)"
+                f"Pipe the key via stdin (e.g. `echo $KEY | niki auth set {provider}`)"
                 " or use --from-env VAR.",
                 file=sys.stderr,
             )

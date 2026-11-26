@@ -21,7 +21,7 @@ Example file (researcher/AGENTS.md):
 
 The `name` field is optional; when omitted it defaults to the folder name
 (e.g. `researcher`). This diverges from the Agent Skills specification
-(`deepagents.middleware.skills`), which requires `name` in frontmatter and
+(the vendored skills middleware), which requires `name` in frontmatter and
 warns when it does not match the parent directory name. Subagents use the
 folder name as an implicit fallback instead because subagent definitions are
 already uniquely identified by their folder — requiring a redundant `name`

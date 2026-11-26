@@ -10,7 +10,7 @@ Written from inside the graph on successful model turns:
     Powers `/tokens` and the status bar.
 - `_model_spec` / `_model_params` — the model and invocation params effectively
     in use for the turn, written by `ConfigurableModelMiddleware` after a
-    successful model call. Lets `dcode -r` restore the model the resumed thread
+    successful model call. Lets `niki -r` restore the model the resumed thread
     was actually using instead of falling back to the user's global default.
 - `_last_model_request_at` / `_last_cache_model_spec` — UTC request-start time
     and requested model identity captured by `ConfigurableModelMiddleware` and

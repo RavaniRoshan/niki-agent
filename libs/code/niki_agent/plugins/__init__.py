@@ -1,4 +1,4 @@
-"""Plugin support for dcode."""
+"""Plugin support for niki."""
 
 from niki_agent.plugins.discovery import (
     add_local_marketplace,

@@ -86,7 +86,7 @@ _SUMMARY_TRIM_FALLBACK = 4_000
 
 
 class _RetryingModelInvoker(Runnable[LanguageModelInput, AIMessage]):
-    """Apply dcode's retry budget to one auxiliary model runnable."""
+    """Apply niki's retry budget to one auxiliary model runnable."""
 
     def __init__(self, model: BaseChatModel) -> None:
         self._model = model
@@ -97,7 +97,7 @@ class _RetryingModelInvoker(Runnable[LanguageModelInput, AIMessage]):
         config: RunnableConfig | None = None,
         **kwargs: Any,
     ) -> AIMessage:
-        """Invoke the model with dcode-owned retries.
+        """Invoke the model with niki-owned retries.
 
         Returns:
             The model response.
@@ -115,7 +115,7 @@ class _RetryingModelInvoker(Runnable[LanguageModelInput, AIMessage]):
         config: RunnableConfig | None = None,
         **kwargs: Any,
     ) -> AIMessage:
-        """Asynchronously invoke the model with dcode-owned retries.
+        """Asynchronously invoke the model with niki-owned retries.
 
         Returns:
             The model response.
@@ -129,18 +129,18 @@ class _RetryingModelInvoker(Runnable[LanguageModelInput, AIMessage]):
 
 
 def _require_helper_slot(helper: object, name: str, purpose: str) -> None:
-    """Fail loudly when an SDK summarization slot dcode overwrites is gone.
+    """Fail loudly when an SDK summarization slot niki overwrites is gone.
 
-    Every write dcode makes into `_lc_helper` replaces behavior the SDK would
+    Every write niki makes into `_lc_helper` replaces behavior the SDK would
     otherwise supply. Assigning to a renamed slot would create a new attribute
     nothing reads, leaving the SDK's own behavior in place -- a silent no-op
     that reports nothing. Checking first turns that into a loud failure.
 
     Args:
         helper: The SDK summarization helper being patched.
-        name: Attribute dcode is about to overwrite.
-        purpose: What dcode loses if the slot is gone, phrased to follow
-            "so dcode cannot ...".
+        name: Attribute niki is about to overwrite.
+        purpose: What niki loses if the slot is gone, phrased to follow
+            "so niki cannot ...".
 
     Raises:
         AttributeError: If the SDK no longer exposes the named slot.
@@ -148,7 +148,7 @@ def _require_helper_slot(helper: object, name: str, purpose: str) -> None:
     if hasattr(helper, name):
         return
     msg = (
-        f"{type(helper).__name__} exposes no {name!r} slot, so dcode cannot "
+        f"{type(helper).__name__} exposes no {name!r} slot, so niki cannot "
         f"{purpose}. The SDK's summarization internals have changed."
     )
     raise AttributeError(msg)
@@ -158,7 +158,7 @@ def _install_summary_model_retries(
     summarization: SummarizationMiddleware,
     model: BaseChatModel | None = None,
 ) -> None:
-    """Replace LangChain's generic summary retries with dcode's exact policy.
+    """Replace LangChain's generic summary retries with niki's exact policy.
 
     Also selects the model summaries are generated with, which is the only
     place a `--summarization-model` override takes effect.
@@ -194,7 +194,7 @@ def _install_summary_trim_limit(
         model: The model summaries are generated with.
     """
     helper = summarization._lc_helper
-    # dcode leaves trimming off by default: `create_summarization_middleware`
+    # niki leaves trimming off by default: `create_summarization_middleware`
     # passes `trim_tokens_to_summarize=None`, overriding LangChain's 4000, and
     # the helper then skips trimming entirely. So a renamed slot would send the
     # whole conversation to a model picked for being smaller than the main one.
@@ -1015,7 +1015,7 @@ class _ArchiveReadGuard:
 
 
 class CLICompactionMiddleware(SummarizationToolMiddleware):
-    """Add hook-aware automatic and server-owned compaction for dcode.
+    """Add hook-aware automatic and server-owned compaction for niki.
 
     The SDK tool's normal, model-initiated behavior remains unchanged.
     `_aplan_forced_compaction_update` is the state-only planning entry point
@@ -1626,7 +1626,7 @@ def _create_cli_compaction_middleware(
     summarization_model_spec: str | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> CLICompactionMiddleware:
-    """Create the dcode compaction middleware from the SDK configuration.
+    """Create the niki compaction middleware from the SDK configuration.
 
     Args:
         model: Startup model or model specification.
@@ -1716,7 +1716,7 @@ def _forced_offload_call_id() -> str:
 
 
 class OffloadOperation:
-    """Compact checkpoint state behind dcode's server-owned HTTP boundary."""
+    """Compact checkpoint state behind niki's server-owned HTTP boundary."""
 
     def __init__(
         self,

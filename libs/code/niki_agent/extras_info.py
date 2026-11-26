@@ -135,10 +135,10 @@ def _sdk_editable_record_root(dist: Distribution) -> Path | None:
 
 
 def _running_sdk_package_root() -> Path | None:
-    """Return the directory of the `deepagents` package importable in this process.
+    """Return the directory of the vendored SDK importable in this process.
 
     Located with `importlib.util.find_spec` rather than an `import`, so the
-    probe does not execute the SDK — dcode resolves the SDK version for trace
+    probe does not execute the SDK — niki resolves the SDK version for trace
     metadata without importing the SDK package, and a findable-but-broken SDK
     install must not fail here.
 
@@ -174,7 +174,7 @@ def _is_under(root: Path, candidate: Path) -> bool:
 
 
 def _editable_sdk_source_root() -> Path | None:
-    """Return the editable `deepagents` source root from package metadata.
+    """Return the editable vendored-SDK source root from package metadata.
 
     Scans every installed distribution named `deepagents` for PEP 610
     `direct_url.json` with `dir_info.editable: true`, and credits a record only
@@ -526,7 +526,7 @@ def collect_sdk_version_info() -> DistributionVersion:
 def sdk_requirement_from_cli(
     distribution_name: str = "niki-agent",
 ) -> Requirement | None:
-    """Return the base `deepagents` requirement declared by `niki-agent`.
+    """Return the base vendored-SDK requirement declared by `niki-agent`.
 
     Reads the installed distribution's `Requires-Dist` metadata and parses each
     entry with `packaging.Requirement`, returning the applicable base
@@ -601,7 +601,7 @@ def _sdk_requirement_from_entries(requirements: list[str]) -> Requirement | None
 
 
 def _sdk_requirement_from_cli_source(source_path: str | None) -> Requirement | None:
-    """Read the SDK requirement from an editable dcode source checkout.
+    """Read the SDK requirement from an editable niki source checkout.
 
     Editable installation metadata can lag the working tree after an update, so
     workspace diagnostics must use the live `pyproject.toml` dependency instead.
@@ -625,7 +625,7 @@ def _sdk_requirement_from_cli_source(source_path: str | None) -> Requirement | N
             return None
     except (OSError, TypeError, tomllib.TOMLDecodeError):
         logger.warning(
-            "Could not read deepagents requirement from editable dcode source",
+            "Could not read deepagents requirement from editable niki source",
             exc_info=True,
         )
         return None
@@ -704,7 +704,7 @@ def _resolve_source_path(path: str | None) -> Path | None:
 def _editable_sdk_is_cli_workspace_sibling(
     cli: DistributionVersion, sdk: DistributionVersion
 ) -> bool:
-    """Whether editable SDK and dcode installs are sibling monorepo packages.
+    """Whether editable SDK and niki installs are sibling monorepo packages.
 
     Returns:
         `True` for the known `<repo>/libs/code` and `<repo>/libs/deepagents`
@@ -738,7 +738,7 @@ def _uses_exact_requirement_as_effective_version(
 
     Returns:
         `True` when the exact pin is newer than every known editable SDK marker
-        and the SDK checkout is the monorepo sibling of the dcode checkout.
+        and the SDK checkout is the monorepo sibling of the niki checkout.
     """
     if not _editable_sdk_is_cli_workspace_sibling(cli, sdk):
         return False
@@ -955,12 +955,12 @@ def format_sdk_version_annotation(report: VersionReport) -> str:
 
 
 def resolve_sdk_version() -> tuple[str | None, DistributionMetadataStatus]:
-    """Resolve the diagnostic `deepagents` SDK version.
+    """Resolve the diagnostic vendored-SDK version.
 
     Compatibility wrapper for callers that only need one SDK version string and
     lookup status. Every editable install carries an `+editable` local segment,
     matching how the SDK stamps `lc_versions["deepagents"]`. For sibling monorepo
-    packages whose stable source marker trails dcode's exact SDK pin, the pin
+    packages whose stable source marker trails niki's exact SDK pin, the pin
     identifies the nearest published baseline the workspace HEAD represents.
 
     Returns:
@@ -1460,7 +1460,7 @@ def verify_interpreter_deps() -> None:
         else:
             msg = (
                 "Missing core dependency for the interpreter. "
-                "Reinstall dcode to restore langchain-quickjs, or relaunch with "
+                "Reinstall niki to restore langchain-quickjs, or relaunch with "
                 "--no-interpreter to skip it."
             )
         raise ImportError(msg)
@@ -1510,7 +1510,7 @@ CORE_DEPENDENCIES: tuple[str, ...] = (
 )
 """Core LangChain-ecosystem packages surfaced for editable installs.
 
-The deepagents SDK is reported separately by `/version`, so it is omitted
+The vendored SDK is reported separately by `/version`, so it is omitted
 here. These are the packages a local checkout is most likely to pin or
 override, so their resolved versions help diagnose editable environments.
 `langchain-quickjs` powers the built-in interpreter and is a core dependency

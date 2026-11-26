@@ -215,7 +215,7 @@ class CliProvider:
                 # the explicit "inherit the main agent model" instruction that
                 # `run_textual_cli_async` maps to `INHERIT_CLASSIFIER_MODEL`
                 # ahead of env and `config.toml`. `Unset` would abstain the CLI
-                # tier, and `dcode --auto-classifier-model "" config get
+                # tier, and `niki --auto-classifier-model "" config get
                 # models.auto_classifier` would report the very env/TOML
                 # classifier the launch ignores. Returning the sentinel keeps
                 # introspection and the launch path on the same value.

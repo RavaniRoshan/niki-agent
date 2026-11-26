@@ -21,11 +21,23 @@ ONBOARDING_MARKER_FILENAME = "onboarding_complete"
 GOAL_AUTO_ACCEPT_PROMPT_MARKER_FILENAME = "goal_auto_accept_criteria_prompted_v1"
 """Marker written after the first goal-criteria preference prompt is answered."""
 
-ONBOARDING_NAME_MEMORY_START = "<!-- deepagents:onboarding-name:start -->"
+ONBOARDING_NAME_MEMORY_START = "<!-- niki:onboarding-name:start -->"
 """Start marker for the managed onboarding name memory block."""
 
-ONBOARDING_NAME_MEMORY_END = "<!-- deepagents:onboarding-name:end -->"
+ONBOARDING_NAME_MEMORY_END = "<!-- niki:onboarding-name:end -->"
 """End marker for the managed onboarding name memory block."""
+
+LEGACY_ONBOARDING_NAME_MEMORY_START = "<!-- deepagents:onboarding-name:start -->"
+"""Start marker written before the product rename; still recognised on read."""
+
+LEGACY_ONBOARDING_NAME_MEMORY_END = "<!-- deepagents:onboarding-name:end -->"
+"""End marker written before the product rename; still recognised on read."""
+
+_MANAGED_REGION_MARKERS = (
+    (ONBOARDING_NAME_MEMORY_START, ONBOARDING_NAME_MEMORY_END),
+    (LEGACY_ONBOARDING_NAME_MEMORY_START, LEGACY_ONBOARDING_NAME_MEMORY_END),
+)
+"""Marker pairs that delimit a managed region, current pair first."""
 
 
 def onboarding_marker_path(state_dir: Path | None = None) -> Path:
@@ -216,16 +228,47 @@ def _onboarding_name_memory_block(name: str) -> str:
     )
 
 
+def _managed_region(text: str) -> tuple[int, int] | None:
+    """Return the span of the first well-formed managed region in `text`.
+
+    Returns:
+        `(start, end)` character offsets that include the end marker, or `None`
+            when neither the current nor the legacy marker pair spans content.
+    """
+    for start_marker, end_marker in _MANAGED_REGION_MARKERS:
+        start = text.find(start_marker)
+        end = text.find(end_marker)
+        if start != -1 and end != -1 and start < end:
+            return start, end + len(end_marker)
+    return None
+
+
+def normalize_onboarding_name_markers(block: str) -> str:
+    """Rewrite legacy managed-block markers in `block` to the current ones.
+
+    Args:
+        block: A managed block that may carry the pre-rename markers.
+
+    Returns:
+        `block` with any legacy marker replaced by its current counterpart.
+    """
+    return block.replace(
+        LEGACY_ONBOARDING_NAME_MEMORY_START, ONBOARDING_NAME_MEMORY_START
+    ).replace(LEGACY_ONBOARDING_NAME_MEMORY_END, ONBOARDING_NAME_MEMORY_END)
+
+
 def _upsert_onboarding_name_memory(existing: str, block: str) -> str:
     """Insert or replace the managed onboarding name memory block.
+
+    A region written under the pre-rename markers is replaced wholesale, so the
+    rewrite migrates it to the current markers in place.
 
     Returns:
         Updated memory file content.
     """
-    start = existing.find(ONBOARDING_NAME_MEMORY_START)
-    end = existing.find(ONBOARDING_NAME_MEMORY_END)
-    if start != -1 and end != -1 and start < end:
-        end += len(ONBOARDING_NAME_MEMORY_END)
+    region = _managed_region(existing)
+    if region is not None:
+        start, end = region
         prefix = existing[:start].rstrip()
         suffix = existing[end:].strip()
         parts = [part for part in (prefix, block, suffix) if part]
@@ -247,13 +290,14 @@ def extract_onboarding_name_block(text: str) -> str | None:
 
     Returns:
         The substring from the start marker through the end marker, or `None`
-            when a well-formed block is absent.
+            when a well-formed block is absent. Blocks written under the
+            pre-rename markers are returned as they appear in `text`.
     """
-    start = text.find(ONBOARDING_NAME_MEMORY_START)
-    end = text.find(ONBOARDING_NAME_MEMORY_END)
-    if start == -1 or end == -1 or start >= end:
+    region = _managed_region(text)
+    if region is None:
         return None
-    return text[start : end + len(ONBOARDING_NAME_MEMORY_END)]
+    start, end = region
+    return text[start:end]
 
 
 def strip_onboarding_name_markers(text: str) -> str:
@@ -269,9 +313,9 @@ def strip_onboarding_name_markers(text: str) -> str:
     Returns:
         `text` with all start and end marker strings removed.
     """
-    return text.replace(ONBOARDING_NAME_MEMORY_START, "").replace(
-        ONBOARDING_NAME_MEMORY_END, ""
-    )
+    for start_marker, end_marker in _MANAGED_REGION_MARKERS:
+        text = text.replace(start_marker, "").replace(end_marker, "")
+    return text
 
 
 def should_run_onboarding(state_dir: Path | None = None) -> bool:

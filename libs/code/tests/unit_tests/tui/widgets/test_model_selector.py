@@ -42,7 +42,7 @@ def _seed_provider_credentials(
     Also redirects `DEFAULT_CONFIG_PATH` to a (nonexistent) temp file and
     clears the process-wide config cache. The selector now resolves provider
     labels via `ModelConfig.load()`, which defaults to the developer's real
-    `~/.deepagents/config.toml`; a local `display_name`/`short_name` override
+    `~/.niki/config.toml`; a local `display_name`/`short_name` override
     would otherwise flip label assertions. This keeps the suite hermetic.
     """
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
@@ -378,7 +378,7 @@ class TestDefaultModelScope:
 
         Plain `pip install ...` would target the caller's current Python
         environment; for `uv tool` installs (the supported path) that leaves
-        the provider unavailable to `dcode`. The remedy must flow through
+        the provider unavailable to `niki`. The remedy must flow through
         `safe_install_extra_recovery_command` like `/install` failures do.
         """
         from niki_agent.tui.widgets import model_selector

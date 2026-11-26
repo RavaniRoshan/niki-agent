@@ -12773,7 +12773,7 @@ class TestShellCommandInterrupt:
         monkeypatch: pytest.MonkeyPatch,
         incognito: bool,
     ) -> None:
-        """User shell commands keep dcode tracing credentials isolated."""
+        """User shell commands keep niki tracing credentials isolated."""
         import json
 
         import niki_agent.config as config_mod
@@ -12791,9 +12791,9 @@ class TestShellCommandInterrupt:
         launch = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
         launch["LANGSMITH_API_KEY"] = "shell-key"
         carrier = json.dumps({"launch": launch, "user": dict(launch)})
-        monkeypatch.setenv("LANGSMITH_API_KEY", "dcode-key")
+        monkeypatch.setenv("LANGSMITH_API_KEY", "niki-key")
         monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
-        monkeypatch.setenv("NIKI_LANGSMITH_PROFILE", "dcode-profile")
+        monkeypatch.setenv("NIKI_LANGSMITH_PROFILE", "niki-profile")
         monkeypatch.setenv(config_mod._USER_LANGSMITH_ENV_CARRIER, carrier)
         monkeypatch.setenv("SHELL_TEST_UNRELATED", "preserved")
         monkeypatch.setenv("NIKI_SUPPRESS_ENV_OVERRIDE_WARNING", "1")
@@ -12843,7 +12843,7 @@ class TestShellCommandInterrupt:
 
         launch = dict.fromkeys(config_mod._USER_LANGSMITH_ENV_VARS)
         carrier = json.dumps({"launch": launch, "user": dict(launch)})
-        monkeypatch.setenv("LANGSMITH_API_KEY", "dcode-only-key")
+        monkeypatch.setenv("LANGSMITH_API_KEY", "niki-only-key")
         monkeypatch.setenv("NIKI_LANGSMITH_API_KEY", "prefixed-key")
         monkeypatch.setenv(config_mod._USER_LANGSMITH_ENV_CARRIER, carrier)
         mock_proc = AsyncMock()
@@ -12866,7 +12866,7 @@ class TestShellCommandInterrupt:
         child_env = create_shell.call_args.kwargs["env"]
         assert "LANGSMITH_API_KEY" not in child_env
         assert "NIKI_LANGSMITH_API_KEY" not in child_env
-        assert os.environ["LANGSMITH_API_KEY"] == "dcode-only-key"
+        assert os.environ["LANGSMITH_API_KEY"] == "niki-only-key"
 
     @staticmethod
     def _shell_context_message(
@@ -18063,7 +18063,7 @@ class TestSwitchAgentGuards:
     """Guards in `_switch_agent` before the restart worker is launched."""
 
     async def test_rejects_missing_agent_dir(self, tmp_path: Path) -> None:
-        """Missing `~/.deepagents/<name>/` rejects before launching a worker."""
+        """Missing `~/.niki/<name>/` rejects before launching a worker."""
         app = DeepAgentsApp(
             agent=MagicMock(),
             assistant_id="coder",
@@ -18425,10 +18425,10 @@ class TestRestartServerForAgentSwap:
     async def test_resume_hint_echoes_launch_command(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The hint names the command the user launched, not a hardcoded `dcode`.
+        """The hint names the command the user launched, not a fixed command name.
 
         Users commonly expose a per-checkout shim (a renamed symlink to the
-        package's `dcode` console script), so a hardcoded name would tell them
+        package's `niki` console script), so a hardcoded name would tell them
         to run something that does not exist on their PATH.
         """
         from niki_agent._env_vars import INVOKED_AS
@@ -18458,7 +18458,7 @@ class TestRestartServerForAgentSwap:
 
         plain = [str(getattr(m, "_content", m)) for m in mounted]
         assert any("abc -r old-thread" in s and "to resume" in s for s in plain)
-        assert not any("dcode" in s for s in plain)
+        assert not any("niki" in s for s in plain)
 
     async def test_no_resume_hint_when_only_local_user_messages(self) -> None:
         """Local-only slash commands don't count as agent-side activity.
@@ -20095,7 +20095,7 @@ class TestNotificationCenterIntegration:
         )
 
         shadow = ShadowedDcode(
-            shadowing_bin=Path("/opt/stale/bin/dcode"),
+            shadowing_bin=Path("/opt/stale/bin/niki"),
             upgraded_bin_dir=Path("/home/user/.local/bin"),
         )
 
@@ -20133,8 +20133,8 @@ class TestNotificationCenterIntegration:
             assert isinstance(app.screen, UpdateProgressScreen)
             status = app.screen.query(Static).filter(".up-status").first()
             assert "Update complete" not in str(status.render())
-            assert "/opt/stale/bin/dcode" in str(status.render())
-            assert "/home/user/.local/bin/dcode" in str(status.render())
+            assert "/opt/stale/bin/niki" in str(status.render())
+            assert "/home/user/.local/bin/niki" in str(status.render())
             # The splash must keep advertising the running version: a stale
             # shim earlier on PATH means relaunching keeps the old binary, so
             # bumping the banner here would promise an upgrade that never
@@ -20157,7 +20157,7 @@ class TestNotificationCenterIntegration:
         )
         # The warning toast names both paths so the user can act on it.
         assert any(
-            "/opt/stale/bin/dcode" in m and "/home/user/.local/bin" in m
+            "/opt/stale/bin/niki" in m and "/home/user/.local/bin" in m
             for m in notified
         )
 
@@ -20182,7 +20182,7 @@ class TestNotificationCenterIntegration:
         from niki_agent.update_check import ShadowedDcode
 
         shadow = ShadowedDcode(
-            shadowing_bin=Path("/opt/stale/bin/dcode"),
+            shadowing_bin=Path("/opt/stale/bin/niki"),
             upgraded_bin_dir=Path("/home/user/.local/bin"),
         )
 
@@ -20229,7 +20229,7 @@ class TestNotificationCenterIntegration:
         )
         # The warning toast names both paths so the user can act on it.
         assert any(
-            "/opt/stale/bin/dcode" in m and "/home/user/.local/bin" in m
+            "/opt/stale/bin/niki" in m and "/home/user/.local/bin" in m
             for m in notified
         )
 
@@ -20478,7 +20478,7 @@ class TestNotificationCenterIntegration:
         assert messages == [
             (
                 f"Update available: v9.9.9. Currently installed: {__version__}. "
-                "Quit and relaunch dcode to install the update automatically."
+                "Quit and relaunch niki to install the update automatically."
             )
         ]
         app.notify.assert_not_called()  # ty: ignore
@@ -20511,7 +20511,7 @@ class TestNotificationCenterIntegration:
                 await asyncio.wait_for(app.workers.wait_for_complete(), timeout=5)
                 messages = [message.render().plain for message in app.query(AppMessage)]
 
-        assert any("Quit and relaunch dcode" in message for message in messages)
+        assert any("Quit and relaunch niki" in message for message in messages)
         mark_notified.assert_called_once_with("9.9.9")
 
     async def test_auto_update_falls_back_to_a_toast_when_the_mount_fails(
@@ -20537,7 +20537,7 @@ class TestNotificationCenterIntegration:
         mark_notified.assert_not_called()
         assert app._update_message_versions == set()
         app.notify.assert_called_once()  # ty: ignore
-        assert "Quit and relaunch dcode" in app.notify.call_args.args[0]  # ty: ignore
+        assert "Quit and relaunch niki" in app.notify.call_args.args[0]  # ty: ignore
 
     async def test_open_update_available_modal_over_modal_toasts_hint(self) -> None:
         """Another modal already open: update modal is deferred with a hint toast."""
@@ -20900,7 +20900,7 @@ class TestPrewarmDeferredImports:
 class TestPrewarmAwait:
     """`_start_server_background` must wait for the prewarm worker first.
 
-    The prewarm worker imports `deepagents`/LangChain in a separate thread
+    The prewarm worker imports the vendored SDK/LangChain in a separate thread
     via `asyncio.to_thread`. If `_start_server_background` triggers the
     same module graph from the event-loop thread before prewarm finishes,
     Python's per-module locks form a cycle and CPython raises
@@ -21064,8 +21064,8 @@ class TestPrewarmAwait:
     ) -> None:
         """Locks the call-order invariant that prevents an import deadlock.
 
-        Skill discovery and prewarm import overlapping parts of the Deep Agents
-        graph in separate workers. A regression that drops the
+        Skill discovery and prewarm import overlapping parts of the vendored
+        SDK graph in separate workers. A regression that drops the
         `await _await_prewarm_imports()` re-introduces the production crash;
         this is the only test that catches that ordering contract.
         """
@@ -21260,7 +21260,7 @@ class TestStaleInstallBanner:
             await pilot.pause()
             assert header.display is True
 
-            # The release-time cache went cold (e.g. a concurrent `dcode`
+            # The release-time cache went cold (e.g. a concurrent `niki`
             # rewrote it) while the update is still outstanding.
             app._refresh_stale_install_header(None, update_available=True)
             await pilot.pause()
@@ -21314,7 +21314,7 @@ class TestStaleInstallBanner:
         assert app._installation_stale is False
 
     async def test_runtime_fresh_result_preserves_runtime_sub_title(self) -> None:
-        """A fresh result only restores a stale subtitle still owned by dcode."""
+        """A fresh result only restores a stale subtitle still owned by niki."""
         app = _app_without_stale_banner()
 
         app._refresh_stale_install_header(7, update_available=True)
@@ -22647,7 +22647,7 @@ class TestSetSpinnerTerminalProgress:
         """Point the config path at an empty temp dir and clear the env override.
 
         Without this, `_load_terminal_progress_preference` reads the developer's
-        real `~/.deepagents/config.toml` during `DeepAgentsApp.__init__`, so a
+        real `~/.niki/config.toml` during `DeepAgentsApp.__init__`, so a
         local `[ui].terminal_progress = false` — or an exported
         `NIKI_TERMINAL_PROGRESS`, which outranks it — would silently
         flip the positive-path tests below to failing. Tests that need a

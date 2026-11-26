@@ -7,7 +7,7 @@ the picker and the write path need that list.
 This module is imported on the CLI startup path (`_paths.get_agent_dir` and
 `main`) and by the agent picker. Keep its module level free of heavy imports.
 The constants are read inside the function, so importing this module never
-pulls in `deepagents` or LangChain. The function itself must stay light too,
+pulls in the vendored SDK or LangChain. The function itself must stay light too,
 because it runs at startup. See `AGENTS.md` § Startup performance.
 """
 
@@ -25,7 +25,7 @@ def reserved_agent_dir_names() -> frozenset[str]:
 
     These directories are created by the app for its own use and must never
     appear in the agent picker — even if they contain an `AGENTS.md` file
-    (e.g. after `dcode -a plugins` stamps the marker via memory setup):
+    (e.g. after `niki -a plugins` stamps the marker via memory setup):
 
     - `bin/` holds the managed `rg` binary when the shared installation
       directory is unwritable (`managed_tools.FALLBACK_BIN_DIR`).

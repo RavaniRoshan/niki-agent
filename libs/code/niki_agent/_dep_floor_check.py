@@ -491,7 +491,7 @@ def format_dep_floor_warning(violations: list[_FloorViolation]) -> str:
     """
     lines = [
         (
-            "this editable dcode install is running against dependencies "
+            "this editable niki install is running against dependencies "
             "older than the floors declared in the checkout's pyproject.toml:"
         )
     ]
@@ -615,7 +615,7 @@ def is_dep_floor_mismatch_muted(fingerprint: str) -> bool:
     `Path.replace`, so a concurrent mute is either wholly visible or wholly
     absent — never torn. Locking here would instead put a `filelock` import
     and a 5-second timeout on the startup path of every editable launch, and
-    a second `dcode` mid-write would stall this one for no benefit.
+    a second `niki` mid-write would stall this one for no benefit.
 
     Args:
         fingerprint: Fingerprint of the currently detected mismatch.

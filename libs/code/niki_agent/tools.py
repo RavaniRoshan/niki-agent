@@ -397,7 +397,7 @@ def is_web_search_tool(candidate: object) -> bool:
 
 @tool
 def get_current_thread_id() -> str:
-    """Get the current Deep Agents thread ID for LangSmith or MCP tooling.
+    """Get the current Niki Agent thread ID for LangSmith or MCP tooling.
 
     Returns:
         The current `configurable.thread_id`, or an explanatory message if missing.

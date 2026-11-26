@@ -378,7 +378,7 @@ class RubricGraderState(AgentState[GraderResponse]):
 
 
 def _rubric_grader_messages(messages: list[AnyMessage]) -> list[AnyMessage]:
-    """Remove dcode control turns from the grader transcript.
+    """Remove niki control turns from the grader transcript.
 
     Returns:
         Transcript messages visible to the grader.

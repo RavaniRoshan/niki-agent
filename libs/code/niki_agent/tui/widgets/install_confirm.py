@@ -171,7 +171,7 @@ class InstallPackageConfirmScreen(_InstallConfirmScreen):
         return Content.assemble(
             "Installing ",
             _package_link(self._package, hovered=hovered),
-            " runs third-party code in the dcode environment.",
+            " runs third-party code in the niki environment.",
         )
 
     def compose(self) -> ComposeResult:
@@ -337,18 +337,18 @@ class InstallProviderConfirmScreen(_InstallConfirmScreen):
             return Content.assemble(
                 "To use ",
                 (self._model_spec, "bold"),
-                ", dcode needs to install the ",
+                ", niki needs to install the ",
                 package,
                 " integration. This will add the provider package to your "
-                "dcode environment.",
+                "niki environment.",
             )
         return Content.assemble(
             "To add a key for ",
             (self._provider_label(), "bold"),
-            ", dcode needs to install the ",
+            ", niki needs to install the ",
             package,
             " integration. This will add the provider package to your "
-            "dcode environment.",
+            "niki environment.",
         )
 
     def compose(self) -> ComposeResult:

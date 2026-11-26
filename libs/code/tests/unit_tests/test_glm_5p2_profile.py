@@ -1,4 +1,4 @@
-"""Tests for the GLM-5.2 Deep Agents Code harness profile."""
+"""Tests for the GLM-5.2 Niki Agent harness profile."""
 
 from __future__ import annotations
 

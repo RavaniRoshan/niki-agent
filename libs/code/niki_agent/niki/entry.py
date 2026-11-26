@@ -1,10 +1,9 @@
 """Niki's presentation entry point.
 
-`niki` is Niki's primary console script. This module adds what `cli_main` alone
+`niki` is Niki's only console script. This module adds what `cli_main` alone
 does not: Niki's key-reference help screen and Niki's glyph vocabulary. The
-deprecated aliases (`dcode`, `deepagents-code`) go straight to `cli_main`, so
-they keep upstream's argparse help and glyphs during their two-minor-version
-deprecation window.
+module entry point (`python -m niki_agent`) goes straight to `cli_main`, so it
+keeps the argparse help and default glyphs.
 
 The entry point deliberately does the cheap things itself and delegates the rest:
 
@@ -13,7 +12,7 @@ The entry point deliberately does the cheap things itself and delegates the rest
 - `--help` / `-h` renders the generated keymap screen without starting Textual.
 - The network policy is applied before the app reads its settings.
 - Everything else hands off to `cli_main`, so tools, permissions, approvals,
-  slash commands, and session storage are shared with the aliases.
+  slash commands, and session storage are shared with the module entry point.
 
 `NikiApp` is the app class, with Niki's title and presentation defaults. Wiring
 it in is done by `install_niki_app_class`, which must run before the app is

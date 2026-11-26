@@ -47,7 +47,7 @@ def _ensure_runtime() -> None:
         raise SystemExit(msg)
 
     candidates: list[Path] = []
-    for command in ("niki", "dcode", "niki-agent"):
+    for command in ("niki", "niki-agent"):
         executable = shutil.which(command)
         if not executable:
             continue
@@ -120,7 +120,7 @@ def _default_db_path() -> Path:
         # silently inspect a different profile than the app uses.
         configured = os.environ.get("NIKI_HOME")
         if not configured:
-            home = Path.home() / ".deepagents"
+            home = Path.home() / ".niki"
         elif configured.startswith("~/"):
             home = Path.home() / configured[2:].lstrip("/")
         elif configured.startswith("~") or not Path(configured).is_absolute():

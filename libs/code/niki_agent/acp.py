@@ -1,4 +1,4 @@
-"""Dcode-specific ACP approval-mode adapter."""
+"""Niki-specific ACP approval-mode adapter."""
 
 from __future__ import annotations
 

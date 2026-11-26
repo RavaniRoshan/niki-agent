@@ -23,7 +23,7 @@ least as still as an animated one, not more.
 
 Nothing here is imported at package import time. `install_niki_glyphs()` in
 `entry.py` binds it, and only when the process was launched as `niki` -- so
-`dcode` keeps upstream's glyphs exactly.
+`niki` keeps upstream's glyphs exactly.
 """
 
 from __future__ import annotations

@@ -246,7 +246,7 @@ def resolve_mcp_config(
             kind=ConfigErrorKind.NO_CONFIG_FOUND,
             message=(
                 "No MCP config file found in any auto-discovered location. "
-                "Pass --mcp-config <path>, or run `dcode mcp login --help` "
+                "Pass --mcp-config <path>, or run `niki mcp login --help` "
                 "to see the search paths and config format."
             ),
         )
@@ -443,7 +443,7 @@ def _policy_error_message(policy_error: str) -> str:
 def format_policy_error_notice(policy_error: str | None) -> str:
     """Build the CLI-style hint for an unreadable user trust policy.
 
-    Surfaced by `dcode mcp login` so a `config.toml` read failure is never
+    Surfaced by `niki mcp login` so a `config.toml` read failure is never
     swallowed just because a user-level config or an env-enabled server still
     loaded — and so the reason is not misattributed to an "untrusted project"
     when the real fix is repairing `config.toml`.
@@ -474,7 +474,7 @@ def format_untrusted_project_notice(paths: tuple[Path, ...]) -> str:
     return (
         "Skipping untrusted project MCP server entries "
         f"(not yet approved or disabled): {skipped}. "
-        "Approve them by running `dcode` in this project, or "
+        "Approve them by running `niki` in this project, or "
         "pass --mcp-config <path> to use the file explicitly."
     )
 
@@ -483,7 +483,7 @@ def format_legacy_ignored_notice(names: tuple[str, ...]) -> str:
     """Build the CLI-style hint for servers dropped by the legacy-key removal.
 
     Mirrors the `resolve_and_load_mcp_tools` migration message so
-    non-interactive `dcode mcp login` explains why a previously allowlisted
+    non-interactive `niki mcp login` explains why a previously allowlisted
     server stopped loading instead of leaving it to vanish silently.
 
     Args:
@@ -498,7 +498,7 @@ def format_legacy_ignored_notice(names: tuple[str, ...]) -> str:
     ignored = ", ".join(names)
     return (
         "[mcp].enabled_project_servers is no longer used; re-approve by "
-        f"running `dcode` in this project to keep loading: {ignored}"
+        f"running `niki` in this project to keep loading: {ignored}"
     )
 
 
@@ -526,7 +526,7 @@ def format_legacy_env_ignored_notice(legacy_env_ignored: bool) -> str:
 def format_malformed_approvals_notice(count: int) -> str:
     """Build the CLI-style hint for dropped malformed saved approvals.
 
-    Mirrors `format_legacy_ignored_notice` so non-interactive `dcode mcp login`
+    Mirrors `format_legacy_ignored_notice` so non-interactive `niki mcp login`
     explains why a previously-approved server stopped loading (a corrupt saved
     approval) instead of leaving it to vanish silently.
 
@@ -542,7 +542,7 @@ def format_malformed_approvals_notice(count: int) -> str:
     entry_word = "entry" if count == 1 else "entries"
     return (
         f"{count} [mcp].enabled_project_server_approvals {entry_word} could not "
-        "be read and were ignored; re-approve by running `dcode` in this project "
+        "be read and were ignored; re-approve by running `niki` in this project "
         "to keep loading affected servers"
     )
 
@@ -550,7 +550,7 @@ def format_malformed_approvals_notice(count: int) -> str:
 def format_load_errors_notice(load_errors: tuple[tuple[Path, str], ...]) -> str:
     """Build the CLI-style hint for discovered configs that failed to load.
 
-    Surfaced by `dcode mcp login` on a partially successful resolution so a
+    Surfaced by `niki mcp login` on a partially successful resolution so a
     broken `.mcp.json` is reported instead of silently dropped while another
     config still loads — matching the runtime loader
     (`resolve_and_load_mcp_tools`), which emits the same failures as error rows.

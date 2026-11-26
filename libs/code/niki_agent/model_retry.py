@@ -688,7 +688,7 @@ def _auxiliary_max_retries(model: object) -> int:
     if resolved >= 0:
         return resolved
     logger.warning(
-        "Model %s carries no dcode retry metadata; auxiliary calls fall back "
+        "Model %s carries no niki retry metadata; auxiliary calls fall back "
         "to %d retries and its own SDK retry loop may still be active",
         type(model).__name__,
         DEFAULT_MODEL_RETRIES,
@@ -754,7 +754,7 @@ def retry_model_call[ResultT](
     """Run a non-streaming auxiliary model call with its configured retry budget.
 
     Args:
-        model: Model carrying dcode retry metadata when dcode owns its SDK retries.
+        model: Model carrying niki retry metadata when niki owns its SDK retries.
         call: Fresh invocation callable to run for each attempt.
         max_total_delay: Total time this caller can spend sleeping between
             attempts, for callers running under an enclosing deadline. `None`
@@ -780,7 +780,7 @@ async def aretry_model_call[ResultT](
     """Run an asynchronous auxiliary model call with its configured retry budget.
 
     Args:
-        model: Model carrying dcode retry metadata when dcode owns its SDK retries.
+        model: Model carrying niki retry metadata when niki owns its SDK retries.
         call: Fresh async invocation callable to run for each attempt.
         max_total_delay: Total time this caller can spend sleeping between
             attempts, for callers running under an enclosing deadline. `None`

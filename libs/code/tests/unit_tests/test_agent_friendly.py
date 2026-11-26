@@ -242,7 +242,7 @@ class TestErrorMessageHints:
                 reset_agent("coder", "nonexistent")
 
         output = buf.getvalue()
-        assert "dcode agents list" in output
+        assert "niki agents list" in output
 
 
 # ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 @plugin_mutation_lock()
 def add_local_marketplace(path: str | Path) -> PluginMarketplace:
-    """Add a local marketplace to dcode state.
+    """Add a local marketplace to niki state.
 
     Args:
         path: Marketplace root directory.

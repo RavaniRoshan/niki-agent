@@ -1,12 +1,12 @@
 """Auto-install pinned upstream binaries for optional tools.
 
 Today this only manages `ripgrep`. The SDK shells out to `rg` via `PATH`,
-so installing inside the dcode tool environment and prepending that directory
+so installing inside the niki tool environment and prepending that directory
 to `os.environ["PATH"]` is sufficient — no SDK change required. Keeping helper
 binaries installation-scoped lets multiple profiles reuse one verified binary.
 
 `FALLBACK_BIN_DIR` covers the case where that shared directory is not writable
-(a system or root-owned `sys.prefix`). Run `dcode doctor` to see which of the
+(a system or root-owned `sys.prefix`). Run `niki doctor` to see which of the
 two locations is actually in use.
 
 The pinned `RIPGREP_VERSION`, archive hashes in `RIPGREP_ASSETS`, and extracted
@@ -236,7 +236,7 @@ def _artifact_not_found_error(
         message=(
             f"Managed ripgrep artifact for {platform_name}/{arch} was not found "
             f"in pinned ripgrep {RIPGREP_VERSION}. Install ripgrep manually, or "
-            "try a newer dcode version."
+            "try a newer niki version."
         ),
     )
 

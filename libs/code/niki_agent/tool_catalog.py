@@ -1,6 +1,6 @@
 """Enumerate the tools available to the agent.
 
-Backs two entry points: the `dcode tools list` CLI command (`_run_tools_list`)
+Backs two entry points: the `niki tools list` CLI command (`_run_tools_list`)
 and the interactive `/tools` slash command (`app._handle_tools_command`).
 
 The tool set is read from the *real* tool objects the agent binds rather than a
@@ -126,7 +126,7 @@ class UnavailableServer:
 
 @dataclass(frozen=True, slots=True)
 class ToolCatalog:
-    """Everything `dcode tools list` needs to render, in display order."""
+    """Everything `niki tools list` needs to render, in display order."""
 
     groups: tuple[ToolGroup, ...]
     """Built-in group first, then one group per MCP server that exposes tools."""
@@ -209,7 +209,7 @@ def collect_built_in_tools(
     Tavily is configured.
 
     Args:
-        assistant_id: Resolved dcode agent identifier to compile.
+        assistant_id: Resolved niki agent identifier to compile.
         enable_interpreter: Wire the JS interpreter middleware so `js_eval`
             appears when the default agent would bind it. Callers should pass
             the resolved runtime setting (see `_resolve_enable_interpreter`) so
@@ -248,7 +248,7 @@ def collect_built_in_tools(
         fs_tools=fs_tools,
         # Enumeration only -- this graph is never invoked. Enforcing
         # `models.allowed` here would make a subagent that names a blocked
-        # model break `dcode tools list` instead of just being unusable.
+        # model break `niki tools list` instead of just being unusable.
         enforce_model_policy=False,
     )
     tools = collect_tools_from_agent(agent)
@@ -359,7 +359,7 @@ def collect_mcp_catalog(
 
     Best-effort: if discovery itself raises (no config, offline, load error),
     the technical detail is logged and a generic `mcp_error` message is
-    returned so `dcode tools list` still renders the built-in tools while
+    returned so `niki tools list` still renders the built-in tools while
     telling the user discovery failed. Servers that loaded but expose no tools
     are reported as `UnavailableServer`s (errored, needing login, or disabled)
     rather than silently dropped — surfacing exactly what a user running this
@@ -535,10 +535,10 @@ def collect_catalog(
     mcp_config_path: str | None = None,
     trust_project_mcp: bool | None = None,
 ) -> ToolCatalog:
-    """Collect everything `dcode tools list` renders.
+    """Collect everything `niki tools list` renders.
 
     Args:
-        assistant_id: Resolved dcode agent identifier to compile for built-in
+        assistant_id: Resolved niki agent identifier to compile for built-in
             tools, including any agent-specific subagents.
         enable_interpreter: Whether the default agent binds `js_eval`; forwarded
             to `collect_built_in_tools`.

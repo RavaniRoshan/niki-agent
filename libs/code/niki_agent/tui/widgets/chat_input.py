@@ -612,7 +612,7 @@ class ChatTextArea(PasteBurstTextArea):
     """Whether ctrl+z suspends the process instead of undoing text.
 
     Niki's composer turns this on post-mount; the default leaves Textual's
-    `TextArea` undo binding in charge, which is what `dcode` expects.
+    `TextArea` undo binding in charge, which is what `niki` expects.
     """
 
     _skip_history_change_events: int
@@ -1075,7 +1075,7 @@ class ChatTextArea(PasteBurstTextArea):
 
         The action lives here rather than on the app so modals and other text
         surfaces keep their own Ctrl+Z undo. Textual resolves one binding per
-        key, so the key stays consumed either way; `dcode` gets Textual's undo
+        key, so the key stays consumed either way; `niki` gets Textual's undo
         through the same binding, and only Niki's composer suspends.
         """
         if self.suspend_on_ctrl_z:
@@ -2425,7 +2425,7 @@ class ChatInput(Vertical):
     """Hint shown in an empty chat input.
 
     Empty upstream. The Niki fork sets its own hint per instance after mount, so
-    `dcode` keeps its hint-free composer.
+    `niki` keeps its hint-free composer.
     """
 
     def __init__(

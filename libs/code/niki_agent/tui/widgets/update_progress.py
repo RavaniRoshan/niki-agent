@@ -146,7 +146,7 @@ class UpdateProgressScreen(ModalScreen[None]):
             Static widgets for status, command, output tail, log path, and help.
         """
         with Vertical():
-            yield Static("Updating dcode", classes="up-title")
+            yield Static("Updating niki", classes="up-title")
             with Horizontal(classes="up-status-row"):
                 self._spinner_widget = Static(
                     self._spinner.current_frame(),
@@ -202,7 +202,7 @@ class UpdateProgressScreen(ModalScreen[None]):
         self._done = True
         self._done_glyph = get_glyphs().checkmark
         self._status = (
-            f"Update complete. Quit and relaunch dcode to use v{self._latest}."
+            f"Update complete. Quit and relaunch niki to use v{self._latest}."
         )
         self._stop_spinner_timer()
         self._refresh_status()

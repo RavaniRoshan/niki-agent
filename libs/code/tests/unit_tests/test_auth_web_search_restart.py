@@ -248,7 +248,7 @@ class TestOfferRestartForWebSearch:
             str(c.args[0]._content)
             for c in app._mount_message.await_args_list  # ty: ignore
         )
-        assert "Relaunch dcode" in contents
+        assert "Relaunch niki" in contents
         assert "web search" in contents
         assert "/restart" not in contents
 

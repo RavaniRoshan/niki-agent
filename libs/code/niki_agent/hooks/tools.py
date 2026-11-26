@@ -1,4 +1,4 @@
-"""Native dcode tool vocabulary mapped to compatible wire names."""
+"""Native niki tool vocabulary mapped to compatible wire names."""
 
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def to_wire_tool_name(
     """Map a native tool name to the compatible wire tool name.
 
     Args:
-        name: Native dcode or already-compatible tool name.
+        name: Native niki or already-compatible tool name.
         mcp_server: Owning MCP server when known from tool metadata.
 
     Returns:
@@ -120,7 +120,7 @@ def to_wire_tool_input(name: str, args: JsonObject) -> JsonObject:
     """Map native tool arguments to the compatible wire input object.
 
     Args:
-        name: Native dcode tool name (before wire renaming).
+        name: Native niki tool name (before wire renaming).
         args: Native tool-call arguments.
 
     Returns:

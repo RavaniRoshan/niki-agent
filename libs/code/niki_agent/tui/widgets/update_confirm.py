@@ -118,7 +118,7 @@ class _DependencyConfirmScreen(ModalScreen[bool]):
 
 
 class UpdateBeforeDependenciesConfirmScreen(_DependencyConfirmScreen):
-    """Confirmation overlay before `/update --deps` upgrades dcode itself.
+    """Confirmation overlay before `/update --deps` upgrades niki itself.
 
     Dismisses with `True` when the user chooses the app update first and `False`
     when they prefer to refresh dependencies for the current app version.
@@ -137,13 +137,13 @@ class UpdateBeforeDependenciesConfirmScreen(_DependencyConfirmScreen):
             latest: Latest available `niki-agent` version.
         """
         super().__init__(
-            title="Update dcode first?",
+            title="Update niki first?",
             body=(
                 f"A newer niki-agent version is available ({current} -> "
-                f"{latest}). Update dcode now, or refresh dependencies for the "
+                f"{latest}). Update niki now, or refresh dependencies for the "
                 "current version you already have."
             ),
-            help_text="Enter to update dcode, Esc to refresh current dependencies",
+            help_text="Enter to update niki, Esc to refresh current dependencies",
         )
 
 

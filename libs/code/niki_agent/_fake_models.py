@@ -1,7 +1,7 @@
 """Fake chat model base shared by integration tests and tool enumeration.
 
 Holds the tool-binding base that both the local integration-test fakes
-(`_testing_models`) and the `dcode tools list` tool-enumeration path
+(`_testing_models`) and the `niki tools list` tool-enumeration path
 (`tool_catalog._CatalogModel`) build on. It lives in a use-neutral module — not
 under a `_testing_`-prefixed name — so a production import path never depends on
 something that reads as test-only and might be pruned or excluded from the wheel.

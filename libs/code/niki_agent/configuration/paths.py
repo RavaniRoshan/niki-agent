@@ -144,7 +144,7 @@ def _prefer_legacy_policy(
 ) -> ResolvedManagedPath:
     """Fall back to the pre-rename managed config when only it exists.
 
-    Administrators that deployed policy at the old `dcode` location keep
+    Administrators that deployed policy at the pre-rename location keep
     working after the rename; the primary path wins as soon as a file appears
     there.
 
@@ -174,7 +174,7 @@ def resolve_managed_path(
 
     Returns:
         The path for the platform, paired with the reason it is a guess. When
-        only the pre-rename `dcode` location holds a file, that path is
+        only the pre-rename location holds a file, that path is
         returned so deployed policy keeps applying.
     """
     primary, legacy = _platform_paths(platform, environ)
@@ -196,7 +196,7 @@ def managed_config_path(
 
     Returns:
         The managed-config path for the platform, preferring the legacy
-        `dcode` location only when it is the one that exists.
+        pre-rename location only when it is the one that exists.
     """
     primary, legacy = _platform_paths(platform, environ)
     return _prefer_legacy_policy(primary, legacy).path

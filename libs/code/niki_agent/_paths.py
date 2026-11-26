@@ -198,7 +198,7 @@ class DeepAgentsPathSnapshot:
     True when the home directory could not be resolved. That silently disables
     a security check, and this module is imported before any log handler
     exists, so a log line alone would be invisible even under `--debug`.
-    `dcode doctor` reports this field instead.
+    `niki doctor` reports this field instead.
     """
 
     def display(self, path: Path) -> str:
@@ -263,7 +263,7 @@ def _validate_agent_name(agent_name: str) -> None:
     """Raise when an agent name cannot safely identify a profile directory.
 
     Raises:
-        ValueError: If the name is empty, unsafe, or reserved by dcode.
+        ValueError: If the name is empty, unsafe, or reserved by niki.
     """
     if (
         not agent_name
@@ -278,7 +278,7 @@ def _validate_agent_name(agent_name: str) -> None:
     from niki_agent._reserved_names import is_reserved_agent_dir_name
 
     if is_reserved_agent_dir_name(agent_name):
-        msg = f"Invalid agent name: {agent_name!r} is reserved for dcode's own state."
+        msg = f"Invalid agent name: {agent_name!r} is reserved for niki's own state."
         raise ValueError(msg)
 
 
@@ -338,12 +338,12 @@ def ensure_user_skills_dir(agent_name: str) -> Path:
 
 
 def get_project_skills_dir(project_root: Path | None) -> Path | None:
-    """Return the project-level dcode skills directory, when in a project."""
+    """Return the project-level niki skills directory, when in a project."""
     return None if project_root is None else project_paths(project_root).skills_dir
 
 
 def ensure_project_skills_dir(project_root: Path | None) -> Path | None:
-    """Create the project-level dcode skills directory.
+    """Create the project-level niki skills directory.
 
     Returns:
         Path to the project skills directory, or `None` outside a project.
@@ -393,7 +393,7 @@ def get_project_claude_skills_dir(project_root: Path | None) -> Path | None:
 
 
 def get_built_in_skills_dir() -> Path:
-    """Return the directory containing skills bundled with dcode."""
+    """Return the directory containing skills bundled with niki."""
     return Path(__file__).parent / "built_in_skills"
 
 
@@ -826,7 +826,7 @@ def _migrate_default_profile(home: Path) -> None:
         return
     with contextlib.suppress(OSError):
         (new / _MIGRATION_MARKER).write_text(
-            "Profile migrated from ~/.deepagents on first launch.\n",
+            "Profile migrated from the previous profile directory on first launch.\n",
             encoding="utf-8",
         )
     logger.info("Migrated the user profile from %s to %s.", old, new)

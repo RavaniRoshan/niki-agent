@@ -1197,7 +1197,7 @@ class TestUpdateSubcommand:
 
         assert code == 1
         perform_upgrade_mock.assert_not_awaited()
-        assert "Another dcode session is currently updating" in capsys.readouterr().out
+        assert "Another niki session is currently updating" in capsys.readouterr().out
 
     def test_update_runs_install_while_holding_the_lock(self) -> None:
         """The install must run inside the lock, not merely after a check.

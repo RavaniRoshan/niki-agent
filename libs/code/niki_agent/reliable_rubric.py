@@ -70,7 +70,7 @@ def _model_specs_match(actual: str, requested: str) -> bool:
 
 
 class ReliableRubricState(RubricState):
-    """Rubric state carrying dcode's private runtime model selections.
+    """Rubric state carrying niki's private runtime model selections.
 
     These three channels are declared a second time here, because this
     middleware's `state_schema` must list every channel it reads. Each
@@ -100,11 +100,11 @@ class RubricGraderState(AgentState[GraderResponse]):
 class ReliableRubricMiddleware(RubricMiddleware):
     """Run a context-aware nested grader with CLI verification middleware.
 
-    The nested grader receives Deep Agents Code's verification middleware and
+    The nested grader receives the agent's verification middleware and
     runtime context without requiring those application-specific capabilities in
     the SDK's `RubricMiddleware`. The grader middleware stack owns model retries,
     so transient failures follow the same budget and taxonomy as every other
-    dcode model call without replaying completed grader tools.
+    niki model call without replaying completed grader tools.
 
     The CLI configures the grader's `CodeModelRetryMiddleware` with hidden
     stream output. Grader messages use a nested namespace that both clients
@@ -118,7 +118,7 @@ class ReliableRubricMiddleware(RubricMiddleware):
     thread that has recorded no selection of its own.
     """
 
-    # Widens the SDK's `RubricState` so LangGraph passes dcode's private
+    # Widens the SDK's `RubricState` so LangGraph passes niki's private
     # channels to this middleware. Without it `_grader_context` reads `None`
     # for every one of them and silently grades with the construction-time
     # model -- no error, no log, and the type checker stays happy.

@@ -16,7 +16,7 @@ unfinished but not actionable.
 Declared in this leaf module, not beside the state schema, so both normalizers
 can share one vocabulary: `resume_state.coerce_goal_status` and
 `goal_state_notice.project_goal_state`. The notice path deliberately avoids
-`resume_state`'s heavy `deepagents` import, and this module depends only on
+`resume_state`'s heavy vendored-SDK import, and this module depends only on
 `typing`, so it is reachable from either side at no startup cost.
 """
 
