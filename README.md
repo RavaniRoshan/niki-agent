@@ -199,6 +199,7 @@ The composer, modals, approvals, and command palette are in the Python client.
 | [`INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) | Package, state, and environment guarantees. |
 | [`KEYMAP.md`](docs/niki/KEYMAP.md) | Every key binding, generated from the registry. |
 | [`PROVIDERS.md`](docs/niki/PROVIDERS.md) | Provider setup and gateway notes. |
+| [`site/README.md`](site/README.md) | How the marketing site is built, checked, and deployed. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and what is in scope. |
 
 ## Security

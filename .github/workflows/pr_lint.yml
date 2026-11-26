@@ -114,6 +114,7 @@ jobs:
             repo
             rust
             sdk
+            site
           requireScope: true
           disallowScopes: |
             release
