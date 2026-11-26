@@ -845,6 +845,7 @@ dependencies = [
  "niki-agent",
  "niki-config",
  "niki-engine-client",
+ "niki-hooks",
  "niki-mcp",
  "niki-policy",
  "niki-proto",
@@ -882,6 +883,7 @@ name = "niki-agent"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "niki-hooks",
  "niki-policy",
  "niki-provider",
  "niki-tools",
@@ -915,6 +917,15 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "niki-hooks"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

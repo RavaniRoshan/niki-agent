@@ -12,6 +12,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_config::{Config, Protocol, config_home};
+use niki_hooks::{HookRunner, Hooks, Loaded};
 use niki_mcp::ToolBridge;
 use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
 use niki_session::SessionStore;
@@ -126,11 +127,13 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     for error in &mcp_errors {
         eprintln!("niki-rs: warning: {error}");
     }
+    let hooks = load_hooks(&root, &config_home());
 
     let cancel = CancelHandle::new();
     let mut agent = Agent::new(provider, ctx, settings)
         .with_registry(tool_registry(&mcp_tools))
         .with_policy(mode, allow)
+        .with_hooks(hooks)
         .with_cancel(cancel.clone());
 
     let quiet = options.quiet;
@@ -198,6 +201,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         env_value("NIKI_REDUCED_MOTION").as_deref(),
     ));
     attach_sessions(&mut app);
+    let hooks = install_hooks(Hooks::load(&ctx.root, &config_home()), &mut app);
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -229,6 +233,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         Ok(Agent::new(provider, ctx.clone(), settings)
             .with_registry(tool_registry(&mcp_tools))
             .with_policy(parts.mode, allow.clone())
+            .with_hooks(Arc::clone(&hooks))
             .with_cancel(parts.cancel)
             .with_approver(parts.approver))
     });
@@ -278,9 +283,11 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
                 max_steps,
                 ..AgentConfig::default()
             };
+            let hooks = load_hooks(&seed.cwd, &config_home());
             Ok(Agent::new(provider, ctx, settings)
                 .with_registry(tool_registry(&factory_tools))
                 .with_policy(seed.mode, allow.clone())
+                .with_hooks(hooks)
                 .with_cancel(seed.cancel)
                 .with_approver(seed.approver))
         },
@@ -337,6 +344,25 @@ fn tool_registry(tools: &[ToolBridge]) -> Registry {
         registry.register(tool.clone());
     }
     registry
+}
+
+/// Load hooks from the workspace and the user configuration directory for the
+/// headless run, where a problem is one warning line on stderr.
+fn load_hooks(root: &Path, config_dir: &Path) -> Arc<dyn HookRunner> {
+    let loaded = Hooks::load(root, config_dir);
+    for warning in &loaded.warnings {
+        eprintln!("niki-rs: warning: {warning}");
+    }
+    Arc::new(loaded.hooks)
+}
+
+/// Install hooks in the full-screen app. A broken source is one warning row in
+/// the transcript, added before the first frame and not repeated per turn.
+fn install_hooks(loaded: Loaded, app: &mut App) -> Arc<dyn HookRunner> {
+    for warning in &loaded.warnings {
+        app.transcript.push_notice(format!("warning: {warning}"));
+    }
+    Arc::new(loaded.hooks)
 }
 
 #[derive(Default)]
@@ -494,6 +520,10 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
         AgentEvent::StepLimit { steps } if !quiet => {
             eprintln!("niki-rs: step limit of {steps} reached");
         }
+        AgentEvent::Notice(text) => {
+            let _ = out.flush();
+            eprintln!("niki-rs: {text}");
+        }
         AgentEvent::Cancelled if !quiet => {
             eprintln!("niki-rs: cancelled");
         }
@@ -615,5 +645,34 @@ command = "/nonexistent/niki-mcp-startup"
             notices.iter().all(|notice| notice.starts_with("warning: ")),
             "{notices:?}"
         );
+    }
+
+    #[test]
+    fn a_broken_hooks_file_is_one_warning_row_and_the_session_starts() {
+        use niki_tui_live::{RowKind, TurnState};
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".niki")).expect("mkdir");
+        std::fs::write(dir.path().join(".niki/hooks.json"), "{ not json").expect("write");
+        let mut app = App::new(SessionInfo {
+            model: "mock:mock-model".to_owned(),
+            mode: Mode::Manual,
+            cwd: dir.path().to_path_buf(),
+        });
+
+        let loaded = Hooks::load(dir.path(), &dir.path().join("home"));
+        let _hooks = install_hooks(loaded, &mut app);
+
+        assert_eq!(app.status.turn, TurnState::Idle);
+        let notices: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .filter(|row| row.kind == RowKind::Notice)
+            .map(|row| row.text.as_str())
+            .collect();
+        assert_eq!(notices.len(), 1, "{notices:?}");
+        assert!(notices[0].starts_with("warning: "), "{}", notices[0]);
+        assert!(notices[0].contains("hooks.json"), "{}", notices[0]);
     }
 }

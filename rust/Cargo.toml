@@ -7,6 +7,7 @@ members = [
     "crates/niki-commands",
     "crates/niki-config",
     "crates/niki-engine-client",
+    "crates/niki-hooks",
     "crates/niki-mcp",
     "crates/niki-policy",
     "crates/niki-proto",

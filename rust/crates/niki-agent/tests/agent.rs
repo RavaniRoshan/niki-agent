@@ -461,3 +461,92 @@ async fn always_permits_the_same_command_without_asking_again() {
         "one\n"
     );
 }
+
+/// A workspace with a `hooks.json` the real runner reads, so the test exercises
+/// the same parser and child process the binary uses.
+fn hooks_document(dir: &std::path::Path, document: &str) -> niki_hooks::Hooks {
+    let project = dir.join(".niki");
+    std::fs::create_dir_all(&project).expect("hooks dir");
+    std::fs::write(project.join("hooks.json"), document).expect("hooks file");
+    let loaded = niki_hooks::Hooks::load_from(
+        &project.join("hooks.json"),
+        &dir.join("home").join("hooks.json"),
+    );
+    assert!(loaded.warnings.is_empty(), "{:?}", loaded.warnings);
+    loaded.hooks
+}
+
+#[tokio::test]
+async fn a_blocking_hook_stops_a_tool_and_the_model_sees_the_reason() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let hooks = hooks_document(
+        dir.path(),
+        r#"{"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": [
+            {"type": "command", "command": "printf 'no writes today' >&2; exit 2"}
+        ]}]}}"#,
+    );
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"path":"blocked.txt","content":"nope"}"#,
+        ),
+        text_turn("understood"),
+    ]);
+    let observed = provider.clone();
+    let mut agent = agent(provider, dir.path(), config()).with_hooks(std::sync::Arc::new(hooks));
+
+    let mut events = Vec::new();
+    let outcome = agent
+        .run("write it", &mut |event| events.push(event.clone()))
+        .await
+        .expect("run");
+
+    assert!(!dir.path().join("blocked.txt").exists());
+    assert_eq!(outcome.tool_calls, 1);
+    assert_eq!(outcome.text, "understood");
+
+    let result = &agent.messages()[2].content;
+    assert!(result.contains("no writes today"), "{result}");
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, AgentEvent::ToolEnd { is_error: true, .. }))
+    );
+
+    let requests = observed.requests();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[1].messages.len(), 3);
+    assert!(
+        requests[1].messages[2].content.contains("no writes today"),
+        "{}",
+        requests[1].messages[2].content
+    );
+}
+
+#[tokio::test]
+async fn a_blocking_prompt_hook_stops_the_turn_before_the_model() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let hooks = hooks_document(
+        dir.path(),
+        r#"{"hooks": {"UserPromptSubmit": [{"hooks": [
+            {"type": "command", "command": "printf 'wait your turn' >&2; exit 2"}
+        ]}]}}"#,
+    );
+    let provider = Scripted::new(vec![text_turn("never asked")]);
+    let observed = provider.clone();
+    let mut agent = agent(provider, dir.path(), config()).with_hooks(std::sync::Arc::new(hooks));
+
+    let error = agent
+        .run("hello", &mut |_| {})
+        .await
+        .expect_err("the prompt is stopped");
+
+    assert!(matches!(
+        &error,
+        niki_agent::AgentError::HookBlocked { reason } if reason.as_str() == "wait your turn"
+    ));
+    assert!(observed.requests().is_empty());
+    assert_eq!(agent.messages().len(), 1);
+    assert_eq!(agent.messages()[0].content, "hello");
+}

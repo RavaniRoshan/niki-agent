@@ -22,6 +22,7 @@ niki-acp = { path = "../niki-acp" }
 niki-agent = { path = "../niki-agent" }
 niki-config = { path = "../niki-config" }
 niki-engine-client = { path = "../niki-engine-client" }
+niki-hooks = { path = "../niki-hooks" }
 niki-mcp = { path = "../niki-mcp" }
 niki-policy = { path = "../niki-policy" }
 niki-proto = { path = "../niki-proto" }

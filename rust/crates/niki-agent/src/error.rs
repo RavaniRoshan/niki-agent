@@ -16,4 +16,13 @@ pub enum AgentError {
         #[source]
         source: ProviderError,
     },
+    /// A `UserPromptSubmit` hook stopped the prompt before the model saw it.
+    ///
+    /// The session is not aborted: the caller shows the reason and waits for
+    /// the next prompt.
+    #[error("hook stopped the prompt: {reason}")]
+    HookBlocked {
+        /// The handler's reason, already worded for the person.
+        reason: String,
+    },
 }

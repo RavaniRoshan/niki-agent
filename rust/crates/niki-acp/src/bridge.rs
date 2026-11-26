@@ -85,6 +85,12 @@ impl Emitter {
                 };
                 self.persist(role, &format!("{name}\n{output}"));
             }
+            AgentEvent::Notice(text) => {
+                // A hook warning or `systemMessage` is for the person, not the
+                // transcript: show it, but do not store it.
+                self.flush_text();
+                self.notify(protocol::message_chunk("agent_message_chunk", text, None));
+            }
             AgentEvent::Cancelled | AgentEvent::StepLimit { .. } => self.flush_text(),
             AgentEvent::Usage(_) => {}
         }
