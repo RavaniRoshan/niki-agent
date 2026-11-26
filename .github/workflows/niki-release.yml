@@ -117,8 +117,8 @@ jobs:
         run: |
           set -euo pipefail
           # Proves the installer creates an environment, resolves dependencies,
-          # and runs the CLI from the built wheel. It does NOT prove a model
-          # call works -- that needs a key.
+          # and runs the CLI (the installer itself ends with `niki --version`).
+          # It does NOT prove a real turn works; the next step does.
           version="${{ steps.version.outputs.value }}"
           stage="niki-${version}-${{ matrix.platform }}"
           extract="$RUNNER_TEMP/extract"
@@ -133,6 +133,27 @@ jobs:
             tar -xzf "${stage}.tar.gz" -C "$extract"
             NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
           fi
+
+      # `niki --version` (run by the installer above) imports almost nothing, so
+      # a wheel that cannot build its graph or run a tool still passes it. That
+      # is how v1.1.1 shipped a wheel whose first real turn raised TypeError.
+      # This step runs one headless turn against a loopback mock provider --
+      # no key and no external network -- and asserts a file was written and
+      # the tool result reached the model.
+      #
+      # Linux only. The script itself is stdlib-only, but this is the platform
+      # whose release gate is proven here; the macOS archive is the same pure
+      # Python wheel assembled on the same runner. Windows needs a `python`
+      # invocation and `niki.exe`, neither of which is exercised by a Linux
+      # run, so it is not wired until someone can watch it go green there.
+      - name: Prove a real turn from the installed wheel
+        if: matrix.platform == 'linux'
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/niki-smoke"
+          python3 .github/scripts/smoke_turn.py --niki "$prefix/bin/niki" --timeout 300
 
       - uses: actions/upload-artifact@v4
         with:

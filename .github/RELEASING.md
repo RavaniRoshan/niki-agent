@@ -37,7 +37,11 @@ Each job runs `uv build --wheel --sdist` in `libs/code`,
 copies the wheel plus `install/install.sh` or `install/install.ps1` and
 `NOTICE`/`README.md` into `niki-<version>-<platform>.{tar.gz,zip}`, then runs
 the packaged installer into a scratch prefix and prints `niki --version` from
-the result. The `release` job attaches every artifact plus a `SHA256SUMS` file
+the result. On Linux it then runs `.github/scripts/smoke_turn.py` against the
+installed launcher: one headless turn against a loopback mock model, asserting
+a tool call wrote a file and the tool result reached the model. A version print
+alone cannot catch a wheel that fails on its first turn. The `release` job
+attaches every artifact plus a `SHA256SUMS` file
 to a GitHub Release named `Niki Agent v<version>`, using
 `.github/RELEASE_NOTES_niki.md` as the body.
 
