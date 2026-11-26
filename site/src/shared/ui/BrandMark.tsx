@@ -274,8 +274,8 @@ export function ProviderIcon({
           <path fillRule="evenodd" d="M16 6H8v12h8V6zm4 16H4V2h16v20z" />
         </svg>
       );
-    case 'python':
-      // Official two-tone Python mark (#3776AB blue + #FFD43B yellow)
+    case 'mistral':
+      // Pixel-block Mistral M (#FFD800 yellow, #FF500F orange, #FFAF00 amber)
       return (
         <svg
           viewBox="0 0 24 24"
@@ -283,56 +283,105 @@ export function ProviderIcon({
           fill="none"
           aria-hidden="true"
         >
-          <path
-            d="M11.9 2C7.8 2 8.1 3.8 8.1 3.8v1.9h4v.6H6.5S3.8 6 3.8 10.2s2.4 4 2.4 4h1.4v-1.9s-.1-2.4 2.3-2.4h4s2.2 0 2.2-2.1V4.1S16.4 2 11.9 2Zm-2.2 1.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Z"
-            fill="#3776AB"
-          />
-          <path
-            d="M12.1 22c4.1 0 3.8-1.8 3.8-1.8v-1.9h-4v-.6h5.6s2.7.3 2.7-3.9-2.4-4-2.4-4h-1.4v1.9s.1 2.4-2.3 2.4h-4s-2.2 0-2.2 2.1v3.7S7.6 22 12.1 22Zm2.2-1.2a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"
-            fill="#FFD43B"
-          />
+          <rect x="2" y="4" width="4" height="16" fill="#FFD800" />
+          <rect x="18" y="4" width="4" height="16" fill="#FFD800" />
+          <rect x="6" y="4" width="4" height="8" fill="#FF500F" />
+          <rect x="14" y="4" width="4" height="8" fill="#FF500F" />
+          <rect x="10" y="8" width="4" height="4" fill="#FFAF00" />
         </svg>
       );
-    case 'uv':
-      // Official Astral uv ultraviolet mark (#9333EA / #DE5FE9)
+    case 'xai':
+      // Angular xAI X made from two crossing bars
       return (
         <svg
-          viewBox="0 0 20 20"
-          className={`${className} shrink-0 text-[#9333EA] dark:text-[#DE5FE9]`}
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-foreground`}
           fill="currentColor"
           aria-hidden="true"
         >
-          <path d="M2 4h3v8.5c0 1.1.9 2 2 2s2-.9 2-2V4h3v8.5a5 5 0 0 1-10 0V4Zm11 0h2.8l1.2 7.2L18.2 4H20l-2.2 12h-2.6L13 4Z" />
+          <path d="M3 2h4.2l14.8 20h-4.2L3 2Z" />
+          <path d="M20.8 2h-4.1L3.1 22h4.1L20.8 2Z" />
         </svg>
       );
-    case 'textual':
-      // Official Textualize violet terminal badge (#7E22CE / #C084FC)
+    case 'rust':
+      // Rust gear ring with an R
       return (
         <svg
-          viewBox="0 0 20 20"
-          className={`${className} shrink-0 text-[#7E22CE] dark:text-[#C084FC]`}
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#CE422B] dark:text-[#F74C00]`}
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.85"
           aria-hidden="true"
         >
-          <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
-          <path d="M6 8h8M10 8v5" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="9" strokeWidth="2.4" strokeDasharray="2 2" />
+          <circle cx="12" cy="12" r="7" strokeWidth="1.4" />
+          <path d="M9.6 17V7.2h3.1a2.9 2.9 0 0 1 0 5.8H9.6m2.5 0 3 4" strokeWidth="1.8" />
         </svg>
       );
-    case 'pytest':
-      // Official 4-color pytest stepped bar mark (#0A9EDC, #78BE20, #F4B400, #E53935)
+    case 'cargo':
+      // Cargo crate: an open isometric box
       return (
         <svg
-          viewBox="0 0 20 20"
-          className={`${className} shrink-0`}
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#F5A623]`}
           fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
           aria-hidden="true"
         >
-          <rect x="2.5" y="4" width="2.8" height="12" rx="0.6" fill="#0A9EDC" />
-          <rect x="6.7" y="4" width="2.8" height="9.2" rx="0.6" fill="#78BE20" />
-          <rect x="10.9" y="4" width="2.8" height="6.4" rx="0.6" fill="#F4B400" />
-          <rect x="15.1" y="4" width="2.8" height="3.8" rx="0.6" fill="#E53935" />
+          <path d="M12 2 21 7v10l-9 5-9-5V7l9-5Z" strokeWidth="1.6" />
+          <path d="M3 7l9 5 9-5M12 12v10" strokeWidth="1.4" />
+        </svg>
+      );
+    case 'ratatui':
+      // ratatui rat head (theme-adaptive monochrome)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-foreground`}
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="13.5" r="6" strokeWidth="1.5" />
+          <circle cx="6.8" cy="7.5" r="3" strokeWidth="1.4" />
+          <circle cx="17.2" cy="7.5" r="3" strokeWidth="1.4" />
+          <circle cx="9.9" cy="12.7" r="0.8" fill="currentColor" stroke="none" />
+          <circle cx="14.1" cy="12.7" r="0.8" fill="currentColor" stroke="none" />
+          <path d="M10.4 16.4c1 .7 2.2.7 3.2 0" strokeWidth="1.3" />
+          <path d="M2.5 12.5h2.8M2.5 15.5h2.8M18.7 12.5h2.8M18.7 15.5h2.8" strokeWidth="1.2" />
+        </svg>
+      );
+    case 'sqlite':
+      // SQLite database cylinder
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#003B57] dark:text-[#4EA7D8]`}
+          fill="none"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <ellipse cx="12" cy="6" rx="7" ry="3" strokeWidth="1.6" />
+          <path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6" strokeWidth="1.6" />
+          <path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" strokeWidth="1.4" />
+        </svg>
+      );
+    case 'mcp':
+      // Model Context Protocol: three linked nodes
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#6E56CF] dark:text-[#A48FFF]`}
+          fill="none"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="5" r="2.4" strokeWidth="1.5" />
+          <circle cx="5" cy="18.5" r="2.4" strokeWidth="1.5" />
+          <circle cx="19" cy="18.5" r="2.4" strokeWidth="1.5" />
+          <path d="M10.9 7.2 6.1 16.3M13.1 7.2l4.8 9.1M7.4 18.5h9.2" strokeWidth="1.4" />
         </svg>
       );
     case 'github':
@@ -362,12 +411,15 @@ const ECOSYSTEM_WORDMARK_STYLE: Record<string, { label: string; className: strin
   together: { label: 'together.ai', className: 'text-[13.5px] font-semibold tracking-tight' },
   deepseek: { label: 'deepseek', className: 'text-[14px] font-semibold tracking-tight' },
   kimi: { label: 'KIMI', className: 'text-[13.5px] font-semibold tracking-[0.06em]' },
-  python: { label: 'Python 3.12', className: 'text-[13.5px] font-medium tracking-tight' },
-  uv: { label: 'Astral uv', className: 'font-tech text-[13.5px] font-semibold tracking-tight' },
-  textual: { label: 'Textual 8', className: 'font-tech text-[13px] font-medium tracking-tight' },
+  mistral: { label: 'Mistral', className: 'text-[14px] font-semibold tracking-tight' },
+  xai: { label: 'xAI', className: 'text-[14px] font-semibold tracking-tight' },
   kilo: { label: 'Kilo', className: 'font-tech text-[13px] font-semibold tracking-wide' },
   opencode: { label: 'OpenCode', className: 'font-tech text-[12.5px] font-medium' },
-  pytest: { label: 'pytest', className: 'font-tech text-[13px] font-medium' },
+  rust: { label: 'Rust', className: 'font-tech text-[13px] font-semibold tracking-tight' },
+  cargo: { label: 'Cargo', className: 'font-tech text-[13px] font-medium tracking-tight' },
+  ratatui: { label: 'ratatui', className: 'font-tech text-[13px] font-medium tracking-tight' },
+  sqlite: { label: 'SQLite', className: 'font-tech text-[13px] font-medium tracking-tight' },
+  mcp: { label: 'MCP', className: 'font-tech text-[13px] font-semibold tracking-wide' },
   github: { label: 'GitHub', className: 'text-[14px] font-semibold tracking-tight' },
 };
 

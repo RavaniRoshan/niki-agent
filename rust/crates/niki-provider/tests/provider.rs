@@ -10,7 +10,7 @@ use niki_provider::error::ProviderError;
 use niki_provider::openai::ToolCallAssembler;
 use niki_provider::{
     AnthropicProvider, ChatRequest, Message, OpenAiProvider, Provider, RetryPolicy, StopReason,
-    StreamEvent, ToolSpec,
+    StreamEvent, ToolSpec, Usage,
 };
 
 struct MockResponse {
@@ -160,6 +160,12 @@ async fn openai_streams_text_then_done() {
             StreamEvent::TextDelta("Hello".to_owned()),
             StreamEvent::TextDelta(" world".to_owned()),
             StreamEvent::Done(StopReason::EndTurn),
+            // The usage chunk follows the finish reason; ending the stream at
+            // `Done` would drop it.
+            StreamEvent::Usage(Usage {
+                input_tokens: 7,
+                output_tokens: 2,
+            }),
         ]
     );
     let requests = server.requests();

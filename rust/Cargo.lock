@@ -841,14 +841,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossterm 0.29.0",
+ "niki-acp",
  "niki-agent",
  "niki-config",
  "niki-engine-client",
+ "niki-hooks",
  "niki-mcp",
  "niki-policy",
  "niki-proto",
  "niki-provider",
  "niki-render",
+ "niki-session",
+ "niki-skills",
  "niki-tools",
  "niki-tui",
  "niki-tui-live",
@@ -859,10 +863,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "niki-acp"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "niki-agent",
+ "niki-policy",
+ "niki-provider",
+ "niki-session",
+ "niki-tools",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "niki-agent"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "niki-hooks",
  "niki-policy",
  "niki-provider",
  "niki-tools",
@@ -871,6 +893,10 @@ dependencies = [
  "thiserror",
  "tokio",
 ]
+
+[[package]]
+name = "niki-commands"
+version = "0.1.0"
 
 [[package]]
 name = "niki-config"
@@ -892,6 +918,15 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "niki-hooks"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -961,6 +996,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "niki-skills"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "niki-tools"
 version = "0.1.0"
 dependencies = [
@@ -988,10 +1031,13 @@ dependencies = [
  "crossterm 0.29.0",
  "futures-util",
  "niki-agent",
+ "niki-commands",
  "niki-config",
  "niki-policy",
  "niki-provider",
  "niki-render",
+ "niki-session",
+ "niki-skills",
  "niki-tools",
  "niki-tui",
  "niki-tui-modals",
@@ -1007,6 +1053,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm 0.29.0",
  "niki-agent",
+ "niki-commands",
  "niki-config",
  "niki-tui",
  "niki-tui-themes",

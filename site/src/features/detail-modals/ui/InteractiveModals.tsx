@@ -6,6 +6,9 @@ import {
   FEATURE_DETAILS,
   INSTALL_COMMAND,
   PillarCardData,
+  SOURCE_BUILD_COMMAND,
+  TEST_COMMAND,
+  WINDOWS_INSTALL_COMMAND,
 } from '../../../entities/niki';
 import { BTN, CARD, ProviderIcon } from '../../../shared';
 
@@ -30,7 +33,7 @@ const REPO_URL = 'https://github.com/RavaniRoshan/niki-agent';
 function getModalHeaderLabel(modal: Exclude<ActiveModal, null>): string {
   switch (modal.type) {
     case 'install':
-      return 'INSTALL · LINUX & MACOS';
+      return 'INSTALL · LINUX, WSL & WINDOWS';
     case 'checklist':
       return 'DOCS · WHAT IS VERIFIED';
     case 'github':
@@ -42,7 +45,7 @@ function getModalHeaderLabel(modal: Exclude<ActiveModal, null>): string {
     case 'benchmark':
       return `VERIFIED BASELINE · ${modal.benchmark.badge.toUpperCase()}`;
     case 'provider':
-      return `${modal.item.actionType === 'Config' ? 'CONFIG-ONLY GATEWAY' : 'PROVIDER INTEGRATION'} · ${modal.item.name.toUpperCase()}`;
+      return `${modal.item.actionType === 'Config' ? 'CONFIG-ONLY GATEWAY' : 'BUILT-IN PROVIDER'} · ${modal.item.name.toUpperCase()}`;
   }
 }
 
@@ -200,16 +203,21 @@ niki`;
           Install Niki Agent
         </h2>
         <p className="mt-2 text-[15px] leading-[1.55] text-muted-foreground">
-          The installer verifies the release checksum and boots straight into a working
-          composer. No account and no API key are needed to look around.
+          The installer verifies SHA256SUMS, installs one self-contained binary, and
+          boots straight into a working composer. No account and no API key are needed to look
+          around.
         </p>
       </div>
 
       <CopySnippetBlock label="Install & launch" code={quickstartCmd} />
 
       <div className="rounded-[2px] border border-grid bg-muted/45 p-4 font-tech text-[12px] space-y-1.5 text-muted-foreground">
-        <div className="text-chart-1 dark:text-chart-2">From a source checkout, verify without network or TTY</div>
-        <div className="text-foreground">cd libs/code &amp;&amp; uv run pytest tests/unit_tests/niki/ -q</div>
+        <div className="text-chart-1 dark:text-chart-2">Windows PowerShell</div>
+        <div className="text-foreground break-all">{WINDOWS_INSTALL_COMMAND}</div>
+        <div className="pt-2 text-chart-1 dark:text-chart-2">macOS from source</div>
+        <div className="text-foreground">{SOURCE_BUILD_COMMAND}</div>
+        <div className="pt-2 text-chart-1 dark:text-chart-2">Verify the workspace without a network</div>
+        <div className="text-foreground">{TEST_COMMAND}</div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-grid">
@@ -247,7 +255,7 @@ function ChecklistContent({ onOpenInstall }: { onOpenInstall: () => void }) {
       <div className="grid grid-cols-3 border border-grid divide-x divide-grid font-tech">
         <div className="bg-muted/70 p-4">
           <div className="text-[24px] font-semibold text-chart-1 dark:text-chart-2 tabular-nums">1</div>
-          <div className="text-[11px] text-foreground mt-0.5">CONSOLE SCRIPT</div>
+          <div className="text-[11px] text-foreground mt-0.5">BINARY</div>
         </div>
         <div className="bg-muted/40 p-4">
           <div className="text-[24px] font-semibold text-foreground tabular-nums">4</div>
@@ -262,15 +270,15 @@ function ChecklistContent({ onOpenInstall }: { onOpenInstall: () => void }) {
       <ul className="space-y-2.5 text-[14.5px] leading-[1.55] text-muted-foreground">
         <li className="flex items-start gap-2.5">
           <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-chart-1 dark:bg-chart-2 shrink-0" aria-hidden="true" />
-          <span>An idle session paints nothing; the perf probe counts real compositor repaints.</span>
+          <span>The workspace suite runs with cargo test -j 4 --workspace, with no network or API key.</span>
         </li>
         <li className="flex items-start gap-2.5">
           <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-chart-1 dark:bg-chart-2 shrink-0" aria-hidden="true" />
-          <span>Four palettes, each measured at 4.5:1 text and 3:1 UI glyph contrast in three colour depths.</span>
+          <span>Four palettes, each measured at 4.5:1 text and 3:1 UI glyph contrast against every surface.</span>
         </li>
         <li className="flex items-start gap-2.5">
           <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-chart-1 dark:bg-chart-2 shrink-0" aria-hidden="true" />
-          <span>Every advertised shortcut is generated from the binding registry; a dead key fails the build.</span>
+          <span>Every advertised shortcut parses back to its action in the binding registry test.</span>
         </li>
       </ul>
 
@@ -307,8 +315,9 @@ function GithubContent({ onOpenInstall }: { onOpenInstall: () => void }) {
           RavaniRoshan/niki-agent
         </h2>
         <p className="mt-2 text-[15px] leading-[1.55] text-muted-foreground">
-          A terminal coding agent written in Python 3.12+ with Textual, plus a Rust client for the
-          same engine. Sessions stay on your machine.
+          A terminal coding agent written in Rust and shipped as one self-contained binary. The
+          turn loop, tools, policy, sessions, MCP client, and TUI are crates in this workspace.
+          Sessions stay on your machine.
         </p>
       </div>
 
@@ -502,7 +511,7 @@ function BenchmarkContent({
 
       <div className="pt-4 border-t border-grid flex flex-wrap items-center justify-between gap-3">
         <a
-          href={`${REPO_URL}/tree/niki-agent/libs/code/tests/unit_tests/niki`}
+          href={`${REPO_URL}/tree/niki-agent/rust/crates`}
           target="_blank"
           rel="noopener noreferrer"
           className={`${BTN.base} ${BTN.secondary}`}
@@ -550,7 +559,7 @@ function ProviderContent({ item }: { item: EcosystemLogoItem }) {
 
       {item.configSnippet && (
         <CopySnippetBlock
-          label={item.actionType === 'Config' ? '~/.niki/config.toml' : 'In-session setup'}
+          label={item.actionType === 'Config' ? '~/.niki/config.toml' : 'Shell setup'}
           code={item.configSnippet}
         />
       )}

@@ -38,7 +38,7 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
   // Interactive toggles for Chapter 03 (Shell-native accessibility)
   const [a11yFlags, setA11yFlags] = useState({
     reducedMotion: false,
-    noColor: false,
+    mono: false,
     ascii: false,
   });
 
@@ -183,7 +183,7 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
       {/* Editorial Header Cell */}
       <div className="parallax-seq-header px-5 sm:px-8 lg:px-10 py-12 lg:py-16 border-b border-grid">
         <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[52px] font-semibold leading-[1.08] tracking-[-0.03em] text-foreground max-w-[740px] [text-wrap:balance]">
-          Engineered to stay quiet under multi-hour load
+          Engineered as one binary, from turn loop to theme
         </h2>
       </div>
 
@@ -255,8 +255,8 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                 className="parallax-scene-enter pointer-events-none absolute left-6 top-6 right-12 bottom-16 rounded-[2px] border border-[#222638]/80 bg-[#0b0d14]/85 p-5 font-tech opacity-70"
               >
                 <div className="space-y-1.5 text-[10px] text-[#556480]">
-                  <div className="truncate"># niki_agent/niki/motion.py</div>
-                  <div className="truncate">mount_window = 30 · idle_timer = halted</div>
+                  <div className="truncate"># rust/crates/niki-tui-themes/src/lib.rs</div>
+                  <div className="truncate">palettes = 4 · state = ~/.niki</div>
                   <div className="truncate">contrast_floor_text = 4.5 · glyph = 3.0</div>
                 </div>
               </div>
@@ -266,15 +266,15 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                 ref={mainLayerRef}
                 className="parallax-scene-enter absolute left-10 sm:left-14 top-12 -right-6 -bottom-6 rounded-tl-[2px] border-t border-l border-[#2a314a] bg-[#0d1018] shadow-[-12px_20px_50px_rgba(0,0,0,0.75)] overflow-hidden flex flex-col"
               >
-                {activeChapter.id === 'stillness' && (
+                {activeChapter.id === 'binary' && (
                   <>
-                    <TerminalTitleBar title="niki · compositor monitor" rightLabel="5.0s window" />
+                    <TerminalTitleBar title="niki · release build" rightLabel="one binary" />
                     <div className="p-6 flex-1 flex flex-col justify-between font-tech">
                       <div className="space-y-4 max-w-[380px]">
                         <div>
                           <div className="flex justify-between text-[11px] text-[#9eb0c7] mb-1.5">
-                            <span>Default cursor blink</span>
-                            <span className="tabular-nums">repaints</span>
+                            <span>Runtime + package manager</span>
+                            <span className="tabular-nums">setup</span>
                           </div>
                           <div className="h-2 rounded-[1px] bg-[#131b29] overflow-hidden">
                             <div className="h-full w-full bg-[#4a6284]" />
@@ -282,19 +282,19 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                         </div>
                         <div>
                           <div className="flex justify-between text-[11px] text-[#eef4fa] mb-1.5">
-                            <span>Niki Agent resting surface</span>
-                            <span className="text-[#9ec8f8] tabular-nums">none</span>
+                            <span>Niki Agent binary</span>
+                            <span className="text-[#9ec8f8] tabular-nums">1 file</span>
                           </div>
                           <div className="h-2 rounded-[1px] bg-[#131b29] overflow-hidden">
-                            <div className="h-full w-[3%] bg-[#9ec8f8]" />
+                            <div className="h-full w-[12%] bg-[#9ec8f8]" />
                           </div>
                         </div>
                         <div className="pt-1 space-y-1 text-[10.5px] text-[#9eb0c7]">
                           <div className="truncate">
-                            <span className="text-[#9ec8f8] mr-1.5">✓</span>phase_timer.pause() on InputIdle
+                            <span className="text-[#9ec8f8] mr-1.5">✓</span>cargo build --release -p niki --bin niki
                           </div>
                           <div className="truncate">
-                            <span className="text-[#9ec8f8] mr-1.5">✓</span>no layout invalidations while idle
+                            <span className="text-[#9ec8f8] mr-1.5">✓</span>SHA256SUMS verified before install
                           </div>
                         </div>
                       </div>
@@ -302,32 +302,32 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                       <div className="pb-10 space-y-2.5">
                         <div className="h-px w-full bg-[#384b68]" />
                         <div className="text-[12px] text-[#dce7f5]">
-                          <span className="text-[#9ec8f8] mr-2">›</span>Waiting on user prompt · still
+                          <span className="text-[#9ec8f8] mr-2">›</span>./niki · ready
                         </div>
                       </div>
                     </div>
                   </>
                 )}
 
-                {activeChapter.id === 'mount-window' && (
+                {activeChapter.id === 'sessions' && (
                   <>
-                    <TerminalTitleBar title="transcript · bounded mount" rightLabel="30-row window" />
+                    <TerminalTitleBar title="sessions · sqlite" rightLabel="/resume" />
                     <div className="p-6 space-y-3 font-tech">
                       <div className="rounded-[2px] border border-dashed border-[#2f415a] bg-[#141d2b] px-4 py-2.5 opacity-60 max-w-[380px]">
-                        <div className="text-[10.5px] text-[#8ea0b8]">Turns 01–42 · pruned from the mount</div>
+                        <div className="text-[10.5px] text-[#8ea0b8]">Older rows folded by /compact · still stored</div>
                       </div>
                       <div className="rounded-[2px] border border-[#9ec8f8]/60 bg-[#23354f] px-4 py-3.5 max-w-[380px] space-y-2">
                         <div className="flex justify-between text-[11.5px]">
-                          <span className="text-[#f0f5fa] font-medium">Mounted Viewport Window</span>
-                          <span className="text-[#9ec8f8] tabular-nums">bounded</span>
+                          <span className="text-[#f0f5fa] font-medium">Session 7f3a · 128 turns</span>
+                          <span className="text-[#9ec8f8] tabular-nums">resumable</span>
                         </div>
                         <div className="text-[10.5px] text-[#dce7f5] truncate">
-                          + write_file tests/niki/test_mount_window.py
+                          + write_file rust/crates/niki-tui/src/lib.rs
                         </div>
-                        <div className="text-[10.5px] text-[#b8cde4]">Turns 43–59 active · instant pageup/end</div>
+                        <div className="text-[10.5px] text-[#b8cde4]">Resume by id or index · pageup/end still works</div>
                       </div>
                       <div className="rounded-[2px] border border-[#31425b] bg-[#1c273a] px-4 py-2.5 max-w-[380px]">
-                        <div className="text-[10.5px] text-[#dce7f5]">Turn 60 · streaming patch</div>
+                        <div className="text-[10.5px] text-[#dce7f5]">New session · streaming turn 1</div>
                       </div>
                     </div>
                   </>
@@ -337,20 +337,20 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                   <>
                     <TerminalTitleBar
                       title={a11yFlags.ascii ? 'niki [ASCII]' : '◐ niki · env fallbacks'}
-                      rightLabel={a11yFlags.noColor ? 'NO_COLOR=1' : 'WCAG AA'}
+                      rightLabel={a11yFlags.mono ? 'theme: mono' : 'WCAG AA'}
                     />
                     <div className="p-6 flex-1 flex flex-col justify-between font-tech">
                       <div className="space-y-3 max-w-[390px]">
                         <div
                           className={`rounded-[2px] border px-4 py-3 space-y-2 transition-colors ${
-                            a11yFlags.noColor
+                            a11yFlags.mono
                               ? 'border-[#7a828c] bg-[#181a1d] text-[#e5e7eb]'
                               : 'border-[#3d5170] bg-[#1f2c40] text-[#eef4fa]'
                           }`}
                         >
                           <div className="flex items-center justify-between text-[11px]">
                             <span>{a11yFlags.ascii ? '[*] Phase indicator' : '◐ Phase indicator'}</span>
-                            <span className={a11yFlags.noColor ? 'text-[#d1d5db]' : 'text-[#9ec8f8]'}>
+                            <span className={a11yFlags.mono ? 'text-[#d1d5db]' : 'text-[#9ec8f8]'}>
                               {a11yFlags.reducedMotion ? 'Static' : 'Adaptive'}
                             </span>
                           </div>
@@ -378,15 +378,15 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                           </button>
                           <button
                             type="button"
-                            aria-pressed={a11yFlags.noColor}
-                            onClick={() => setA11yFlags((f) => ({ ...f, noColor: !f.noColor }))}
+                            aria-pressed={a11yFlags.mono}
+                            onClick={() => setA11yFlags((f) => ({ ...f, mono: !f.mono }))}
                             className={`px-2.5 py-1 rounded-[2px] border text-[10px] cursor-pointer transition-colors ${
-                              a11yFlags.noColor
+                              a11yFlags.mono
                                 ? 'border-[#d1d5db] bg-[#2f3339] text-white'
                                 : 'border-[#354965] bg-[#151e2e] text-[#9eb0c7]'
                             }`}
                           >
-                            NO_COLOR={a11yFlags.noColor ? '1' : '0'}
+                            theme={a11yFlags.mono ? 'mono' : 'niki'}
                           </button>
                           <button
                             type="button"
@@ -398,7 +398,7 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                                 : 'border-[#354965] bg-[#151e2e] text-[#9eb0c7]'
                             }`}
                           >
-                            CHARSET={a11yFlags.ascii ? 'ascii' : 'unicode'}
+                            ASCII={a11yFlags.ascii ? '1' : '0'}
                           </button>
                         </div>
 
@@ -417,37 +417,41 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                       <div className="pb-10 space-y-2">
                         <div className="h-px w-full bg-[#31435d]" />
                         <div className="text-[11px] text-[#b4c7de]">
-                          {a11yFlags.ascii ? '> NIKI_UI_CHARSET_MODE=ascii niki' : '› niki'}
+                          {a11yFlags.ascii ? '> NIKI_ASCII=1 niki' : '› niki'}
                         </div>
                       </div>
                     </div>
                   </>
                 )}
 
-                {activeChapter.id === 'independence' && (
+                {activeChapter.id === 'approvals' && (
                   <>
-                    <TerminalTitleBar title="docs/niki/INDEPENDENCE.md" rightLabel="MIT NOTICE" />
+                    <TerminalTitleBar title="approval · policy" rightLabel="shift+tab" />
                     <div className="p-6 flex-1 flex flex-col justify-between font-tech text-[11.5px]">
-                      <div className="space-y-3 max-w-[390px]">
-                        <div className="rounded-[2px] border border-[#3d5170] bg-[#202f45] px-4 py-3 space-y-1">
-                          <div className="text-[#9ec8f8]">libs/code/niki_agent/</div>
-                          <div className="text-[#eef4fa]">Agent loop, tools, approvals, editor protocol</div>
+                      <div className="space-y-2.5 max-w-[390px]">
+                        <div className="rounded-[2px] border border-[#3d5170] bg-[#202f45] px-4 py-2.5 space-y-1">
+                          <div className="text-[#9ec8f8]">manual</div>
+                          <div className="text-[#eef4fa]">Ask before every gated tool call</div>
                         </div>
-                        <div className="rounded-[2px] border border-[#2f4059] bg-[#162030] px-4 py-3 space-y-1">
-                          <div className="text-[#9eb0c7]">~/.niki</div>
-                          <div className="text-[#dce7f5]">Config, skills, history, credentials — one directory</div>
+                        <div className="rounded-[2px] border border-[#2f4059] bg-[#162030] px-4 py-2.5 space-y-1">
+                          <div className="text-[#9eb0c7]">auto</div>
+                          <div className="text-[#dce7f5]">Skip the prompt only for the shell allow-list</div>
+                        </div>
+                        <div className="rounded-[2px] border border-[#3d5170] bg-[#202f45] px-4 py-2.5 space-y-1">
+                          <div className="text-[#9ec8f8]">yolo</div>
+                          <div className="text-[#eef4fa]">Allow everything the policy does not refuse</div>
                         </div>
                         <div className="pt-1 space-y-1 text-[10.5px] text-[#9eb0c7]">
                           <div className="truncate">
-                            <span className="text-[#9ec8f8] mr-1.5">+</span>one distribution: niki-agent
+                            <span className="text-[#9ec8f8] mr-1.5">+</span>y approve · n reject
                           </div>
                           <div className="truncate">
-                            <span className="text-[#9ec8f8] mr-1.5">=</span>one console script: niki
+                            <span className="text-[#9ec8f8] mr-1.5">=</span>workspace path boundary
                           </div>
                         </div>
                       </div>
                       <div className="pb-10 text-[11px] text-[#9eb0c7]">
-                        › NIKI_HOME moves the whole tree
+                        › paths outside the workspace root are refused
                       </div>
                     </div>
                   </>

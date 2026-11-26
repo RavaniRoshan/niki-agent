@@ -83,6 +83,17 @@ impl Message {
         }
     }
 
+    /// An assistant message with plain text and no tool calls.
+    #[must_use]
+    pub fn assistant(content: impl Into<String>) -> Self {
+        Self {
+            role: Role::Assistant,
+            content: content.into(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }
+    }
+
     /// A tool result answering `call`.
     #[must_use]
     pub fn tool_result(call: &ToolCall, content: impl Into<String>) -> Self {

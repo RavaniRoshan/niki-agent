@@ -20,15 +20,15 @@ impl Tool for EditFile {
         json!({
             "type": "object",
             "properties": {
-                "path": {
+                "file_path": {
                     "type": "string",
                     "description": "File path relative to the workspace root."
                 },
-                "old": {
+                "old_string": {
                     "type": "string",
                     "description": "Exact text to replace. Must be unique unless replace_all is true."
                 },
-                "new": {
+                "new_string": {
                     "type": "string",
                     "description": "Replacement text."
                 },
@@ -37,15 +37,15 @@ impl Tool for EditFile {
                     "description": "Replace every occurrence instead of requiring a unique match."
                 }
             },
-            "required": ["path", "old", "new"],
+            "required": ["file_path", "old_string", "new_string"],
             "additionalProperties": false
         })
     }
 
     async fn run(&self, args: Value, ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
-        let path = args::required_str(&args, "path")?;
-        let old = args::required_str(&args, "old")?;
-        let new = args::required_str(&args, "new")?;
+        let path = args::required_str_any(&args, &["file_path", "path"])?;
+        let old = args::required_str_any(&args, &["old_string", "old"])?;
+        let new = args::required_str_any(&args, &["new_string", "new"])?;
         let replace_all = args::optional_bool(&args, "replace_all")?.unwrap_or(false);
 
         if old.is_empty() {

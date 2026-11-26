@@ -50,6 +50,15 @@ impl HelpOverlay {
             .collect()
     }
 
+    /// Every slash command as `name` and a one-line summary.
+    #[must_use]
+    pub fn command_entries() -> Vec<(&'static str, &'static str)> {
+        niki_commands::COMMANDS
+            .iter()
+            .map(|command| (command.name, command.summary))
+            .collect()
+    }
+
     /// How many lines the overlay is scrolled down.
     #[must_use]
     pub fn offset(&self) -> usize {
@@ -136,6 +145,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_help_lists_every_command_and_what_compaction_does() {
+        let entries = HelpOverlay::command_entries();
+        assert_eq!(entries.len(), niki_commands::COMMANDS.len());
+        let compact = entries
+            .iter()
+            .find(|(name, _)| *name == "/compact")
+            .map(|(_, summary)| *summary)
+            .expect("/compact is listed");
+        assert!(compact.contains("view"), "{compact}");
+        assert!(compact.contains("session store"), "{compact}");
     }
 
     #[test]

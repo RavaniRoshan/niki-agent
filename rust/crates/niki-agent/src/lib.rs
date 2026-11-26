@@ -13,6 +13,13 @@
 //! host installed; without one — a headless run — the request is reported to the
 //! model as a refusal, because there is nobody to ask.
 //!
+//! Lifecycle hooks are optional: [`Agent::with_hooks`] installs a
+//! [`niki_hooks::HookRunner`], and the loop then runs `UserPromptSubmit` before
+//! the prompt and `PreToolUse` / `PostToolUse` around each tool call. A blocking
+//! tool hook becomes the tool result the model reads; a blocked prompt returns
+//! [`AgentError::HookBlocked`]. A hook that cannot run is an
+//! [`AgentEvent::Notice`], never an error.
+//!
 //! The loop has no opinion about transport: any [`Provider`] streams the events
 //! it already normalises, and any [`Registry`] tool is dispatched through the
 //! same gate. That keeps the crate testable without a network (RULES.md 8).

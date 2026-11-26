@@ -362,3 +362,106 @@ async fn registry_specs_cover_every_tool() {
     assert!(serde_json::to_string(&specs).is_ok());
     assert!(registry.get("no_such_tool").is_none());
 }
+
+#[tokio::test]
+async fn write_file_accepts_the_wire_file_path_alias() {
+    let dir = TempDir::new().expect("temp dir");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(
+        &registry,
+        &ctx,
+        "write_file",
+        json!({"file_path": "alias.txt", "content": "hello"}),
+    )
+    .await;
+
+    assert!(output.text.contains("alias.txt"));
+    assert_eq!(
+        fs::read_to_string(dir.path().join("alias.txt")).expect("read back"),
+        "hello"
+    );
+}
+
+#[tokio::test]
+async fn edit_file_accepts_the_wire_string_aliases() {
+    let dir = TempDir::new().expect("temp dir");
+    fs::write(dir.path().join("alias.txt"), "one two\n").expect("write");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    ok(
+        &registry,
+        &ctx,
+        "edit_file",
+        json!({"file_path": "alias.txt", "old_string": "one", "new_string": "three"}),
+    )
+    .await;
+
+    assert_eq!(
+        fs::read_to_string(dir.path().join("alias.txt")).expect("read back"),
+        "three two\n"
+    );
+}
+
+#[tokio::test]
+async fn read_file_accepts_the_wire_file_path_alias() {
+    let dir = TempDir::new().expect("temp dir");
+    fs::write(dir.path().join("alias.txt"), "alias body\n").expect("write");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(
+        &registry,
+        &ctx,
+        "read_file",
+        json!({"file_path": "alias.txt"}),
+    )
+    .await;
+
+    assert!(output.text.contains("alias body"));
+}
+
+#[tokio::test]
+async fn the_schemas_advertise_the_names_the_python_client_uses() {
+    let registry = Registry::new();
+
+    for (tool, required) in [
+        ("read_file", vec!["file_path"]),
+        ("write_file", vec!["file_path", "content"]),
+        ("edit_file", vec!["file_path", "old_string", "new_string"]),
+    ] {
+        let schema = registry.get(tool).expect("tool is registered").schema();
+        let names: Vec<&str> = schema["required"]
+            .as_array()
+            .expect("required list")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        assert_eq!(names, required, "{tool} required list");
+        for property in required {
+            assert!(
+                schema["properties"][property].is_object(),
+                "{tool} does not describe {property}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn write_file_reports_the_path_the_model_named() {
+    let dir = TempDir::new().expect("temp dir");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(
+        &registry,
+        &ctx,
+        "write_file",
+        json!({"file_path": "src/notes.txt", "content": "body"}),
+    )
+    .await;
+
+    assert_eq!(output.text, "Updated file src/notes.txt");
+}

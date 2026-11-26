@@ -152,21 +152,39 @@ export function computeActiveChapterIndex(progress: number, totalChapters: numbe
   return Math.floor(clamped * totalChapters);
 }
 
+const BUILTIN_PROVIDER_KEYS: Record<string, string | null> = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  google: 'GOOGLE_API_KEY',
+  groq: 'GROQ_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  together: 'TOGETHER_API_KEY',
+  deepseek: 'DEEPSEEK_API_KEY',
+  nvidia: 'NVIDIA_API_KEY',
+  mistral: 'MISTRAL_API_KEY',
+  xai: 'XAI_API_KEY',
+  // A local daemon needs no key, only a running server.
+  ollama: null,
+};
+
 /**
- * Builds the in-session integration install command for the Hero action bar.
- * A provider that ships with the app needs no install; everything else is an
- * `/install <extra>` typed inside a running session.
+ * Builds the launch command for the Hero action bar.
+ * A provider that ships with the binary is selected by its key variable (or by
+ * starting the local daemon); an unknown name falls back to the installer line.
  */
 export function buildProviderInstallCommand(providerId: string): string {
   const normalized = providerId.trim().toLowerCase();
   if (!normalized || normalized === 'install') {
     return INSTALL_COMMAND;
   }
-  if (normalized === 'anthropic' || normalized === 'openai' || normalized === 'google') {
-    return `export ${normalized.toUpperCase()}_API_KEY=... && niki`;
+  if (!(normalized in BUILTIN_PROVIDER_KEYS)) {
+    return INSTALL_COMMAND;
   }
-  const extra = normalized.replace(/[^a-z0-9-]/g, '');
-  return extra ? `/install ${extra}` : INSTALL_COMMAND;
+  const envVar = BUILTIN_PROVIDER_KEYS[normalized];
+  if (envVar === null) {
+    return 'ollama serve && niki';
+  }
+  return `export ${envVar}=... && niki`;
 }
 
 export interface OrbitalScrollState {

@@ -1,6 +1,11 @@
 use std::collections::BTreeSet;
+use std::sync::Arc;
+use std::time::Instant;
 
 use futures_util::StreamExt;
+use niki_hooks::{
+    HookRunner, Outcome, PostToolUse, PreToolUse, ToolCall as HookToolCall, UserPrompt,
+};
 use niki_policy::{AllowList, Decision, Mode, decide};
 use niki_provider::openai::ToolCallAssembler;
 use niki_provider::{
@@ -56,6 +61,8 @@ pub struct Agent {
     /// apply to them; this is the equivalent record for external tools.
     approved: BTreeSet<String>,
     approver: Option<Approver>,
+    hooks: Option<Arc<dyn HookRunner>>,
+    session_id: Option<String>,
     cancel: CancelHandle,
     messages: Vec<Message>,
     usage: Usage,
@@ -76,10 +83,22 @@ impl Agent {
             allow: AllowList::parse(""),
             approved: BTreeSet::new(),
             approver: None,
+            hooks: None,
+            session_id: None,
             cancel: CancelHandle::new(),
             messages: Vec::new(),
             usage: Usage::default(),
         }
+    }
+
+    /// Seed the conversation the next run continues.
+    ///
+    /// A resumed session supplies the user and assistant turns it already
+    /// stored; the prompt passed to [`Agent::run`] is appended to them.
+    #[must_use]
+    pub fn with_history(mut self, messages: Vec<Message>) -> Self {
+        self.messages = messages;
+        self
     }
 
     /// Replace the approval mode and shell allow-list.
@@ -97,6 +116,24 @@ impl Agent {
     #[must_use]
     pub fn with_approver(mut self, approver: Approver) -> Self {
         self.approver = Some(approver);
+        self
+    }
+
+    /// Install lifecycle hooks: `UserPromptSubmit` before a prompt and
+    /// `PreToolUse` / `PostToolUse` around every tool call.
+    ///
+    /// Without a runner the loop behaves exactly as before, which is what the
+    /// existing turn tests rely on.
+    #[must_use]
+    pub fn with_hooks(mut self, hooks: Arc<dyn HookRunner>) -> Self {
+        self.hooks = Some(hooks);
+        self
+    }
+
+    /// Set the session id sent to hooks. Without one the payload omits it.
+    #[must_use]
+    pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
         self
     }
 
@@ -145,10 +182,18 @@ impl Agent {
     /// model sees. A cancelled or over-budget run returns a normal outcome with
     /// the transcript kept.
     ///
+    /// With a hook runner installed, `UserPromptSubmit` runs before the model
+    /// sees the prompt; a blocking verdict returns [`AgentError::HookBlocked`]
+    /// and the prompt is not sent. `PreToolUse` and `PostToolUse` run around
+    /// every tool call; a blocked call returns the handler's reason as the tool
+    /// result, and hook context is appended to the result (or to the prompt).
+    /// A hook that cannot run is a [`AgentEvent::Notice`], never an error.
+    ///
     /// # Errors
     ///
     /// Returns [`AgentError::Provider`] when the model request or its stream
-    /// fails.
+    /// fails, and [`AgentError::HookBlocked`] when a `UserPromptSubmit` hook
+    /// stops the prompt.
     pub async fn run<F>(
         &mut self,
         prompt: impl Into<String>,
@@ -157,7 +202,15 @@ impl Agent {
     where
         F: FnMut(&AgentEvent),
     {
-        self.messages.push(Message::user(prompt));
+        let prompt = prompt.into();
+        let prompt_outcome = self.run_prompt_hooks(&prompt, on_event);
+        self.messages.push(Message::user(prompt_with_context(
+            prompt,
+            &prompt_outcome.context,
+        )));
+        if let Some(reason) = prompt_outcome.blocked {
+            return Err(AgentError::HookBlocked { reason });
+        }
 
         let mut steps = 0u32;
         let mut tool_calls = 0usize;
@@ -214,8 +267,9 @@ impl Agent {
                         on_event(&AgentEvent::Usage(usage));
                     }
                     StreamEvent::Done(reason) => {
+                        // The usage chunk follows the finish reason, so the
+                        // stream is read to its end before the turn closes.
                         stop_reason = reason;
-                        break;
                     }
                 }
                 if self.cancel.is_cancelled() {
@@ -249,13 +303,16 @@ impl Agent {
                     name: call.name.clone(),
                     arguments: call.arguments.clone(),
                 });
-                let (output, is_error) = self.execute(&call).await;
+                let run = self.execute(&call).await;
+                for notice in &run.notices {
+                    on_event(&AgentEvent::Notice(notice.clone()));
+                }
                 on_event(&AgentEvent::ToolEnd {
                     name: call.name.clone(),
-                    output: output.clone(),
-                    is_error,
+                    output: run.output.clone(),
+                    is_error: run.is_error,
                 });
-                self.messages.push(Message::tool_result(&call, output));
+                self.messages.push(Message::tool_result(&call, run.output));
                 tool_calls += 1;
             }
         }
@@ -269,31 +326,112 @@ impl Agent {
         })
     }
 
-    async fn execute(&mut self, call: &ToolCall) -> (String, bool) {
+    /// Run `UserPromptSubmit` and report what it asked for.
+    fn run_prompt_hooks<F>(&self, prompt: &str, on_event: &mut F) -> Outcome
+    where
+        F: FnMut(&AgentEvent),
+    {
+        let Some(hooks) = &self.hooks else {
+            return Outcome::default();
+        };
+        let outcome = hooks.user_prompt_submit(&UserPrompt {
+            prompt,
+            cwd: &self.ctx.root,
+            session_id: self.session_id.as_deref(),
+        });
+        announce(&outcome, on_event);
+        outcome
+    }
+
+    async fn execute(&mut self, call: &ToolCall) -> ToolRun {
+        let mut notices = Vec::new();
         if self.registry.get(&call.name).is_none() {
-            return (
-                format!("error: there is no tool named {:?}", call.name),
-                true,
-            );
+            return ToolRun {
+                output: format!("error: there is no tool named {:?}", call.name),
+                is_error: true,
+                notices,
+            };
         }
         let args = match parse_arguments(&call.arguments) {
             Ok(args) => args,
-            Err(message) => return (message, true),
+            Err(message) => {
+                return ToolRun {
+                    output: message,
+                    is_error: true,
+                    notices,
+                };
+            }
         };
-        if let Err(message) = self.gate(&call.name, &args).await {
-            return (message, true);
+
+        let mut context = Vec::new();
+        if let Some(hooks) = &self.hooks {
+            let outcome = hooks.pre_tool_use(&PreToolUse {
+                tool: HookToolCall {
+                    name: &call.name,
+                    input: &args,
+                    id: &call.id,
+                },
+                cwd: &self.ctx.root,
+                session_id: self.session_id.as_deref(),
+            });
+            notices.extend(notice_lines(&outcome));
+            if let Some(message) = outcome.blocked {
+                // A blocked call never reaches the tool, so there is no
+                // `PostToolUse` for it; the reason is the tool result.
+                let mut output = message;
+                append_context(&mut output, &outcome.context);
+                return ToolRun {
+                    output,
+                    is_error: true,
+                    notices,
+                };
+            }
+            context.extend(outcome.context);
         }
-        // INFALLIBLE: the registry was checked above and nothing between the
-        // two lookups can remove a tool.
-        let Some(handle) = self.registry.get(&call.name) else {
-            return (
-                format!("error: there is no tool named {:?}", call.name),
-                true,
-            );
+
+        let started = Instant::now();
+        let (mut output, is_error) = match self.gate(&call.name, &args).await {
+            Err(refusal) => (refusal, true),
+            Ok(()) => {
+                // INFALLIBLE: the registry was checked above and nothing
+                // between the two lookups can remove a tool.
+                let Some(handle) = self.registry.get(&call.name) else {
+                    return ToolRun {
+                        output: format!("error: there is no tool named {:?}", call.name),
+                        is_error: true,
+                        notices,
+                    };
+                };
+                match handle.run(args.clone(), &self.ctx).await {
+                    Ok(output) => (output.text, false),
+                    Err(error) => (format!("error: {error}"), true),
+                }
+            }
         };
-        match handle.run(args, &self.ctx).await {
-            Ok(output) => (output.text, false),
-            Err(error) => (format!("error: {error}"), true),
+        let duration_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+
+        if let Some(hooks) = &self.hooks {
+            let response = Value::String(output.clone());
+            let outcome = hooks.post_tool_use(&PostToolUse {
+                tool: HookToolCall {
+                    name: &call.name,
+                    input: &args,
+                    id: &call.id,
+                },
+                cwd: &self.ctx.root,
+                session_id: self.session_id.as_deref(),
+                response: &response,
+                duration_ms,
+            });
+            notices.extend(notice_lines(&outcome));
+            context.extend(outcome.context);
+        }
+
+        append_context(&mut output, &context);
+        ToolRun {
+            output,
+            is_error,
+            notices,
         }
     }
 
@@ -377,6 +515,57 @@ impl Agent {
             None => None,
         }
     }
+}
+
+/// What one tool call produced.
+struct ToolRun {
+    output: String,
+    is_error: bool,
+    notices: Vec<String>,
+}
+
+/// Emit a hook outcome's user-visible messages. A warning is prefixed so it
+/// reads as one in the transcript; a hook's own `systemMessage` is kept as
+/// written.
+fn announce<F>(outcome: &Outcome, on_event: &mut F)
+where
+    F: FnMut(&AgentEvent),
+{
+    for warning in &outcome.warnings {
+        on_event(&AgentEvent::Notice(format!("warning: {warning}")));
+    }
+    for notice in &outcome.notices {
+        on_event(&AgentEvent::Notice(notice.clone()));
+    }
+}
+
+fn notice_lines(outcome: &Outcome) -> Vec<String> {
+    let mut lines: Vec<String> = outcome
+        .warnings
+        .iter()
+        .map(|warning| format!("warning: {warning}"))
+        .collect();
+    lines.extend(outcome.notices.iter().cloned());
+    lines
+}
+
+/// Attach `UserPromptSubmit` context to the prompt. This transcript has no
+/// separate system turn, so the text travels with the prompt instead.
+fn prompt_with_context(prompt: String, context: &[String]) -> String {
+    if context.is_empty() {
+        return prompt;
+    }
+    format!("{prompt}\n\n{}", context.join("\n\n"))
+}
+
+fn append_context(output: &mut String, context: &[String]) {
+    if context.is_empty() {
+        return;
+    }
+    if !output.is_empty() {
+        output.push_str("\n\n");
+    }
+    output.push_str(&context.join("\n\n"));
 }
 
 /// A one-line description of an external tool call for the approval prompt.

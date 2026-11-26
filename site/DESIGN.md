@@ -101,7 +101,7 @@ Complex developer tools stay scannable when copy obeys tight slot limits:
 | Orbital Stage | 1-word label · 3 bullets (`Bold Verb` + 6–11 words) | Deep TOML specs open on demand in dialogs |
 | Proof Stats | 3 tabular numbers + 3–5 word label | Exact, checkable values (`4`, `1`, `3`) |
 
-- **Authentic Third-Party Marks**: Always render real vector brand marks for supported providers and runtimes (`Anthropic`, `OpenAI`, `Google`, `Ollama`, `OpenRouter`, `NVIDIA`, `Groq`, `Together`, `DeepSeek`, `Kimi`, `Python`, `uv`, `Textual`, `GitHub`). Never invent fake company names.
+- **Authentic Third-Party Marks**: Always render real vector brand marks for supported providers and runtimes (`Anthropic`, `OpenAI`, `Google`, `Ollama`, `OpenRouter`, `NVIDIA`, `Groq`, `Together`, `DeepSeek`, `Mistral`, `xAI`, `Rust`, `Cargo`, `ratatui`, `SQLite`, `MCP`, `GitHub`). Never invent fake company names.
 
 ---
 

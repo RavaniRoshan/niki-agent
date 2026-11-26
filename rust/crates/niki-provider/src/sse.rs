@@ -193,9 +193,9 @@ where
             }
             loop {
                 if let Some(next) = pump.pending.pop_front() {
-                    if matches!(next, StreamEvent::Done(_)) {
-                        pump.done = true;
-                    }
+                    // A `Done` reason is not the end of the stream: OpenAI
+                    // sends the usage chunk after it and terminates with
+                    // `[DONE]`. Ending here would lose the token counts.
                     return Some((Ok(next), Some(pump)));
                 }
                 while let Some(event) = pump.decoder.next_event() {

@@ -20,7 +20,7 @@ impl Tool for WriteFile {
         json!({
             "type": "object",
             "properties": {
-                "path": {
+                "file_path": {
                     "type": "string",
                     "description": "File path relative to the workspace root."
                 },
@@ -29,13 +29,13 @@ impl Tool for WriteFile {
                     "description": "Complete new contents of the file."
                 }
             },
-            "required": ["path", "content"],
+            "required": ["file_path", "content"],
             "additionalProperties": false
         })
     }
 
     async fn run(&self, args: Value, ctx: &ToolContext) -> Result<ToolOutput, ToolError> {
-        let path = args::required_str(&args, "path")?;
+        let path = args::required_str_any(&args, &["file_path", "path"])?;
         let content = args::required_str(&args, "content")?;
 
         let resolved = ctx.resolve(path)?;
@@ -44,10 +44,6 @@ impl Tool for WriteFile {
         }
         fs::write(&resolved, content).map_err(|source| io_error(&resolved, source))?;
 
-        Ok(ToolOutput::new(format!(
-            "wrote {} bytes to {}",
-            content.len(),
-            ctx.relative(&resolved)
-        )))
+        Ok(ToolOutput::new(format!("Updated file {path}")))
     }
 }
