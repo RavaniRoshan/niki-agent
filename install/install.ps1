@@ -72,6 +72,13 @@ function Find-Archive {
     }
 
     if ($ScriptDir) {
+        # An extracted release archive holds this installer beside the binary;
+        # that binary is already the one the archive shipped.
+        $sibling = Join-Path $ScriptDir 'niki.exe'
+        if (Test-Path $sibling) { return $sibling }
+    }
+
+    if ($ScriptDir) {
         $local = Get-ChildItem -Path $ScriptDir -Filter 'niki-*-windows-x86_64.zip' -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($local) {

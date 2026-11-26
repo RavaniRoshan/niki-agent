@@ -117,8 +117,8 @@ jobs:
             "$prefix/bin/niki.exe" --version
           else
             tar -xzf "${stage}.tar.gz" -C "$extract"
-            NIKI_ARCHIVE="$extract/$stage/$stage.tar.gz" \
-              NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
+            # The installer finds the extracted sibling binary and installs it.
+            NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
           fi
 
       # `--version` only proves the binary loads. This step runs one headless
