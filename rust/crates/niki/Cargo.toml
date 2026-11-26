@@ -18,6 +18,7 @@ path = "src/bin/niki_rs.rs"
 [dependencies]
 anyhow.workspace = true
 crossterm.workspace = true
+niki-acp = { path = "../niki-acp" }
 niki-agent = { path = "../niki-agent" }
 niki-config = { path = "../niki-config" }
 niki-engine-client = { path = "../niki-engine-client" }

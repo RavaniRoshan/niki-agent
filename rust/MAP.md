@@ -22,10 +22,10 @@ cases are the equivalence proof.
 
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
-has started: `niki-mcp` is done for stdio and HTTP and both entry points connect
-`niki-rs` entry points now connect the configured servers at startup. Skills,
-hooks (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`) and slash commands are
-all done.
+has started: `niki-mcp` is done for stdio and HTTP and the `niki-rs` entry points
+connect the configured servers at startup. Skills, hooks (`PreToolUse`,
+`PostToolUse`, `UserPromptSubmit`) and slash commands are done, and the screen
+persists every turn.
 
 ## Waves
 
@@ -75,7 +75,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points, per-server startup timeout | done — 28 tests |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in every entry point, per-server startup timeout | done — 28 tests |
 | `niki-skills` | skill discovery, front matter, injection | done — 31 tests |
 | `niki-hooks` | `hooks.json`, pre/post tool and prompt hooks | done — 24 tests |
 | `niki-commands` | slash command grammar: `/clear`, `/compact`, `/resume`, `/tools`, `/version`, `/skills` beside the existing four | done — 7 tests |
@@ -84,7 +84,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-acp` | editor protocol over stdio | open |
+| `niki-acp` | editor protocol over stdio: initialize, sessions, prompt, cancel, modes, config, streaming updates | done — 27 tests |
 | `niki-headless` | `-n`, JSON output, exit codes | open |
 
 ### W6 — cutover
