@@ -6,8 +6,9 @@ cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done.
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 `[mcp_servers]`, registers discovered tools in the existing registry, and both
-`niki-rs` entry points now connect the configured servers at startup.
-`niki-skills`, `niki-hooks` and `niki-commands` are next.
+`niki-rs` entry points now connect the configured servers at startup. Slash
+commands live in `niki-commands`, the screen persists every completed turn and
+handles bracketed paste. `niki-skills` and `niki-hooks` are next.
 
 ## What is implemented
 
@@ -18,14 +19,15 @@ W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 | `niki-tools` | read/write/edit/list, shell, grep, glob over a rooted workspace; runtime tool registration |
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
-| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points |
+| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points under a per-server startup budget |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
 | `niki-render` | transcript view model, deterministic frame, `wrap` |
 | `niki-tui` | keymap (`BINDINGS`, `chord_label`), reader mode, view state |
 | `niki-tui-themes` | four palettes, WCAG AA contrast gate, glyph and motion modes |
-| `niki-tui-modals` | approval prompt, model picker, help overlay |
-| `niki-tui-live` | the full-screen app: composer, transcript, status bar, worker |
+| `niki-tui-modals` | approval prompt, model picker, help overlay with the command list |
+| `niki-tui-live` | the full-screen app: composer with bracketed paste, transcript, status bar, worker, session persistence |
+| `niki-commands` | slash command grammar (`/clear`, `/compact`, `/resume`, `/tools`, `/version` beside the existing four) |
 | `niki` | `niki` (engine client) and `niki-rs` (headless and full-screen) |
 
 `niki-rs -n "prompt"` is the headless entry point. `niki-rs` with no `-n` opens
@@ -42,13 +44,27 @@ shows `warning: mcp server …` as a transcript notice before the first frame an
 the run continues with the remaining servers (headless prints the same warning
 on stderr).
 
+The shell surface closes the two M3 gaps: an interactive `niki-rs` run
+opens `~/.niki/sessions.db`, creates a session row immediately and appends every
+completed turn as `user`, `assistant`, `tool_call`, `tool_result`, `tool_error`
+or `error` messages, so `/resume` lists and rebuilds sessions on the next
+launch. `/clear` starts a new session without deleting the old one, `/compact`
+folds older rows out of the view only — this build has no summarising model, and
+the help overlay says so — `/tools` lists the registry including `mcp__` names,
+and `/version` names Niki Agent. Bracketed paste is enabled with the alternate
+screen, arrives as one `Event::Paste`, and is inserted literally; a paste never
+sends the prompt, and a second prompt waits for the running turn so a turn can
+never be written to the store under another turn's rows. MCP startup is now
+concurrent and abandons a silent server after `NIKI_MCP_STARTUP_TIMEOUT_SECS`
+(default 10s), reporting the same per-server warning.
+
 ## Gates
 
 ```
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 231 tests, 0 failures
+cargo test -j 2 --workspace        # 260 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
@@ -134,20 +150,18 @@ startup wiring is covered without a network or a terminal.
 
 ## Next: W4 — extensions
 
-`niki-mcp` is done for stdio, HTTP, config, registration and startup wiring:
-both entry points call `niki_mcp::load(&config.mcp_servers)`, register the
-bridges, and hand the screen's worker the runtime those connections live on.
-What remains in W4 is `niki-skills`, `niki-hooks` and `niki-commands`. Slash
-commands are currently four hard-coded strings in `App::slash`; W4 should move
-them into `niki-commands` and have `niki-tui-live` call it, keeping `/quit`,
-`/help`, `/model` and `/theme` as the built-ins.
+`niki-mcp` is done for stdio, HTTP, config, registration, startup wiring and a
+per-server startup budget: both entry points call
+`niki_mcp::load(&config.mcp_servers)`, register the bridges, and hand the
+screen's worker the runtime those connections live on. `niki-commands` is done
+too: `App::slash` asks `niki_commands::parse`, and the help overlay lists the
+commands from the same table. What remains in W4 is `niki-skills` and
+`niki-hooks`.
 
 ## Known gaps
 
-- MCP startup connects every server serially with the one-minute request budget:
-  a server that accepts the process but never answers the handshake delays the
-  first frame by up to that minute. A per-server `timeout` key is the next thing
-  to add.
+- MCP startup now bounds the handshake, but a later request still uses the fixed
+  one-minute budget; a per-server `timeout` key is the next thing to add.
 - MCP: no OAuth (the Python client's `auth = "oauth"` has no Rust counterpart),
   no `${VAR}` interpolation in `command`/`args`/`env`/`url`/`headers`, no
   `tools/list` pagination (`nextCursor`), and no `DELETE` to end an HTTP session.
@@ -158,9 +172,7 @@ them into `niki-commands` and have `niki-tui-live` call it, keeping `/quit`,
   the Python product. This slice deliberately did not change that (see M4
   decisions).
 - No streaming cancel inside a provider request beyond the per-event check.
-- The live app has no session persistence yet: `niki-session` exists and is
-  tested, but the screen does not write to it, so a restart loses the transcript.
-- The composer does not handle bracketed paste or a mouse selection.
+- The composer has no mouse selection.
 - `Ctrl+O`, `Ctrl+T`, `Ctrl+N`, `Ctrl+G` are in `BINDINGS` but not implemented in
   the live app; the help overlay says so.
 - ratatui 0.29 pulls crossterm 0.28 alongside the workspace's 0.29. Both are

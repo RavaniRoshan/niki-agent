@@ -7,8 +7,9 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use niki_mcp::{McpError, PROTOCOL_VERSION, Server, Transport};
-use niki_tools::{Registry, ToolContext};
+use niki_config::McpTransport;
+use niki_mcp::{McpError, McpServer, PROTOCOL_VERSION, Server, Transport};
+use niki_tools::{Registry, Tool, ToolContext};
 use serde_json::json;
 
 fn fixture() -> Transport {
@@ -16,6 +17,16 @@ fn fixture() -> Transport {
         command: env!("CARGO_BIN_EXE_mcp-fixture").to_owned(),
         args: Vec::new(),
         env: BTreeMap::new(),
+        cwd: None,
+    }
+}
+
+/// A fixture that starts and then never answers a request.
+fn silent_fixture() -> Transport {
+    Transport::Stdio {
+        command: env!("CARGO_BIN_EXE_mcp-fixture").to_owned(),
+        args: Vec::new(),
+        env: BTreeMap::from([("MCP_FIXTURE_SILENT".to_owned(), "1".to_owned())]),
         cwd: None,
     }
 }
@@ -113,6 +124,67 @@ async fn a_server_that_never_answers_times_out() {
         .expect_err("timed out");
     assert!(matches!(error, McpError::Timeout { .. }), "{error:?}");
     assert!(error.to_string().contains("fixture"), "{error}");
+}
+
+#[tokio::test]
+async fn a_server_that_never_answers_the_handshake_is_abandoned_at_startup() {
+    let started = Instant::now();
+    let error =
+        match Server::connect_startup("silent", silent_fixture(), Duration::from_millis(200)).await
+        {
+            Ok(_) => panic!("a silent server must not connect"),
+            Err(error) => error,
+        };
+    assert!(matches!(error, McpError::Timeout { .. }), "{error:?}");
+    let text = error.to_string();
+    assert!(text.contains("silent"), "{text}");
+    assert!(text.contains("initialize"), "{text}");
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "took {:?}",
+        started.elapsed()
+    );
+}
+
+#[tokio::test]
+async fn one_silent_server_does_not_block_the_others() {
+    let servers = BTreeMap::from([
+        (
+            "fixture".to_owned(),
+            McpServer {
+                transport: McpTransport::Stdio {
+                    command: env!("CARGO_BIN_EXE_mcp-fixture").to_owned(),
+                    args: Vec::new(),
+                    env: BTreeMap::new(),
+                    cwd: None,
+                },
+            },
+        ),
+        (
+            "silent".to_owned(),
+            McpServer {
+                transport: McpTransport::Stdio {
+                    command: env!("CARGO_BIN_EXE_mcp-fixture").to_owned(),
+                    args: Vec::new(),
+                    env: BTreeMap::from([("MCP_FIXTURE_SILENT".to_owned(), "1".to_owned())]),
+                    cwd: None,
+                },
+            },
+        ),
+    ]);
+
+    let started = Instant::now();
+    let (tools, errors) = niki_mcp::load_with(&servers, Duration::from_millis(200)).await;
+
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(errors[0].to_string().contains("silent"), "{errors:?}");
+    let names: Vec<&str> = tools.iter().map(|tool| tool.name()).collect();
+    assert!(names.contains(&"mcp__fixture__echo"), "{names:?}");
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "the silent server held the others for {:?}",
+        started.elapsed()
+    );
 }
 
 #[tokio::test]

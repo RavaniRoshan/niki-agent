@@ -14,6 +14,7 @@ use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_config::{Config, Protocol, config_home};
 use niki_mcp::ToolBridge;
 use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
+use niki_session::SessionStore;
 use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
@@ -183,12 +184,22 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     app.set_motion(Motion::from_value(
         env_value("NIKI_REDUCED_MOTION").as_deref(),
     ));
+    attach_sessions(&mut app);
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .context("start the async runtime")?;
     let mcp_tools = Arc::new(load_mcp(&runtime, &config, &mut app));
+    let tool_names = {
+        let registry = tool_registry(&mcp_tools);
+        registry
+            .names()
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    app.set_tools(tool_names);
 
     let build_config = config;
     let mut worker = WorkerHandle::spawn_with_runtime(&spec, mode, runtime, move |parts| {
@@ -210,6 +221,27 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     });
 
     run_screen(&mut app, &mut worker).context("run the full-screen app")
+}
+
+/// Open the session store and give the screen a session to write into.
+///
+/// A store that cannot be opened is a warning, not a failed startup: the screen
+/// still works, it just cannot save or resume.
+fn attach_sessions(app: &mut App) {
+    let home = config_home();
+    match open_store(&home) {
+        Ok(store) => app.attach_sessions(store),
+        Err(error) => app
+            .transcript
+            .push_notice(format!("warning: sessions are not saved: {error:#}")),
+    }
+}
+
+/// Open `sessions.db` under `home`, creating the directory when it is missing.
+fn open_store(home: &Path) -> Result<SessionStore> {
+    std::fs::create_dir_all(home).with_context(|| format!("create {}", home.display()))?;
+    SessionStore::open(home.join("sessions.db"))
+        .with_context(|| format!("open the session store in {}", home.display()))
 }
 
 /// Connect every configured MCP server before the screen takes the terminal.
@@ -439,6 +471,17 @@ mod tests {
         assert_eq!(provider, "groq");
         assert_eq!(model, "llama-3.3-70b");
         assert!(split_spec("llama").is_err());
+    }
+
+    #[test]
+    fn the_session_store_is_created_under_the_config_home() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join(".niki");
+        let store = open_store(&home).expect("store");
+        let session = store.create(temp.path()).expect("session");
+        assert_eq!(store.list().expect("list").len(), 1);
+        assert!(store.load(&session).expect("load").is_empty());
+        assert!(home.join("sessions.db").exists());
     }
 
     #[test]

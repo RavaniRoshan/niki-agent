@@ -849,6 +849,7 @@ dependencies = [
  "niki-proto",
  "niki-provider",
  "niki-render",
+ "niki-session",
  "niki-tools",
  "niki-tui",
  "niki-tui-live",
@@ -871,6 +872,10 @@ dependencies = [
  "thiserror",
  "tokio",
 ]
+
+[[package]]
+name = "niki-commands"
+version = "0.1.0"
 
 [[package]]
 name = "niki-config"
@@ -988,10 +993,12 @@ dependencies = [
  "crossterm 0.29.0",
  "futures-util",
  "niki-agent",
+ "niki-commands",
  "niki-config",
  "niki-policy",
  "niki-provider",
  "niki-render",
+ "niki-session",
  "niki-tools",
  "niki-tui",
  "niki-tui-modals",
@@ -1007,6 +1014,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm 0.29.0",
  "niki-agent",
+ "niki-commands",
  "niki-config",
  "niki-tui",
  "niki-tui-themes",

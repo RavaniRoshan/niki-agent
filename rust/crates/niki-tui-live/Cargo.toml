@@ -11,8 +11,10 @@ description = "Full-screen terminal application for the Niki agent"
 crossterm.workspace = true
 futures-util.workspace = true
 niki-agent = { path = "../niki-agent" }
+niki-commands = { path = "../niki-commands" }
 niki-policy = { path = "../niki-policy" }
 niki-render = { path = "../niki-render" }
+niki-session = { path = "../niki-session" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-modals = { path = "../niki-tui-modals" }
 niki-tui-themes = { path = "../niki-tui-themes" }

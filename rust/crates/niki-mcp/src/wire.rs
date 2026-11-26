@@ -22,6 +22,14 @@ pub const PROTOCOL_VERSION: &str = "2025-06-18";
 /// [`Server::connect_with`](crate::Server::connect_with).
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// How long a server may take to answer its handshake by default.
+///
+/// A server that accepts the process or connection and then never answers is
+/// abandoned at this point: startup must not wait a minute for one quiet
+/// server. The host can override it with `NIKI_MCP_STARTUP_TIMEOUT_SECS` and
+/// [`load_with`](crate::load_with).
+pub const DEFAULT_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// One connected MCP server.
 ///
 /// [`Server::connect`] performs the handshake and `tools/list` once; later
@@ -86,6 +94,32 @@ impl Server {
             tools,
             connection: Mutex::new(connection),
         })
+    }
+
+    /// Connect, but give the whole handshake at most `startup`.
+    ///
+    /// The setup calls still use [`DEFAULT_TIMEOUT`] each; this budget covers
+    /// them together, so a server that is silent from the first byte costs one
+    /// startup budget and is then dropped. Dropping the future also drops the
+    /// stdio child, which `kill_on_drop` reaps.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`McpError::Timeout`] naming `initialize` when the budget
+    /// elapses, and every error [`Server::connect`] can return.
+    pub async fn connect_startup(
+        name: &str,
+        transport: Transport,
+        startup: Duration,
+    ) -> Result<Self, McpError> {
+        match tokio::time::timeout(startup, Self::connect(name, transport)).await {
+            Ok(result) => result,
+            Err(_) => Err(McpError::Timeout {
+                server: name.to_owned(),
+                method: "initialize".to_owned(),
+                timeout: startup,
+            }),
+        }
     }
 
     /// The configured server name.
