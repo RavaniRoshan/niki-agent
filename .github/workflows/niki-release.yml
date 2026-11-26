@@ -99,7 +99,9 @@ jobs:
           cp NOTICE README.md "$stage/"
 
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            (cd "$stage" && zip -r "../${stage}.${{ matrix.ext }}" .)
+            # `zip` is not on the Windows runner; PowerShell's archiver is.
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path '$stage' -DestinationPath '${stage}.zip'"
           else
             tar -czf "${stage}.${{ matrix.ext }}" "$stage"
           fi
