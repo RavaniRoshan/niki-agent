@@ -1,21 +1,23 @@
-# Niki Agent
+# Niki Agent 1.0.0
 
-A calm, fast, keyboard-native terminal coding agent. A presentation-layer fork
-of [Deep Agents](https://github.com/langchain-ai/deepagents) — the agent, tools,
-permissions, and SDK are upstream's and unchanged.
+A calm, fast, keyboard-native terminal coding agent — an independent
+implementation. The agent loop lives in this repository: the Deep Agents SDK and
+the ACP runtime are vendored under `libs/code/niki_agent/` with their MIT notice
+and a `PROVENANCE.md` beside each, so nothing imports an upstream distribution at
+runtime.
 
 ## Install
 
 **Linux / macOS**
 
 ```bash
-curl -fsSL https://github.com/RavaniRoshan/niki-agent/releases/latest/download/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://github.com/RavaniRoshan/niki-agent/releases/latest/download/install.ps1 | iex
+irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 ```
 
 Both create an isolated environment under `~/.local/niki`
@@ -29,40 +31,55 @@ export ANTHROPIC_API_KEY=sk-ant-...
 niki
 ```
 
-## What this release contains
+No key is needed to look around: `niki` boots to a working composer.
 
-- `niki` as a command beside an untouched `dcode`
-- Four contrast-verified theme variants, switchable with `/theme`
-- A ping-ponging activity indicator with `NIKI_REDUCED_MOTION` support
-- A bounded mount window: render cost grew 2.09× with transcript depth before,
-  1.21× after
-- Idle repaints over 5 seconds: 10 before, 0 after
+## What is in this release
+
+- **Independent product.** `niki_agent` / `niki-agent`, `NIKI_*` environment
+  variables, state in `~/.niki` with a one-time migration from the old
+  `~/.deepagents` profile. `dcode` and `deepagents-code` still launch it for two
+  minor versions and print one line saying so.
+- **Accessibility.** Contrast-verified theme variants, `NIKI_REDUCED_MOTION`,
+  a screen-reader mode (one turn per invocation, no escape sequences), an ASCII
+  glyph registry, and layout tiers checked at 40/50/80/120/160 columns.
+- **Interface parity.** `docs/niki/UI_PARITY.md` carries no MISSING P0 row; the
+  last gap, in-session `#` memory notes, landed here.
+- **Rust client, source only.** `rust/` speaks the same LangGraph HTTP/SSE
+  protocol as the Python client: deterministic protocol replay, a live session,
+  and pinned parity frames (`docs/niki/RUST_PARITY.md`). It is not shipped as a
+  binary in this release and does not yet replace the Python UI.
 
 ## Honest status
 
-**26 WORKS · 33 PARTIAL · 11 MISSING** of 76 checklist rows, recorded in
-[`docs/niki/CHECKLIST.md`](https://github.com/RavaniRoshan/niki-agent/blob/main/docs/niki/CHECKLIST.md).
+**57 WORKS · 0 PARTIAL · 0 MISSING** across the 57 checklist rows in
+[`docs/niki/CHECKLIST.md`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/CHECKLIST.md),
+each decided by a test, a PTY run, or a measured probe.
 
-The open rows are mostly visual work that needs a real terminal to judge — the
-synthetic test driver cannot decide them, because a synthetic assistant message
-lays out at height 0 and paints nothing. They are listed rather than smoothed
-over.
+Where the rows carry a caveat, the caveat is written into the row. Two are worth
+repeating here:
+
+- First paint is ~190 ms in process and 505–517 ms for a real process. The
+  original 400 ms budget was below the CPython process floor for this import
+  graph, so the guard is 1,500 ms; the reasoning is recorded rather than the
+  number quietly raised.
+- The 4,546.8 ms heavy-import chain is real but off the critical path, because
+  the startup path defers those imports.
 
 ## Artifacts
 
 | File | Platform |
 | --- | --- |
-| `niki-<version>-linux.tar.gz` | Linux x86-64 |
-| `niki-<version>-macos-arm64.tar.gz` | macOS Apple Silicon |
-| `niki-<version>-macos-x64.tar.gz` | macOS Intel |
-| `niki-<version>-windows.zip` | Windows x86-64 |
+| `niki-1.0.0-linux.tar.gz` | Linux x86-64 and WSL |
+| `niki-1.0.0-macos.tar.gz` | macOS, Apple Silicon and Intel |
+| `niki-1.0.0-windows.zip` | Windows x86-64 |
 
-Each contains the pinned wheel, the installer, `NOTICE`, and `README.md`.
+`SHA256SUMS` covers all three. Each archive contains the pinned wheel, both
+installers, `NOTICE`, and `README.md`. The macOS archive is
+architecture-independent because the wheel is pure Python and the installer
+resolves the rest at install time.
 
 ## Attribution
 
 Built on Deep Agents by LangChain, MIT licensed. Upstream copyright and notices
-are retained verbatim — see [`NOTICE`](https://github.com/RavaniRoshan/niki-agent/blob/main/NOTICE).
-
-The distribution name upstream uses, `deepagents-code`, is deliberately
-unchanged so that the package remains installable and attributable.
+are retained verbatim — see [`NOTICE`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/NOTICE)
+and the vendored `PROVENANCE.md` files.

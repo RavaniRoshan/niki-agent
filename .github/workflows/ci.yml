@@ -5,6 +5,8 @@
 #
 # `make check` is the same gauntlet a contributor runs locally: lint, type
 # check, import graph, unit tests, extras/version gates, and lockfile drift.
+# The Rust client is a separate toolchain (rust/) and gets its own job: tests,
+# formatting, and clippy at deny-warnings.
 
 name: "🔧 CI"
 
@@ -57,18 +59,59 @@ jobs:
           # Cap xdist: the default `-n auto` oversubscribes the runner.
           PYTEST_EXTRA="-n 4" make check
 
+  rust:
+    name: "🦀 rust client"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: "📋 Checkout Code"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "🦀 Install the Rust toolchain"
+        run: |
+          rustup toolchain install stable --profile minimal \
+            --component rustfmt,clippy
+          rustup default stable
+
+      - name: "📦 Cache the cargo registry and target dir"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: "🧪 cargo test"
+        working-directory: rust
+        run: cargo test -j 4 --workspace --locked
+
+      - name: "🎨 cargo fmt"
+        working-directory: rust
+        run: cargo fmt --all -- --check
+
+      - name: "🔍 cargo clippy"
+        working-directory: rust
+        run: cargo clippy -j 4 --workspace --all-targets --locked -- -D warnings
+
   ci_success:
     name: "✅ CI Success"
-    needs: check
+    needs: [check, rust]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: "Aggregate result"
         env:
           CHECK_RESULT: ${{ needs.check.result }}
+          RUST_RESULT: ${{ needs.rust.result }}
         run: |
           if [ "$CHECK_RESULT" != "success" ]; then
             echo "libs/code check finished as '$CHECK_RESULT'"
             exit 1
           fi
-          echo "libs/code check passed"
+          if [ "$RUST_RESULT" != "success" ]; then
+            echo "rust client finished as '$RUST_RESULT'"
+            exit 1
+          fi
+          echo "libs/code check and the rust client passed"

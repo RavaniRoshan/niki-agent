@@ -1,0 +1,21 @@
+[package]
+name = "niki"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Niki Agent terminal client"
+
+[[bin]]
+name = "niki"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+crossterm.workspace = true
+niki-engine-client = { path = "../niki-engine-client" }
+niki-proto = { path = "../niki-proto" }
+niki-render = { path = "../niki-render" }
+niki-tui = { path = "../niki-tui" }
+tokio.workspace = true

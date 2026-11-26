@@ -26,7 +26,11 @@ Rust slice by slice once the client has parity.
 | Phase 1 — brand gate | done | `tests/unit_tests/niki/test_brand_gate.py` (6 rows) |
 | Phase 2 — accessibility | done | `test_theme_contrast.py`, `test_motion.py`, `test_screen_reader.py`, `test_keymap.py`, `test_snapshots.py` at 40/50/80/120/160 |
 | Phase 2 — parity rows | done | `docs/niki/UI_PARITY.md`; `#` memory added in `niki_agent/memory_note.py` |
-| Phase 3 — M0–M2 | not started | — |
+| Phase 3 — M0 fixtures | done | `rust/crates/niki-proto/fixtures/hello.json` (real `langgraph_api` 0.15.1 capture, UUIDs normalized); determinism + unknown-event tests |
+| Phase 3 — M1 replay parity | done | three frames pinned in `parity_frames_are_pinned`; differences justified in `docs/niki/RUST_PARITY.md` |
+| Phase 3 — M2 live session | done | `rust/tools/m2_session.sh` — PTY session transcript equals the replay frame |
+| Phase 3 — performance table | done | `docs/niki/RUST_PARITY.md`: 1 ms `--version`, 4 ms first replay frame, 5.5 MB binary |
+| Phase 3 — CI | done | `ci.yml` job `🦀 rust client`: `cargo test`, `fmt --check`, `clippy -D warnings` |
 
 ## Owner decisions taken (2026-11-26)
 

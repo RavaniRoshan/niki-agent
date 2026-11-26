@@ -488,3 +488,38 @@ before the fix, and the merged tree is verified again below.
 - Local install proof: built `niki_agent-1.0.0-py3-none-any.whl`, ran
   `install/install.sh` into an empty prefix, and `niki --version` printed
   `Niki Agent 1.0.0` (exit 0).
+
+## Session 5 — Rust client and the release path (2026-11-26)
+
+### Rust client (Phase 3, M0–M2)
+- `rust/` is a new workspace: `niki-proto`, `niki-engine-client`, `niki-render`,
+  `niki-tui`, and the `niki` binary. It speaks the same LangGraph HTTP/SSE
+  protocol as the Python client, so the engine stays where it is.
+- **M0**: `crates/niki-proto/fixtures/hello.json` is a real `langgraph dev`
+  capture (`langgraph_api` 0.15.1 / `langgraph` 1.2.12) with UUIDs normalized.
+  Tests pin determinism, reject an unknown event, and feed the SSE decoder every
+  byte split of the capture.
+- **M1**: 120×38, 80×24, and 40×20 frames are pinned in
+  `parity_frames_are_pinned`; every difference from the Python TUI is justified
+  in `RUST_PARITY.md` with the extracted Python 80×24 frame beside it.
+- **M2**: `rust/tools/m2_session.sh` starts the stub engine, runs `niki session`
+  under `script -qec` (a real PTY), and diffs the live frame against
+  `niki replay`. Only the header label differs.
+- Measured (release, 20 runs): `niki --version` 1 ms, first replay frame 4 ms,
+  binary 5.5 MB — against 349 ms cold / 260 ms warm and 194.3 ms to first paint
+  for the Python client. The Rust frame renders the transcript region only, so
+  this is not yet a like-for-like product claim.
+- CI gains a `rust client` job (`cargo test`, `fmt --check`,
+  `clippy -D warnings`); `make check` is untouched.
+
+### Release path repairs
+- `install.ps1` version probe broke on PowerShell 5.1: embedded double quotes are
+  dropped when an argument is handed to a native process, so Python received
+  `print(%d.%d%v[:2])`. Single quotes inside a double-quoted PS string fix it.
+- The `macos-13` runner is retired, and its forever-queued job blocked the
+  `release` job, which needs every build. The matrix now builds `linux`, `macos`,
+  and `windows`; the macOS archive is architecture-independent because the wheel
+  is `py3-none-any` and the installer resolves dependencies at install time.
+- `RELEASE_NOTES_niki.md` still described a presentation-layer fork with an
+  untouched `dcode`, a 26/33/11 checklist, `main`-branch links, and two macOS
+  artifacts. Rewritten.

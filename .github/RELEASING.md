@@ -27,8 +27,10 @@ on drift.
 
    Or dispatch **Niki Release** with the version (no leading `v`).
 
-`Niki Release` builds on `ubuntu-latest`, `macos-14`, `macos-13`, and
-`windows-latest`. Each job runs `uv build --wheel --sdist` in `libs/code`,
+`Niki Release` builds on `ubuntu-latest`, `macos-14`, and `windows-latest`.
+The macOS job produces one architecture-independent artifact, because the
+wheel is pure Python and the installer resolves dependencies at install time.
+Each job runs `uv build --wheel --sdist` in `libs/code`,
 copies the wheel plus `install/install.sh` or `install/install.ps1` and
 `NOTICE`/`README.md` into `niki-<version>-<platform>.{tar.gz,zip}`, then runs
 the packaged installer into a scratch prefix and prints `niki --version` from

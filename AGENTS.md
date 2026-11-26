@@ -2,7 +2,9 @@
 
 Niki Agent is a terminal coding agent. The product is a single Python package in
 `libs/code`; it vendors the Deep Agents SDK and ACP runtime inside that package,
-so nothing imports an upstream distribution at runtime.
+so nothing imports an upstream distribution at runtime. `rust/` holds a second
+front end for the same engine, built crate by crate; it does not replace the
+Python client until its parity gates are green.
 
 ## Layout
 
@@ -12,6 +14,10 @@ so nothing imports an upstream distribution at runtime.
 - `libs/partners/quickjs` — the JS interpreter middleware the agent depends on.
   It is built from this repository because its unreleased line carries the PTC
   API the agent imports.
+- `rust/` — the Rust client workspace (`niki`, `niki-proto`,
+  `niki-engine-client`, `niki-render`, `niki-tui`) that speaks the same
+  LangGraph HTTP/SSE protocol as the Python engine. Parity evidence is in
+  `docs/niki/RUST_PARITY.md`.
 - `install/` — the release installer for Linux/macOS and Windows.
 - `archive/` — the former upstream packages. Not built, not tested, not
   installed. History is in Git.
@@ -30,6 +36,14 @@ make test                # pytest
 ```
 
 `make check` is authoritative. Run it before claiming a change is done.
+
+```bash
+cd rust
+cargo test -j 4 --workspace   # M0 fixtures + pinned M1 replay frames
+cargo fmt --all -- --check
+cargo clippy -j 4 --workspace --all-targets -- -D warnings
+bash tools/m2_session.sh      # M2: live PTY session vs the replay frame
+```
 
 ## Development rules
 
@@ -55,7 +69,7 @@ justify a suppression, the code is probably the problem.
 - Branch names: `<github-username>/<scope>/<short-description>`.
 - Conventional Commits, with a scope. Allowed scopes are defined in
   `.github/workflows/pr_lint.yml`: `ci`, `code`, `deps`, `docs`, `examples`,
-  `infra`, `quickjs`, `repo`, `sdk`.
+  `infra`, `quickjs`, `repo`, `rust`, `sdk`.
 - Text after `type(scope):` starts lowercase unless it begins with a proper noun
   or a code entity. Wrap code identifiers in backticks.
 - Never create a `main` branch. The default branch is `niki-agent`.

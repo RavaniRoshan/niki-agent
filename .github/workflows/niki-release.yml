@@ -47,11 +47,11 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             ext: tar.gz
+          # One macOS artifact covers both architectures: the wheel is pure
+          # Python (py3-none-any) and the installer resolves the rest at
+          # install time, so there is nothing to compile per-arch.
           - os: macos-14
-            platform: macos-arm64
-            ext: tar.gz
-          - os: macos-13
-            platform: macos-x64
+            platform: macos
             ext: tar.gz
           - os: windows-latest
             platform: windows

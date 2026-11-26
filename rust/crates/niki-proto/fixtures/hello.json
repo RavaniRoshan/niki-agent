@@ -1,0 +1,311 @@
+{
+  "format": "niki.protocol.fixture.v1",
+  "name": "hello",
+  "provenance": {
+    "captured_with": "langgraph_api 0.15.1 / langgraph 1.2.12",
+    "graph": "langgraph dev (scripted fixture graph)",
+    "normalization": "UUIDs replaced in first-appearance order"
+  },
+  "request": {
+    "assistant_id": "agent",
+    "input": {
+      "messages": [
+        {
+          "type": "human",
+          "content": "Say hello"
+        }
+      ]
+    },
+    "stream_mode": [
+      "messages",
+      "updates",
+      "values"
+    ]
+  },
+  "frames": [
+    {
+      "event": "metadata",
+      "data": {
+        "run_id": "00000000-0000-7000-8000-000000000001",
+        "attempt": 1
+      }
+    },
+    {
+      "event": "values",
+      "data": {
+        "messages": [
+          {
+            "content": "Say hello",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "00000000-0000-7000-8000-000000000002"
+          }
+        ]
+      }
+    },
+    {
+      "event": "messages/metadata",
+      "data": {
+        "lc_run--01a21699-d8d5-7bc2-a655-d5c002b175e8": {
+          "metadata": {
+            "created_by": "system",
+            "graph_id": "agent",
+            "assistant_id": "00000000-0000-7000-8000-000000000003",
+            "run_attempt": 1,
+            "langgraph_version": "1.2.12",
+            "langgraph_api_version": "0.15.1",
+            "langgraph_plan": "enterprise",
+            "langgraph_host": "self-hosted",
+            "langgraph_api_url": "http://127.0.0.1:2025",
+            "run_id": "00000000-0000-7000-8000-000000000001",
+            "thread_id": "00000000-0000-7000-8000-000000000004",
+            "ls_integration": "langchain_chat_model",
+            "langgraph_step": 1,
+            "langgraph_node": "respond",
+            "langgraph_triggers": [
+              "branch:to:respond"
+            ],
+            "langgraph_path": [
+              "__pregel_pull",
+              "respond"
+            ],
+            "langgraph_checkpoint_ns": "respond:00000000-0000-7000-8000-000000000005",
+            "checkpoint_ns": "respond:00000000-0000-7000-8000-000000000005",
+            "ls_provider": "genericfakechatmodel",
+            "ls_model_type": "chat",
+            "lc_versions": {
+              "langchain-core": "1.6.6",
+              "langchain": "1.4.3"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello ",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from ",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the ",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the Niki",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the Niki ",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the Niki protocol",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the Niki protocol ",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "messages/partial",
+      "data": [
+        {
+          "content": "Hello from the Niki protocol fixture.",
+          "additional_kwargs": {},
+          "response_metadata": {},
+          "type": "ai",
+          "name": null,
+          "id": "lc_run--00000000-0000-7000-8000-000000000006",
+          "tool_calls": [],
+          "invalid_tool_calls": [],
+          "usage_metadata": null
+        }
+      ]
+    },
+    {
+      "event": "updates",
+      "data": {
+        "respond": {
+          "messages": [
+            {
+              "content": "Hello from the Niki protocol fixture.",
+              "additional_kwargs": {},
+              "response_metadata": {},
+              "type": "AIMessageChunk",
+              "name": null,
+              "id": "lc_run--00000000-0000-7000-8000-000000000006",
+              "tool_calls": [],
+              "invalid_tool_calls": [],
+              "usage_metadata": null,
+              "tool_call_chunks": [],
+              "chunk_position": "last"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": "values",
+      "data": {
+        "messages": [
+          {
+            "content": "Say hello",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "human",
+            "name": null,
+            "id": "00000000-0000-7000-8000-000000000002"
+          },
+          {
+            "content": "Hello from the Niki protocol fixture.",
+            "additional_kwargs": {},
+            "response_metadata": {},
+            "type": "ai",
+            "name": null,
+            "id": "lc_run--00000000-0000-7000-8000-000000000006",
+            "tool_calls": [],
+            "invalid_tool_calls": [],
+            "usage_metadata": null
+          }
+        ]
+      }
+    }
+  ]
+}
