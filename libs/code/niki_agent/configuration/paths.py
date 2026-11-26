@@ -96,6 +96,34 @@ def _windows_program_data(
     return value or _PROGRAM_DATA_DEFAULT, fallback
 
 
+def _platform_paths(
+    platform: str | None, environ: Mapping[str, str] | None
+) -> tuple[ResolvedManagedPath, Path]:
+    """Map one platform to its managed-config path and the legacy location.
+
+    Returns:
+        The primary path with its guess reason, and the pre-rename legacy path.
+    """
+    active_platform = sys.platform if platform is None else platform
+    if active_platform == "darwin":
+        root = Path("/Library/Application Support")
+        return (
+            ResolvedManagedPath(root / "niki" / "managed_config.toml"),
+            root / "dcode" / "managed_config.toml",
+        )
+    if active_platform == "win32":
+        root, fallback = _windows_program_data(environ)
+        base = Path(root)
+        return (
+            ResolvedManagedPath(base / "niki" / "managed_config.toml", fallback),
+            base / "dcode" / "managed_config.toml",
+        )
+    return (
+        ResolvedManagedPath(Path("/etc/niki/managed_config.toml")),
+        Path("/etc/dcode/managed_config.toml"),
+    )
+
+
 def _resolve(
     platform: str | None, environ: Mapping[str, str] | None
 ) -> ResolvedManagedPath:
@@ -105,19 +133,27 @@ def _resolve(
     that redirects one of them cannot change what the other computes.
 
     Returns:
-        The path for the platform, paired with the reason it is a guess.
+        The primary path for the platform, paired with the reason it is a guess.
     """
-    active_platform = sys.platform if platform is None else platform
-    if active_platform == "darwin":
-        return ResolvedManagedPath(
-            Path("/Library/Application Support/dcode/managed_config.toml")
-        )
-    if active_platform == "win32":
-        root, fallback = _windows_program_data(environ)
-        return ResolvedManagedPath(
-            Path(root) / "dcode" / "managed_config.toml", fallback
-        )
-    return ResolvedManagedPath(Path("/etc/dcode/managed_config.toml"))
+    primary, _ = _platform_paths(platform, environ)
+    return primary
+
+
+def _prefer_legacy_policy(
+    primary: ResolvedManagedPath, legacy: Path
+) -> ResolvedManagedPath:
+    """Fall back to the pre-rename managed config when only it exists.
+
+    Administrators that deployed policy at the old `dcode` location keep
+    working after the rename; the primary path wins as soon as a file appears
+    there.
+
+    Returns:
+        The primary path, or the legacy path when only it holds a file.
+    """
+    if primary.path.exists() or not legacy.exists():
+        return primary
+    return ResolvedManagedPath(legacy, primary.fallback)
 
 
 def resolve_managed_path(
@@ -137,9 +173,12 @@ def resolve_managed_path(
             exists to prevent.
 
     Returns:
-        The path for the platform, paired with the reason it is a guess.
+        The path for the platform, paired with the reason it is a guess. When
+        only the pre-rename `dcode` location holds a file, that path is
+        returned so deployed policy keeps applying.
     """
-    return _resolve(platform, environ)
+    primary, legacy = _platform_paths(platform, environ)
+    return _prefer_legacy_policy(primary, legacy)
 
 
 def managed_config_path(
@@ -156,6 +195,8 @@ def managed_config_path(
             `resolve_managed_path`.
 
     Returns:
-        The managed-config path for the platform.
+        The managed-config path for the platform, preferring the legacy
+        `dcode` location only when it is the one that exists.
     """
-    return _resolve(platform, environ).path
+    primary, legacy = _platform_paths(platform, environ)
+    return _prefer_legacy_policy(primary, legacy).path

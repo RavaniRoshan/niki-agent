@@ -81,8 +81,38 @@ def test_managed_config_path_windows_ignores_process_env(
     monkeypatch.setenv("ProgramData", "C:/attacker/fake")
     monkeypatch.setenv("PROGRAMDATA", "C:/attacker/fake")
     assert managed_config_path(platform="win32") == Path(
-        "C:/ProgramData/dcode/managed_config.toml"
+        "C:/ProgramData/niki/managed_config.toml"
     )
+
+
+def test_managed_config_path_falls_back_to_the_legacy_location(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A policy file deployed under the pre-rename `dcode` path still applies.
+
+    The rename must not silently disable administrator policy on machines that
+    already deployed it. The primary path wins as soon as a file exists there.
+    """
+    from niki_agent.configuration import paths
+
+    primary = tmp_path / "niki" / "managed_config.toml"
+    legacy = tmp_path / "dcode" / "managed_config.toml"
+    legacy.parent.mkdir()
+    legacy.write_text("[update]\ncheck = false\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        paths,
+        "_platform_paths",
+        lambda *_args, **_kwargs: (
+            paths.ResolvedManagedPath(primary),
+            legacy,
+        ),
+    )
+    assert managed_config_path() == legacy
+
+    primary.parent.mkdir()
+    primary.write_text("", encoding="utf-8")
+    assert managed_config_path() == primary
 
 
 def test_user_config_writers_share_one_lock_object() -> None:

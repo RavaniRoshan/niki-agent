@@ -5,7 +5,7 @@
 #
 # Why an installer and not a compiled single-file binary
 # ------------------------------------------------------
-# `deepagents-code` resolves a lot at runtime -- LangChain providers are loaded
+# `niki` resolves a lot at runtime -- LangChain providers are loaded
 # lazily, Textual reads `.tcss` and bundled JSON from disk, and the plugin system
 # imports by name. That is exactly the shape PyInstaller most often gets wrong,
 # and a frozen build that fails at runtime on someone else's machine is worse

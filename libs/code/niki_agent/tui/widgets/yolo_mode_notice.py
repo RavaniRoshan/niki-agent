@@ -37,9 +37,7 @@ class YoloModeNoticeResult(StrEnum):
     CANCEL = "cancel"
 
 
-YOLO_MODE_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/approval-modes"
-)
+YOLO_MODE_DOCS_URL = "https://github.com/RavaniRoshan/niki-agent#approval-modes"
 """Canonical docs page for Manual / Auto / YOLO behavior."""
 
 YOLO_MODE_NOTICE_BODY = (

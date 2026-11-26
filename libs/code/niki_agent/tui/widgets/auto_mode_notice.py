@@ -21,9 +21,7 @@ from niki_agent.tui.widgets._links import open_checked_url_async
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-AUTO_MODE_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/approval-modes"
-)
+AUTO_MODE_DOCS_URL = "https://github.com/RavaniRoshan/niki-agent#approval-modes"
 """Canonical docs page for Manual / Auto / YOLO behavior."""
 
 AUTO_MODE_NOTICE_MODEL_ANCHOR = "**classifier model**"

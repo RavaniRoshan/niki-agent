@@ -569,3 +569,17 @@ before the fix, and the merged tree is verified again below.
 - Packaging metadata: version 1.1.0, `Production/Stable` classifier, the
   changelog URL now points at the releases page, and `langgraph` is gone from
   the keyword list.
+
+### 1.1.1 — managed-path rename and the last upstream links
+- Managed policy now resolves to `/etc/niki/managed_config.toml` (and the
+  macOS and Windows equivalents). When only the pre-rename `dcode` file
+  exists, that path is read instead, so deployed administrator policy keeps
+  applying and `niki doctor` no longer prints the old directory on a clean
+  install.
+- The Manual/Auto/YOLO notice modals link to the new README section on
+  approval modes instead of an upstream docs site.
+- `THREAT_MODEL.md` names the live `NIKI_SHELL_ALLOW_LIST` variable; the issue
+  template, the CODEOWNERS header, and the release-workflow comment name only
+  Niki Agent.
+- Removed `fix_onboard.py`, a fork-era one-off that patched onboarding copy
+  the tree no longer contains.

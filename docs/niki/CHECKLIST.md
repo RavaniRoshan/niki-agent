@@ -1,6 +1,6 @@
 # Niki Agent — Checklist
 
-Status as of `v1.1.0` on `niki-agent` (2026-11-26). The rows were closed against
+Status as of `v1.1.1` on `niki-agent` (2026-11-26). The rows were closed against
 BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
 
 **This file is not a victory lap.** Every P0 row below is closed with the named
