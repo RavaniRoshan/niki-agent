@@ -120,7 +120,7 @@ Here is a preview showing the head and tail of the result (lines of the form `..
 
 {content_sample}
 """
-"""Legacy `TOO_LARGE_TOOL_MSG` value available until `deepagents==0.9.0`."""
+"""Legacy `TOO_LARGE_TOOL_MSG` value, kept for one deprecation window."""
 
 _LEGACY_TOO_LARGE_HUMAN_MSG: Final = """Message content too large and was saved to the filesystem at: {file_path}
 
@@ -130,7 +130,7 @@ Here is a preview showing the head and tail of the content:
 
 {content_sample}
 """
-"""Legacy `TOO_LARGE_HUMAN_MSG` value available until `deepagents==0.9.0`."""
+"""Legacy `TOO_LARGE_HUMAN_MSG` value, kept for one deprecation window."""
 
 _LEGACY_LARGE_RESULT_TEMPLATES: Final = {
     "TOO_LARGE_TOOL_MSG": _LEGACY_TOO_LARGE_TOOL_MSG,
@@ -145,8 +145,8 @@ def __getattr__(name: str) -> str:
             since="0.7.7",
             removal="0.9.0",
             message=(
-                f"`{name}` was deprecated in `deepagents==0.7.7` and will be removed in "
-                "`deepagents==0.9.0`. Large-result prompt templates are internal "
+                f"`{name}` was deprecated in 0.7.7 and will be removed in 0.9.0. "
+                "Large-result prompt templates are internal "
                 "implementation details and should not be imported. This frozen copy "
                 "keeps the released wording; the live template now derives its preview "
                 "note from what the preview actually elided."
@@ -1369,7 +1369,7 @@ Usage:
 - Speculatively batch multiple `read_file` calls in one response when several files may be useful.
 - An empty file returns a system-reminder warning in place of contents.
 - Large tool results may be offloaded to a file; the tool message gives the path. Read that path here, paging with `offset`/`limit`.
-- Images (`.png`, `.jpg`, etc.), audio, video, and PDFs return multimodal content blocks (https://docs.langchain.com/oss/python/langchain/messages#multimodal).
+- Images (`.png`, `.jpg`, etc.), audio, video, and PDFs return multimodal content blocks; the bullets below list which kinds this model's tool variant accepts.
 {multimodal_bullets}
 - Always read a file before editing it."""
 """Shared `read_file` description body for the text-only and video-aware variants.

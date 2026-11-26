@@ -1035,15 +1035,13 @@ class AgentServerACP(ACPAgent):
                                         -32600,
                                         (
                                             "ACP limitation: this agent raised a free-form "
-                                            "LangGraph interrupt(), which ACP cannot display.\n\n"
+                                            "interrupt(), which ACP cannot display.\n\n"
                                             "ACP only supports human-in-the-loop permission "
                                             "prompts with a fixed set of decisions "
                                             "(approve/reject/edit).\n"
                                             "Spec: https://agentclientprotocol.com/protocol/overview\n\n"
-                                            "Fix: use LangChain HumanInTheLoopMiddleware-style "
-                                            "interrupts (action_requests/review_configs).\n"
-                                            "Docs: https://docs.langchain.com/oss/python/langchain/"
-                                            "human-in-the-loop\n\n"
+                                            "Fix: use HumanInTheLoopMiddleware-style "
+                                            "interrupts (action_requests/review_configs).\n\n"
                                             "This is a protocol limitation, not a bug in the agent."
                                         ),
                                         {"interrupt_value": interrupt_value},

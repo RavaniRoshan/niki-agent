@@ -111,7 +111,7 @@ def _ensure_builtin_profiles_loaded() -> None:
     2. Iterate `importlib.metadata` entry points in the
         `deepagents.provider_profiles` and `deepagents.harness_profiles`
         groups. Third-party failures are logged at `WARNING` and skipped
-        so one misbehaving distribution cannot prevent `deepagents.profiles`
+        so one misbehaving distribution cannot prevent This profiles API
         from importing.
 
     Built-ins run first, so third-party plugins registering under the
@@ -123,7 +123,7 @@ def _ensure_builtin_profiles_loaded() -> None:
     from profiles registered later via user code.
 
     The function is invoked lazily from `register_*_profile` and
-    `get_*_profile` entry points; importing `deepagents.profiles` itself
+    `get_*_profile` entry points; importing This profiles API itself
     does not trigger bootstrap. Same-thread re-entrant calls that occur
     *during* bootstrap (for example, plugin registration helpers calling
     the public `register_*_profile` APIs) short-circuit, while other

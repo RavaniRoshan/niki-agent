@@ -129,10 +129,8 @@ def __getattr__(name: str) -> str:
             since="0.7.0",
             removal="0.9.0",
             message=(
-                "`BASE_AGENT_PROMPT` was deprecated in `deepagents==0.7.0` and "
-                "will be removed in `deepagents==0.9.0`. Deep Agents no longer "
-                "provides an "
-                "authored base prompt."
+                "`BASE_AGENT_PROMPT` was deprecated in 0.7.0 and will be removed in "
+                "0.9.0. This SDK no longer provides an authored base prompt."
             ),
             package="deepagents",
         )
@@ -157,19 +155,18 @@ def _build_default_model() -> ChatAnthropic:
     removal="1.0.0",
     message=(
         "Relying on the default model is deprecated and will be removed in "
-        "deepagents==1.0.0 alongside support for `model=None` in "
+        "a future release alongside support for `model=None` in "
         "`create_deep_agent`. Construct your model explicitly "
-        "(e.g., `ChatAnthropic(model_name=...)`). See "
-        "https://docs.langchain.com/oss/python/deepagents/models"
+        "(e.g., `ChatAnthropic(model_name=...)`)."
     ),
     package="deepagents",
 )
 def get_default_model() -> ChatAnthropic:
-    """Get the default model for Deep Agents.
+    """Get the default model.
 
     !!! deprecated
 
-        Deprecated since `0.5.3`; will be removed in `deepagents==1.0.0`.
+        Deprecated since `0.5.3`; will be removed in a future release.
         Construct your model explicitly (e.g.,
         `ChatAnthropic(model_name="claude-sonnet-4-6")`).
 
@@ -311,10 +308,9 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
 
                 Passing `model=None` (relying on the default
                 `claude-sonnet-4-6`) is deprecated since `0.5.3` and will
-                be removed in `deepagents==1.0.0`. The parameter type
+                be removed in a future release. The parameter type
                 will change from `BaseChatModel | str | None` to
-                `BaseChatModel | str`. See
-                [Models](https://docs.langchain.com/oss/python/deepagents/models).
+                `BaseChatModel | str`.
 
             Accepts a `provider:model` string (e.g., `openai:gpt-5.5`); see
             [`init_chat_model`][langchain.chat_models.init_chat_model(model_provider)]
@@ -362,7 +358,7 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             assembled `BASE` and `SUFFIX` are appended as an additional text
             content block after the caller's blocks.
 
-            See [Prompt assembly](https://docs.langchain.com/oss/deepagents/customization#prompt-assembly)
+            See the prompt assembly order
             for the full case-by-case breakdown.
         middleware: Additional middleware to apply after the base stack
             but before the tail middleware. The full ordering is:
@@ -610,11 +606,10 @@ def create_deep_agent(  # noqa: C901, PLR0912, PLR0915  # Complex graph assembly
             removal="1.0.0",
             message=(
                 "Passing `model=None` to `create_deep_agent` is deprecated "
-                "and will be removed in deepagents==1.0.0. The `model` "
+                "and will be removed in a future release. The `model` "
                 "parameter type will change from `BaseChatModel | str | None` "
                 "to `BaseChatModel | str`. Specify a model explicitly "
-                "(e.g., `ChatAnthropic(model_name=...)`). See "
-                "https://docs.langchain.com/oss/python/deepagents/models"
+                "(e.g., `ChatAnthropic(model_name=...)`)."
             ),
             package="deepagents",
         )

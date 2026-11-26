@@ -2,9 +2,7 @@
 
 !!! beta
 
-    `deepagents.profiles` exposes beta APIs that may receive minor changes in
-    future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-    for more details.
+    This profiles API may receive minor changes in future releases.
 
 Profiles let Deep Agents tailor behavior to a specific provider or model spec
 across two orthogonal phases:
@@ -49,7 +47,7 @@ from niki_agent.sdk.profiles.provider.provider_profiles import (
 )
 
 # Built-in provider/harness profiles are registered lazily on first
-# profile-registry access so importing `deepagents.profiles` stays cheap.
+# profile-registry access so importing This profiles API stays cheap.
 
 __all__ = [
     "GeneralPurposeSubagentProfile",
