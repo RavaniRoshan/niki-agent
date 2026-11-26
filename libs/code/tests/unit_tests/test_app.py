@@ -2735,7 +2735,7 @@ class TestModalScreenShiftTabHandling:
 
         async with app.run_test() as pilot:
             await pilot.pause()
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
             options = screen.query_one(OptionList)
@@ -3880,7 +3880,7 @@ class TestMessageQueue:
             assert app._chat_input is not None
             assert app._chat_input.value == "queued on remote"
             notices = [str(w._content) for w in app.query(AppMessage)]
-            assert any("remote LangGraph server" in n for n in notices)
+            assert any("remote agent server" in n for n in notices)
 
     async def test_message_blocked_while_thread_switching(self) -> None:
         """Submissions should be ignored while thread switching is in-flight."""
@@ -12341,11 +12341,11 @@ class TestMessageTimestampsPersistence:
         from niki_agent.app import _save_message_timestamps_visible_result
 
         config = tmp_path / "config.toml"
-        config.write_text('[ui]\ntheme = "langchain"\n')
+        config.write_text('[ui]\ntheme = "classic"\n')
         monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_message_timestamps_visible_result(True).ok is True
         data = tomllib.loads(config.read_text())
-        assert data["ui"]["theme"] == "langchain"
+        assert data["ui"]["theme"] == "classic"
         assert data["ui"]["show_message_timestamps"] is True
 
 
@@ -12454,11 +12454,11 @@ class TestScrollbarToggle:
         from niki_agent.app import _save_show_scrollbar_result
 
         config = tmp_path / "config.toml"
-        config.write_text('[ui]\ntheme = "langchain"\n')
+        config.write_text('[ui]\ntheme = "classic"\n')
         monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_show_scrollbar_result(True).ok is True
         data = tomllib.loads(config.read_text())
-        assert data["ui"]["theme"] == "langchain"
+        assert data["ui"]["theme"] == "classic"
         assert data["ui"]["show_scrollbar"] is True
 
     async def test_toggle_flips_preference_and_applies(
@@ -12664,11 +12664,11 @@ class TestDiffLineNumbersCommand:
         from niki_agent.app import _save_show_diff_line_numbers_result
 
         config = tmp_path / "config.toml"
-        config.write_text('[ui]\ntheme = "langchain"\n')
+        config.write_text('[ui]\ntheme = "classic"\n')
         monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_show_diff_line_numbers_result(False).ok is True
         data = tomllib.loads(config.read_text())
-        assert data["ui"]["theme"] == "langchain"
+        assert data["ui"]["theme"] == "classic"
         assert data["ui"]["show_diff_line_numbers"] is False
 
 
@@ -12684,11 +12684,11 @@ class TestDebugConsoleClickToCopyPreference:
         from niki_agent.app import _save_debug_console_click_to_copy_result
 
         config = tmp_path / "config.toml"
-        config.write_text('[ui]\ntheme = "langchain"\n')
+        config.write_text('[ui]\ntheme = "classic"\n')
         monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         assert _save_debug_console_click_to_copy_result(True).ok is True
         data = tomllib.loads(config.read_text())
-        assert data["ui"]["theme"] == "langchain"
+        assert data["ui"]["theme"] == "classic"
         assert data["ui"]["debug_console_click_to_copy"] is True
 
     def test_save_failure_reports_error(
@@ -15007,7 +15007,7 @@ class TestTerminalBackgroundSync:
         app = DeepAgentsApp()
         calls.clear()
 
-        app.theme = "langchain-light"
+        app.theme = "classic-light"
         app.sync_terminal_background()
 
         assert calls == [theme.LIGHT_COLORS.background]
@@ -15067,7 +15067,7 @@ class TestTerminalBackgroundSync:
         from niki_agent import terminal_escape
 
         app = DeepAgentsApp()
-        app.theme = "langchain"  # force non-ANSI so the error path runs
+        app.theme = "classic"  # force non-ANSI so the error path runs
 
         def _raise(_color: str) -> bool:
             msg = "terminal unavailable"
@@ -24444,7 +24444,7 @@ class TestRestartCommand:
         We own a server (`_server_kwargs` set) but `_server_proc` is `None`
         while the startup worker is still obtaining it. The handler should
         report "still starting" rather than the misleading "connected to a
-        remote LangGraph server".
+        remote agent server".
         """
         app = DeepAgentsApp()
         async with app.run_test() as pilot:
@@ -24474,7 +24474,7 @@ class TestRestartCommand:
             app_msgs = [str(w._content) for w in app.query(AppMessage)]
             assert any("still starting" in m for m in app_msgs)
             assert not any("waiting for a model" in m for m in app_msgs)
-            assert not any("remote LangGraph server" in m for m in app_msgs)
+            assert not any("remote agent server" in m for m in app_msgs)
 
     async def test_failed_startup_does_not_claim_still_starting(
         self, monkeypatch: pytest.MonkeyPatch
@@ -24513,7 +24513,7 @@ class TestRestartCommand:
             )
             assert not any("still starting" in m for m in app_msgs)
             assert not any("waiting for a model" in m for m in app_msgs)
-            assert not any("remote LangGraph server" in m for m in app_msgs)
+            assert not any("remote agent server" in m for m in app_msgs)
 
     async def test_deferred_startup_reports_waiting_for_model(
         self, monkeypatch: pytest.MonkeyPatch
@@ -24546,7 +24546,7 @@ class TestRestartCommand:
             app_msgs = [str(w._content) for w in app.query(AppMessage)]
             assert any("waiting for a model" in m for m in app_msgs)
             assert not any("still starting" in m for m in app_msgs)
-            assert not any("remote LangGraph server" in m for m in app_msgs)
+            assert not any("remote agent server" in m for m in app_msgs)
 
     async def test_calls_server_restart_and_clears_caches(
         self, monkeypatch: pytest.MonkeyPatch

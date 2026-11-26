@@ -2713,7 +2713,7 @@ def parse_args() -> argparse.Namespace:
         dest="recursion_limit",
         type=positive_int,
         metavar="N",
-        help="Override the main agent's LangGraph recursion_limit (graph step "
+        help="Override the main agent's recursion limit (graph step "
         "budget; must be >= 1). Overrides NIKI_RECURSION_LIMIT and "
         "[runtime].recursion_limit.",
     )

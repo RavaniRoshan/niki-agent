@@ -203,7 +203,7 @@ class TestSaveThemePreference:
         # Make parent read-only so mkdir fails
         (tmp_path / "readonly").mkdir()
         (tmp_path / "readonly").chmod(0o444)
-        result = save_theme_preference("langchain")
+        result = save_theme_preference("classic")
         # Restore permissions for cleanup
         (tmp_path / "readonly").chmod(0o755)
         assert result is False
@@ -317,10 +317,10 @@ class TestSaveTerminalThemeMapping:
         config.write_text('[ui]\nterminal_themes = "junk"\n')
         monkeypatch.setattr("niki_agent.model_config.DEFAULT_CONFIG_PATH", config)
         with caplog.at_level("WARNING", logger="niki_agent.app"):
-            assert save_terminal_theme_mapping("Apple_Terminal", "langchain") is True
+            assert save_terminal_theme_mapping("Apple_Terminal", "classic") is True
         data = tomllib.loads(config.read_text())
         assert isinstance(data["ui"]["terminal_themes"], dict)
-        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "langchain"
+        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "classic"
         assert any(
             "junk" in record.getMessage() and "replacing" in record.getMessage()
             for record in caplog.records
@@ -357,10 +357,10 @@ class TestSaveTerminalThemeMapping:
         results: list[bool] = []
 
         def save_global() -> None:
-            results.append(save_theme_preference("langchain-light"))
+            results.append(save_theme_preference("classic-light"))
 
         def save_terminal() -> None:
-            results.append(save_terminal_theme_mapping("Apple_Terminal", "langchain"))
+            results.append(save_terminal_theme_mapping("Apple_Terminal", "classic"))
 
         threads = [
             threading.Thread(target=save_global),
@@ -373,8 +373,8 @@ class TestSaveTerminalThemeMapping:
 
         data = tomllib.loads(config.read_text())
         assert results == [True, True]
-        assert data["ui"]["theme"] == "langchain-light"
-        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "langchain"
+        assert data["ui"]["theme"] == "classic-light"
+        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "classic"
 
     def test_returns_false_on_atomic_write_failure(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -395,7 +395,7 @@ class TestSaveTerminalThemeMapping:
             raise OSError(msg)
 
         monkeypatch.setattr("tomli_w.dump", _boom)
-        assert save_terminal_theme_mapping("Apple_Terminal", "langchain") is False
+        assert save_terminal_theme_mapping("Apple_Terminal", "classic") is False
         # Temp file (`*.tmp` sibling of the target) must not be left behind.
         assert not list(tmp_path.glob("*.tmp"))
 
@@ -413,7 +413,7 @@ def _register_lc_theme(app: object) -> None:
     c = DARK_COLORS
     app.register_theme(  # ty: ignore
         TextualTheme(
-            name="langchain",
+            name="classic",
             primary=c.primary,
             secondary=c.secondary,
             accent=c.accent,
@@ -427,7 +427,7 @@ def _register_lc_theme(app: object) -> None:
             dark=True,
         )
     )
-    app_any.theme = "langchain"
+    app_any.theme = "classic"
 
 
 def _register_lc_light_theme(app: object) -> None:
@@ -437,7 +437,7 @@ def _register_lc_light_theme(app: object) -> None:
     c = LIGHT_COLORS
     app.register_theme(  # ty: ignore
         TextualTheme(
-            name="langchain-light",
+            name="classic-light",
             primary=c.primary,
             secondary=c.secondary,
             accent=c.accent,
@@ -470,12 +470,12 @@ class TestThemeSelectorScreen:
             def on_result(result: str | None) -> None:
                 results.append(result)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen, on_result)
             await pilot.pause()
             await pilot.press("escape")
             await pilot.pause()
-            assert app.theme == "langchain"
+            assert app.theme == "classic"
             assert results == [None]
 
     async def test_escape_syncs_terminal_background_after_restore(self) -> None:
@@ -498,7 +498,7 @@ class TestThemeSelectorScreen:
             c = theme.LIGHT_COLORS
             app.register_theme(
                 TextualTheme(
-                    name="langchain-light",
+                    name="classic-light",
                     primary=c.primary,
                     secondary=c.secondary,
                     accent=c.accent,
@@ -512,7 +512,7 @@ class TestThemeSelectorScreen:
                     dark=False,
                 )
             )
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
@@ -521,8 +521,8 @@ class TestThemeSelectorScreen:
             await pilot.press("escape")
             await pilot.pause()
 
-            assert app.theme == "langchain"
-            assert app.synced[-1] == "langchain"
+            assert app.theme == "classic"
+            assert app.synced[-1] == "classic"
 
     async def test_preview_failure_syncs_terminal_background_after_rollback(
         self, caplog: pytest.LogCaptureFixture
@@ -539,7 +539,7 @@ class TestThemeSelectorScreen:
 
             def sync_terminal_background(self) -> None:
                 self.synced.append(self.theme)
-                if self.theme != "langchain":
+                if self.theme != "classic":
                     msg = "preview sync failed"
                     raise RuntimeError(msg)
 
@@ -549,7 +549,7 @@ class TestThemeSelectorScreen:
             c = theme.LIGHT_COLORS
             app.register_theme(
                 TextualTheme(
-                    name="langchain-light",
+                    name="classic-light",
                     primary=c.primary,
                     secondary=c.secondary,
                     accent=c.accent,
@@ -563,7 +563,7 @@ class TestThemeSelectorScreen:
                     dark=False,
                 )
             )
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
@@ -573,9 +573,9 @@ class TestThemeSelectorScreen:
                 await pilot.press("down")
                 await pilot.pause()
 
-            target = next(key for key in theme.get_registry() if key != "langchain")
-            assert app.synced[-2:] == [target, "langchain"]
-            assert app.theme == "langchain"
+            target = next(key for key in theme.get_registry() if key != "classic")
+            assert app.synced[-2:] == [target, "classic"]
+            assert app.theme == "classic"
             assert "Failed to preview theme" in caplog.text
 
     async def test_t_writes_terminal_mapping_for_current_term_program(
@@ -609,7 +609,7 @@ class TestThemeSelectorScreen:
             def on_result(result: str | None) -> None:
                 results.append(result)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen, on_result)
             await pilot.pause()
 
@@ -622,7 +622,7 @@ class TestThemeSelectorScreen:
             assert app.screen is screen
 
         data = tomllib.loads(config.read_text())
-        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "langchain"
+        assert data["ui"]["terminal_themes"]["Apple_Terminal"] == "classic"
         # `[ui].theme` must NOT be written by the `t` action — otherwise we'd
         # race the parent's save-theme-preference path.
         assert "theme" not in data.get("ui", {})
@@ -645,12 +645,12 @@ class TestThemeSelectorScreen:
         app = App()
         async with app.run_test() as pilot:
             _register_lc_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             registry_keys = list(theme.get_registry())
-            target_key = next(key for key in registry_keys if key != "langchain")
+            target_key = next(key for key in registry_keys if key != "classic")
             target_index = registry_keys.index(target_key)
 
             option_list = screen.query_one("#theme-options", OptionList)
@@ -703,11 +703,11 @@ class TestThemeSelectorScreen:
 
             monkeypatch.setattr(app, "notify", _capture)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
-            target_key = "langchain-light"
+            target_key = "classic-light"
             target_index = list(theme.get_registry()).index(target_key)
             option_list = screen.query_one("#theme-options", OptionList)
             option_list.highlighted = target_index
@@ -722,7 +722,7 @@ class TestThemeSelectorScreen:
         assert any(
             sev == "error" and "terminal mapping" in msg for sev, msg in notifications
         )
-        assert app.theme == "langchain"
+        assert app.theme == "classic"
 
     async def test_t_notifies_on_save_exception(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -761,11 +761,11 @@ class TestThemeSelectorScreen:
 
             monkeypatch.setattr(app, "notify", _capture)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
-            target_key = "langchain-light"
+            target_key = "classic-light"
             target_index = list(theme.get_registry()).index(target_key)
             option_list = screen.query_one("#theme-options", OptionList)
             option_list.highlighted = target_index
@@ -778,7 +778,7 @@ class TestThemeSelectorScreen:
             await pilot.pause()
 
         assert any(sev == "error" and "OSError" in msg for sev, msg in notifications)
-        assert app.theme == "langchain"
+        assert app.theme == "classic"
 
     async def test_escape_keeps_theme_set_for_terminal_this_session(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -806,7 +806,7 @@ class TestThemeSelectorScreen:
             c = theme.LIGHT_COLORS
             app.register_theme(
                 TextualTheme(
-                    name="langchain-light",
+                    name="classic-light",
                     primary=c.primary,
                     secondary=c.secondary,
                     accent=c.accent,
@@ -824,11 +824,11 @@ class TestThemeSelectorScreen:
             def on_result(result: str | None) -> None:
                 results.append(result)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen, on_result)
             await pilot.pause()
 
-            target_key = "langchain-light"
+            target_key = "classic-light"
             target_index = list(theme.get_registry()).index(target_key)
 
             option_list = screen.query_one("#theme-options", OptionList)
@@ -859,7 +859,7 @@ class TestThemeSelectorScreen:
         app = App()
         async with app.run_test() as pilot:
             _register_lc_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
@@ -868,7 +868,7 @@ class TestThemeSelectorScreen:
             await pilot.press("escape")
             await pilot.pause()
 
-        assert app.theme == "langchain"
+        assert app.theme == "classic"
 
     async def test_escape_keeps_last_terminal_default_after_multiple_t(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -894,15 +894,15 @@ class TestThemeSelectorScreen:
             _register_lc_light_theme(app)
             # `textual-light` is a Textual builtin, registered on every App and
             # present in the deepagents registry — usable as a second target.
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             registry = list(theme.get_registry())
             option_list = screen.query_one("#theme-options", OptionList)
 
-            # First `t`: save langchain-light.
-            option_list.highlighted = registry.index("langchain-light")
+            # First `t`: save classic-light.
+            option_list.highlighted = registry.index("classic-light")
             await pilot.pause()
             await pilot.press("t")
             await app.workers.wait_for_complete()
@@ -916,7 +916,7 @@ class TestThemeSelectorScreen:
             await pilot.pause()
 
             # Preview the original (no `t`) — this must not win on Esc.
-            option_list.highlighted = registry.index("langchain")
+            option_list.highlighted = registry.index("classic")
             await pilot.pause()
 
             await pilot.press("escape")
@@ -945,14 +945,14 @@ class TestThemeSelectorScreen:
         async with app.run_test() as pilot:
             _register_lc_theme(app)
             _register_lc_light_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             registry = list(theme.get_registry())
             option_list = screen.query_one("#theme-options", OptionList)
 
-            option_list.highlighted = registry.index("langchain-light")
+            option_list.highlighted = registry.index("classic-light")
             await pilot.pause()
             await pilot.press("t")
             await app.workers.wait_for_complete()
@@ -966,7 +966,7 @@ class TestThemeSelectorScreen:
             await pilot.press("escape")
             await pilot.pause()
 
-        assert app.theme == "langchain-light"
+        assert app.theme == "classic-light"
 
     async def test_escape_restores_original_when_t_with_term_program_unset(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -990,22 +990,22 @@ class TestThemeSelectorScreen:
         async with app.run_test() as pilot:
             _register_lc_theme(app)
             _register_lc_light_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             registry = list(theme.get_registry())
             option_list = screen.query_one("#theme-options", OptionList)
-            option_list.highlighted = registry.index("langchain-light")
+            option_list.highlighted = registry.index("classic-light")
             await pilot.pause()
-            assert app.theme == "langchain-light"
+            assert app.theme == "classic-light"
 
             await pilot.press("t")
             await pilot.pause()
             await pilot.press("escape")
             await pilot.pause()
 
-        assert app.theme == "langchain"
+        assert app.theme == "classic"
         assert not config.exists()
 
     async def test_escape_dismisses_when_kept_theme_unregistered_midsession(
@@ -1036,22 +1036,22 @@ class TestThemeSelectorScreen:
             def on_result(result: str | None) -> None:
                 results.append(result)
 
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen, on_result)
             await pilot.pause()
 
             registry = list(theme.get_registry())
             option_list = screen.query_one("#theme-options", OptionList)
-            option_list.highlighted = registry.index("langchain-light")
+            option_list.highlighted = registry.index("classic-light")
             await pilot.pause()
             await pilot.press("t")
             await app.workers.wait_for_complete()
             await pilot.pause()
 
             # Move off the saved theme, then pull it out from under Esc.
-            option_list.highlighted = registry.index("langchain")
+            option_list.highlighted = registry.index("classic")
             await pilot.pause()
-            app.unregister_theme("langchain-light")
+            app.unregister_theme("classic-light")
 
             await pilot.press("escape")
             await pilot.pause()
@@ -1100,14 +1100,12 @@ class TestThemeSelectorScreen:
         async with app.run_test() as pilot:
             _register_lc_theme(app)
             _register_lc_light_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             option_list = screen.query_one("#theme-options", OptionList)
-            option_list.highlighted = list(theme.get_registry()).index(
-                "langchain-light"
-            )
+            option_list.highlighted = list(theme.get_registry()).index("classic-light")
             await pilot.pause()
 
             await pilot.press("t")
@@ -1117,7 +1115,7 @@ class TestThemeSelectorScreen:
             # Cancel while the write is in flight — must keep, not revert.
             await pilot.press("escape")
             await pilot.pause()
-            assert app.theme == "langchain-light"
+            assert app.theme == "classic-light"
 
             # Let the still-blocked save finish. The screen is already
             # dismissed, so suppress the badge rerender (its option list is
@@ -1126,7 +1124,7 @@ class TestThemeSelectorScreen:
             release.set()
             await app.workers.wait_for_complete()
 
-        assert app.theme == "langchain-light"
+        assert app.theme == "classic-light"
 
     @pytest.mark.parametrize("failure_mode", ["status", "exception"])
     async def test_escape_restores_theme_when_in_flight_save_fails(
@@ -1170,14 +1168,12 @@ class TestThemeSelectorScreen:
         async with app.run_test() as pilot:
             _register_lc_theme(app)
             _register_lc_light_theme(app)
-            screen = ThemeSelectorScreen(current_theme="langchain")
+            screen = ThemeSelectorScreen(current_theme="classic")
             app.push_screen(screen)
             await pilot.pause()
 
             option_list = screen.query_one("#theme-options", OptionList)
-            option_list.highlighted = list(theme.get_registry()).index(
-                "langchain-light"
-            )
+            option_list.highlighted = list(theme.get_registry()).index("classic-light")
             await pilot.pause()
 
             await pilot.press("t")
@@ -1185,9 +1181,9 @@ class TestThemeSelectorScreen:
 
             await pilot.press("escape")
             await pilot.pause()
-            assert app.theme == "langchain-light"
+            assert app.theme == "classic-light"
 
             release.set()
             await app.workers.wait_for_complete()
 
-        assert app.theme == "langchain"
+        assert app.theme == "classic"

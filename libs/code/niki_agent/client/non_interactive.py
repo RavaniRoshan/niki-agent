@@ -3101,7 +3101,7 @@ async def run_non_interactive(
         )
 
         if not quiet:
-            console.print(Text("Starting LangGraph server...", style="dim"))
+            console.print(Text("Starting agent server...", style="dim"))
 
         async with server_session(
             assistant_id=assistant_id,

@@ -1,4 +1,4 @@
-"""LangChain brand colors and semantic constants for the app.
+"""Niki Agent brand colors and semantic constants for the app.
 
 Single source of truth for color values used in Python code (Rich markup,
 `Content.styled`, `Content.from_markup`).  CSS-side styling should reference
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Brand palette — dark  (originally tokyonight-inspired, LangChain blue primary)
+# Brand palette — dark  (blue primary)
 # ---------------------------------------------------------------------------
 LC_DARK = "#11121D"
 """Background — visible blue tint, distinguishable from pure black."""
@@ -378,7 +378,7 @@ DARK_COLORS = ThemeColors(
     background=LC_DARK,
     surface=LC_CARD,
 )
-"""Color set for the dark LangChain theme."""
+"""Color set for the dark theme."""
 
 LIGHT_COLORS = ThemeColors(
     primary=LC_LIGHT_BLUE,
@@ -400,7 +400,7 @@ LIGHT_COLORS = ThemeColors(
     background=LC_LIGHT_BG,
     surface=LC_LIGHT_SURFACE,
 )
-"""Color set for the light LangChain theme."""
+"""Color set for the light theme."""
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +424,7 @@ class ThemeEntry:
     custom: bool = True
     """Whether this theme must be registered with Textual via `register_theme()`.
 
-    `True` for LangChain-branded themes and user-defined themes.
+    `True` for the built-in brand themes and user-defined themes.
     `False` for Textual built-in themes that Textual already knows about.
     """
 
@@ -474,13 +474,13 @@ def _builtin_themes() -> dict[str, ThemeEntry]:
         Dict of built-in theme names to `ThemeEntry` instances.
     """
     r: dict[str, ThemeEntry] = {}
-    r["langchain"] = ThemeEntry(
-        label="LangChain Dark",
+    r["classic"] = ThemeEntry(
+        label="Classic Dark",
         dark=True,
         colors=DARK_COLORS,
     )
-    r["langchain-light"] = ThemeEntry(
-        label="LangChain Light",
+    r["classic-light"] = ThemeEntry(
+        label="Classic Light",
         dark=False,
         colors=LIGHT_COLORS,
     )
@@ -555,7 +555,7 @@ def _load_user_themes(
     warning = "#B58900"
 
     # Override built-in theme colors
-    [themes.langchain]
+    [themes.classic]
     primary = "#FF5500"
     ```
 
@@ -748,7 +748,7 @@ def get_registry() -> MappingProxyType[str, ThemeEntry]:
     return _build_registry()
 
 
-DEFAULT_THEME = "langchain"
+DEFAULT_THEME = "classic"
 """Theme name used when no preference is saved."""
 
 
@@ -875,7 +875,7 @@ def _colors_from_textual_theme(app: object) -> ThemeColors:
 def get_theme_colors(widget_or_app: App | object | None = None) -> ThemeColors:
     """Return the `ThemeColors` for the active Textual theme.
 
-    For custom themes (LangChain-branded and user-defined), the pre-built
+    For custom themes (built-in brand and user-defined), the pre-built
     `ThemeColors` from the registry is returned directly.  For Textual built-in
     themes, colors are resolved dynamically from the actual theme properties so
     Python-side styling stays in sync with CSS variables.

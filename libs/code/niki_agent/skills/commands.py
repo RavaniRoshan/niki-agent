@@ -523,7 +523,7 @@ def _create(
         "\n"
         "  See examples/skills/ in the niki-agent repo for example skills:\n"
         "   - web-research: Structured research workflow\n"
-        "   - langgraph-docs: LangGraph documentation lookup\n"
+        "   - arxiv-search: Paper search over the arXiv API\n"
         "\n"
         "   Copy an example:\n"
         f"   cp -r examples/skills/web-research {skills_dir_display}\n",

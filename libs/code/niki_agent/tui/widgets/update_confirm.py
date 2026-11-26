@@ -174,7 +174,7 @@ class RefreshDependenciesConfirmScreen(_DependencyConfirmScreen):
             else (
                 "niki-agent is already up to date, but its dependencies "
                 "can be re-resolved to the newest compatible versions. This may "
-                "pull in newer minor releases of packages like langchain-openai."
+                "pull in newer minor releases of the provider packages."
             )
         )
         super().__init__(

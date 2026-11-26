@@ -1497,7 +1497,7 @@ def _load_theme_preference() -> str:
     4. `theme.DEFAULT_THEME`.
 
     Returns:
-        A Textual theme name (e.g., `'langchain'`, `'langchain-light'`).
+        A Textual theme name (e.g., `'classic'`, `'classic-light'`).
     """
     from niki_agent._env_vars import THEME
     from niki_agent.config_manifest import (
@@ -8277,7 +8277,7 @@ class DeepAgentsApp(App):
                 await self._mount_message(
                     AppMessage(
                         f"Installed extra '{extra}', but this app is connected "
-                        "to a remote LangGraph server. Relaunch niki to load it, "
+                        "to a remote agent server. Relaunch niki to load it, "
                         "then select the model again."
                     ),
                 )
@@ -28551,7 +28551,7 @@ class DeepAgentsApp(App):
 
         if self._server_kwargs is None or self._server_proc is None:
             self.notify(
-                "Cannot restart the LangGraph server automatically; "
+                "Cannot restart the agent server automatically; "
                 "relaunch niki to pick up the new MCP token.",
                 severity="warning",
                 markup=False,
@@ -29224,13 +29224,13 @@ class DeepAgentsApp(App):
 
         if self._server_kwargs is None:
             await self._restore_queue_to_input(
-                "Cannot restart: this app is connected to a remote LangGraph "
+                "Cannot restart: this app is connected to a remote agent "
                 "server (no owned subprocess). Configuration was reloaded; "
                 "queued prompts were returned to the input. Re-submit them to "
                 "send on the current session, or relaunch niki to fully "
                 "restart.",
                 empty_notice=(
-                    "Cannot restart: this app is connected to a remote LangGraph "
+                    "Cannot restart: this app is connected to a remote agent "
                     "server (no owned subprocess). Configuration was reloaded; "
                     "relaunch niki to fully restart."
                 ),

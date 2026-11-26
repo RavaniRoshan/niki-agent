@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from types import MappingProxyType
 from typing import TYPE_CHECKING, cast
 
 from niki_agent import theme
@@ -12,6 +13,15 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
+
+#: Theme keys written by releases before the brand rename. Resolved to their
+#: current names so an existing `config.toml` keeps working.
+_LEGACY_THEME_NAMES: Mapping[str, str] = MappingProxyType(
+    {
+        "langchain": "classic",
+        "langchain-light": "classic-light",
+    }
+)
 
 
 def resolve_theme_name(value: object) -> str | None:
@@ -34,6 +44,7 @@ def resolve_theme_name(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     name = value.strip()
+    name = _LEGACY_THEME_NAMES.get(name, name)
     if name == "textual-ansi":
         name = "ansi-light"
     registry = theme.get_registry()

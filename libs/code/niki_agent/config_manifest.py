@@ -2560,7 +2560,7 @@ _STATIC_OPTIONS: tuple[ConfigOption[object], ...] = (
     ConfigOption(
         key="agents.async_subagents",
         group="Agents",
-        summary="Remote LangGraph deployments exposed to the agent as subagents.",
+        summary="Remote agent deployments exposed to the agent as subagents.",
         kind=OptionKind.STRUCTURED,
         toml_keys=("async_subagents",),
         merge_strategy=MergeStrategy.DEEP_MERGE,
@@ -3088,7 +3088,7 @@ _STATIC_OPTIONS: tuple[ConfigOption[object], ...] = (
     ConfigOption(
         key="runtime.recursion_limit",
         group="Runtime",
-        summary="Main agent LangGraph recursion_limit (graph step budget).",
+        summary="Main agent recursion limit (graph step budget).",
         kind=OptionKind.INT,
         env_var=_env_vars.RECURSION_LIMIT,
         toml_keys=("runtime", "recursion_limit"),

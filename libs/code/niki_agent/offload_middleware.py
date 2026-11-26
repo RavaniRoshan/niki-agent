@@ -1708,7 +1708,7 @@ def _forced_offload_call_id() -> str:
             "Deriving the /offload hook call id inside a run but "
             "`configurable.checkpoint_ns` is %r; falling back to a random id. "
             "Configured PreCompact/PreToolUse hooks will fail to resume this "
-            "run. This usually means LangGraph moved or renamed the key.",
+            "run. This usually means the runtime moved or renamed the key.",
             namespace,
         )
         return f"offload-precompact-{uuid4()}"
