@@ -67,19 +67,20 @@ body:
     validations:
       required: true
     attributes:
-      label: Reproduction Steps / Example Code (Python)
+      label: Reproduction Steps / Example Code
       description: |
-        Please add a self-contained, [minimal, reproducible, example](https://stackoverflow.com/help/minimal-reproducible-example) with your use case.
+        Please add a self-contained, [minimal, reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) with your use case.
 
         If a maintainer can copy it, run it, and see it right away, there's a much higher chance that you'll be able to get help.
 
         **Important!**
 
         * Avoid screenshots, as they are hard to read and (more importantly) don't allow others to copy-and-paste your code.
-        * Reduce your code to the minimum required to reproduce the issue if possible.
+        * Reduce your steps to the minimum required to reproduce the issue if possible.
+        * For anything that happens in the TUI, include the request you typed and the approval mode you were in.
 
         (This will be automatically formatted into code, so no need for backticks.)
-      render: python
+      render: shell
   - type: textarea
     id: error
     attributes:

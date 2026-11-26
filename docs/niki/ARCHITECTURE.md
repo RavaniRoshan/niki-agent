@@ -1,56 +1,69 @@
-# Niki Architecture
+# How Niki Agent fits together
 
-## Dependency direction
+Niki is one Python package, `libs/code/niki_agent`, with a small set of internal
+boundaries. The boundaries exist so the terminal UI, the headless mode, and the
+editor-protocol adapter can share one agent loop without each of them growing its
+own copy.
 
-Inner layers are framework-free. Outer adapters depend on inner contracts, never
-the reverse.
+## The shape of a turn
 
 ```
 Entry points (TUI, headless, ACP)
-  -> Application use cases (RunTurnCoordinator, ports)
-    -> Domain (RunEvent, SessionSummary, TurnStatus, ...)
-  <- Runtime adapters (engine stream, ACP graph)
+  -> Application layer (run coordinator, ports)
+    -> Domain (run events, sessions, turn status)
+  <- Runtime adapters (agent stream, ACP)
 
-Managed server composition root (server_graph.py)
-  -> agent graph + provider models + tools + MCP + workspace policy
+Server composition (server_graph.py)
+  -> agent graph + provider model + tools + MCP + workspace policy
 ```
 
-- `niki_agent.domain` and `niki_agent.application` import only the standard library.
-- `AgentRuntime` is the active application boundary for complete streamed turns;
-  its adapters live under `niki_agent.adapters.runtime/`.
-- `server_graph.py` is the managed server composition root. It owns graph
-  execution and composes the current provider, tool, MCP, workspace, and
-  checkpoint integrations.
-- Tool invocation and approval stay together on the server side; a client-side
-  tool registry must not bypass that policy boundary.
-- Provider execution stays inside the graph runtime so streamed text, tool calls,
-  retries, usage metadata, and checkpoint resumes share one path.
-- Textual presentation stays in client adapters and widgets. Provider, MCP,
-  skill, and hook integrations do not import Textual UI classes.
-- Do not add separate model-generation or tool-registry ports until a concrete
-  consumer can use them without duplicating the active runtime or losing its
-  event and permission behavior.
-- Framework objects (the graph runtime, provider integrations, Textual, Rich)
-  stay outside the domain and application layers.
+A request enters through one of the entry points, the application layer
+coordinates the turn, and the runtime adapter streams events back. Both the
+terminal client and the headless client consume the same event stream, so a
+behavior added to the loop reaches every surface.
 
-## Entry-point ownership
+## Layers
 
-- Client owns input, approvals, and presentation (TUI, headless, ACP surfaces).
-- Managed server owns graph execution, tools, workspace policy, and checkpoints.
-- ACP remains a distinct adapter until its behavior is covered by shared contracts.
+- `niki_agent.domain` and `niki_agent.application` import only the standard
+  library. They define the events and the turn contract, not the machinery that
+  produces them.
+- `AgentRuntime` (`niki_agent/application/run_turn.py`) is the application
+  boundary for a complete streamed turn; its adapters live under
+  `niki_agent/adapters/runtime/`.
+- `server_graph.py` is the composition root. It owns graph execution and wires
+  the active provider, tools, MCP servers, workspace policy, and checkpoints
+  together.
+- Tool invocation and approval stay on the same side of the boundary. A client
+  cannot register a tool that bypasses the approval policy.
+- Provider execution stays inside the graph, so streamed text, tool calls,
+  retries, usage accounting, and checkpoint resumes share one path.
+- Presentation stays in Textual widgets and client adapters. Provider, MCP,
+  skill, and hook integrations never import UI classes.
 
-## The agent graph and provider integrations
+## Entry points
 
-- The managed server runs one agent graph: model call, tool dispatch, checkpoint.
-  It is the only execution path, so streaming, retries, usage accounting, and
-  resume share one implementation.
-- Provider integrations adapt each vendor's chat API to one model contract and
-  are selected per provider in configuration.
-- Both are composed by the managed server boundary; domain and application code
-  never import either.
+| Surface | Owns |
+| --- | --- |
+| TUI (`niki`) | Input, approvals, the transcript, and presentation. |
+| Headless (`niki -n`) | One turn, plain output on stdout. |
+| ACP (`niki_agent.acp`) | The editor-protocol adapter for editors that speak ACP. |
 
-## Event contract
+The client owns input, approvals, and presentation. The server side owns graph
+execution, tools, workspace policy, and checkpoints. ACP stays a separate
+adapter until its behavior is expressed in the shared contracts.
 
-`RunEvent` is the single envelope streamed across all surfaces. `schema_version`
-is 1. `sequence` starts at 1 per turn and continues across approval/resume
-pauses. `encode_run_event` rejects envelopes larger than 65,536 UTF-8 bytes.
+## The event contract
+
+`RunEvent` is the single envelope between the runtime and every Python client
+surface, defined in `niki_agent/domain/events.py`:
+
+- `schema_version` is `1`. An event with another version is rejected, not
+  guessed at.
+- `sequence` starts at 1 for each turn and keeps counting across an
+  approval/resume pause.
+- `encode_run_event` rejects an envelope larger than 65,536 UTF-8 bytes, so a
+  single malformed tool result cannot stall a stream.
+
+The TUI, headless mode, and ACP adapter all read this envelope. The Rust client
+in `rust/` speaks the engine's HTTP/SSE protocol directly instead; its wire
+vocabulary is defined in `rust/crates/niki-proto`.

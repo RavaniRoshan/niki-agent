@@ -41,10 +41,10 @@ is not a sandbox by itself.
 - **Auto** runs routine actions and sends anything uncertain to a classifier;
   a failed review still asks.
 - **YOLO** runs what the policy allows without asking. The first switch shows a
-  one-time notice per machine, and `[startup].yolo_switcher` can keep it out of
-  the cycle.
+  one-time acknowledgement per state directory, and `startup.yolo_switcher` can
+  keep it out of the cycle.
 
-For a hard boundary, use `--yolo` with a sandbox backend, restrict the shell
+For a hard boundary, use `--sandbox` with a sandbox backend, restrict the shell
 allow-list, or run Niki inside a container or a dedicated user account.
 
 ## Trust boundaries
@@ -55,7 +55,8 @@ allow-list, or run Niki inside a container or a dedicated user account.
 | MCP servers you configure | They run as you, with your filesystem and network access. |
 | Skills and hooks | Local code. Read one before you install it. |
 | Release artifacts | `SHA256SUMS` covers every archive; the installers verify it before installing. |
-| Configuration | `~/.niki/config.toml` is written `0600`. A system administrator can pin policy in `/etc/niki/managed_config.toml`, which the user configuration cannot override. |
+| Update and pricing checks | A version request to `pypi.org`, an hourly model-pricing catalog refresh, and an optional self-update. Turn them off with `NIKI_DISABLE_UPDATE_CHECK=1`, `NIKI_DISABLE_AUTO_UPDATE=1`, `NIKI_PRICES_AUTO_UPDATE=0`, or the matching `[update]` settings. A remote `managed_config.toml` is fetched only when a deployment configures one; `NIKI_DISABLE_REMOTE_CONFIG=1` blocks it. |
+| Configuration | `~/.niki/config.toml` is written `0600`, and credentials stored by `/auth` live in `~/.niki/.state/auth.json` with the same mode. A system administrator can pin policy in `/etc/niki/managed_config.toml`, which the user configuration cannot override. |
 
 ## Out of scope
 
@@ -68,8 +69,9 @@ allow-list, or run Niki inside a container or a dedicated user account.
 ## Hardening checklist
 
 ```bash
-NIKI_NO_COLOR=1 niki --help             # confirm the version you run
+niki --version                          # confirm the version you run
 ls -l ~/.niki/config.toml               # expect -rw------- (0600)
+ls -l ~/.niki/.state/auth.json          # expect -rw------- (0600)
 niki doctor                             # environment and managed-policy report
 ```
 
