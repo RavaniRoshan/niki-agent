@@ -435,10 +435,11 @@ workflow actually stands, so the plan and the product do not disagree.
 | 2 — dynamic completion workflow | **Done** | `libs/code/scripts/niki_workflow.py`, `docs/niki/workflow-state.json`, the task-card skill and its tests. |
 | 3 — reconcile checklist, record a baseline | **Done** | `docs/niki/CHECKLIST.md` + `docs/niki/BASELINE.md`. |
 | 4 — drive the Python P0 backlog | **Done** | `readiness --phase python` exits 0; 51 P0 rows resolved, 57 rows WORKS. |
-| 5 — owner checks and the CLI smoke | **Run; smoke not passed** | Owner-only checks are in `docs/niki/OWNER_VERIFY.md`; the five local-model runs are `RUN, NOT PASSED` in `docs/niki/evaluations/SMOKE.md` and tracked in #7. |
-| 6 — matched Python evaluation, open the Rust gate | **Blocked, not claimed** | `ANTHROPIC_API_KEY`/`LANGSMITH_API_KEY` unset and no usable container runtime (no Docker; Podman fails with `default OCI runtime "crun" not found`). Recorded in `docs/niki/evaluations/SMOKE.md`; tracked in #6. No SDK-level run is substituted. |
-| 7 — Rust parity | **Not started** | `docs/niki/RUST_MIGRATION_GATE.md`: the gate requires a passed matched Python benchmark first. |
+| 5 — owner checks and the CLI smoke | **Run; local model dropped** | Owner-only checks are in `docs/niki/OWNER_VERIFY.md`. The five Ollama runs measured local model capability, not the CLI, and are superseded by owner decision on 2026-11-26: the next smoke uses a hosted free-tier model (Groq or NVIDIA NIM) and is tracked in #7. |
+| 6 — matched Python evaluation, open the Rust gate | **Deferred by owner, 2026-11-26** | Owner decision: drop the Harbor/Claude comparison from this workflow and from the Rust gate; resume it in a session with a working sandbox runtime and keys. The harness is being deleted. `docs/niki/EVALUATION.md` keeps the protocol. |
+| 7 — Rust parity | **Superseded** | Replaced by `2026-11-26-niki-independence-and-rust-port.md`, which removes the benchmark precondition and starts the port from the Python product's own checks. |
 
 The Python product is shipped on `niki-agent` (`592e1876`, `7f1547aa`,
-`71d49b65`). What remains is exactly what the gate says remains: the matched
-comparison, then Rust — both waiting on the environment above, not on code.
+`71d49b65`). Tasks 6 and 7 are closed here by owner decision and continue in
+`2026-11-26-niki-independence-and-rust-port.md`: the comparison waits for a
+session that can run it, and the Rust port starts now without it.

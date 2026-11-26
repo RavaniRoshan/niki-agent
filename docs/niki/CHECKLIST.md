@@ -4,9 +4,11 @@ Status as of the head of PR #8 (2026-11-26). BASE_SHA `f57c6f383b7018024ca5cde2d
 
 **This file is not a victory lap.** Every P0 row below is closed with the named
 evidence, and the two items that are not closed are named where they belong:
-the matched Claude Code benchmark (#6) is blocked on credentials and a
-container runtime, and the local-model CLI smoke (#7) is `RUN, NOT PASSED`.
-Neither is counted as a row. Proof classes: `[T]` test, `[S]` snapshot,
+the matched Claude Code benchmark (#6) is **deferred by owner decision on
+2026-11-26** (the Harbor rig cannot run without a container runtime and hosted
+keys; it is no longer a gate), and the local-model CLI smoke (#7) is replaced by
+a hosted free-tier run (Groq or NVIDIA NIM) in a later session. Neither is
+counted as a row. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
 **Current tally: 57 WORKS · 0 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-26).
@@ -44,7 +46,8 @@ Four variants register under `/theme`: **`niki`** (default), **`niki-light`**, *
 The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, and
 every P0 row below is closed with the evidence named against it. What follows is
 the full picture, including the two items that are not rows and are **not**
-closed: the matched benchmark (#6) and the local-model CLI smoke (#7).
+closed: the matched benchmark (#6, deferred) and the CLI smoke (#7, which
+moves to a hosted free-tier model).
 
 Run everything with:
 
