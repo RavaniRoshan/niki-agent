@@ -22,8 +22,8 @@ cases are the equivalence proof.
 
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
-has started: `niki-mcp` is done for stdio and HTTP, and skills, hooks and slash
-commands remain.
+has started: `niki-mcp` is done for stdio and HTTP and both entry points connect
+the configured servers at startup; skills, hooks and slash commands remain.
 
 ## Waves
 
@@ -73,7 +73,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging | done — 22 tests |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points | done — 25 tests |
 | `niki-skills` | skill discovery, front matter, injection | open |
 | `niki-hooks` | pre/post tool hooks | open |
 | `niki-commands` | slash commands | open |

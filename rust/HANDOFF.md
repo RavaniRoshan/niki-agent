@@ -5,7 +5,8 @@ one crate at a time. Python is still the product until the port reaches its
 cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done.
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
-`[mcp_servers]`, and registers discovered tools in the existing registry.
+`[mcp_servers]`, registers discovered tools in the existing registry, and both
+`niki-rs` entry points now connect the configured servers at startup.
 `niki-skills`, `niki-hooks` and `niki-commands` are next.
 
 ## What is implemented
@@ -17,7 +18,7 @@ W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 | `niki-tools` | read/write/edit/list, shell, grep, glob over a rooted workspace; runtime tool registration |
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
-| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges |
+| `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
 | `niki-render` | transcript view model, deterministic frame, `wrap` |
@@ -31,13 +32,23 @@ W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 the full-screen app when stdout is a terminal. `niki` still replays a protocol
 fixture and streams from the Python engine; it is unchanged.
 
+Both entry points read `[mcp_servers.<name>]` from the config and connect every
+server before the first turn. Their tools are offered to the model as
+`mcp__<server>__<tool>`, in the same registry as the built-ins. A mutating tool —
+one without a coherent `readOnlyHint` — takes the approval prompt in the screen;
+a headless run has nobody to ask, so it reports the request to the model as a
+refusal. A server that fails to start does not stop the session: the screen
+shows `warning: mcp server …` as a transcript notice before the first frame and
+the run continues with the remaining servers (headless prints the same warning
+on stderr).
+
 ## Gates
 
 ```
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 227 tests, 0 failures
+cargo test -j 2 --workspace        # 231 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
@@ -49,6 +60,9 @@ The W3 gates need no terminal:
 `crates/niki-tui-live/tests/screen.rs` renders into a ratatui `TestBackend`
 buffer and reads the cells back; `tests/turn.rs` runs real turns through the
 worker against a scripted provider and drives approvals end to end.
+`crates/niki-mcp/tests/wiring.rs` drives the stdio fixture through
+`niki_mcp::load`, a real `Agent::run` approval and the screen's worker, so the
+startup wiring is covered without a network or a terminal.
 
 ## Decisions a contributor must know
 
@@ -65,7 +79,12 @@ worker against a scripted provider and drives approvals end to end.
 - The turn runs on a worker thread with its own current-thread tokio runtime.
   The screen talks to it over `std::sync::mpsc` and answers approvals over a
   `tokio::sync::oneshot`; dropping that sender unblocks the turn with `Deny`,
-  which is what Esc and Ctrl-C rely on.
+  which is what Esc and Ctrl-C rely on. When the host opened I/O first — the MCP
+  connections — it hands that same runtime to
+  `WorkerHandle::spawn_with_runtime`: a tokio resource belongs to the runtime
+  that opened it, so the turns must run there too. The MCP servers are connected
+  before the worker starts, which is why their warnings are transcript notices
+  from the first frame.
 - One `CancelHandle` serves the session; the worker calls `reset()` before each
   turn, so a cancel always applies to the turn in flight.
 - Keyboard ownership: the composer claims characters, arrows, Home/End, Enter
@@ -115,19 +134,20 @@ worker against a scripted provider and drives approvals end to end.
 
 ## Next: W4 — extensions
 
-`niki-mcp` is done for stdio, HTTP, config and registration. It is not wired
-into `niki-rs` yet: the binary still builds `Registry::new()` and never calls
-`niki_mcp::load(&config.mcp_servers)`. Doing that in `headless` is easy (the
-runtime is already there); the screen's worker builds the agent in a synchronous
-closure, so it needs a runtime handle or a startup load before the worker
-starts. That is the next slice, together with `niki-skills`, `niki-hooks` and
-`niki-commands`. Slash commands are currently four hard-coded strings in
-`App::slash`; W4 should move them into `niki-commands` and have `niki-tui-live`
-call it, keeping `/quit`, `/help`, `/model` and `/theme` as the built-ins.
+`niki-mcp` is done for stdio, HTTP, config, registration and startup wiring:
+both entry points call `niki_mcp::load(&config.mcp_servers)`, register the
+bridges, and hand the screen's worker the runtime those connections live on.
+What remains in W4 is `niki-skills`, `niki-hooks` and `niki-commands`. Slash
+commands are currently four hard-coded strings in `App::slash`; W4 should move
+them into `niki-commands` and have `niki-tui-live` call it, keeping `/quit`,
+`/help`, `/model` and `/theme` as the built-ins.
 
 ## Known gaps
 
-- `niki-mcp` is not called by either entry point yet (see above).
+- MCP startup connects every server serially with the one-minute request budget:
+  a server that accepts the process but never answers the handshake delays the
+  first frame by up to that minute. A per-server `timeout` key is the next thing
+  to add.
 - MCP: no OAuth (the Python client's `auth = "oauth"` has no Rust counterpart),
   no `${VAR}` interpolation in `command`/`args`/`env`/`url`/`headers`, no
   `tools/list` pagination (`nextCursor`), and no `DELETE` to end an HTTP session.
