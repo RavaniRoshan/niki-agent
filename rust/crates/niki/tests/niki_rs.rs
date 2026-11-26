@@ -238,3 +238,55 @@ fn a_missing_model_is_a_clear_failure() {
     assert!(stderr.contains("no model selected"), "{stderr}");
     assert!(stderr.contains("--model"), "{stderr}");
 }
+
+#[test]
+fn a_blocking_hook_stops_the_write_and_the_model_sees_the_reason() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let hooks_dir = workspace.path().join(".niki");
+    std::fs::create_dir_all(&hooks_dir).expect("hooks dir");
+    std::fs::write(
+        hooks_dir.join("hooks.json"),
+        r#"{"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": [
+            {"type": "command", "command": "printf 'no writes today' >&2; exit 2"}
+        ]}]}}"#,
+    )
+    .expect("hooks");
+    let (base_url, seen) = serve(vec![tool_call_turn(), answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+        .arg("-n")
+        .arg("create hello.txt")
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .arg("--quiet")
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", config_dir.path())
+        .output()
+        .expect("run niki-rs");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "exit {:?}\nstdout: {stdout}\nstderr: {stderr}",
+        output.status.code()
+    );
+    assert_eq!(stdout, "Wrote hello.txt.\n");
+    assert!(
+        !workspace.path().join("hello.txt").exists(),
+        "the hook must stop the write"
+    );
+
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 2, "the model still gets a second turn");
+    assert!(
+        requests[1].contains("blocked by hook: no writes today"),
+        "{}",
+        requests[1]
+    );
+}

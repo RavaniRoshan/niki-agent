@@ -105,7 +105,6 @@ pub(crate) fn help(
     let entries = HelpOverlay::entries();
     let mut lines: Vec<Line> = entries
         .iter()
-        .skip(modal.offset())
         .map(|(chord, description)| {
             Line::from(vec![
                 Span::styled(format!("{chord:<12}"), palette.accent_style()),
@@ -122,6 +121,15 @@ pub(crate) fn help(
         "escape closes this list | page up and page down scroll it",
         palette.muted_style(),
     )));
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled("commands", palette.accent_style())));
+    for (name, summary) in HelpOverlay::command_entries() {
+        lines.push(Line::from(vec![
+            Span::styled(format!("{name:<12}"), palette.accent_style()),
+            Span::styled(summary, palette.body_style()),
+        ]));
+    }
+    let lines: Vec<Line> = lines.into_iter().skip(modal.offset()).collect();
     let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
     render(frame, area, "Keys", lines, palette, glyphs, height);
 }

@@ -143,6 +143,25 @@ impl Transcript {
     pub fn is_streaming(&self) -> bool {
         self.streaming
     }
+
+    /// Empty the view for a new session.
+    pub fn clear(&mut self) {
+        self.rows.clear();
+        self.streaming = false;
+    }
+
+    /// Keep only the newest `keep` rows and return how many left the view.
+    ///
+    /// This is a view-level fold: the session store is not touched, so a
+    /// resume brings back everything the view dropped.
+    pub fn fold(&mut self, keep: usize) -> usize {
+        let dropped = self.rows.len().saturating_sub(keep);
+        if dropped > 0 {
+            self.rows.drain(..dropped);
+            self.streaming = false;
+        }
+        dropped
+    }
 }
 
 /// First line of a multi-line argument string, so a tool call stays on one row.
@@ -244,5 +263,30 @@ mod tests {
         let shortened = one_line(&long);
         assert_eq!(shortened.chars().count(), 160);
         assert!(shortened.ends_with("..."));
+    }
+
+    #[test]
+    fn clear_empties_the_view_and_ends_the_stream() {
+        let mut transcript = Transcript::default();
+        transcript.push_user("hi");
+        transcript.push_assistant("there");
+        transcript.clear();
+        assert!(transcript.is_empty());
+        assert!(!transcript.is_streaming());
+        transcript.push_assistant("new");
+        assert_eq!(transcript.rows().len(), 1, "a new answer starts a row");
+    }
+
+    #[test]
+    fn fold_keeps_the_newest_rows_and_reports_how_many_left() {
+        let mut transcript = Transcript::default();
+        for index in 0..20 {
+            transcript.push_user(format!("row {index}"));
+        }
+        assert_eq!(transcript.fold(5), 15);
+        assert_eq!(transcript.rows().len(), 5);
+        assert_eq!(transcript.rows()[0].text, "row 15");
+        assert_eq!(transcript.fold(5), 0, "a short view folds nothing");
+        assert_eq!(transcript.rows().len(), 5);
     }
 }

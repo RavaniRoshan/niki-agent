@@ -9,8 +9,10 @@ use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_agent::{AgentEvent, Approval, ApprovalRequest, RunOutcome, StopReason, Usage};
+use niki_commands::SlashCommand;
 use niki_policy::Mode;
 use niki_render::Glyphs;
+use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
 use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
@@ -18,7 +20,7 @@ use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, 
 use crate::composer::Composer;
 use crate::scroll::Scroll;
 use crate::status::{Status, TurnState};
-use crate::transcript::Transcript;
+use crate::transcript::{Row, RowKind, Transcript};
 
 /// Spinner frames for a terminal that draws Unicode.
 const UNICODE_SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -28,6 +30,10 @@ const ASCII_SPINNER: [char; 4] = ['|', '/', '-', '\\'];
 const MAX_COMPOSER_LINES: u16 = 5;
 /// Lines one wheel notch moves the transcript.
 pub const WHEEL_LINES: usize = 3;
+/// Newest rows `/compact` keeps in the view.
+const COMPACT_KEEP_ROWS: usize = 12;
+/// How many sessions `/resume` lists.
+const RESUME_LIMIT: usize = 20;
 
 /// What a session starts with.
 #[derive(Debug, Clone)]
@@ -84,6 +90,13 @@ pub struct App {
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
     /// one screenful.
     pub page: usize,
+    /// The session store, when the host opened one.
+    sessions: Option<SessionStore>,
+    session: Option<SessionId>,
+    /// First transcript row of the turn in flight, so only that turn is saved.
+    turn_start: Option<usize>,
+    /// Tool names the registry holds, for `/tools`.
+    tools: Vec<String>,
     spinner: usize,
 }
 
@@ -104,6 +117,10 @@ impl App {
             models: ModelPicker::default(),
             skills: SkillCatalog::default(),
             page: 10,
+            sessions: None,
+            session: None,
+            turn_start: None,
+            tools: Vec::new(),
             spinner: 0,
         }
     }
@@ -121,6 +138,38 @@ impl App {
     /// Offer the skills discovery found, which `/skills` prints.
     pub fn set_skills(&mut self, skills: SkillCatalog) {
         self.skills = skills;
+    }
+
+    /// Save turns and resume earlier ones through this store.
+    ///
+    /// A session row is created immediately, so quitting before the first turn
+    /// still leaves a session `/resume` can show.
+    pub fn attach_sessions(&mut self, store: SessionStore) {
+        self.sessions = Some(store);
+        self.new_session();
+    }
+
+    /// The session the screen is writing to, when the host opened a store.
+    #[must_use]
+    pub fn session_id(&self) -> Option<&str> {
+        self.session.as_ref().map(SessionId::as_str)
+    }
+
+    /// The tool names `/tools` lists.
+    pub fn set_tools(&mut self, tools: Vec<String>) {
+        self.tools = tools;
+    }
+
+    /// Insert pasted text literally.
+    ///
+    /// A bracketed paste is text, not keys: newlines and colons stay in the
+    /// draft and only Enter sends it. While a modal is open the modal owns the
+    /// keyboard, so the paste is dropped rather than reaching the composer.
+    pub fn handle_paste(&mut self, text: &str) {
+        if self.modal.is_some() {
+            return;
+        }
+        self.composer.insert_str(text);
     }
 
     /// Switch the marker registry.
@@ -387,6 +436,7 @@ impl App {
                 is_error,
             } => self.transcript.push_tool_result(&name, &output, is_error),
             AgentEvent::Usage(usage) => add_usage(&mut self.status.tokens, usage),
+            AgentEvent::Notice(text) => self.transcript.push_notice(text),
             AgentEvent::StepLimit { steps } => self
                 .transcript
                 .push_notice(format!("stopped after {steps} model turns")),
@@ -423,6 +473,7 @@ impl App {
                 self.status.turn = TurnState::Failed;
             }
         }
+        self.persist_turn();
     }
 
     fn escape(&mut self) -> Option<Command> {
@@ -444,7 +495,13 @@ impl App {
         if text.starts_with('/') {
             return self.slash(&text);
         }
+        if self.status.turn.is_busy() {
+            self.transcript
+                .push_notice("wait for the running turn to finish; press ctrl+c to stop it");
+            return None;
+        }
         self.composer.clear();
+        self.turn_start = Some(self.transcript.rows().len());
         self.transcript.push_user(text.clone());
         self.scroll.reset();
         self.status.turn = TurnState::Working;
@@ -454,37 +511,311 @@ impl App {
 
     fn slash(&mut self, text: &str) -> Option<Command> {
         self.composer.clear();
-        let mut words = text.split_whitespace();
-        let name = words.next().unwrap_or_default();
-        let argument = words.next();
-        match name {
-            "/quit" | "/exit" => Some(Command::Quit),
-            "/help" | "/keys" => {
+        let command = match niki_commands::parse(text) {
+            Ok(command) => command,
+            Err(error) => {
+                self.transcript.push_notice(error.to_string());
+                return None;
+            }
+        };
+        match command {
+            SlashCommand::Quit => Some(Command::Quit),
+            SlashCommand::Help => {
                 self.open_help();
                 None
             }
-            "/theme" => {
-                self.theme(argument);
+            SlashCommand::Theme(name) => {
+                self.theme(name.as_deref());
                 None
             }
-            "/skills" => {
+            SlashCommand::Model(Some(spec)) => Some(Command::SelectModel(spec)),
+            SlashCommand::Model(None) => {
+                self.open_models();
+                None
+            }
+            SlashCommand::Skills => {
                 self.show_skills();
                 None
             }
-            "/model" => match argument {
-                Some(spec) => Some(Command::SelectModel(spec.to_owned())),
-                None => {
-                    self.open_models();
-                    None
-                }
-            },
-            other => {
-                self.transcript.push_notice(format!(
-                    "there is no {other} command; try /help, /model, /skills, /theme or /quit"
-                ));
+            SlashCommand::Clear => {
+                self.clear_session();
+                None
+            }
+            SlashCommand::Compact => {
+                self.compact();
+                None
+            }
+            SlashCommand::Resume(target) => {
+                self.resume(target.as_deref());
+                None
+            }
+            SlashCommand::Tools => {
+                self.list_tools();
+                None
+            }
+            SlashCommand::Version => {
+                self.version();
                 None
             }
         }
+    }
+
+    /// `/clear`: empty the view and start a session of its own.
+    fn clear_session(&mut self) {
+        if self.refuse_while_busy("/clear") {
+            return;
+        }
+        self.transcript.clear();
+        self.scroll.reset();
+        self.turn_start = None;
+        self.new_session();
+        self.transcript.push_notice("started a fresh session");
+    }
+
+    /// `/compact`: fold older rows out of the view, leaving the store alone.
+    ///
+    /// This build has no summarising model, so compaction is a view-level fold:
+    /// the session store still holds every message and `/resume` brings the
+    /// whole transcript back.
+    fn compact(&mut self) {
+        if self.refuse_while_busy("/compact") {
+            return;
+        }
+        let dropped = self.transcript.fold(COMPACT_KEEP_ROWS);
+        if dropped == 0 {
+            self.transcript.push_notice("nothing to compact");
+            return;
+        }
+        self.scroll.reset();
+        self.transcript.push_notice(format!(
+            "folded {dropped} earlier rows out of the view; the session store keeps them"
+        ));
+    }
+
+    /// `/resume`: list saved sessions, or rebuild one into the view.
+    fn resume(&mut self, target: Option<&str>) {
+        if self.refuse_while_busy("/resume") {
+            return;
+        }
+        let Some(store) = &self.sessions else {
+            self.transcript
+                .push_notice("no sessions are saved in this build");
+            return;
+        };
+        let summaries = match store.list() {
+            Ok(summaries) => summaries,
+            Err(error) => {
+                self.transcript
+                    .push_notice(format!("could not list the sessions: {error}"));
+                return;
+            }
+        };
+        let Some(target) = target else {
+            self.list_sessions(&summaries);
+            return;
+        };
+        let chosen = if let Ok(index) = target.parse::<usize>() {
+            index
+                .checked_sub(1)
+                .and_then(|index| summaries.get(index))
+                .map(|summary| summary.id.clone())
+        } else {
+            summaries
+                .iter()
+                .find(|summary| summary.id.as_str().starts_with(target))
+                .map(|summary| summary.id.clone())
+        };
+        let Some(id) = chosen else {
+            self.transcript.push_notice(format!(
+                "there is no saved session {target}; /resume lists them"
+            ));
+            return;
+        };
+        match store.load(&id) {
+            Ok(messages) => {
+                self.transcript.clear();
+                for message in &messages {
+                    self.replay(&message.role, &message.content);
+                }
+                let count = messages.len();
+                self.transcript.push_notice(format!(
+                    "resumed {} ({})",
+                    id.as_str(),
+                    plural(count, "message")
+                ));
+                self.session = Some(id);
+                self.turn_start = None;
+                self.scroll.reset();
+                self.status.turn = TurnState::Idle;
+            }
+            Err(error) => self
+                .transcript
+                .push_notice(format!("could not resume {target}: {error}")),
+        }
+    }
+
+    fn list_sessions(&mut self, summaries: &[Summary]) {
+        if summaries.is_empty() {
+            self.transcript.push_notice("no sessions are saved yet");
+            return;
+        }
+        self.transcript
+            .push_notice("recent sessions; /resume <index> or /resume <id> opens one".to_owned());
+        for (index, summary) in summaries.iter().take(RESUME_LIMIT).enumerate() {
+            self.transcript.push_notice(format!(
+                "{}. {} ({}); {}",
+                index + 1,
+                summary.id,
+                plural(
+                    usize::try_from(summary.messages).unwrap_or(usize::MAX),
+                    "message"
+                ),
+                summary.cwd
+            ));
+        }
+        if summaries.len() > RESUME_LIMIT {
+            self.transcript.push_notice(format!(
+                "and {} more",
+                plural(summaries.len() - RESUME_LIMIT, "session")
+            ));
+        }
+    }
+
+    /// `/tools`: every registered tool, MCP ones included, one row each.
+    fn list_tools(&mut self) {
+        if self.tools.is_empty() {
+            self.transcript.push_notice("no tools are registered");
+            return;
+        }
+        for name in &self.tools {
+            self.transcript.push_notice(name.clone());
+        }
+    }
+
+    /// `/version`: the line the person sees, in the product's name.
+    fn version(&mut self) {
+        self.transcript.push_notice(format!(
+            "Niki Agent {} (Rust client)",
+            env!("CARGO_PKG_VERSION")
+        ));
+    }
+
+    /// Create the session row a fresh view writes into.
+    fn new_session(&mut self) {
+        self.session = None;
+        let Some(store) = &self.sessions else {
+            return;
+        };
+        match store.create(&self.status.cwd) {
+            Ok(id) => self.session = Some(id),
+            Err(error) => self
+                .transcript
+                .push_notice(format!("warning: this session will not be saved: {error}")),
+        }
+    }
+
+    /// Refuse a command that would pull rows out from under a running turn.
+    fn refuse_while_busy(&mut self, command: &str) -> bool {
+        if !self.status.turn.is_busy() {
+            return false;
+        }
+        self.transcript.push_notice(format!(
+            "{command} waits until the turn finishes; press ctrl+c to stop it"
+        ));
+        true
+    }
+
+    /// Append the rows of the turn that just finished to the session store.
+    ///
+    /// Only the rows of this turn are written, and a failed or cancelled turn
+    /// is kept as far as it got (RULES.md 6).
+    fn persist_turn(&mut self) {
+        let Some(start) = self.turn_start.take() else {
+            return;
+        };
+        let (Some(store), Some(session)) = (&self.sessions, &self.session) else {
+            return;
+        };
+        let mut failure = None;
+        {
+            let rows = self.transcript.rows();
+            for row in rows.iter().skip(start) {
+                let Some((role, content)) = persisted(row) else {
+                    continue;
+                };
+                if let Err(error) = store.append(session, role, &content) {
+                    failure = Some(error.to_string());
+                    break;
+                }
+            }
+        }
+        if let Some(error) = failure {
+            self.transcript
+                .push_notice(format!("warning: the session was not saved: {error}"));
+        }
+    }
+
+    /// Rebuild one stored message into the view.
+    fn replay(&mut self, role: &str, content: &str) {
+        match role {
+            "user" => self.transcript.push_user(content),
+            "assistant" => {
+                self.transcript.push_assistant(content);
+                self.transcript.end_stream();
+            }
+            "tool_call" => {
+                let (name, arguments) = split_record(content);
+                self.transcript.push_tool_call(name, arguments);
+            }
+            "tool_result" => {
+                let (name, output) = split_record(content);
+                self.transcript.push_tool_result(name, output, false);
+            }
+            "tool_error" => {
+                let (name, output) = split_record(content);
+                self.transcript.push_tool_result(name, output, true);
+            }
+            "error" => self.transcript.push_error(content),
+            other => self.transcript.push_notice(format!("{other}: {content}")),
+        }
+    }
+}
+
+/// How one transcript row is written to the store, if it is written at all.
+///
+/// Roles are `user`, `assistant`, `tool_call`, `tool_result`, `tool_error` and
+/// `error`; a tool row's first line is its name and the rest is its arguments or
+/// output, so a resumed transcript shows the same rows. Notices are view
+/// furniture and stay out of the store.
+fn persisted(row: &Row) -> Option<(&'static str, String)> {
+    let record = match row.kind {
+        RowKind::User => ("user", row.text.clone()),
+        RowKind::Assistant => ("assistant", row.text.clone()),
+        RowKind::ToolCall => ("tool_call", titled(row)),
+        RowKind::ToolResult => ("tool_result", titled(row)),
+        RowKind::Error if row.title.is_some() => ("tool_error", titled(row)),
+        RowKind::Error => ("error", row.text.clone()),
+        RowKind::Notice => return None,
+    };
+    Some(record)
+}
+
+fn titled(row: &Row) -> String {
+    match &row.title {
+        Some(title) => format!("{title}\n{}", row.text),
+        None => row.text.clone(),
+    }
+}
+
+fn split_record(content: &str) -> (&str, &str) {
+    content.split_once('\n').unwrap_or((content, ""))
+}
+
+fn plural(count: usize, noun: &str) -> String {
+    if count == 1 {
+        format!("{count} {noun}")
+    } else {
+        format!("{count} {noun}s")
     }
 }
 
@@ -500,7 +831,6 @@ fn is_cancelled(stop: &StopReason) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transcript::RowKind;
 
     fn app() -> App {
         App::new(SessionInfo {
@@ -508,6 +838,20 @@ mod tests {
             mode: Mode::Manual,
             cwd: PathBuf::from("/work"),
         })
+    }
+
+    fn store(temp: &tempfile::TempDir) -> SessionStore {
+        SessionStore::open(temp.path().join("sessions.db")).expect("session store")
+    }
+
+    fn outcome() -> RunOutcome {
+        RunOutcome {
+            text: String::new(),
+            steps: 1,
+            tool_calls: 0,
+            stop: StopReason::EndTurn,
+            usage: Usage::default(),
+        }
     }
 
     fn press(app: &mut App, code: KeyCode) -> Option<Command> {
@@ -1019,5 +1363,318 @@ mod tests {
         app.set_glyphs(GlyphMode::Ascii);
         assert_eq!(app.marks().user, ">");
         assert_eq!(app.palette.name, "niki");
+    }
+
+    #[test]
+    fn clear_starts_a_new_session_without_dropping_the_store() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let first = app.session_id().expect("first session").to_owned();
+        let id = app.sessions.as_ref().expect("store").list().expect("list")[0]
+            .id
+            .clone();
+        app.sessions
+            .as_ref()
+            .expect("store")
+            .append(&id, "user", "keep me")
+            .expect("append");
+
+        type_text(&mut app, "/clear");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        let second = app.session_id().expect("second session").to_owned();
+        assert_ne!(first, second, "a new session id");
+        assert_eq!(app.transcript.rows().len(), 1, "the view is empty again");
+        assert_eq!(app.transcript.rows()[0].kind, RowKind::Notice);
+        assert!(
+            app.transcript.rows()[0].text.contains("fresh session"),
+            "{}",
+            app.transcript.rows()[0].text
+        );
+        let store = app.sessions.as_ref().expect("store");
+        assert_eq!(store.list().expect("list").len(), 2, "the store keeps both");
+        let kept = store.load(&id).expect("load");
+        assert_eq!(kept.len(), 1, "clearing the view deletes nothing");
+        assert_eq!(kept[0].content, "keep me");
+    }
+
+    #[test]
+    fn compact_folds_older_rows_and_leaves_the_store_alone() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let id = app.sessions.as_ref().expect("store").list().expect("list")[0]
+            .id
+            .clone();
+        app.sessions
+            .as_ref()
+            .expect("store")
+            .append(&id, "user", "stored")
+            .expect("append");
+        for index in 0..(COMPACT_KEEP_ROWS + 8) {
+            app.transcript.push_user(format!("row {index}"));
+        }
+
+        type_text(&mut app, "/compact");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        let rows = app.transcript.rows();
+        assert_eq!(rows.len(), COMPACT_KEEP_ROWS + 1, "kept rows and a notice");
+        assert_eq!(rows[0].text, "row 8", "the oldest rows left the view");
+        let last = rows.last().expect("notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        assert!(last.text.contains("folded 8 earlier rows"), "{}", last.text);
+        assert!(
+            last.text.contains("session store"),
+            "the notice says the store still has them: {}",
+            last.text
+        );
+        assert_eq!(
+            app.sessions
+                .as_ref()
+                .expect("store")
+                .load(&id)
+                .expect("load")
+                .len(),
+            1,
+            "compaction never writes or deletes stored messages"
+        );
+    }
+
+    #[test]
+    fn compact_on_a_short_view_says_there_is_nothing_to_do() {
+        let mut app = app();
+        app.transcript.push_user("one row");
+        type_text(&mut app, "/compact");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let last = app.transcript.rows().last().expect("notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        assert!(last.text.contains("nothing to compact"), "{}", last.text);
+        assert_eq!(app.transcript.rows().len(), 2);
+    }
+
+    #[test]
+    fn resume_lists_sessions_and_rebuilds_the_selected_one() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut earlier = app();
+        earlier.attach_sessions(store(&temp));
+        let id = earlier.session_id().expect("session").to_owned();
+
+        type_text(&mut earlier, "hello");
+        assert_eq!(
+            press(&mut earlier, KeyCode::Enter),
+            Some(Command::Submit("hello".to_owned()))
+        );
+        earlier.apply(AgentEvent::Text("hi there".to_owned()));
+        earlier.finish(Ok(outcome()));
+
+        type_text(&mut earlier, "/resume");
+        assert_eq!(press(&mut earlier, KeyCode::Enter), None);
+        assert!(
+            earlier
+                .transcript
+                .rows()
+                .iter()
+                .any(|row| row.kind == RowKind::Notice && row.text.contains(&id)),
+            "the listing names the session"
+        );
+
+        let mut next = app();
+        next.attach_sessions(store(&temp));
+        assert_ne!(
+            next.session_id(),
+            Some(id.as_str()),
+            "a fresh launch starts its own session"
+        );
+        type_text(&mut next, "/resume 2");
+        assert_eq!(press(&mut next, KeyCode::Enter), None);
+
+        assert_eq!(next.session_id(), Some(id.as_str()));
+        let rows = next.transcript.rows();
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == RowKind::User && row.text == "hello"),
+            "{rows:?}"
+        );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == RowKind::Assistant && row.text == "hi there"),
+            "{rows:?}"
+        );
+        assert!(
+            rows.last().expect("notice").text.contains("resumed"),
+            "{}",
+            rows.last().expect("notice").text
+        );
+    }
+
+    #[test]
+    fn resume_names_a_session_it_cannot_find() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let current = app.session_id().expect("session").to_owned();
+
+        type_text(&mut app, "/resume 9");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        assert_eq!(app.session_id(), Some(current.as_str()));
+        let last = app.transcript.rows().last().expect("notice");
+        assert!(last.text.contains("no saved session 9"), "{}", last.text);
+    }
+
+    #[test]
+    fn tools_lists_every_registered_name() {
+        let mut app = app();
+        app.set_tools(vec![
+            "read_file".to_owned(),
+            "shell".to_owned(),
+            "mcp__fixture__echo".to_owned(),
+        ]);
+        type_text(&mut app, "/tools");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let listed: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .map(|row| row.text.as_str())
+            .collect();
+        assert_eq!(listed, ["read_file", "shell", "mcp__fixture__echo"]);
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .all(|row| row.kind == RowKind::Notice)
+        );
+    }
+
+    #[test]
+    fn version_names_the_product() {
+        let mut app = app();
+        type_text(&mut app, "/version");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let last = app.transcript.rows().last().expect("notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        assert!(last.text.starts_with("Niki Agent "), "{}", last.text);
+        assert!(
+            last.text.contains(env!("CARGO_PKG_VERSION")),
+            "{}",
+            last.text
+        );
+    }
+
+    #[test]
+    fn a_finished_turn_is_appended_to_the_session_store() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let id = app.sessions.as_ref().expect("store").list().expect("list")[0]
+            .id
+            .clone();
+
+        type_text(&mut app, "list the files");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("list the files".to_owned()))
+        );
+        app.apply(AgentEvent::Text("Looking.".to_owned()));
+        app.apply(AgentEvent::ToolStart {
+            name: "shell".to_owned(),
+            arguments: "{\"command\":\"ls\"}".to_owned(),
+        });
+        app.apply(AgentEvent::ToolEnd {
+            name: "shell".to_owned(),
+            output: "a.txt".to_owned(),
+            is_error: false,
+        });
+        app.finish(Ok(outcome()));
+
+        let messages = app
+            .sessions
+            .as_ref()
+            .expect("store")
+            .load(&id)
+            .expect("load");
+        let records: Vec<(&str, &str)> = messages
+            .iter()
+            .map(|message| (message.role.as_str(), message.content.as_str()))
+            .collect();
+        assert_eq!(
+            records,
+            [
+                ("user", "list the files"),
+                ("assistant", "Looking."),
+                ("tool_call", "shell\n{\"command\":\"ls\"}"),
+                ("tool_result", "shell\na.txt"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_paste_keeps_its_text_literally_and_never_sends() {
+        let mut app = app();
+        let pasted = "fn main() {\n    println!(\"hi\");\n}\n:wq";
+        app.handle_paste(pasted);
+        assert!(app.transcript.is_empty(), "a paste is not a turn");
+        assert_eq!(app.status.turn, TurnState::Idle);
+        assert_eq!(app.composer.text(), pasted);
+        assert_eq!(app.composer.line_count(), 4);
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit(pasted.to_owned()))
+        );
+    }
+
+    #[test]
+    fn a_paste_during_a_turn_waits_in_the_composer_like_typed_text() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        app.handle_paste("next\nprompt");
+        assert_eq!(app.composer.text(), "next\nprompt");
+        assert!(app.transcript.is_empty());
+        assert_eq!(app.status.turn, TurnState::Working);
+    }
+
+    #[test]
+    fn a_paste_is_dropped_while_a_modal_owns_the_keys() {
+        let mut app = app();
+        app.open_help();
+        app.handle_paste("ignored");
+        assert!(app.composer.is_empty());
+    }
+
+    #[test]
+    fn a_second_prompt_waits_for_the_running_turn() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "second prompt");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(
+            app.composer.text(),
+            "second prompt",
+            "a refused send keeps the draft"
+        );
+        assert_eq!(app.status.turn, TurnState::Working);
+        assert_eq!(app.transcript.rows().len(), 1, "only the notice");
+        let last = app.transcript.rows().last().expect("notice");
+        assert!(last.text.contains("running turn"), "{}", last.text);
+    }
+
+    #[test]
+    fn view_commands_wait_for_the_running_turn() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        for command in ["/clear", "/compact", "/resume"] {
+            type_text(&mut app, command);
+            assert_eq!(press(&mut app, KeyCode::Enter), None);
+            let last = app.transcript.rows().last().expect("notice");
+            assert!(
+                last.text.contains("waits until the turn finishes"),
+                "{command}: {}",
+                last.text
+            );
+        }
+        assert_eq!(app.session_id(), None, "nothing was cleared or resumed");
     }
 }

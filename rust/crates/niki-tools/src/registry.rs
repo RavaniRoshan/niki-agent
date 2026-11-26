@@ -116,6 +116,12 @@ impl Registry {
         self
     }
 
+    /// The registered tool names, in the order [`Registry::specs`] reports them.
+    #[must_use]
+    pub fn names(&self) -> Vec<&str> {
+        self.tools.iter().map(|tool| tool.name()).collect()
+    }
+
     /// The tool array a provider request carries: name, description and the
     /// JSON Schema of each tool's arguments.
     #[must_use]
@@ -197,5 +203,6 @@ mod tests {
         sorted.sort_unstable();
         assert_eq!(names, sorted, "registration keeps the specs sorted");
         assert!(names.contains(&"mcp__fixture__write"));
+        assert_eq!(registry.names(), names, "names and specs agree");
     }
 }

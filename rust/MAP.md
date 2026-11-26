@@ -23,9 +23,9 @@ cases are the equivalence proof.
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
 has started: `niki-mcp` is done for stdio and HTTP and both entry points connect
-the configured servers at startup; `niki-skills` discovers project, user and
-built-in skills and injects them into the system prompt. Hooks and the remaining
-slash commands are next.
+`niki-rs` entry points now connect the configured servers at startup. Skills,
+hooks (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`) and slash commands are
+all done.
 
 ## Waves
 
@@ -67,18 +67,18 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | done — 69 tests |
-| `niki-tui-modals` | approvals, model picker, theme picker, help | done — 11 tests |
+| `niki-tui-live` | ratatui full screen: composer with bracketed paste, transcript viewport, status bar, session persistence and `/resume` | done — 86 tests |
+| `niki-tui-modals` | approvals, model picker, theme picker, help (including the command list) | done — 12 tests |
 | `niki-tui-themes` | four palettes, contrast test, ASCII glyphs, reduced motion | done — 7 tests |
 
 ### W4 — extensions
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points | done — 25 tests |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging, startup load in both entry points, per-server startup timeout | done — 28 tests |
 | `niki-skills` | skill discovery, front matter, injection | done — 31 tests |
-| `niki-hooks` | pre/post tool hooks | open |
-| `niki-commands` | slash commands | open |
+| `niki-hooks` | `hooks.json`, pre/post tool and prompt hooks | done — 24 tests |
+| `niki-commands` | slash command grammar: `/clear`, `/compact`, `/resume`, `/tools`, `/version`, `/skills` beside the existing four | done — 7 tests |
 
 ### W5 — surfaces
 
