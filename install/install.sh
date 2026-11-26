@@ -18,6 +18,32 @@ WHEEL="${NIKI_WHEEL:-}"
 log() { printf '  %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+# --- integrity --------------------------------------------------------------
+# Every downloaded archive is checked against the release's SHA256SUMS before it
+# is unpacked. A missing file, a missing entry, or a mismatch is fatal: an
+# unverified archive is never installed.
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 "$1" | awk '{print $NF}'
+  else
+    die "no sha256sum, shasum, or openssl available to verify the download"
+  fi
+}
+
+verify_sha256() {
+  local file="$1" sums="$2" name="$3" expected actual
+  expected="$(awk -v n="$name" '$2 == n {print $1}' "$sums" | head -1)"
+  [ -n "$expected" ] || die "SHA256SUMS has no entry for $name"
+  actual="$(sha256_of "$file")"
+  [ "$actual" = "$expected" ] \
+    || die "checksum mismatch for $name (expected $expected, got $actual)"
+  log "verified $name"
+}
+
 # --- locate the wheel -------------------------------------------------------
 # Prefer a wheel next to this script (release tarball); otherwise download the
 # newest release asset for this platform.
@@ -25,29 +51,44 @@ find_wheel() {
   if [ -n "$WHEEL" ]; then
     printf '%s' "$WHEEL"; return 0
   fi
-  local dir candidate
+  local dir candidate sums
   dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   candidate="$(ls -1 "$dir"/niki_agent-*.whl 2>/dev/null | head -1 || true)"
-  if [ -n "$candidate" ]; then printf '%s' "$candidate"; return 0; fi
+  if [ -n "$candidate" ]; then
+    sums="$dir/SHA256SUMS"
+    [ -f "$sums" ] && verify_sha256 "$candidate" "$sums" "$(basename "$candidate")"
+    printf '%s' "$candidate"; return 0
+  fi
 
   log "no wheel alongside the installer; downloading the latest release"
-  local url asset
+  local url platform file_asset sums_asset
   url="https://api.github.com/repos/RavaniRoshan/niki-agent/releases/latest"
   command -v curl >/dev/null 2>&1 || die "curl is required to download a release"
 
   case "$(uname -s)" in
-    Darwin) asset="macos" ;;
-    Linux)  asset="linux" ;;
+    Darwin) platform="macos" ;;
+    Linux)  platform="linux" ;;
     *) die "unsupported platform: $(uname -s)" ;;
   esac
-  asset="$(curl -fsSL "$url" \
-    | grep -o '"browser_download_url": *"[^"]*'"$asset"'[^"]*"' \
+  local release_json; release_json="$(curl -fsSL "$url")" \
+    || die "could not read the release metadata"
+  file_asset="$(printf '%s' "$release_json" \
+    | grep -o '"browser_download_url": *"[^"]*'"$platform"'[^"]*"' \
     | head -1 | cut -d'"' -f4)" || true
-  [ -n "$asset" ] || die "could not find a release asset for $asset"
+  [ -n "$file_asset" ] || die "could not find a release asset for $platform"
+  sums_asset="$(printf '%s' "$release_json" \
+    | grep -o '"browser_download_url": *"[^"]*SHA256SUMS"' \
+    | head -1 | cut -d'"' -f4)" || true
+  [ -n "$sums_asset" ] \
+    || die "this release publishes no SHA256SUMS; refusing to install an unverified archive"
 
-  local tmp; tmp="$(mktemp -d)"
-  curl -fsSL "$asset" -o "$tmp/pkg.tar.gz"
-  tar -xzf "$tmp/pkg.tar.gz" -C "$tmp"
+  local tmp archive_name; tmp="$(mktemp -d)"
+  archive_name="$(basename "$file_asset")"
+  curl -fsSL "$sums_asset" -o "$tmp/SHA256SUMS" || die "could not download SHA256SUMS"
+  curl -fsSL "$file_asset" -o "$tmp/$archive_name" || die "could not download $archive_name"
+  verify_sha256 "$tmp/$archive_name" "$tmp/SHA256SUMS" "$archive_name"
+
+  tar -xzf "$tmp/$archive_name" -C "$tmp" || die "could not unpack $archive_name"
   candidate="$(ls -1 "$tmp"/niki-*/niki_agent-*.whl 2>/dev/null | head -1 || true)"
   [ -n "$candidate" ] || die "release asset contained no wheel"
   printf '%s' "$candidate"

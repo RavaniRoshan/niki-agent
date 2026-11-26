@@ -2,44 +2,54 @@
 
 # ◐ Niki Agent
 
-*Calm, fast, keyboard-native. A terminal coding agent that gets out of the way.*
+*A terminal coding agent that stays quiet, starts fast, and runs on your machine.*
 
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square)](https://www.python.org)
 [![Textual](https://img.shields.io/badge/terminal-Textual%208-5c873a?style=flat-square)](https://textual.textualize.io)
 [![Rust](https://img.shields.io/badge/client-rust%202024-b7410e?style=flat-square)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](NOTICE)
 
-[Install](#install) · [Run it](#run-it) · [Independence](#independence) ·
-[Themes](#themes) · [Providers](#providers) · [Docs](#docs)
+[Install](#install) · [Quickstart](#quickstart) · [Approval modes](#approval-modes) ·
+[Themes](#themes) · [Providers](#providers) · [Rust client](#rust-client)
 
 </div>
 
 <div align="center">
-  <img src="docs/niki/review/test_first_run_snapshot_120x38.svg" width="900" alt="Niki Agent first-run screen">
+  <img src="intro.gif" width="900" alt="Niki Agent in a terminal">
 </div>
 
-Niki Agent is an independent terminal coding agent. It runs on any model that
-supports tool calling, keeps your sessions and memory on your machine, and puts
-the whole agent loop in this repository — no runtime dependency on an upstream
-agent package.
+Niki Agent is a terminal coding agent with its whole agent loop in this
+repository. It runs on any model that supports tool calling, keeps your sessions
+and memory on your machine, and asks before it does something you did not ask
+for.
 
 ```bash
-git clone https://github.com/RavaniRoshan/niki-agent.git
-cd niki-agent/libs/code
-uv sync --all-extras
-uv run niki
+curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
+niki
 ```
 
-> [!TIP]
-> No API key is needed to try the interface. `niki` boots straight to a working
-> composer. Set a key only when you want it to actually do something:
-> `export ANTHROPIC_API_KEY=sk-ant-...`
+No API key is needed to try the interface — `niki` boots straight to a working
+composer. Set a key when you want it to actually do something:
 
----
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Why this one
+
+| | |
+| --- | --- |
+| **A quiet interface** | Zero idle redraws. The composer is a single rule, not a box. A long transcript is mounted in a bounded window, so a two-hour session renders like a two-minute one. |
+| **A fast start** | ~190 ms to first paint in process, against ~1 ms for `niki --version` and ~4 ms for the first Rust replay frame. |
+| **Small footprint** | 255 MB resident through a long session — no background indexer, no daemon. |
+| **Provider freedom** | Nine providers ship, and any OpenAI-compatible endpoint is a four-line block in `~/.niki/config.toml`. |
+| **Local by default** | Sessions, memory, and credentials stay in `~/.niki`. No account, no telemetry. |
+| **Accessible, not as an afterthought** | Four themes with measured contrast, reduced motion, an ASCII glyph set, a screen-reader mode, and layouts checked at 40/50/80/120/160 columns. |
+| **A real approval gate** | Manual, Auto, and YOLO modes, a shell allow-list, and sandbox backends for when you need a hard boundary. |
 
 ## Install
 
-### From a release (recommended)
+### From a release
 
 Linux and macOS:
 
@@ -54,7 +64,9 @@ irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install
 ```
 
 The installer creates an isolated environment under `~/.local/niki`
-(`%LOCALAPPDATA%\niki` on Windows) and puts `niki` on your `PATH`.
+(`%LOCALAPPDATA%\niki` on Windows), verifies the release checksum, and puts
+`niki` on your `PATH`. It never edits your shell profile unless you ask with
+`NIKI_SHELL=1`.
 
 ### From source
 
@@ -64,19 +76,24 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 git clone https://github.com/RavaniRoshan/niki-agent.git
 cd niki-agent/libs/code
 uv sync --all-extras
+uv run niki
 ```
 
-Install just one provider's extra instead of all of them with
+Install one provider's extra instead of all of them with
 `uv sync --extra anthropic`.
 
-## Run it
+## Quickstart
 
 ```bash
-uv run niki                      # interactive
-uv run niki --help               # usage and options
-uv run niki --version            # Niki Agent 1.1.1
-uv run niki -n "summarize this repo"   # headless
+niki                                  # interactive
+niki --help                           # usage and options
+niki --version                        # Niki Agent 1.1.1
+niki -n "summarize this repo"         # headless, one answer to stdout
 ```
+
+In the session: type a request and press Enter. `/help` lists commands, `/theme`
+switches palette, `Ctrl+K` opens the command palette, and `Ctrl+J` inserts a
+newline. Every binding is in [`docs/niki/KEYMAP.md`](docs/niki/KEYMAP.md).
 
 ## Approval modes
 
@@ -93,36 +110,6 @@ permissions. Use `--yolo`, `--auto-approve`, the shell allow-list, and the
 sandbox backends when you need a hard boundary. `[startup].yolo_switcher` can
 keep YOLO out of the cycle.
 
-## Independence
-
-- **Own module and distribution.** `niki_agent`, published as `niki-agent`.
-- **Own state.** `~/.niki`; the old `~/.deepagents` profile is migrated on first
-  launch and a marker records the move.
-- **Own environment namespace.** `NIKI_*`. Old `DEEPAGENTS_CODE_*` names are
-  read once and copied, with a deprecation notice.
-- **Own agent loop.** The agent SDK and the ACP integration are vendored under
-  `libs/code/niki_agent/` with their MIT notices and a provenance file beside
-  each, so nothing imports an upstream distribution at runtime.
-- **Deprecated aliases.** `dcode` and `deepagents-code` still launch the product
-  for two minor versions and print a one-line notice.
-
-## What it feels like
-
-| | |
-| --- | --- |
-| Idle redraws over 5 s | **0** |
-| Render cost, worst case vs. a short transcript | **1.21×** |
-| Resident memory, long session | **255 MB** |
-| Composer | a single rule, not a box |
-| Update check / auto-update | on, with `NIKI_DISABLE_*` opt-outs |
-
-- **A theme layer.** Registered through the theme registry. Every colour comes
-  from one module.
-- **Its own motion.** A ping-ponging `◐◓◑◒` sweep with adaptive cadence, and
-  `NIKI_REDUCED_MOTION` for stillness.
-- **A bounded mount window.** Keeps a long transcript from dragging the render
-  cost with it.
-
 ## Themes
 
 Four palettes, switchable at runtime with `/theme`:
@@ -138,15 +125,16 @@ All four measure **zero contrast violations**: text at 4.5:1, UI glyphs at 3:1,
 against every surface they sit on. That is a test, not a claim.
 
 ```bash
-NO_COLOR=1 uv run niki                     # colour off
-NIKI_UI_CHARSET_MODE=ascii uv run niki     # ASCII glyph fallback
-NIKI_REDUCED_MOTION=1 uv run niki          # no animation
+NO_COLOR=1 niki                            # colour off
+NIKI_UI_CHARSET_MODE=ascii niki            # ASCII glyph fallback
+NIKI_REDUCED_MOTION=1 niki                 # no animation
 ```
 
 ## Providers
 
-Nine ship already — Anthropic, OpenAI, Google, Ollama, OpenRouter, NVIDIA, Groq,
-Together, DeepSeek. More are configured rather than compiled in:
+Nine ship already — Anthropic, OpenAI, Google, Ollama, OpenRouter, NVIDIA,
+Groq, Together, and DeepSeek. Anything else with an OpenAI-compatible API is
+configuration, not code:
 
 ```toml
 # ~/.niki/config.toml
@@ -158,37 +146,40 @@ api_key_env = "MOONSHOT_API_KEY"
 models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
 ```
 
-Full details, caveats, and the Kilo and OpenCode Zen blocks are in
+Full setup, gateway notes, and local-model recipes are in
 [`docs/niki/PROVIDERS.md`](docs/niki/PROVIDERS.md).
+
+## Design independence
+
+Niki Agent is its own product, not a skin over someone else's runtime:
+
+- **Its own package.** `niki_agent`, published as `niki-agent`.
+- **Its own agent loop.** The agent runtime and the editor-protocol integration
+  live in this repository. Nothing imports an agent framework at runtime.
+- **Its own state.** `~/.niki`, with a documented on-disk layout.
+- **Its own environment namespace.** `NIKI_*`, with the same meaning on every
+  platform.
+- **Its own release pipeline.** Wheels built here, three platform archives,
+  checksums published with every release.
+
+The MIT notices for the components that are included are kept in
+[`NOTICE`](NOTICE), with a licence and a provenance note beside each.
 
 ## Docs
 
 | | |
 | --- | --- |
-| [`CHECKLIST.md`](docs/niki/CHECKLIST.md) | Every product row with its real status and evidence. |
-| [`INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) | The rename, the aliases, and the migration rules. |
-| [`BASELINE.md`](docs/niki/BASELINE.md) | Before/after numbers and the commands behind them. |
-| [`OWNER_VERIFY.md`](docs/niki/OWNER_VERIFY.md) | What still needs a real terminal and a real key. |
+| [`ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md) | How the agent, the UI, and the tools fit together. |
+| [`INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) | Package, state, and environment guarantees. |
 | [`KEYMAP.md`](docs/niki/KEYMAP.md) | Every key binding, generated from the registry. |
 | [`PROVIDERS.md`](docs/niki/PROVIDERS.md) | Provider setup and gateway notes. |
-| [`UI_PARITY.md`](docs/niki/UI_PARITY.md) | Rows checked against the current Claude Code CLI. |
-| [`PROGRESS.md`](docs/niki/PROGRESS.md) | Build log, including the turns that were wrong. |
-
-**Status: 57 WORKS · 0 PARTIAL · 0 MISSING** across the 57 checklist rows. Every
-row carries the test, PTY run, or measured probe that decides it.
-
-## Tests
-
-```bash
-cd libs/code
-uv run pytest tests/unit_tests/niki/ -q    # no network, no API key, no terminal
-```
+| [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and what is in scope. |
 
 ## Rust client
 
-`rust/` is a second front end for the same engine, written in Rust. It speaks the
-engine's HTTP/SSE protocol directly, so the Python client stays the product and
-the Rust binary is the fast path being built toward.
+`rust/` is a second front end for the same engine, written in Rust. It speaks
+the engine's HTTP/SSE protocol directly, so the Python client stays the product
+while the Rust binary grows into the fast path.
 
 ```bash
 cd rust
@@ -206,19 +197,28 @@ cargo run -q -p niki -- session --engine http://127.0.0.1:2024 --prompt "Say hel
 | `niki-tui` | keymap, reader mode, and view state |
 | `niki` | the binary: `replay`, `session`, `keys` |
 
-Replay is offline and deterministic, which is what lets the parity frames be
-pinned in tests. `rust/tools/m2_session.sh` drives a live session inside a PTY
-and asserts its final transcript equals the replay frame. Evidence and every
-justified difference from the Python TUI are in
-[`docs/niki/RUST_PARITY.md`](docs/niki/RUST_PARITY.md).
+Replay is offline and deterministic, which is what lets frames be pinned in
+tests. `rust/tools/m2_session.sh` drives a live session inside a PTY and asserts
+its final transcript equals the recorded frame.
 
 The current Rust frame renders the transcript region only: the composer, modals,
-approvals, and the palette are Python-only until the full-screen ratatui shell
-lands. `niki --version` starts in about 1 ms and the first replay frame in about
-4 ms, against ~190 ms for the Python client's first paint.
+approvals, and the palette are Python-only until the full-screen shell lands.
+The port plan is in [`rust/MAP.md`](rust/MAP.md).
+
+## Tests
+
+```bash
+cd libs/code
+uv run pytest tests/unit_tests/niki/ -q    # no network, no API key, no terminal
+```
+
+## Security
+
+Please report vulnerabilities privately — see [`SECURITY.md`](SECURITY.md).
+Release archives are covered by `SHA256SUMS`, and the installers verify it
+before installing.
 
 ## License
 
-MIT. Third-party copyright notices are retained in [`NOTICE`](NOTICE), and
-every vendored directory carries its license and a provenance note beside it.
-That attribution is a legal requirement and is never removed by branding work.
+MIT. Third-party copyright notices are retained in [`NOTICE`](NOTICE), and every
+included directory carries its licence and a provenance note beside it.
