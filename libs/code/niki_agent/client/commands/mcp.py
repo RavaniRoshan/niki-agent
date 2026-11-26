@@ -207,10 +207,10 @@ async def run_mcp_login_list(*, config_path: str | None) -> int:
     return 0
 
 
-# Maintainer note: `deepagents-talon` dynamically imports `run_mcp_login` from
-# this module for its `talon mcp login` command. Keep the function name,
-# keyword-only signature, async behavior, and integer exit-code contract stable
-# unless `deepagents-talon` is migrated in the same change.
+# Maintainer note: a companion CLI imports `run_mcp_login` from this module for
+# its own `mcp login` command. Keep the function name, keyword-only signature,
+# async behavior, and integer exit-code contract stable unless that CLI is
+# migrated in the same change.
 async def run_mcp_login(*, server: str, config_path: str | None) -> int:
     """Handle `niki mcp login <server>`.
 

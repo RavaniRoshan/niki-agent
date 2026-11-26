@@ -1,10 +1,9 @@
 """Niki's user-visible identity strings.
 
-Kept in one module so a rename is one edit, and so the brand gate has a single
-place to check against. The rules:
+Kept in one module so a rename is one edit, and so every surface reads the same
+source. The rules:
 
-- User-visible chrome says **Niki Agent**. Never an upstream or pre-rename
-  product name.
+- User-visible chrome says **Niki Agent**.
 - Attribution lives in `NOTICE`, `LICENSE`, the vendored SDK's
   `PROVENANCE.md`, and the About view -- not in the version line.
 - `niki` is the only console script; there are no compatibility aliases.

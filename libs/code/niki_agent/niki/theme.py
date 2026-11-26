@@ -1,28 +1,24 @@
 """Niki Agent visual identity: the one place a Niki color may be written.
 
-Every color Niki uses lives in this module. Nothing else in the fork may spell a
-hex literal, a named color, or an `rgb()` -- `tests/unit_tests/niki/test_lint_rules.py`
-enforces that. Keeping the tokens here is what lets V1 be a lint rule instead of
-a review habit, and it means a palette change is one edit in one file.
+Every color Niki uses lives in this module. Nothing else may spell a hex
+literal, a named color, or an `rgb()` -- `tests/unit_tests/niki/test_lint_rules.py`
+enforces that. Keeping the tokens here is what makes that a lint rule instead
+of a review habit, and it means a palette change is one edit in one file.
 
-**Direction, not values.** The owner asked for a palette inspired by two tools
-whose colour systems were read from source: Codex CLI (`codex-rs/tui/src/style.rs`)
-and Kimi Code (`apps/kimi-code/src/tui/theme/colors.ts`). Three ideas were taken,
-and **no hex value was** -- the brief forbids reproducing another tool's palette,
-and `test_the_palette_is_not_a_copy` enforces that against every value either
-tool uses:
+**Direction, not values.** The palette follows three ideas, and reproduces no
+hex value from any other tool -- `test_the_palette_is_not_a_copy` checks every
+value Niki ships against the palettes held in `researched_palettes.json`:
 
-1. **A flat, untinted grey scale** (Kimi). `foreground`, `muted` and `secondary`
+1. **A flat, untinted grey scale.** `foreground`, `muted` and `secondary`
    carry no hue of their own, so colour is spent only on meaning. An earlier
    Niki palette used a warm-tinted grey, which made "secondary" look like a
    fourth accent.
-2. **One accent, four status hues, each with one job** (both). `error` is the
-   only hue allowed to mean removal or failure, which is what lets a diff read
-   without relying on position.
-3. **Status colours desaturated relative to the accent** (Codex's diff
-   backgrounds are deliberately subtle so they never fight syntax colours). A
-   saturated status colour competes with the accent and the accent stops
-   working.
+2. **One accent, four status hues, each with one job.** `error` is the only hue
+   allowed to mean removal or failure, which is what lets a diff read without
+   relying on position.
+3. **Status colours desaturated relative to the accent.** Diff backgrounds stay
+   deliberately subtle so they never fight syntax colours; a saturated status
+   colour competes with the accent and the accent stops working.
 
 The base is cool rather than warm, and every pair is measured before it ships.
 

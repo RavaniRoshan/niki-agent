@@ -5604,8 +5604,9 @@ def load_mcp_server_trust_lists(
     a project's `.mcp.json` or any repo-committed file. There is no
     project-level `config.toml` discovery, so an attacker who commits a
     malicious `.mcp.json` plus an in-repo config cannot pre-approve their own
-    servers; the approval must live in the user's home config. This mirrors
-    Claude Code's "untrusted folder → only non-checked-in settings" rule.
+    servers; the approval must live in the user's home config. The rule is the
+    one that applies to any untrusted folder: only settings the user controls
+    outside it can widen what it may do.
 
     Source resolution differs by list, matching each one's security direction:
 

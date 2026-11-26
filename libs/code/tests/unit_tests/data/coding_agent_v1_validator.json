@@ -193,7 +193,7 @@
       "allowedValues": null,
       "requirement": "contextual",
       "requiredWhereKnown": false,
-      "note": "Subagent runs only. Do NOT emit on root runs (e.g. do not copy claude-code's old ls_agent_type='root' here)."
+      "note": "Subagent runs only. Do NOT emit on root runs (there is no root subagent type to record)."
     },
     {
       "key": "ls_tool_name",

@@ -1,20 +1,19 @@
 """Niki's outbound-network policy.
 
-The audit is in `the internal design audit` §5; this module is where the policy is
-enforced. Three things reach the network on their own:
+This module is where the policy is enforced. Three things reach the network on
+their own:
 
 1. `update_check.py` polls `https://pypi.org/pypi/niki-agent/json`.
 2. Its auto-updater shells out to install a new version.
 3. `configuration/providers.py` fetches a remote `managed_config.toml`.
 
-**Decision: all three default ON**, matching the behaviour Niki's users expect
-from a terminal coding agent. The owner chose parity over the opt-in posture
-this module originally shipped.
+**Decision: all three default ON**, because a terminal coding agent that keeps
+itself current is what users expect, and each one can be turned off.
 
-Niki is now its own distribution (`niki-agent`), so the upgrade command and the
-install script both point at Niki. `INSTALL_SCRIPT_COMMAND` is
+The upgrade command and the install script both point at this distribution.
+`INSTALL_SCRIPT_COMMAND` is
 `https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh`,
-which installs `niki-agent` rather than any upstream tooling.
+which installs `niki-agent`.
 
 The opt-*out* variables below exist so an owner or a managed deployment can turn
 any of this off without editing code. They use `setdefault`, so a value already

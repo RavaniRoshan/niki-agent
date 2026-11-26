@@ -1,10 +1,9 @@
 """Append a `#` note from the chat input to the agent's memory file.
 
-Claude Code's `#` prefix is the shortest way to say "remember this": the line
-is written to memory instead of being sent as a prompt. Niki stores it in the
-active agent profile's `AGENTS.md`, the same file `MemoryMiddleware` loads at
-start-up, so the note is in the next turn's system prompt without restarting
-the profile.
+A `#` prefix is the shortest way to say "remember this": the line is written to
+memory instead of being sent as a prompt. Niki stores it in the active agent
+profile's `AGENTS.md`, the same file `MemoryMiddleware` loads at start-up, so
+the note is in the next turn's system prompt without restarting the profile.
 """
 
 from __future__ import annotations

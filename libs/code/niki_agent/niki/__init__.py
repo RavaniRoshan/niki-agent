@@ -1,1 +1,1 @@
-"""Niki Agent: the fork's presentation layer, added without patching upstream."""
+"""Niki Agent: the presentation layer, added without patching the base app."""
