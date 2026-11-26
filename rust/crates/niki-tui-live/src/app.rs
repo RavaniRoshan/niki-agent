@@ -12,7 +12,7 @@ use niki_agent::{AgentEvent, Approval, ApprovalRequest, RunOutcome, StopReason, 
 use niki_policy::Mode;
 use niki_render::Glyphs;
 use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
-use niki_tui_themes::{GlyphMode, Motion, NIKI, Palette};
+use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
 use crate::composer::Composer;
 use crate::scroll::Scroll;
@@ -257,6 +257,32 @@ impl App {
         }
     }
 
+    /// Switch palette by name, or to the next one when no name is given.
+    pub fn theme(&mut self, name: Option<&str>) {
+        match name {
+            Some(name) => match palette(name) {
+                Some(found) => {
+                    self.palette = found;
+                    self.transcript
+                        .push_notice(format!("theme: {}", found.title));
+                }
+                None => {
+                    let names: Vec<&str> = PALETTES.iter().map(|entry| entry.name).collect();
+                    self.transcript.push_notice(format!(
+                        "there is no {name} theme; try {}",
+                        names.join(", ")
+                    ));
+                }
+            },
+            None => {
+                let next = next_palette(self.palette.name);
+                self.palette = next;
+                self.transcript
+                    .push_notice(format!("theme: {}", next.title));
+            }
+        }
+    }
+
     /// Open the keymap overlay.
     pub fn open_help(&mut self) {
         self.modal = Some(Modal::Help(HelpOverlay::new()));
@@ -392,6 +418,10 @@ impl App {
                 self.open_help();
                 None
             }
+            "/theme" => {
+                self.theme(argument);
+                None
+            }
             "/model" => match argument {
                 Some(spec) => Some(Command::SelectModel(spec.to_owned())),
                 None => {
@@ -401,7 +431,7 @@ impl App {
             },
             other => {
                 self.transcript.push_notice(format!(
-                    "there is no {other} command; try /help, /model or /quit"
+                    "there is no {other} command; try /help, /model, /theme or /quit"
                 ));
                 None
             }
@@ -745,6 +775,40 @@ mod tests {
             Some(Command::SelectModel("groq:llama".to_owned()))
         );
         assert!(app.modal.is_none());
+    }
+
+    #[test]
+    fn the_theme_command_selects_a_palette_by_name_or_cycles() {
+        let mut app = app();
+        type_text(&mut app, "/theme mono");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.palette.name, "mono");
+        assert!(app.composer.is_empty());
+
+        type_text(&mut app, "/theme");
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(app.palette.name, "niki", "cycling wraps from the last");
+
+        type_text(&mut app, "/theme");
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(app.palette.name, "high-contrast");
+    }
+
+    #[test]
+    fn an_unknown_theme_says_what_is_on_offer_and_changes_nothing() {
+        let mut app = app();
+        type_text(&mut app, "/theme purple");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.palette.name, "niki");
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        for name in ["niki", "high-contrast", "colorblind", "mono"] {
+            assert!(
+                last.text.contains(name),
+                "{name} missing from {}",
+                last.text
+            );
+        }
     }
 
     #[test]

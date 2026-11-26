@@ -365,3 +365,41 @@ fn one_line(text: &str) -> String {
     }
     line
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_theme_setting_selects_the_palette() {
+        let light = Config::from_str("[ui]\ntheme = \"light\"\n").expect("config");
+        assert_eq!(
+            palette_or_default(light.theme.as_deref()).name,
+            "high-contrast"
+        );
+        let colourblind = Config::from_str("[ui]\ntheme = \"colour-blind\"\n").expect("config");
+        assert_eq!(
+            palette_or_default(colourblind.theme.as_deref()).name,
+            "colorblind"
+        );
+        let unknown = Config::from_str("[ui]\ntheme = \"purple\"\n").expect("config");
+        assert_eq!(palette_or_default(unknown.theme.as_deref()).name, "niki");
+        assert_eq!(palette_or_default(None).name, "niki");
+    }
+
+    #[test]
+    fn the_glyph_and_motion_flags_read_the_environment_values() {
+        assert_eq!(GlyphMode::from_value(Some("1")), GlyphMode::Ascii);
+        assert_eq!(GlyphMode::from_value(None), GlyphMode::Unicode);
+        assert_eq!(Motion::from_value(Some("1")), Motion::Reduced);
+        assert_eq!(Motion::from_value(None), Motion::Full);
+    }
+
+    #[test]
+    fn a_model_spec_splits_into_provider_and_model() {
+        let (provider, model) = split_spec("groq:llama-3.3-70b").expect("spec");
+        assert_eq!(provider, "groq");
+        assert_eq!(model, "llama-3.3-70b");
+        assert!(split_spec("llama").is_err());
+    }
+}

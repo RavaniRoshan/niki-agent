@@ -281,3 +281,19 @@ fn an_ascii_terminal_draws_the_overlay_without_box_drawing() {
         assert!(line.is_ascii(), "non-ASCII in {line:?}");
     }
 }
+
+#[test]
+fn the_theme_command_repaints_with_the_new_palette() {
+    let mut app = app();
+    app.apply(AgentEvent::Text("recoloured".to_owned()));
+    type_text(&mut app, "/theme mono");
+    stroke(&mut app, KeyCode::Enter);
+    assert_eq!(app.palette.name, "mono");
+    let buffer = render(&mut app, 40, 10);
+    assert_eq!(
+        buffer.cell((2, 0)).expect("answer text").fg,
+        niki_tui_themes::MONO.body.color()
+    );
+    let status = row(&buffer, 9);
+    assert!(!status.is_empty());
+}
