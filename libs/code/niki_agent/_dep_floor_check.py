@@ -149,8 +149,8 @@ def _find_floor_violations(entries: list[str]) -> list[_FloorViolation]:
                     "Could not evaluate marker for %r; skipping", entry, exc_info=True
                 )
                 continue
-        # `==` pins act as floors here too: a hard pin (e.g. the SDK's
-        # `deepagents==X.Y.Z`) still means "this version or drift" in an
+        # `==` pins act as floors here too: a hard pin (e.g.
+        # `some-dist==X.Y.Z`) still means "this version or drift" in an
         # editable venv, and an older-than-pinned install is exactly the
         # staleness this check exists to surface. `==X.*` wildcard equality
         # has no parseable single version, so it stays out.
