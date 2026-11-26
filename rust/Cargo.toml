@@ -7,6 +7,7 @@ members = [
     "crates/niki-policy",
     "crates/niki-proto",
     "crates/niki-render",
+    "crates/niki-tools",
     "crates/niki-tui",
 ]
 
@@ -21,10 +22,13 @@ repository = "https://github.com/RavaniRoshan/niki-agent"
 anyhow = "1"
 crossterm = "0.29"
 futures-util = "0.3"
+globset = "0.4"
 ratatui = "0.29"
+regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tempfile = "3"
 thiserror = "2"
 toml = "0.9"
 unicode-width = "0.2"
