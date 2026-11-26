@@ -16,43 +16,14 @@ const TAG_EXTERNAL_ISSUES_YML = path.join(REPO_ROOT, '.github/workflows/tag-exte
 const core = { info() {}, warning() {} };
 
 function helpers() {
-  return prLabeler.loadAndInit({}, 'langchain-ai', 'deepagents', core).h;
+  return prLabeler.loadAndInit({}, 'nikilabs', 'niki-agent', core).h;
 }
 
-test('canonicalizeTitleScopes rewrites package-component scopes', () => {
+test('canonicalizeTitleScopes leaves titles alone when no aliases are configured', () => {
   const h = helpers();
-  assert.deepEqual(h.canonicalizeTitleScopes('fix(deepagents-code): x'), {
-    title: 'fix(code): x',
-    scopes: 'code',
-  });
-  assert.deepEqual(h.canonicalizeTitleScopes('feat(deepagents-talon)!: y'), {
-    title: 'feat(talon)!: y',
-    scopes: 'talon',
-  });
-});
-
-test('canonicalizeTitleScopes handles the `!` before the parens', () => {
-  const h = helpers();
-  assert.deepEqual(h.canonicalizeTitleScopes('feat!(deepagents-acp): w'), {
-    title: 'feat!(acp): w',
-    scopes: 'acp',
-  });
-});
-
-test('canonicalizeTitleScopes rewrites each scope in a comma list', () => {
-  const h = helpers();
-  assert.deepEqual(h.canonicalizeTitleScopes('feat(deepagents, talon): y'), {
-    title: 'feat(sdk,talon): y',
-    scopes: 'sdk,talon',
-  });
-});
-
-test('canonicalizeTitleScopes leaves release titles alone', () => {
-  const h = helpers();
-  // A release PR title is a canonical version record — rewriting its scope
-  // would break the release-please fan-out that reads it.
-  assert.equal(h.canonicalizeTitleScopes('release(deepagents-code): 1.2.0'), null);
-  assert.equal(h.canonicalizeTitleScopes('release(deepagents): 1.2.0'), null);
+  assert.equal(h.canonicalizeTitleScopes('fix(code): x'), null);
+  assert.equal(h.canonicalizeTitleScopes('fix(unknown-scope): x'), null);
+  assert.equal(h.canonicalizeTitleScopes('release(code): 1.2.0'), null);
 });
 
 test('canonicalizeTitleScopes returns null when there is nothing to do', () => {
@@ -61,18 +32,6 @@ test('canonicalizeTitleScopes returns null when there is nothing to do', () => {
   assert.equal(h.canonicalizeTitleScopes('fix(code): already'), null, 'canonical scope');
   assert.equal(h.canonicalizeTitleScopes(''), null, 'empty title');
   assert.equal(h.canonicalizeTitleScopes(undefined), null, 'missing title');
-});
-
-test('every scopeAliases target resolves to a label', () => {
-  const { config, h } = prLabeler.loadAndInit({}, 'o', 'r', core);
-  for (const [source, target] of Object.entries(config.scopeAliases)) {
-    const renamed = h.canonicalizeTitleScopes(`fix(${source}): x`);
-    assert.ok(renamed, `alias ${source} should rewrite`);
-    assert.ok(
-      config.scopeToLabel[target],
-      `scopeAliases maps ${source} -> ${target}, which has no scopeToLabel entry`,
-    );
-  }
 });
 
 // pr_labeler.yml calls this helper instead of carrying its own copy of the
@@ -121,7 +80,7 @@ function creatableLabels() {
 test('rule-derived labels are actually reachable', () => {
   const { names } = creatableLabels();
   assert.ok(names.has('org:open-swe'), 'branchRules label not picked up');
-  assert.ok(names.has('package:deepagents'), 'fileRules label not picked up');
+  assert.ok(names.has('package:code'), 'fileRules label not picked up');
   assert.ok(names.size > 25, `expected the full taxonomy, got ${names.size}`);
 });
 
@@ -237,8 +196,8 @@ const typeCases = [
 
 for (const [type, label] of typeCases) {
   test(`${type} titles derive ${label} alongside package/integration labels`, () => {
-    const result = helpers().matchTitleLabels(`${type}(sdk,daytona): update behavior`);
-    assert.deepEqual([...result.labels].sort(), [label, 'package:deepagents', 'integration:daytona'].sort());
+    const result = helpers().matchTitleLabels(`${type}(code,quickjs): update behavior`);
+    assert.deepEqual([...result.labels].sort(), [label, 'package:code', 'package:quickjs'].sort());
   });
 }
 
@@ -261,7 +220,7 @@ for (const title of ['feat!(sdk): incompatible change', 'feat!(sdk)!: incompatib
 
 test('title edits remove obsolete classifications but preserve unrelated metadata', () => {
   const stale = helpers().getStaleTitleLabels('fix(code): correct behavior', [
-    'type:feature', 'type:breaking', 'type:bug', 'package:dcode', 'priority:high',
+    'type:feature', 'type:breaking', 'type:bug', 'package:code', 'priority:high',
     'auto:release-pending', 'auto:release-tagged', 'type:spike',
   ]);
   assert.deepEqual(stale, ['type:feature', 'type:breaking']);
@@ -339,14 +298,14 @@ for (const action of ['opened', 'synchronize', 'reopened', 'edited']) {
     await runLabeler('live', api, { action });
     assert.deepEqual([...api.assigned].filter(name => name.startsWith('topic:')), ['topic:skills']);
     assert.ok(api.assigned.has('type:bug'));
-    assert.ok(api.assigned.has('package:dcode'));
+    assert.ok(api.assigned.has('package:code'));
   });
 }
 
 test('live title labels use the corrected title from scope renaming', async () => {
   const api = labelerApi('fix: reconnect MCP servers', []);
   await runLabeler('live', api, { renamedTitle: 'fix(code): reconnect MCP servers' });
-  assert.ok(api.assigned.has('package:dcode'));
+  assert.ok(api.assigned.has('package:code'));
   assert.ok(api.assigned.has('type:bug'));
 });
 
@@ -358,19 +317,19 @@ test('live topics come from the changed modules', async () => {
   await runLabeler('live', api, { action: 'synchronize' });
   assert.ok(api.assigned.has('topic:mcp'), 'a touched module must contribute its topic');
   assert.ok(api.known.has('topic:mcp'), 'a path topic is created before it is applied');
-  assert.ok(api.assigned.has('package:dcode'));
+  assert.ok(api.assigned.has('package:code'));
 });
 
 for (const mode of ['live', 'release helper']) {
   test(`${mode} replaces stale types and breaking labels after a title edit`, async () => {
     const api = labelerApi('refactor(code): simplify the implementation', [
-      'type:feature', 'type:breaking', 'package:dcode', 'priority:high',
+      'type:feature', 'type:breaking', 'package:code', 'priority:high',
     ]);
     await runLabeler(mode, api);
     assert.ok(api.assigned.has('type:refactor'));
     assert.ok(!api.assigned.has('type:feature'));
     assert.ok(!api.assigned.has('type:breaking'));
-    assert.ok(api.assigned.has('package:dcode'));
+    assert.ok(api.assigned.has('package:code'));
     assert.ok(api.assigned.has('priority:high'));
     assert.ok(api.known.get('type:refactor').description);
   });
@@ -451,15 +410,15 @@ test('topic labels come from the modules a PR touched', () => {
   const h = helpers();
   const f = filename => ({ filename, additions: 1, deletions: 0 });
   const cases = [
-    ['libs/deepagents/deepagents/middleware/subagents.py', ['topic:middleware', 'topic:subagents']],
-    ['libs/deepagents/deepagents/middleware/async_subagents.py', ['topic:async-subagents', 'topic:middleware']],
-    ['libs/deepagents/deepagents/backends/sandbox.py', ['topic:backends', 'topic:sandboxes']],
+    ['libs/code/niki_agent/sdk/middleware/subagents.py', ['topic:middleware', 'topic:subagents']],
+    ['libs/code/niki_agent/sdk/middleware/async_subagents.py', ['topic:async-subagents', 'topic:middleware']],
+    ['libs/code/niki_agent/sdk/backends/sandbox.py', ['topic:backends', 'topic:sandboxes']],
     ['libs/code/niki_agent/mcp_tools.py', ['topic:mcp']],
     ['libs/code/niki_agent/skills/index.py', ['topic:skills']],
-    ['libs/deepagents/deepagents/profiles/harness/base.py', []],
+    ['rust/crates/niki-proto/src/lib.rs', []],
     ['libs/code/niki_agent/_tracing.py', ['topic:tracing']],
     ['README.md', []],
-    ['libs/deepagents/pyproject.toml', []],
+    ['rust/Cargo.toml', []],
   ];
   for (const [file, expected] of cases) {
     assert.deepEqual([...h.matchTopicFileLabels([f(file)])].sort(), expected, file);

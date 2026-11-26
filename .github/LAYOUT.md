@@ -14,8 +14,7 @@ One product, one pipeline. Every workflow below is live.
 | `pr_labeler.yml` | Applies labels from changed paths. |
 | `pr_scope_file_check.yml` | Keeps a PR's changed paths inside its declared scope. |
 | `require_issue_link.yml` | Requires an issue link on external PRs. |
-| `openwiki-update.yml` | Refreshes the generated `openwiki/` index. |
-| `close_old_prs.yml`, `close_unchecked_issues.yml`, `keep_open_on_comment.yml`, `waiting_on_author*.yml`, `reopen_on_assignment.yml`, `clear_pending_deletion.yml`, `sync_priority_labels.yml`, `sync_topic_labels.yml`, `ripgrep_timeout_comment.yml`, `tag-external-issues.yml` | Housekeeping automation inherited from the upstream repository. |
+| `close_old_prs.yml`, `close_unchecked_issues.yml`, `keep_open_on_comment.yml`, `waiting_on_author*.yml`, `reopen_on_assignment.yml`, `clear_pending_deletion.yml`, `sync_priority_labels.yml`, `sync_topic_labels.yml`, `ripgrep_timeout_comment.yml`, `tag-external-issues.yml` | Housekeeping automation. |
 
 ## Scripts
 

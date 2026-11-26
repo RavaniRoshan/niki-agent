@@ -31,25 +31,20 @@ Rules that are easy to get wrong:
 
 `size: XS` (<50 changed lines), `size: S` (<200), `size: M` (<500), `size: L` (<1000), `size: XL` (rest). Mutually exclusive; stale ones removed. Thresholds are `sizeThresholds` in [`scripts/labeling/pr-labeler-config.json`](./scripts/labeling/pr-labeler-config.json). `uv.lock` (`excludedFiles`) and `docs/` (`excludedPaths`) do not count.
 
-### `package:*` and `integration:*` — `pr_labeler.yml`, `sync_topic_labels.yml`
+### `package:*` — `pr_labeler.yml`, `sync_topic_labels.yml`
 
 `scopeToLabel` maps title scopes and `fileRules` maps path prefixes onto the same labels:
 
 | Label | Scopes | Paths |
 | --- | --- | --- |
-| `package:deepagents` | `sdk`, `deepagents` | `libs/deepagents/` |
-| `package:dcode` | `code`, `deepagents-code` | `libs/code/` |
-| `package:acp` | `acp`, `deepagents-acp` | `libs/acp/` |
-| `package:talon` | `talon`, `deepagents-talon` | `libs/talon/` |
-| `package:examples` | `examples` | `examples/` |
-| `integration:daytona` | `daytona`, `langchain-daytona` | `libs/partners/daytona/` |
-| `integration:modal` | `modal`, `langchain-modal` | `libs/partners/modal/` |
-| `integration:quickjs` | `quickjs`, `langchain-quickjs` | `libs/partners/quickjs/` |
-| `integration:runloop` | `runloop`, `langchain-runloop` | `libs/partners/runloop/` |
-| `integration:vercel` | `vercel`, `langchain-vercel-sandbox` | `libs/partners/vercel/` |
-| `integration:langsmith` | `langsmith-sandbox` | — |
+| `package:code` | `code`, `sdk` | `libs/code/` |
+| `package:quickjs` | `quickjs` | `libs/partners/quickjs/` |
+| `package:rust` | `rust` | `rust/` |
+| `package:infra` | `infra` | `install/` |
+| `package:docs` | `docs` | `docs/` |
+| `package:ci` | `ci` | `.github/` |
 
-Package and integration labels are additive: title edits do not remove them. `pr_labeler.yml` normalizes package aliases such as `deepagents` → `sdk` before labeling. `pr_scope_file_check.yml` uses the same mappings to validate that PR title scopes match changed packages.
+Package labels are additive: title edits do not remove them. `pr_scope_file_check.yml` uses the same mappings to validate that PR title scopes match changed packages.
 
 ### `topic:*` — `pr_labeler.yml`, `sync_topic_labels.yml`, maintainers
 

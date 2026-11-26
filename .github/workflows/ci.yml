@@ -1,7 +1,7 @@
 # Niki Agent CI.
 #
 # One package, one job. `libs/code` is the whole product: the vendored SDK and
-# ACP trees live inside it, and the rest of the former monorepo is archived.
+# ACP trees live inside it.
 #
 # `make check` is the same gauntlet a contributor runs locally: lint, type
 # check, import graph, unit tests, extras/version gates, and lockfile drift.

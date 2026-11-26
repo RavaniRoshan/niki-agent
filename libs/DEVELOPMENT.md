@@ -1,9 +1,9 @@
 # Development
 
-Starting point for working in the Deep Agents monorepo. For how the code is structured at runtime, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+Starting point for working in this repository. For how the code is structured at runtime, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 > [!IMPORTANT]
-> Before opening a pull request, read the [LangChain contributing guide](https://docs.langchain.com/oss/python/contributing/overview). External PRs must link to an issue or discussion that a maintainer has approved, and the contributor must be assigned to it before the PR is opened.
+> External PRs must link to an issue or discussion that a maintainer has approved, and the contributor must be assigned to it before the PR is opened.
 
 ## Prerequisites
 
@@ -33,15 +33,14 @@ The product is a single package under `libs/`:
 libs/
 ├── code/                  # niki-agent — the whole product
 │   ├── niki_agent/        # Textual TUI, headless mode, MCP, skills, CLI
-│   ├── niki_agent/sdk/    # vendored Deep Agents SDK
+│   ├── niki_agent/sdk/    # vendored agent SDK
 │   └── niki_agent/acp_sdk/ # vendored ACP runtime
 └── partners/
-    └── quickjs/           # langchain-quickjs, built from this repository
+    └── quickjs/           # the JS interpreter, built from this repository
 ```
 
-`archive/` holds the former upstream packages for reference; nothing there is
-built or tested. Each active package has its own `pyproject.toml`, `Makefile`,
-and `README.md`. There is no root `pyproject.toml`.
+Each package has its own `pyproject.toml`, `Makefile`, and `README.md`. There is
+no root `pyproject.toml`.
 
 ## Setup
 
