@@ -23,10 +23,10 @@ bun run typecheck   # tsc --noEmit; `bun run lint` runs the same check
 bun run check:brand # fail on lineage branding in src/, index.html, DESIGN.md
 ```
 
-`build` does not run `check:brand` — CI runs both. The brand check allows
+`build` does not run `check:brand` — CI runs both. The brand check still allows
 `langchain*` only inside a `class_path` value (for example
-`class_path = "langchain_openai:ChatOpenAI"`), because that is a literal
-`config.toml` value the product requires.
+`class_path = "langchain_openai:ChatOpenAI"`), a legacy `config.toml` key the
+Rust reader accepts as a protocol hint. No page copy uses it.
 
 Vercel builds this directory with `bun run build` and serves `dist/`;
 `vercel.json` carries the SPA rewrite to `index.html`. The Vercel project's

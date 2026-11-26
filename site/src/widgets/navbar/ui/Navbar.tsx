@@ -424,7 +424,7 @@ export function Navbar({
                   <div className="mega-col col-span-6 p-6 flex flex-col justify-between gap-5">
                     <div>
                       <p className="font-tech text-[11px] tracking-[0.12em] uppercase text-muted-foreground mb-4">
-                        QUICK LAUNCH WITH UV
+                        QUICK LAUNCH WITH A KEY
                       </p>
                       <div className="grid grid-cols-2 border-t border-l border-grid">
                         {MEGA_MENU_PROVIDER_PAIRINGS.map((pair) => (
@@ -629,26 +629,26 @@ export function Navbar({
                       {[
                         {
                           icon: <KeyRound className="w-4 h-4" aria-hidden="true" />,
-                          title: 'keymap.py Registry',
-                          desc: 'No dead shortcuts, checked in CI.',
+                          title: 'Binding Registry',
+                          desc: 'Every advertised chord has a handler.',
                           detailId: 'keymap',
                         },
                         {
                           icon: <Layers className="w-4 h-4" aria-hidden="true" />,
-                          title: 'Bounded Mount Window',
-                          desc: 'Offscreen turns stay unmounted.',
-                          detailId: 'mount-window',
+                          title: 'Session Store',
+                          desc: 'SQLite sessions, /resume and /compact.',
+                          detailId: 'sessions',
                         },
                         {
                           icon: <ListChecks className="w-4 h-4" aria-hidden="true" />,
-                          title: 'Hermetic Test Suite',
-                          desc: 'Runs offline without API keys or TTY.',
+                          title: 'Workspace Test Suite',
+                          desc: 'cargo test -j 4 --workspace, offline.',
                           detailId: 'ci-tests',
                         },
                         {
                           icon: <GitBranch className="w-4 h-4" aria-hidden="true" />,
                           title: 'One Agent Loop',
-                          desc: 'Tools, approvals & subagents.',
+                          desc: 'Tools, approvals & sessions.',
                           detailId: 'agent-loop',
                         },
                       ].map((mod) => (
