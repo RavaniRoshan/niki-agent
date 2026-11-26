@@ -40,7 +40,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 niki                             # interactive session in the current directory
 niki -n "summarize this repo"    # one answer on stdout, no TUI
-niki --help                      # options, rendered as the key map
+niki --help                      # flags and subcommands
 niki --version                   # the installed version
 ```
 

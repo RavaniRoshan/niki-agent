@@ -21,6 +21,11 @@ uv sync --extra <name>          # one integration
 uv sync --all-extras            # providers and sandboxes
 ```
 
+The three integrations above are installed with the app, so `/install` is not
+needed for them; their extra names are listed so a source checkout can enable
+the same integration with `uv sync --extra`. Every other row is an optional
+extra.
+
 | Provider | Extra | Key environment variable |
 | --- | --- | --- |
 | Anthropic | `anthropic` | `ANTHROPIC_API_KEY` |

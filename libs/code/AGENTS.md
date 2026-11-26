@@ -1,6 +1,6 @@
 # `libs/code` agent guide
 
-`niki-agent` is the interactive coding agent — the Textual REPL, headless `-x` mode, MCP integration, skills, sandbox bootstrap, and slash-command surface.
+`niki-agent` is the interactive coding agent — the Textual REPL, headless `-n/--non-interactive` mode, MCP integration, skills, sandbox bootstrap, and slash-command surface.
 
 For monorepo-wide conventions (commit titles, lint, testing, docs, CI, benchmarks), see the root `AGENTS.md`. For a high-level map of the package (client/server processes, request lifecycle, module map), see `ARCHITECTURE.md`.
 
@@ -125,7 +125,7 @@ see [Local dev installs](./DEVELOPMENT.md#local-dev-installs).
 
 ## Startup performance
 
-`niki-agent` must stay fast to launch. Never import heavy packages (e.g., `niki_agent.sdk`, LangChain, LangGraph) at module level or in the argument-parsing path. These imports pull in large dependency trees and add seconds to every invocation, including trivial commands like `niki-agent -v`.
+`niki-agent` must stay fast to launch. Never import heavy packages (e.g., `niki_agent.sdk`) at module level or in the argument-parsing path. These imports pull in large dependency trees and add seconds to every invocation, including trivial commands like `niki --version`.
 
 - Keep top-level imports in `main.py` and other entry-point modules minimal.
 - Defer heavy imports to the point where they are actually needed (inside functions/methods).

@@ -1,6 +1,6 @@
 # Niki Agent Development Guide
 
-New to the package? Start with [`ARCHITECTURE.md`](./ARCHITECTURE.md) for a high-level map of how the TUI, the `langgraph dev` server subprocess, and the agent graph fit together.
+New to the package? Start with [`ARCHITECTURE.md`](./ARCHITECTURE.md) for a high-level map of how the TUI, the local server subprocess, and the agent graph fit together.
 
 ## Contents
 
@@ -31,7 +31,7 @@ If you only want to sync dependencies without installing hooks, run `uv sync --g
 Run the TUI from `libs/code` in your local checkout:
 
 ```bash
-uv run niki-agent
+uv run niki
 ```
 
 `uv run` uses the project environment with the package installed editable, so source changes take effect on the next launch. If you want a persistent `niki-dev` command that stays separate from a released install, use the local dev install setup below.
@@ -80,7 +80,7 @@ Route your local runs to a dev-scoped project via `NIKI_LANGSMITH_PROJECT` (this
 ```bash
 # A shared dev bucket, or your own personal project — anything but the production one
 export NIKI_LANGSMITH_PROJECT=niki-agent-dev
-uv run niki-agent
+uv run niki
 ```
 
 Set the same override for [local dev installs](#local-dev-installs) (`niki-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the production project before doing noisy work.
@@ -89,12 +89,12 @@ A server keeps the first workspace's tracing configuration for its lifetime. Wor
 
 ## Debugging
 
-Niki Agent runs as two processes: the **Textual TUI** you interact with, and a **`langgraph dev` subprocess** that hosts the agent graph. Each writes its own log, and a single switch turns both on:
+Niki Agent runs as two processes: the **Textual TUI** you interact with, and a **local server subprocess** that hosts the agent graph. Each writes its own log, and a single switch turns both on:
 
 ```bash
 cd libs/code
 export NIKI_DEBUG=1
-uv run niki-agent
+uv run niki
 ```
 
 | Variable | Effect |
