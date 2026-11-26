@@ -115,23 +115,52 @@ def test_m4_the_keymap_advertises_a_copy_action() -> None:
     )
 
 
-def test_m4_mouse_release_toggle_is_owner_verify() -> None:
-    """M4: no mouse-capture toggle exists, so this half stays OWNER-VERIFY.
+def test_m4_the_keymap_advertises_the_mouse_release() -> None:
+    """M4: releasing the mouse must be a named key with a handler."""
+    from textual.binding import Binding
 
-    Characterised rather than skipped: when a toggle is added, this test fails
-    and forces the row to be updated in the same change.
-    """
-    from deepagents_code.app import DeepAgentsApp
+    from deepagents_code.niki.app import NikiApp
 
-    toggles = [
-        name
-        for name in dir(DeepAgentsApp)
-        if "mouse" in name.lower() and "toggle" in name.lower()
+    entries = [
+        binding
+        for binding in NikiApp.BINDINGS
+        if isinstance(binding, Binding) and binding.action == "toggle_mouse_release"
     ]
-    assert not toggles, (
-        f"M4: a mouse toggle now exists ({toggles}). Wire it to a key, add the "
-        "OWNER-VERIFY step, and mark M4 complete in docs/niki/CHECKLIST.md."
+
+    assert [(binding.key, binding.description) for binding in entries] == [
+        ("f2", "Release Mouse")
+    ]
+    assert hasattr(NikiApp, "action_toggle_mouse_release"), (
+        "M4: the advertised key has no handler"
     )
+
+
+def test_m4_the_toggle_writes_the_terminals_mouse_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M4: a release must disable reporting, and a second press restore it."""
+    from deepagents_code.niki.app import NikiApp
+
+    writes: list[str] = []
+
+    class _Driver:
+        def _disable_mouse_support(self) -> None:
+            writes.append("off")
+
+        def _enable_mouse_support(self) -> None:
+            writes.append("on")
+
+    app = NikiApp(agent=None, thread_id="m4-mouse")
+    monkeypatch.setattr(app, "_driver", _Driver(), raising=False)
+    monkeypatch.setattr(app, "notify", lambda *_a, **_k: None)
+
+    app.action_toggle_mouse_release()
+    released = app._mouse_released
+    app.action_toggle_mouse_release()
+
+    assert released is True, "M4: the first press did not release the mouse"
+    assert writes == ["off", "on"], f"M4: wrong mouse-mode writes: {writes}"
+    assert app._mouse_released is False, "M4: the second press did not restore it"
 
 
 @pytest.mark.parametrize(
@@ -157,3 +186,57 @@ def test_m4_osc52_handles_awkward_payloads(
     assert base64.b64decode(payload).decode("utf-8") == text, (
         f"OSC 52 mangled the payload ({why})"
     )
+
+
+async def test_m4_selection_copy_reaches_the_clipboard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M4: selected text is what the copy action hands to the clipboard."""
+    from unittest.mock import AsyncMock
+
+    from textual.geometry import Offset
+    from textual.selection import Selection
+    from textual.widgets import Static
+
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=None, thread_id="m4-selection")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    copied: list[str] = []
+
+    async with app.run_test(size=(100, 32)) as pilot:
+        await pilot.pause()
+        widget = Static("hello selection")
+        await app.query_one("#messages").mount(widget)
+        await pilot.pause()
+        selection = Selection(Offset(0, 0), Offset(5, 0))
+        monkeypatch.setattr(app.screen, "selections", {widget: selection})
+        selected = app.screen.get_selected_text()
+        monkeypatch.setattr(app, "copy_to_clipboard", copied.append)
+        app.screen.action_copy_text()
+
+    assert selected == "hello", f"M4: wrong text under the selection: {selected!r}"
+    assert copied == ["hello"], (
+        f"M4: the selection never reached the copy path: {copied}"
+    )
+
+
+def test_m4_copy_is_wrapped_for_tmux(monkeypatch: pytest.MonkeyPatch) -> None:
+    """M4: Textual's bare OSC 52 is swallowed by tmux, so the wrapped form goes too."""
+    from deepagents_code import clipboard
+    from deepagents_code.niki.app import NikiApp
+
+    written: list[str] = []
+    monkeypatch.setattr(clipboard, "_copy_osc52", written.append)
+    app = NikiApp(agent=None, thread_id="m4-tmux-copy")
+    monkeypatch.setattr(app, "_driver", None, raising=False)
+
+    monkeypatch.delenv("TMUX", raising=False)
+    app.copy_to_clipboard("plain")
+    outside = list(written)
+
+    monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,1,0")
+    app.copy_to_clipboard("wrapped")
+
+    assert outside == [], "M4: a non-tmux copy should not write the sequence twice"
+    assert written == ["wrapped"], f"M4: no tmux passthrough was written: {written}"

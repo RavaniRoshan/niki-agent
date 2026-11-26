@@ -1,0 +1,36 @@
+name: niki-smoke
+on: workflow_dispatch
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f
+      - name: Create smoke config
+        run: |
+          cd libs/evals
+          cat > terminal-bench-smoke.yaml <<'EOF'
+          n_attempts: 2
+          agent_timeout_multiplier: 1.0
+          n_concurrent_trials: 1
+          retry:
+            max_retries: 0
+          environment:
+            type: docker
+          EOF
+      - name: Run Niki harbor smoke
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          cd libs/evals
+          make run-niki-terminal-bench \
+            MAX_TASKS=1 \
+            HARBOR_CONFIG=terminal-bench-smoke.yaml \
+            NIKI_BENCH_MODEL="groq:openai/gpt-oss-20b" \
+            HARBOR_SANDBOX_ENV=docker \
+            HARBOR_AGENT_ENV_ARGS="--agent-env 'GROQ_API_KEY=\${GROQ_API_KEY}'"
+      - name: Upload jobs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: harbor-jobs
+          path: libs/evals/harbor-jobs

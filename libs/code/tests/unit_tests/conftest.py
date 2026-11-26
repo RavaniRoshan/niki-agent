@@ -179,6 +179,49 @@ def _restore_dotenv_loader_state() -> Generator[None, None, None]:
 
 
 @pytest.fixture(autouse=True)
+def _restore_runtime_state() -> Generator[None, None, None]:
+    """Snapshot and restore the process-wide `RuntimeState` around every test.
+
+    `ModelResult.apply_to_runtime_state()` writes the resolved model to a
+    module singleton. A test that builds a server runtime (for example through
+    `server_graph._make_graphs`) therefore leaves a model spec in force for
+    every later test in the process, which changes behavior such as the
+    cold-cache handoff deciding the recorded context is below its minimum.
+    Restoring here keeps tests order-independent without forcing each runtime
+    test to remember the singleton.
+
+    Reads `_runtime_state_instance` rather than the `runtime_state` proxy so a
+    test that never touches the state does not construct it.
+    """
+    import deepagents_code.config as config_mod
+
+    state = config_mod._runtime_state_instance
+    snapshot = (
+        None
+        if state is None
+        else (
+            state.model_name,
+            state.model_provider,
+            state.model_context_limit,
+            state.model_unsupported_modalities,
+        )
+    )
+    try:
+        yield
+    finally:
+        if snapshot is None:
+            config_mod._runtime_state_instance = None
+        else:
+            current = config_mod._get_runtime_state()
+            (
+                current.model_name,
+                current.model_provider,
+                current.model_context_limit,
+                current.model_unsupported_modalities,
+            ) = snapshot
+
+
+@pytest.fixture(autouse=True)
 def _clear_langsmith_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Prevent LangSmith env vars loaded from .env from leaking into tests.
 

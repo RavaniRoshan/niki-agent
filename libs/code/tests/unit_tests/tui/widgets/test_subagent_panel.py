@@ -14,6 +14,7 @@ from textual.app import App, ComposeResult
 from textual.geometry import Offset
 from textual.widgets import Static
 
+from deepagents_code.domain.events import RunEvent, RunEventKind
 from deepagents_code.tui.widgets.subagent_panel import (
     SubagentPanel,
     _Phase,
@@ -82,6 +83,24 @@ def _error(sub_id: str, eval_id: str, message: str = "boom") -> dict:
     }
 
 
+def _team_start(task_id: str, task_order: int, sequence: int, summary: str) -> RunEvent:
+    return RunEvent(
+        schema_version=1,
+        event_id=f"{task_id}-started",
+        session_id="session",
+        turn_id="team",
+        sequence=sequence,
+        kind=RunEventKind.task_started,
+        payload={
+            "task_id": task_id,
+            "task_order": task_order,
+            "agent_name": "research",
+            "summary": summary,
+            "status": "running",
+        },
+    )
+
+
 def _render(widget: Static) -> str:
     content = widget.render()
     plain = getattr(content, "plain", None)
@@ -108,6 +127,19 @@ class TestSelection:
             assert _displayed_id(panel) == "E1"
             rows = _render(pilot.app.query_one("#subagent-agents", Static))
             assert "phase one work" in rows
+
+    async def test_team_tasks_render_in_plan_order_when_events_arrive_out_of_order(
+        self,
+    ) -> None:
+        async with PanelApp().run_test(size=(200, 24)) as pilot:
+            panel = pilot.app.query_one("#panel", SubagentPanel)
+            panel.on_team_event(_team_start("second", 1, 1, "second task"))
+            panel.on_team_event(_team_start("first", 0, 2, "first task"))
+            await pilot.pause()
+            rows = _render(pilot.app.query_one("#subagent-agents", Static))
+            assert "first task" in rows
+            assert "second task" in rows
+            assert rows.index("first task") < rows.index("second task")
 
 
 class TestHeaderToggle:
@@ -260,7 +292,10 @@ class TestReplayTiming:
             clock.monotonic = lambda: record.started_monotonic + 30
             panel.on_subagent_event(event)
             assert "20.0s" in _render(panel.query_one("#subagent-agents", Static))
-            assert panel._phases["E1"].elapsed_seconds() == 20
+            # The replay `_start` re-stamps the record from the real clock, so
+            # the phase's start is earlier than the patched finish by however
+            # long this test took. Compare at the 0.1 s the table displays.
+            assert panel._phases["E1"].elapsed_seconds() == pytest.approx(20, abs=0.05)
             assert not panel._any_running()
 
     @pytest.mark.parametrize("outcome", ["complete", "error"])

@@ -30,6 +30,7 @@ from deepagents_code.niki.keymap import (
     render_help,
     render_markdown,
 )
+from deepagents_code.tui.widgets.chat_input import ChatTextArea
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -103,6 +104,21 @@ async def test_registry_is_populated_from_live_bindings() -> None:
         "the app's own bindings are missing; the registry must start at the app, "
         "not at the screen"
     )
+
+
+def test_command_palette_binding_is_advertised_from_live_bindings() -> None:
+    from textual.binding import Binding
+
+    from deepagents_code.niki.app import NikiApp
+
+    entries = [
+        binding
+        for binding in NikiApp.BINDINGS
+        if isinstance(binding, Binding) and binding.action == "open_command_palette"
+    ]
+    assert [(binding.key, binding.description) for binding in entries] == [
+        ("ctrl+shift+p", "Command Palette")
+    ]
 
 
 async def test_every_advertised_action_has_a_handler() -> None:
@@ -195,3 +211,88 @@ def test_footer_hint_never_exceeds_its_limit(limit: int) -> None:
 
     hint = render_footer_hint(build_keymap(App()), limit=limit)
     assert len([part for part in hint.split(" · ") if part]) <= max(limit, 1)
+
+
+async def test_help_command_renders_the_keymap_registry() -> None:
+    """K1: `/help` must come from the registry, not upstream's text block.
+
+    Upstream's block names keys it does not own and cannot notice when a
+    binding changes. The assertion is exact: the mounted message *is* what
+    `render_help_for` produces for this live app.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.help import render_help_for
+    from deepagents_code.tui.widgets.messages import AppMessage
+
+    niki_app_cls, _ = _app_classes()
+    app = niki_app_cls(agent=MagicMock(), thread_id="niki-help")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        expected = render_help_for(app)
+        await app._handle_command("/help")
+        await pilot.pause()
+        rendered = "\n".join(
+            message.render().plain for message in app.query(AppMessage)
+        )
+
+    assert expected in rendered, "/help did not render the registry-generated body"
+    assert "Usage:" in rendered
+    assert "Keys:" in rendered
+    assert "Interactive Features:" not in rendered, (
+        "upstream's hand-maintained help block is still being mounted"
+    )
+
+
+async def test_k8_question_mark_opens_contextual_help() -> None:
+    """K8: `?` on an empty composer opens the keymap for this surface.
+
+    Before this, `question_mark` was unbound: the "help open" snapshot was a
+    picture of a typed question mark.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+    from deepagents_code.niki.help_screen import NikiHelpScreen
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-help-key")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(100, 32)) as pilot:
+        await pilot.pause()
+        await pilot.press("question_mark")
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, NikiHelpScreen), (
+            f"K8: `?` opened {type(screen).__name__}, not help"
+        )
+        body = str(screen.query_one("#niki-help-body").render())
+        empty_composer = app.query_one("#chat-input", ChatTextArea).text == ""
+        await pilot.press("escape")
+        await pilot.pause()
+        focused_id = getattr(app.focused, "id", None)
+
+    assert "Keys:" in body, "K8: the help body is missing the key table"
+    assert "ctrl+t" in body, "K8: the help body is missing a live binding"
+    assert empty_composer, "K8: `?` was typed into the composer instead"
+    assert focused_id == "chat-input", "K8: Esc did not restore composer focus"
+
+
+async def test_k8_question_mark_still_types_when_a_draft_exists() -> None:
+    """K8: `?` is a character first; help only when the composer is empty."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from deepagents_code.niki.app import NikiApp
+
+    app = NikiApp(agent=MagicMock(), thread_id="niki-help-typing")
+    app._post_paint_init = AsyncMock()  # type: ignore[method-assign]
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("w", "h", "y")
+        await pilot.press("question_mark")
+        await pilot.pause()
+        text = str(app.query_one("#chat-input", ChatTextArea).text)
+        screens = len(app.screen_stack)
+
+    assert text.endswith("?"), f"K8: the question mark was not typed (text={text!r})"
+    assert screens == 1, "K8: a draft should not open the help modal"

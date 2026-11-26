@@ -197,6 +197,104 @@ NIKI_PALETTES: Final[dict[str, dict[str, str]]] = {
     "niki-dim": NIKI_DIM,
 }
 
+# Textual ANSI color names use an `ansi_` prefix. Set `NIKI_COLOR_DEPTH=16` to
+# register semantic 16-color variants while keeping the measured RGB palettes
+# as the default.
+NIKI_ANSI16_DARK: Final[dict[str, str]] = {
+    "background": "ansi_black",
+    "surface": "ansi_black",
+    # `ansi_bright_black` is a mid-grey (#7F7F7F on xterm), so using it behind
+    # status text drops several hues under their floors. A 16-colour terminal
+    # has no subtle panel tint; the border and padding carry the separation.
+    "panel": "ansi_black",
+    "foreground": "ansi_bright_white",
+    "muted": "ansi_white",
+    "primary": "ansi_bright_blue",
+    "secondary": "ansi_bright_white",
+    "accent": "ansi_bright_cyan",
+    "success": "ansi_bright_green",
+    "warning": "ansi_bright_yellow",
+    "error": "ansi_bright_red",
+    "mode_bash": "ansi_bright_blue",
+    "mode_command": "ansi_white",
+    "mode_incognito": "ansi_bright_magenta",
+    "skill": "ansi_bright_magenta",
+    "skill_hover": "ansi_bright_white",
+    "tool": "ansi_bright_cyan",
+    "tool_hover": "ansi_bright_white",
+}
+
+NIKI_ANSI16_LIGHT: Final[dict[str, str]] = {
+    "background": "ansi_bright_white",
+    "surface": "ansi_white",
+    "panel": "ansi_white",
+    "foreground": "ansi_black",
+    "muted": "ansi_bright_black",
+    "primary": "ansi_blue",
+    "secondary": "ansi_bright_black",
+    "accent": "ansi_green",
+    "success": "ansi_green",
+    "warning": "ansi_yellow",
+    "error": "ansi_red",
+    "mode_bash": "ansi_blue",
+    "mode_command": "ansi_bright_black",
+    "mode_incognito": "ansi_magenta",
+    "skill": "ansi_magenta",
+    "skill_hover": "ansi_blue",
+    "tool": "ansi_cyan",
+    "tool_hover": "ansi_blue",
+}
+
+NIKI_ANSI16_PALETTES: Final[dict[str, dict[str, str]]] = {
+    "niki": NIKI_ANSI16_DARK,
+    "niki-light": NIKI_ANSI16_LIGHT,
+    "niki-contrast": NIKI_ANSI16_DARK,
+    "niki-dim": NIKI_ANSI16_DARK,
+}
+
+#: Xterm's documented 16-colour defaults. Reference data, not a Niki palette:
+#: the tests use it to measure the ANSI fallback against the palette a real
+#: terminal is most likely to paint.
+XTERM_16_PALETTE: Final[dict[str, str]] = {
+    "black": "#000000",
+    "red": "#CD0000",
+    "green": "#00CD00",
+    "yellow": "#CDCD00",
+    "blue": "#0000EE",
+    "magenta": "#CD00CD",
+    "cyan": "#00CDCD",
+    "white": "#E5E5E5",
+    "bright_black": "#7F7F7F",
+    "bright_red": "#FF0000",
+    "bright_green": "#00FF00",
+    "bright_yellow": "#FFFF00",
+    "bright_blue": "#5C5CFF",
+    "bright_magenta": "#FF00FF",
+    "bright_cyan": "#00FFFF",
+    "bright_white": "#FFFFFF",
+}
+
+#: Solarized Dark's sixteen slots (Ethan Schoonover's published values). Like
+#: `XTERM_16_PALETTE`, this is reference data used only to measure the fallback.
+SOLARIZED_DARK_16_PALETTE: Final[dict[str, str]] = {
+    "black": "#073642",
+    "red": "#DC322F",
+    "green": "#859900",
+    "yellow": "#B58900",
+    "blue": "#268BD2",
+    "magenta": "#D33682",
+    "cyan": "#2AA198",
+    "white": "#EEE8D5",
+    "bright_black": "#002B36",
+    "bright_red": "#CB4B16",
+    "bright_green": "#586E75",
+    "bright_yellow": "#657B83",
+    "bright_blue": "#839496",
+    "bright_magenta": "#6C71C4",
+    "bright_cyan": "#93A1A1",
+    "bright_white": "#FDF6E3",
+}
+
 #: Every token is checked against the base background it renders on.
 _BACKGROUNDS: Final[tuple[str, ...]] = ("background", "surface", "panel")
 
@@ -229,14 +327,19 @@ def contrast_violations(
 __all__ = [
     "GLYPH_CONTRAST_MIN",
     "GLYPH_TOKENS",
+    "NIKI_ANSI16_DARK",
+    "NIKI_ANSI16_LIGHT",
+    "NIKI_ANSI16_PALETTES",
     "NIKI_CONTRAST",
     "NIKI_DARK",
     "NIKI_DIM",
     "NIKI_LIGHT",
     "NIKI_PALETTES",
     "NIKI_THEME_NAME",
+    "SOLARIZED_DARK_16_PALETTE",
     "TEXT_CONTRAST_MIN",
     "TEXT_TOKENS",
+    "XTERM_16_PALETTE",
     "contrast_ratio",
     "contrast_violations",
     "relative_luminance",

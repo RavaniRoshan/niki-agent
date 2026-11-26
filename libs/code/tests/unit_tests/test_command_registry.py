@@ -51,6 +51,12 @@ class TestBypassTiers:
 class TestSlashCommands:
     """Validate the get_slash_commands() autocomplete list."""
 
+    def test_workflow_command_is_discoverable(self) -> None:
+        workflow = next(
+            entry for entry in get_slash_commands() if entry.name == "/workflow"
+        )
+        assert workflow.argument_hint == "[list | show <name>]"
+
 
 class TestHiddenCommands:
     """`HIDDEN_COMMANDS` membership and autocomplete absence."""

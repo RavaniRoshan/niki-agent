@@ -26,6 +26,7 @@ import pytest
 if TYPE_CHECKING:
     from textual.app import App
 
+    from deepagents_code.niki.app import NikiApp
     from deepagents_code.tui.widgets.approval import ApprovalMenu
 
 REQUEST: dict[str, object] = {"name": "bash", "args": {"cmd": "rm -rf /tmp/thing"}}
@@ -33,7 +34,7 @@ NARROW = (50, 20)
 STANDARD = (80, 24)
 
 
-def _app() -> App:  # type: ignore[type-arg]
+def _app() -> NikiApp:
     from unittest.mock import AsyncMock, MagicMock
 
     from deepagents_code.niki.app import NikiApp
@@ -209,4 +210,88 @@ async def test_v9_clicking_outside_does_not_decide() -> None:
     assert still_mounted, "V9: clicking outside dismissed the prompt entirely"
     assert after == before, (
         f"V9: an outside click moved the selection from {before} to {after}"
+    )
+
+
+async def test_v9_escape_denies_the_pending_approval() -> None:
+    """V9: while an approval is pending, Esc must resolve it as a reject.
+
+    The app routes the priority `escape` binding through `action_interrupt`,
+    which checks the pending approval before it considers cancelling the turn.
+    Mounting a menu alone is not enough to exercise that: the branch keys off
+    the app's own pending-widget bookkeeping, so the test sets it the way the
+    approval path does.
+    """
+    import asyncio
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        menu = _menu()
+        await app.query_one("#messages").mount(menu)
+        await pilot.pause()
+        loop = asyncio.get_running_loop()
+        decision = loop.create_future()
+        menu._future = decision
+        app._pending_approval_widget = menu
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert decision.done(), "V9: Esc left the approval unresolved"
+        assert decision.result()["type"] == "reject", (
+            f"V9: Esc resolved the approval as {decision.result()!r}, not a reject"
+        )
+
+
+async def test_m2_clicking_an_approval_row_selects_then_answers() -> None:
+    """M2: a click moves the approval cursor; a second click answers.
+
+    One click must never decide, or a stray pointer landing on Approve would
+    run the command. The second click on the same row is the deliberate act,
+    standing in for Enter.
+    """
+    import asyncio
+
+    app = _app()
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        menu = _menu()
+        await app.query_one("#messages").mount(menu)
+        await pilot.pause()
+        loop = asyncio.get_running_loop()
+        decision = loop.create_future()
+        menu._future = decision
+        widgets = list(menu._option_widgets)
+        approve_row = widgets[0]
+        reject_row = widgets[-1]
+
+        # The cursor starts on Reject, so the first click must land elsewhere:
+        # clicking a *different* row only moves the cursor.
+        await pilot.click(approve_row)
+        await pilot.pause()
+        after_other_row = int(getattr(menu, "_selected", -1))
+        decided_by_one_click = decision.done()
+
+        await pilot.click(reject_row)
+        await pilot.pause()
+        after_reject_row = int(getattr(menu, "_selected", -1))
+        decided_by_two_clicks = decision.done()
+
+        await pilot.click(reject_row)
+        await pilot.pause()
+        resolved = decision.result() if decision.done() else None
+
+    assert after_other_row == 0, (
+        f"M2: clicking the approve row left the cursor on {after_other_row}"
+    )
+    assert not decided_by_one_click, "M2: a single click resolved the approval"
+    assert after_reject_row == len(widgets) - 1, (
+        f"M2: clicking the reject row left the cursor on {after_reject_row}"
+    )
+    assert not decided_by_two_clicks, (
+        "M2: moving the cursor to the reject row resolved the approval"
+    )
+    assert resolved is not None, "M2: clicking the selected row did not decide"
+    assert resolved["type"] == "reject", (
+        f"M2: clicking the selected row resolved the approval as {resolved!r}"
     )

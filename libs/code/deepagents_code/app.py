@@ -234,7 +234,7 @@ async def _wait_for_session_end(
 
 _DEFERRED_START_NOTICE = (
     "No model is configured yet. Run `/model` to choose one. "
-    "Deep Agents will ask for credentials for the selected provider."
+    "{product} will ask for credentials for the selected provider."
 )
 
 _AUTO_CLASSIFIER_RECOMMENDED_MODELS = {
@@ -1243,6 +1243,7 @@ if TYPE_CHECKING:
     from deepagents_code.config import ModelResult
     from deepagents_code.config_manifest import CursorStyle
     from deepagents_code.configuration.types import ProviderStatus
+    from deepagents_code.domain.events import RunEvent
     from deepagents_code.event_bus import EventSource, ExternalEvent
     from deepagents_code.goal_rubric import GoalCreateRequest, GoalCriteriaRequest
     from deepagents_code.hooks.manager import HookSessionIdentity, HooksManager
@@ -3331,6 +3332,14 @@ class DeepAgentsApp(App):
     TITLE = "Deep Agents"
     """Textual application title."""
 
+    PRODUCT_NAME: ClassVar[str] = "Deep Agents"
+    """Product name used inside user-visible sentences.
+
+    Kept separate from `TITLE` so a fork can rename the chrome without
+    rewriting prose, and so the deferred-start notice never spells the
+    upstream product in a rebranded app.
+    """
+
     CSS_PATH = "app.tcss"
     """Path to the Textual CSS stylesheet for the app layout."""
 
@@ -4216,6 +4225,9 @@ class DeepAgentsApp(App):
         """Status bar widget; populated in `on_mount`."""
 
         self._goal_status_panel: GoalStatusPanel | None = None
+        self._last_goal_progress_projection: tuple[str, str, str, str | None] | None = (
+            None
+        )
         """Persistent inline goal display; populated in `on_mount`."""
 
         self._chat_input: ChatInput | None = None
@@ -5085,8 +5097,12 @@ class DeepAgentsApp(App):
         # `Widget.focus()` defers the actual focus change by posting a callback.
         # Terminal keys may already be ahead of that callback in the app queue,
         # so set focus synchronously while startup is still handling Mount.
+        # A first-run modal (`LaunchNameScreen`) can already be on the stack by
+        # the time this runs; focusing the composer underneath it swallows the
+        # user's typing and makes the modal's "Enter to continue" do nothing.
+        # Leave auto-focus to the screen that is actually on top.
         input_widget = self._chat_input.input_widget
-        if input_widget is not None:
+        if input_widget is not None and len(self.screen_stack) == 1:
             self.screen.set_focus(input_widget)
 
         if self._launch_init_requested:
@@ -5443,6 +5459,8 @@ class DeepAgentsApp(App):
             request_ask_user=self._request_ask_user,
             on_tool_complete=self._schedule_git_branch_refresh,
             on_subagent_event=self._on_subagent_event,
+            on_team_event=self._on_team_event,
+            on_runtime_event=self._on_runtime_event,
             on_auto_mode_event=self._on_auto_mode_event,
             on_approval_mode_fallback=self._on_approval_mode_fallback,
             show_diff_line_numbers=self._show_diff_line_numbers,
@@ -9010,13 +9028,16 @@ class DeepAgentsApp(App):
         self._sync_status_connection()
 
     def _sync_status_queued(self) -> None:
-        """Mirror the pending-message queue depth onto the status bar."""
+        """Mirror the pending-message queue depth onto the status bar and composer."""
         if self._status_bar is None:
             return
         depth = len(self._pending_messages)
         if self._initial_prompt_queued_widget is not None:
             depth += 1
         self._status_bar.set_queued(depth)
+        chat_input = getattr(self, "_chat_input", None)
+        if chat_input is not None:
+            chat_input.set_queued(depth)
 
     def _update_tokens(self, count: int, *, approximate: bool = False) -> None:
         """Update the token count in the status bar.
@@ -14803,7 +14824,38 @@ class DeepAgentsApp(App):
                 markup=False,
             )
             return False
+        self._project_goal_progress_event()
         return True
+
+    def _project_goal_progress_event(self) -> None:
+        """Project a goal state only after its checkpoint write or read succeeds."""
+        if self._goal_status_panel is None or not self._lc_thread_id:
+            return
+        if not self._active_goal:
+            self._last_goal_progress_projection = None
+            return
+        status = self._goal_status or "active"
+        if status not in {"active", "paused", "complete", "blocked"}:
+            return
+        projection = (
+            self._lc_thread_id,
+            self._active_goal,
+            status,
+            self._goal_status_note,
+        )
+        if projection == self._last_goal_progress_projection:
+            return
+        from deepagents_code.domain.events import GoalProgressEvent
+
+        self._goal_status_panel.apply_progress(
+            GoalProgressEvent(
+                session_id=self._lc_thread_id,
+                status=status,
+                note=self._goal_status_note or "",
+            ),
+            objective=self._active_goal,
+        )
+        self._last_goal_progress_projection = projection
 
     async def _carry_rubric_model_to_fresh_thread(self) -> None:
         """Persist the current grader selection after a thread reset."""
@@ -15365,13 +15417,13 @@ class DeepAgentsApp(App):
         self._goal_status_note = note
         self._pending_goal_completion_note = None
         self._clear_pending_goal_rubric()
-        self._sync_status_rubric()
         state_update = self._goal_state_update()
         persisted = await self._persist_goal_rubric_state(
             notice=build_goal_state_notice(state_update),
             state_update=state_update,
         )
         if persisted:
+            self._sync_status_rubric()
             if previous_status != "complete":
                 await self._mount_message(
                     AppMessage(f"Goal marked complete.\n\n{note}")
@@ -15664,6 +15716,7 @@ class DeepAgentsApp(App):
             payload,
             preserve_queued_application=True,
         )
+        self._project_goal_progress_event()
         completion_committed = await self._resolve_pending_goal_completion(
             rubric_status=payload.rubric_status,
             rubric_grading_run_id=payload.rubric_grading_run_id,
@@ -15783,6 +15836,62 @@ class DeepAgentsApp(App):
             else f"{SDK_DEFAULT_RUBRIC_MAX_ITERATIONS} (SDK default)"
         )
         return model, iterations
+
+    async def _handle_workflow_command(self, command: str) -> None:
+        """List or inspect profile-saved reusable workflow definitions."""
+        from deepagents_code.application.workflows import ProfileWorkflowRepository
+
+        parts = command.strip().split(maxsplit=2)
+        arguments = parts[1:]
+        if arguments:
+            arguments[0] = arguments[0].lower()
+        repository = ProfileWorkflowRepository()
+        try:
+            match arguments:
+                case [] | ["list"]:
+                    definitions = repository.list()
+                    if not definitions:
+                        message = "No workflows saved in this profile."
+                    else:
+                        message = "Saved workflows:\n" + "\n".join(
+                            f"  {definition.name} (v{definition.version}, "
+                            f"{len(definition.steps)} stages)"
+                            for definition in definitions
+                        )
+                    await self._mount_message(AppMessage(message))
+                    return
+                case ["show", name]:
+                    definition = repository.load(name)
+                    if definition is None:
+                        await self._mount_message(
+                            AppMessage(f"Workflow {name!r} was not found.")
+                        )
+                        return
+                    stages = []
+                    for step in definition.steps:
+                        dependencies = (
+                            f" after {', '.join(step.depends_on)}"
+                            if step.depends_on
+                            else ""
+                        )
+                        stages.append(
+                            f"  {step.step_id}{dependencies}: {step.instruction}"
+                        )
+                    message = (
+                        f"Workflow {definition.name} (v{definition.version})\n"
+                        + "\n".join(stages)
+                    )
+                    await self._mount_message(AppMessage(message))
+                    return
+                case _:
+                    pass
+        except (OSError, TypeError, ValueError) as exc:
+            await self._mount_message(ErrorMessage(f"Could not read workflow: {exc}"))
+            return
+
+        await self._mount_message(
+            AppMessage("Usage: /workflow list | /workflow show <name>")
+        )
 
     async def _handle_goal_command(self, command: str) -> None:
         """Handle `/goal` as a user-approved rubric proposal workflow."""
@@ -17560,6 +17669,8 @@ class DeepAgentsApp(App):
             await self._handle_approval_mode_command(ApprovalMode(cmd.lstrip("/")))
         elif cmd == "/goal" or cmd.startswith("/goal "):
             await self._handle_goal_command(command)
+        elif cmd == "/workflow" or cmd.startswith("/workflow "):
+            await self._handle_workflow_command(command)
         elif cmd in {"/rubric", "/criteria"} or cmd.startswith(
             ("/rubric ", "/criteria ")
         ):
@@ -19144,7 +19255,7 @@ class DeepAgentsApp(App):
                 if not worker_started:
                     await self._release_unstarted_turn()
         elif self._server_startup_deferred:
-            await self._mount_message(AppMessage(_DEFERRED_START_NOTICE))
+            await self._mount_message(AppMessage(self._deferred_start_notice()))
         elif not self._server_startup_error:
             # When a server-startup failure is in flight, the chat
             # `ErrorMessage` mounted by `on_deep_agents_app_server_start_failed`
@@ -19197,12 +19308,20 @@ class DeepAgentsApp(App):
                     )
                 )
 
+    def _deferred_start_notice(self) -> str:
+        """Return the first-launch credential notice for this product.
+
+        Returns:
+            The notice with this app's product name filled in.
+        """
+        return _DEFERRED_START_NOTICE.format(product=self.PRODUCT_NAME)
+
     async def _mount_deferred_start_notice(self) -> None:
         """Tell first-launch users how to configure model credentials."""
         if self._server_startup_deferred_notice_shown:
             return
         self._server_startup_deferred_notice_shown = True
-        await self._mount_message(AppMessage(_DEFERRED_START_NOTICE))
+        await self._mount_message(AppMessage(self._deferred_start_notice()))
 
     def _effective_model_spec(self) -> str | None:
         """Return the `provider:model` spec in effect for the next invocation.
@@ -22632,7 +22751,7 @@ class DeepAgentsApp(App):
             # the text area), keeping the confirmation honest.
             if chat_input.discard_text():
                 self.notify(
-                    "Input cleared (ctrl+z to undo)",
+                    "Input cleared (ctrl+shift+z to undo)",
                     timeout=3,
                     markup=False,
                 )
@@ -23258,6 +23377,27 @@ class DeepAgentsApp(App):
         panel = self._get_subagent_panel()
         if panel is not None:
             panel.on_subagent_event(event)
+
+    def _on_team_event(self, event: RunEvent) -> None:
+        """Forward an application team event to the subagent panel."""
+        panel = self._get_subagent_panel()
+        if panel is not None:
+            panel.on_team_event(event)
+
+    def _on_runtime_event(self, event: RunEvent) -> None:
+        """Project validated goal lifecycle events for the active thread."""
+        if event.kind.value != "goal_progress" or not self._active_goal:
+            return
+        if self._goal_status_panel is None or not self._lc_thread_id:
+            return
+        try:
+            self._goal_status_panel.apply_event(
+                event,
+                session_id=self._lc_thread_id,
+                objective=self._active_goal,
+            )
+        except ValueError:
+            logger.warning("Ignoring malformed goal progress event", exc_info=True)
 
     async def _on_auto_mode_event(self, event: dict[str, Any]) -> None:
         """Render one compact sanitized Auto control-state notice.

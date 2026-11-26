@@ -209,10 +209,12 @@ def rss_megabytes() -> float:
 __all__ = [
     "FirstFrameSample",
     "IdleSample",
+    "ScrollSample",
     "StreamSample",
     "count_renders",
     "measure_first_frame_ms",
     "measure_idle",
+    "measure_scroll_with_history",
     "measure_stream",
     "rss_megabytes",
 ]
@@ -348,6 +350,112 @@ async def measure_large_tool_output(
         rendered_lines = len(app.screen._compositor.visible_widgets)
         mounted = len(messages.children) - before
     return len(payload), rendered_lines, mounted
+
+
+@dataclass
+class ScrollSample:
+    """Cost of scrolling a bounded window over a large stored transcript."""
+
+    stored: int
+    visible: int
+    mounted: int
+    max_scroll_y: int
+    paint_ms: list[float]
+    rss_delta_mb: float
+
+    @property
+    def paint_p95_ms(self) -> float:
+        if not self.paint_ms:
+            return 0.0
+        ordered = sorted(self.paint_ms)
+        index = min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))
+        return ordered[index]
+
+
+async def measure_scroll_with_history(
+    app: DeepAgentsApp,
+    size: tuple[int, int],
+    *,
+    total: int = 5_000,
+    mounted: int = 30,
+    scrolls: int = 30,
+) -> ScrollSample:
+    """Load `total` messages into the bounded store, then scroll its window.
+
+    Only the store's visible window is mounted -- that is the behaviour under
+    test. Per-scroll cost is the compositor's own paint time: a headless
+    `pilot.pause()` adds a fixed ~50 ms tick that has nothing to do with the
+    app, so timing it would measure the harness rather than the scroll.
+    """
+    import time
+
+    from textual._compositor import Compositor
+
+    from deepagents_code.niki.message_store import NikiMessageStore
+    from deepagents_code.tui.widgets.message_store import MessageData, MessageType
+    from deepagents_code.tui.widgets.messages import AssistantMessage
+
+    rss_before = rss_megabytes()
+    store = NikiMessageStore()
+    store.bulk_load(
+        [
+            MessageData(
+                type=MessageType.USER, content=f"message {index}", id=f"m-{index}"
+            )
+            for index in range(total)
+        ]
+    )
+
+    durations: list[float] = []
+    original = Compositor.render_update
+
+    def timed(
+        self: Compositor,
+        full: bool = False,
+        screen_stack: list[Screen] | None = None,
+        simplify: bool = False,
+    ) -> RenderableType | None:
+        started = time.perf_counter()
+        result = original(self, full, screen_stack, simplify)
+        durations.append((time.perf_counter() - started) * 1000)
+        return result
+
+    Compositor.render_update = timed
+    try:
+        async with app.run_test(size=size) as pilot:
+            await pilot.pause()
+            chat = app.query_one("#chat")
+            transcript = app.query_one("#messages")
+            await transcript.mount_all(
+                [AssistantMessage(content="line " * 40) for _ in range(mounted)]
+            )
+            await pilot.pause()
+            await pilot.pause()
+            # Warm the layout so the first scroll does not pay the mount cost.
+            for warm in (chat.max_scroll_y, 0, chat.max_scroll_y // 2):
+                chat.scroll_to(y=warm, animate=False)
+                await pilot.pause()
+
+            step = max(1, chat.max_scroll_y // 10)
+            per_scroll: list[float] = []
+            for index in range(scrolls):
+                durations.clear()
+                chat.scroll_to(
+                    y=(index * step) % (chat.max_scroll_y + 1), animate=False
+                )
+                await pilot.pause()
+                per_scroll.append(sum(durations))
+    finally:
+        Compositor.render_update = original
+
+    return ScrollSample(
+        stored=total,
+        visible=store.visible_count,
+        mounted=mounted,
+        max_scroll_y=chat.max_scroll_y,
+        paint_ms=per_scroll,
+        rss_delta_mb=rss_megabytes() - rss_before,
+    )
 
 
 def rss_growth_megabytes(before: float) -> float:

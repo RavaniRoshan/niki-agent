@@ -29,6 +29,7 @@ from textual.reactive import reactive
 from textual.widgets import Static
 
 from deepagents_code.config import get_glyphs
+from deepagents_code.domain.events import RunEvent, RunEventKind
 from deepagents_code.formatting import format_duration
 from deepagents_code.theme import get_theme_colors
 from deepagents_code.tui.widgets.loading import Spinner
@@ -91,6 +92,9 @@ class _SubagentRecord:
     error: str | None = None
     """Failure reason, set only when status is error."""
 
+    task_order: int | None = None
+    """Stable plan order for coordinator events; None for legacy stream events."""
+
     def elapsed_seconds(self) -> float:
         """Seconds since this subagent started (live for running rows).
 
@@ -123,6 +127,17 @@ class _Phase:
         if record.id not in self.records:
             self.order.append(record.id)
         self.records[record.id] = record
+        if record.task_order is not None:
+            positions = {record_id: index for index, record_id in enumerate(self.order)}
+            self.order.sort(
+                key=lambda record_id: (
+                    self.records[record_id].task_order is None,
+                    self.records[record_id].task_order
+                    if self.records[record_id].task_order is not None
+                    else positions[record_id],
+                    positions[record_id],
+                )
+            )
 
     def counts(self) -> tuple[int, int]:
         """Return (finished, total) subagent counts for this phase."""
@@ -367,6 +382,88 @@ class SubagentPanel(Vertical):
             )
             return
 
+        self._refresh()
+
+    def on_team_event(self, event: RunEvent) -> None:
+        """Render one coordinator task event in its stable plan position."""
+        if event.kind not in {
+            RunEventKind.task_started,
+            RunEventKind.task_finished,
+            RunEventKind.task_failed,
+            RunEventKind.task_skipped,
+        }:
+            return
+        payload = event.payload
+        task_id = payload.get("task_id")
+        task_order = payload.get("task_order")
+        if (
+            not isinstance(task_id, str)
+            or not task_id
+            or isinstance(task_order, bool)
+            or not isinstance(task_order, int)
+            or task_order < 0
+        ):
+            logger.debug("Dropping malformed team task event: %r", event.event_id)
+            return
+
+        status = payload.get("status")
+        expected_statuses = {
+            RunEventKind.task_started: {"running"},
+            RunEventKind.task_finished: {"completed"},
+            RunEventKind.task_failed: {"failed", "cancelled"},
+            RunEventKind.task_skipped: {"skipped"},
+        }
+        if status not in expected_statuses[event.kind]:
+            logger.debug(
+                "Dropping team task event with invalid status: %r", event.event_id
+            )
+            return
+
+        phase = self._ensure_phase(event.turn_id)
+        self._active_eval_id = event.turn_id
+        record = phase.records.get(task_id)
+        if record is None:
+            agent_name = payload.get("agent_name")
+            summary = payload.get("summary")
+            label = (
+                " ".join(
+                    value.strip()
+                    for value in (agent_name, summary)
+                    if isinstance(value, str) and value.strip()
+                )
+                or "team task"
+            )
+            record = _SubagentRecord(
+                id=task_id,
+                label=_sanitize(label, max_chars=200),
+                task_order=task_order,
+            )
+            phase.add(record)
+        else:
+            record.task_order = task_order
+            phase.add(record)
+
+        if event.kind != RunEventKind.task_started and record.status == "running":
+            if status == "completed":
+                record.status = "done"
+            elif status == "failed":
+                record.status = "error"
+                summary = payload.get("summary")
+                record.error = (
+                    _sanitize(summary, max_chars=120)
+                    if isinstance(summary, str)
+                    else None
+                )
+            else:
+                record.status = "cancelled"
+            record.duration_ms = int(record.elapsed_seconds() * 1000)
+
+        self._show()
+        self._apply_body_height()
+        if phase.any_running():
+            self._ensure_timer()
+        else:
+            self._stop_timer()
         self._refresh()
 
     def _handle_start(self, sub_id: str, eval_key: str, event: dict[str, Any]) -> None:

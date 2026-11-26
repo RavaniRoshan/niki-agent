@@ -120,6 +120,10 @@ def _model_name(configurable: dict[str, object]) -> str:
     if not isinstance(value, str) or not value.strip():
         msg = "`configurable.model` or `HARBOR_MODEL` must provide a model name"
         raise ValueError(msg)
+    # Harbor passes models as ``provider/model`` (e.g. ``anthropic/claude-opus-5-5``);
+    # init_chat_model expects the LangChain ``provider:model`` spelling.
+    if ":" not in value and "/" in value:
+        value = value.replace("/", ":", 1)
     return value
 
 

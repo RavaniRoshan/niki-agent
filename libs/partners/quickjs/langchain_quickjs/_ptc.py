@@ -22,8 +22,11 @@ The host-function bridge that actually invokes each tool lives in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Literal
 
+from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool
 
 from langchain_quickjs import _prompt
@@ -33,6 +36,12 @@ if TYPE_CHECKING:
 
 
 PTCOption = list[str | BaseTool]
+PTCDecision = Literal["allow", "deny", "requires_direct_approval"]
+PTCAuthorizer = Callable[
+    [BaseTool, dict[str, Any], ToolRuntime], Awaitable[PTCDecision]
+]
+
+logger = logging.getLogger(__name__)
 
 _RESERVED_SUBAGENT_TASK_NAME = "task"
 
@@ -74,9 +83,10 @@ def filter_tools_for_ptc(
     A `"task"` entry raises `ValueError`.
 
     Warning:
-        PTC tool calls execute through the REPL bridge and currently do
-        not respect `interrupt_on` / HITL approval hooks for each
-        individual tool invocation.
+        PTC tool calls execute through the REPL bridge. Applications with
+        approval rules must inject a server-owned authorizer into
+        `CodeInterpreterMiddleware`; the bridge invokes it before each host
+        call and denies calls if authorization fails.
     """
     if isinstance(config, list):
         explicit_tools: list[BaseTool] = []
@@ -150,3 +160,40 @@ def render_ptc_prompt(tools: Sequence[BaseTool], *, tool_name: str = "eval") -> 
         return ""
     _raise_on_invalid_ptc_tools(tools)
     return _prompt.render_ptc_prompt(tools, tool_name=tool_name)
+
+
+class PTCToolGate:
+    """Run a server-injected approval decision before a PTC tool invocation.
+
+    The authorizer owns policy resolution (including live approval-mode and
+    workspace checks). QuickJS treats it as a trusted server callback; guest
+    JavaScript, tool arguments, and repository text cannot replace it.
+    """
+
+    def __init__(self, authorizer: PTCAuthorizer) -> None:
+        """Bind the server-owned authorization callback for this middleware."""
+        self._authorizer = authorizer
+
+    async def authorize(
+        self,
+        tool: BaseTool,
+        arguments: dict[str, Any],
+        runtime: ToolRuntime,
+    ) -> PTCDecision:
+        """Resolve one tool call, failing closed on callback errors or bad data."""
+        try:
+            decision = await self._authorizer(tool, arguments, runtime)
+        except Exception:  # noqa: BLE001 — an authorizer that raises must deny the call
+            logger.warning(
+                "PTC authorization failed for tool %r; denying call",
+                tool.name,
+                exc_info=True,
+            )
+            return "deny"
+        if decision in ("allow", "deny", "requires_direct_approval"):
+            return decision
+        logger.warning(
+            "PTC authorization returned an invalid decision for tool %r; denying call",
+            tool.name,
+        )
+        return "deny"

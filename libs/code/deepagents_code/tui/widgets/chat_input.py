@@ -7,8 +7,9 @@ import contextlib
 import logging
 import sys
 import time
+import unicodedata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, assert_never
 
 from rich.cells import cell_len
 from rich.segment import Segment
@@ -16,6 +17,7 @@ from rich.style import Style
 from rich.text import Text
 from textual import work
 from textual.app import NoScreen
+from textual.binding import Binding, BindingType
 from textual.color import Color
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.content import Content
@@ -207,9 +209,26 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
     from textual.events import Click
     from textual.screen import Screen
+    from textual.widgets.text_area import Location
 
     from deepagents_code.config_manifest import CursorStyle
     from deepagents_code.input import MediaTracker, ParsedPastedPathPayload
+
+
+def _extends_grapheme(character: str) -> bool:
+    """Return whether `character` attaches to the one before it.
+
+    Combining marks (including spacing marks and variation selectors) are the
+    cases that make a code-point cursor land inside a cluster. Emoji joiners
+    and regional-indicator pairs are not covered.
+
+    Args:
+        character: A single character from the document.
+
+    Returns:
+        `True` when the character must not begin a cursor stop.
+    """
+    return unicodedata.category(character) in {"Mn", "Mc", "Me"}
 
 
 def _should_collapse_chat_paste(text: str) -> bool:
@@ -576,6 +595,26 @@ class ChatTextArea(PasteBurstTextArea):
     fallback are inherited from `PasteBurstTextArea`.
     """
 
+    BINDINGS: ClassVar[list[BindingType]] = [
+        # Textual merges bindings across the MRO at dispatch, but the keymap
+        # registry reads the declared list, so the shared paste bindings are
+        # repeated here to keep them in the footer, `/help`, and KEYMAP.md.
+        *PasteBurstTextArea.BINDINGS,
+        # L7: in the composer, Ctrl+Z is the shell convention -- put the agent
+        # aside and get your shell back -- rather than text undo. Undo moves to
+        # Ctrl+Shift+Z so a cleared draft is still recoverable. Other text
+        # surfaces (modals, inline prompts) keep their own Ctrl+Z undo.
+        Binding("ctrl+z", "suspend_process", "Suspend", show=False),
+        Binding("ctrl+shift+z", "undo", "Undo", show=False),
+    ]
+
+    suspend_on_ctrl_z: bool = False
+    """Whether ctrl+z suspends the process instead of undoing text.
+
+    Niki's composer turns this on post-mount; the default leaves Textual's
+    `TextArea` undo binding in charge, which is what `dcode` expects.
+    """
+
     _skip_history_change_events: int
     """Counter incremented before a history-driven text replacement so the
     resulting `TextArea.Changed` event (which fires on the next message-loop
@@ -614,8 +653,6 @@ class ChatTextArea(PasteBurstTextArea):
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the chat text area."""
-        # Remove placeholder if passed, TextArea doesn't support it the same way
-        kwargs.pop("placeholder", None)
         super().__init__(**kwargs)
         self._chat_input_owner: ChatInput | None = None
         self._skip_history_change_events = 0
@@ -645,6 +682,63 @@ class ChatTextArea(PasteBurstTextArea):
         self._highlighted_lines = None
         self._line_cache.clear()
         self.refresh()
+
+    def check_consume_key(self, key: str, character: str | None = None) -> bool:
+        """Report whether this key is typed into the composer.
+
+        Printable characters are consumed here, which hides app-level bindings
+        for them (Textual drops a key from every ancestor's binding map when
+        the focused widget consumes it). An app that wants one back exposes a
+        `reserved_composer_keys(key)` predicate; when it reports `True` this
+        method stops filtering that key so the app binding can dispatch, and
+        the app's `check_action` decides whether it fires or the character is
+        typed after all.
+
+        Args:
+            key: Textual key name about to be dispatched.
+            character: The printable character for `key`, if any.
+
+        Returns:
+            `True` when the key is typed into the composer.
+        """
+        reserved = getattr(self.app, "reserved_composer_keys", None)
+        if reserved is not None and reserved(key):
+            return False
+        return super().check_consume_key(key, character)
+
+    def get_cursor_left_location(self) -> Location:
+        """Return the start of the grapheme before the cursor.
+
+        Textual's navigator counts code points, so a combining mark is its own
+        stop; landing inside a cluster lets the next edit replace the base and
+        leave the mark behind.
+
+        Returns:
+            The location one grapheme to the left.
+        """
+        location = super().get_cursor_left_location()
+        if location[0] != self.cursor_location[0]:
+            return location
+        line = self.document.get_line(location[0])
+        start = location[1]
+        while 0 < start < len(line) and _extends_grapheme(line[start]):
+            start -= 1
+        return (location[0], start)
+
+    def get_cursor_right_location(self) -> Location:
+        """Return the start of the grapheme after the cursor.
+
+        Returns:
+            The location one grapheme to the right.
+        """
+        location = super().get_cursor_right_location()
+        if location[0] != self.cursor_location[0]:
+            return location
+        line = self.document.get_line(location[0])
+        end = location[1]
+        while end < len(line) and _extends_grapheme(line[end]):
+            end += 1
+        return (location[0], end)
 
     def on_focus(self) -> None:
         """Keep an open prompt search focused when the composer is clicked."""
@@ -975,6 +1069,19 @@ class ChatTextArea(PasteBurstTextArea):
         # when the cursor would land below `max-height`. Re-issue after
         # refresh so it stays in view.
         self.call_after_refresh(self.scroll_cursor_visible)
+
+    def action_suspend_process(self) -> None:
+        """Suspend the process on Ctrl+Z where the app opted in, else undo.
+
+        The action lives here rather than on the app so modals and other text
+        surfaces keep their own Ctrl+Z undo. Textual resolves one binding per
+        key, so the key stays consumed either way; `dcode` gets Textual's undo
+        through the same binding, and only Niki's composer suspends.
+        """
+        if self.suspend_on_ctrl_z:
+            self.app.action_suspend_process()
+            return
+        self.action_undo()
 
     def _refresh_scrollbars(self) -> None:
         """Refresh scrollbars without flashing a transient vertical bar.
@@ -2157,6 +2264,17 @@ class ChatInput(Vertical):
         border: solid $primary;
     }
 
+    ChatInput #composer-queue {
+        display: none;
+        height: 1;
+        padding: 0 1;
+        color: $text-muted;
+    }
+
+    ChatInput.queue-active #composer-queue {
+        display: block;
+    }
+
     ChatInput.mode-shell #input-box {
         border: solid $mode-bash;
     }
@@ -2303,6 +2421,13 @@ class ChatInput(Vertical):
 
     mode: reactive[str] = reactive("normal")
 
+    COMPOSER_PLACEHOLDER = ""
+    """Hint shown in an empty chat input.
+
+    Empty upstream. The Niki fork sets its own hint per instance after mount, so
+    `dcode` keeps its hint-free composer.
+    """
+
     def __init__(
         self,
         cwd: str | Path | None = None,
@@ -2411,7 +2536,7 @@ class ChatInput(Vertical):
             history_file = _default_history_path()
         self._history = HistoryManager(history_file)
 
-    def compose(self) -> ComposeResult:  # noqa: PLR6301  # Textual widget method convention
+    def compose(self) -> ComposeResult:
         """Compose the chat input layout.
 
         Yields:
@@ -2423,12 +2548,15 @@ class ChatInput(Vertical):
         input_box = ChatInputBox(id="input-box")
         with input_box:
             with Horizontal(classes="input-row"):
-                yield Static(">", classes="input-prompt", id="prompt")
-                yield ChatTextArea(id="chat-input")
+                yield Static(get_glyphs().cursor, classes="input-prompt", id="prompt")
+                yield ChatTextArea(
+                    id="chat-input", placeholder=self.COMPOSER_PLACEHOLDER
+                )
             yield CompletionPopup(id="completion-popup")
             yield PromptSearchPanel(id="prompt-search-panel")
 
         yield ChatInputResizeHandle(id="input-resize-handle")
+        yield Static("", id="composer-queue", markup=False)
 
         # Action buttons float on their own z-layer over the top border line so
         # they cost no content row and never overlap the draft text.
@@ -3724,7 +3852,7 @@ class ChatInput(Vertical):
         glyph = MODE_DISPLAY_GLYPHS.get(mode)
         if not glyph and mode != "normal":
             logger.warning(
-                "No display glyph for mode %r; falling back to '>'",
+                "No display glyph for mode %r; falling back to the cursor glyph",
                 mode,
             )
 
@@ -3760,7 +3888,7 @@ class ChatInput(Vertical):
                 # would outlive the mode it advertises.
                 self._sync_resize_handle_color()
                 return
-            prompt.update(glyph or ">")
+            prompt.update(glyph or get_glyphs().cursor)
             if self._resize_handle is not None:
                 self._resize_handle.incognito = mode == "shell_incognito"
             if self._input_box is not None:
@@ -4170,7 +4298,9 @@ class ChatInput(Vertical):
         cleared = self.discard_text()
         self.exit_mode()
         if cleared:
-            self.app.notify("Input cleared (ctrl+z to undo)", timeout=3, markup=False)
+            self.app.notify(
+                "Input cleared (ctrl+shift+z to undo)", timeout=3, markup=False
+            )
         if self._text_area is not None:
             self._text_area.focus()
 
@@ -4235,6 +4365,28 @@ class ChatInput(Vertical):
         """
         if self._text_area is not None:
             self._text_area.cursor_blink = blink
+
+    def set_queued(self, count: int) -> None:
+        """Show how many messages are waiting for the current turn to finish.
+
+        The indicator sits under the composer, where the queued prompt will
+        appear, so the reader does not have to scan the status bar to learn
+        that typing again queues rather than interrupts.
+
+        Args:
+            count: Queued messages; zero hides the indicator.
+        """
+        depth = max(count, 0)
+        self.set_class(depth > 0, "queue-active")
+        try:
+            label = self.query_one("#composer-queue", Static)
+        except NoMatches:
+            return
+        if depth == 0:
+            label.update("")
+            return
+        noun = "message" if depth == 1 else "messages"
+        label.update(f"{depth} {noun} queued")
 
     def _notify_app_blur(self) -> None:
         """Tell the text area the terminal window lost OS focus."""

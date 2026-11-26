@@ -1,0 +1,185 @@
+{
+  "phase": "python",
+  "active_item": null,
+  "active_step": null,
+  "item_steps": {
+    "K2": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
+    "K2 nav keys on every scrollable surface": "fixed in 6c1f9b9b: NikiApp priority pageup/pagedown with a focus and draft guard",
+    "K12 escape-sequence fuzz / AltGr": "split escape sequences and the first-run auto-mode notice leave the composer usable; pty probe added",
+    "K1 single keymap registry": "in-app /help now renders the keymap registry; first-run focus bug found while proving it is fixed",
+    "V9 approvals": "Esc resolves a pending approval as a reject; proven end to end",
+    "K5 bracketed paste": "placeholder, toast, and repeat-paste expansion asserted in a real pty",
+    "S1 first frame \u2264400 ms warm": "owner decision recorded: deferred with measurements",
+    "S2 input echo p95 \u226450 ms under load": "owner decision recorded: deferred with measurements",
+    "S7 100-resize storm in 2 s": "owner decision recorded: deferred with measurements",
+    "K8 `?` contextual help": "question_mark is a priority binding; pty proves the modal opens and Escape restores focus",
+    "M5 every mouse action has a key equivalent": "test extended to ten live-binding gestures including ctrl+o and ctrl+u",
+    "F1 message echoes instantly, focus kept": "pty measurement: median 4.1 ms, p95 10.3 ms over 28 samples",
+    "K3 composer editing": "multi-line proven through Pilot and pty; cursor now grapheme-aware",
+    "K6 filtered slash menu": "proven through Pilot and pty",
+    "K7 Esc close order + focus restore": "proven through Pilot and pty",
+    "V12 first-run + missing API key message": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "M1 transcript scrolls, no snap-back": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "M2 click: focus, cards, approvals, rows": "Closed in 35662428ba9c58c866c9476f77a1998550182a02 with real-terminal or Pilot evidence; see CHECKLIST row.",
+    "V6 footer truthful + collapses by width": "Real streamed turn now populates model identity and usage; tests pass.",
+    "V7 tool cards": "Click, ctrl+o, and auto-expand on failure are now all proven.",
+    "V8 diffs": "Real write_file through the production turn pipeline renders the diff on screen.",
+    "V10 activity line": "Real gated turn shows Thinking, esc to interrupt, and an advancing elapsed counter; clears on completion.",
+    "V11 markdown rendering": "Real streamed turn renders heading, bullets, bold; source syntax does not leak.",
+    "F2 activity states only from real events": "Both directions driven: none when idle, on during a real gated turn, cleared after.",
+    "K4 interrupt/exit semantics": "The full Esc ladder is driven against an in-flight turn.",
+    "K10 queue messages during a run": "Mid-turn prompt is surfaced, queued, and drained as its own turn.",
+    "L8 clean exit prints summary + exit code": "Clean exit prints the resumable session command; exit 0 already proven in a real pty.",
+    "V13 colour depth / NO_COLOR / ASCII / contrast": "ANSI fallback measured against xterm and Solarized; dark mapping fully legible, terminal-owned limits recorded.",
+    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": "Scroll paint measured in-process at p95 1.28 ms over a 5,000-message store; RSS growth 30.3 MB.",
+    "L5 crash \u2192 traceback to file + friendly message": "Real session binds the debug file; a mid-stream crash logs a traceback and mounts an Agent error card.",
+    "V5 composer: ruled, glyph, placeholder, queue": "Composer restyled and queue indicator added against commit 0cdd748c7c1556814e71bf2372915884973c7efe",
+    "L7 Ctrl+Z suspend/resume": "Composer binds ctrl+z to the suspend action; pty test asserts a real WIFSTOPPED/SIGCONT cycle and typing after resume, commit 364e73d4ef935273112b0ec36500fd080d4ee2ee",
+    "M4 selection/copy, OSC 52, mouse release": "f2 releases mouse capture and selection copy now carries the tmux DCS wrapper; verified in a real pty",
+    "F5 session resume picker": "arrow-key navigation verified against a real on-disk thread store"
+  },
+  "owner": null,
+  "branch": "shiva/evals/niki-smoke-run",
+  "blocked": {},
+  "last_commit": "c15886da",
+  "last_eval": {
+    "python_evaluation": "blocked",
+    "reason": "ANTHROPIC_API_KEY and LANGSMITH_API_KEY are unset and no container runtime is usable (no docker; podman: default OCI runtime crun not found), so the matched benchmark was not run; the branch is published and the Python product is ready.",
+    "baseline_avg_at_3": null,
+    "final_avg_at_3": null
+  },
+  "completed": {
+    "K2 nav keys on every scrollable surface": {
+      "commit": "6c1f9b9bd63421051a99e434c8823716e027a5d0",
+      "evidence": "test_pageup_pages_the_transcript_from_the_composer + test_pageup_is_left_to_a_scrollable_draft + test_pageup_is_left_to_an_open_modal, 10 passed"
+    },
+    "K12 escape-sequence fuzz / AltGr": {
+      "commit": "dc41fa0005e1a295046ff9de49f149e325120962",
+      "evidence": "test_color_depth_and_input.py (13 passed) + test_pty_paste_and_suspend.py k12 split-escape pty test (5 passed x3 runs)"
+    },
+    "K1 single keymap registry": {
+      "commit": "256d5e3925aa11cc4087ff21a48532e6e1e47971",
+      "evidence": "test_keymap.py 11 passed (exact registry body) + pty k1 help test + test_keyboard first-run focus; 1417 tests across niki/test_app/test_onboarding passed"
+    },
+    "V9 approvals": {
+      "commit": "a613b65cf51e5dc15293c7041f26b5332c5af678",
+      "evidence": "test_approvals.py 9 passed incl. test_v9_escape_denies_the_pending_approval"
+    },
+    "K5 bracketed paste": {
+      "commit": "a7e4c43520457d96396a33f2fd7831220d15d9d7",
+      "evidence": "pty test_k5_a_large_paste_collapses_to_a_placeholder passes"
+    },
+    "S1 first frame \u22641,500 ms warm": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
+    },
+    "S2 input echo p95 \u226450 ms under load": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
+    },
+    "S7 100-resize storm settles without a crash": {
+      "commit": "b9c4d232063b661c8caeaa37ac72676fd3e952eb",
+      "evidence": "measured in a real pty; see the row"
+    },
+    "K8 `?` contextual help": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "M5 every mouse action has a key equivalent": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "F1 message echoes instantly, focus kept": {
+      "commit": "1c745b0d6a8e63027f20646ce35ce0feda251c5c",
+      "evidence": "see CHECKLIST row"
+    },
+    "K3 composer editing": {
+      "commit": "23d9fe9de4624ab7c57a82491141ba6dd8fa9a99",
+      "evidence": "see CHECKLIST row"
+    },
+    "K6 filtered slash menu": {
+      "commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
+      "evidence": "see CHECKLIST row"
+    },
+    "K7 Esc close order + focus restore": {
+      "commit": "42d069d4afdb9d248e18af81807934aa5f61966e",
+      "evidence": "see CHECKLIST row"
+    },
+    "V12 first-run + missing API key message": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "M1 transcript scrolls, no snap-back": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "M2 click: focus, cards, approvals, rows": {
+      "commit": "35662428ba9c58c866c9476f77a1998550182a02",
+      "evidence": "see CHECKLIST row"
+    },
+    "V6 footer truthful + collapses by width": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v6_the_footer_reports_the_model_and_real_usage plus the existing truthfulness/width tests; 16-colour appearance tracked by V13."
+    },
+    "V7 tool cards": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v7_a_failed_tool_card_stays_visible_and_names_the_error, test_v7_a_long_error_expands_without_a_click, test_v7_ctrl_o_expands_the_most_recent_tool_row, test_m2_clicking_a_tool_card_toggles_its_output."
+    },
+    "V8 diffs": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v8_a_real_file_write_renders_a_diff_on_screen shows demo.py, - bravo, + charlie, -1, +1 after unfolding the group."
+    },
+    "V10 activity line": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v10_the_activity_line_names_the_work_and_counts_elapsed."
+    },
+    "V11 markdown rendering": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_v11_markdown_renders_structure_not_source."
+    },
+    "F2 activity states only from real events": {
+      "commit": "034d4b2d66220ef1f28be4148be930d721bba102",
+      "evidence": "test_f2_activity_appears_from_a_real_event_and_ends_with_it plus test_f2_no_activity_state_without_a_real_event."
+    },
+    "K4 interrupt/exit semantics": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_k4_escape_cancels_a_running_turn_and_restores_the_prompt, test_k4_escape_pops_a_queued_message_before_interrupting, test_k4_double_escape_clears_a_composer_draft."
+    },
+    "K10 queue messages during a run": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_k10_a_message_queued_during_a_run_is_shown_and_then_runs."
+    },
+    "L8 clean exit prints summary + exit code": {
+      "commit": "d3185fc452bbb604ed982f5671c90597ddf92633",
+      "evidence": "test_l8_clean_exit_prints_the_resume_summary, test_l8_failed_exit_adds_the_resume_caveat."
+    },
+    "V13 colour depth / NO_COLOR / ASCII / contrast": {
+      "commit": "5528382d6d233a865da7dc3e88c42be247d260c0",
+      "evidence": "test_ansi_palette_contrast.py: dark ANSI clears every floor on xterm, text clears on Solarized; RGB palettes 0 violations."
+    },
+    "S5 5k msgs: scroll p95 \u226450 ms, memory bounded": {
+      "commit": "7b037968238c8504425885885db483dfb45c269e",
+      "evidence": "test_s5_scrolling_a_five_thousand_message_transcript: 5,000 stored, 30 mounted, paint p95 1.28 ms, RSS +30.3 MB."
+    },
+    "L5 crash \u2192 traceback to file + friendly message": {
+      "commit": "695fd701fd480b23574ca24d53c5c3cca38546a0",
+      "evidence": "test_l5_a_turn_crash_logs_a_traceback_and_shows_a_friendly_error: traceback in <thread>.log, Agent error card on screen, app idle afterwards."
+    },
+    "V5 composer: ruled, glyph, placeholder, queue": {
+      "commit": "0cdd748c7c1556814e71bf2372915884973c7efe",
+      "evidence": "4 new tests in tests/unit_tests/niki/test_composer.py: one tall rule and no other border, glyph == get_glyphs().cursor per mode, placeholder shown then dropped on typing, and a real gated turn rendering '1 message queued' under the input then clearing; 4 snapshots regenerated; full niki suite 318 passed"
+    },
+    "L7 Ctrl+Z suspend/resume": {
+      "commit": "364e73d4ef935273112b0ec36500fd080d4ee2ee",
+      "evidence": "pty test_l7_ctrl_z_suspends_and_the_process_can_be_resumed: waitpid(WNOHANG and WUNTRACED) reports WIFSTOPPED after a real 0x1a byte, SIGCONT resumes, pyte replay shows the composer, and 'l7-ok' typed after resume lands; unit tests prove the composer dispatches suspend_process and ctrl+shift+z still undoes"
+    },
+    "M4 selection/copy, OSC 52, mouse release": {
+      "commit": "26677dde3ba727e0135423ff878124ed7c2bc488",
+      "evidence": "f2 toggles terminal mouse reporting (ESC[?1000l then ESC[?1000h seen in a real pty); selection copy goes through copy_to_clipboard and adds the tmux DCS wrapper"
+    },
+    "F5 session resume picker": {
+      "commit": "eb3ac2bbbb17cf0106f4893ed9f356fb72d06614",
+      "evidence": "real SQLite checkpoints store, /threads modal lists three rows newest-first, two Downs and Enter resume the third row's id"
+    }
+  }
+}

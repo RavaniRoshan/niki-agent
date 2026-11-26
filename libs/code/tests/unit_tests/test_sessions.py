@@ -21,6 +21,22 @@ if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
 
+def test_workflows_directory_uses_hardened_profile_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from deepagents_code import model_config
+
+    state_dir = tmp_path / "profile" / ".state"
+    hardened: list[Path] = []
+    monkeypatch.setattr(model_config, "DEFAULT_STATE_DIR", state_dir)
+    monkeypatch.setattr(
+        sessions, "harden_state_dir", lambda path: hardened.append(path)
+    )
+
+    assert sessions.get_workflows_dir() == state_dir / "workflows"
+    assert hardened == [state_dir / "workflows"]
+
+
 async def test_thread_seed_is_resumable_and_preserves_later_work(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

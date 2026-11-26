@@ -6,10 +6,12 @@ the REPL so one `eval` can orchestrate many tool invocations.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any, Literal
 
 import pytest
+from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.types import Command
@@ -19,11 +21,12 @@ from typing_extensions import TypedDict
 
 from langchain_quickjs import CodeInterpreterMiddleware
 from langchain_quickjs._ptc import (
+    PTCToolGate,
     filter_tools_for_ptc,
     render_ptc_prompt,
     to_camel_case,
 )
-from langchain_quickjs._repl import _ThreadREPL
+from langchain_quickjs._repl import _PTCState, _ThreadREPL
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -65,6 +68,22 @@ def _greet_tool(record: list[dict] | None = None) -> BaseTool:
         name="greet",
         description="Greet a person.",
         func=_fn,
+        args_schema=_GreetInput,
+    )
+
+
+def _async_greet_tool(record: list[dict] | None = None) -> BaseTool:
+    """An async-capable tool for host-bridge tests without executor threads."""
+    calls = record if record is not None else []
+
+    async def _fn(name: str, times: int = 1) -> str:
+        calls.append({"name": name, "times": times})
+        return f"hi {name} x{times}"
+
+    return StructuredTool.from_function(
+        name="greet",
+        description="Greet a person.",
+        coroutine=_fn,
         args_schema=_GreetInput,
     )
 
@@ -364,6 +383,150 @@ async def test_tool_invocation_from_repl(repl: _ThreadREPL) -> None:
     assert calls == [{"name": "world", "times": 2}]
 
 
+def _runtime_for_ptc() -> ToolRuntime[Any, Any]:
+    """Build the outer runtime captured by the `eval` tool in these tests."""
+
+    return ToolRuntime(
+        state={},
+        context={},
+        config={},
+        stream_writer=lambda _chunk: None,
+        tool_call_id="eval-call",
+        store=None,
+    )
+
+
+class _FakeHostContext:
+    def __init__(self) -> None:
+        self.functions: dict[str, Any] = {}
+
+    def register(self, name: str, function: Any, *, is_async: bool) -> None:
+        assert is_async
+        self.functions[name] = function
+
+
+def _ptc_host_bridge(
+    tool: BaseTool,
+    *,
+    gate: PTCToolGate | None,
+    runtime: ToolRuntime[Any, Any] | None,
+) -> Any:
+    """Bind one real PTC bridge without starting the QuickJS worker."""
+    repl = object.__new__(_ThreadREPL)
+    context = _FakeHostContext()
+    repl._ctx = context
+    repl._registered_tools = {to_camel_case(tool.name): tool}
+    repl._ptc_state = _PTCState(
+        remaining_calls=16,
+        outer_runtime=runtime,
+        outer_loop=None,
+    )
+    repl._max_ptc_calls = 16
+    repl._ptc_tool_gate = gate
+    symbol = repl._register_tool_bridge(to_camel_case(tool.name))
+    return context.functions[symbol]
+
+
+async def test_ptc_mutating_tool_requires_direct_approval_path() -> None:
+    calls: list[dict] = []
+
+    async def require_approval(
+        _tool, _arguments, _runtime
+    ) -> Literal["requires_direct_approval"]:
+        return "requires_direct_approval"
+
+    bridge = _ptc_host_bridge(
+        _async_greet_tool(calls),
+        gate=PTCToolGate(require_approval),
+        runtime=_runtime_for_ptc(),
+    )
+    result = await bridge({"name": "write this file"})
+
+    assert "requires direct approval" in result
+    assert "call it directly" in result
+    assert calls == []
+
+
+async def test_ptc_denied_tool_never_executes() -> None:
+    calls: list[dict] = []
+
+    async def deny(_tool, _arguments, _runtime) -> Literal["deny"]:
+        return "deny"
+
+    bridge = _ptc_host_bridge(
+        _async_greet_tool(calls),
+        gate=PTCToolGate(deny),
+        runtime=_runtime_for_ptc(),
+    )
+    result = await bridge({"name": "do not execute"})
+
+    assert "denied by the approval policy" in result
+    assert calls == []
+
+
+async def test_ptc_missing_runtime_fails_closed() -> None:
+    calls: list[dict] = []
+
+    async def authorize(_tool, _arguments, _runtime) -> Literal["allow"]:
+        pytest.fail("authorizer must not run without ToolRuntime")
+
+    bridge = _ptc_host_bridge(
+        _async_greet_tool(calls),
+        gate=PTCToolGate(authorize),
+        runtime=None,
+    )
+    result = await bridge({"name": "missing runtime"})
+
+    assert "denied by the approval policy" in result
+    assert calls == []
+
+
+async def test_ptc_authorizer_error_never_executes() -> None:
+    calls: list[dict] = []
+
+    async def broken_policy(_tool, _arguments, _runtime) -> Literal["allow"]:
+        msg = "approval store unavailable"
+        raise RuntimeError(msg)
+
+    bridge = _ptc_host_bridge(
+        _async_greet_tool(calls),
+        gate=PTCToolGate(broken_policy),
+        runtime=_runtime_for_ptc(),
+    )
+    result = await bridge({"name": "fail closed"})
+
+    assert "denied by the approval policy" in result
+    assert calls == []
+
+
+async def test_ptc_gate_errors_fail_closed() -> None:
+    async def broken_policy(_tool, _arguments, _runtime) -> Literal["allow"]:
+        msg = "approval store unavailable"
+        raise RuntimeError(msg)
+
+    decision = await PTCToolGate(broken_policy).authorize(
+        _greet_tool(), {}, _runtime_for_ptc()
+    )
+
+    assert decision == "deny"
+
+
+async def test_ptc_gate_passes_call_to_server_authorizer() -> None:
+    tool = _greet_tool()
+    arguments = {"name": "Ada"}
+    runtime = _runtime_for_ptc()
+    observed: list[tuple[BaseTool, dict, ToolRuntime[Any, Any]]] = []
+
+    async def authorize(tool_arg, arguments_arg, runtime_arg) -> Literal["allow"]:
+        observed.append((tool_arg, arguments_arg, runtime_arg))
+        return "allow"
+
+    decision = await PTCToolGate(authorize).authorize(tool, arguments, runtime)
+
+    assert decision == "allow"
+    assert observed == [(tool, arguments, runtime)]
+
+
 async def test_undefined_object_property_uses_schema_default(
     repl: _ThreadREPL,
 ) -> None:
@@ -396,10 +559,28 @@ async def test_undefined_object_property_uses_schema_default(
     assert undefined.result == "ok:''"
 
 
-async def test_promise_all_runs_tools_concurrently(repl: _ThreadREPL) -> None:
-    """`Promise.all` on two tool calls resolves both before returning."""
+async def test_ptc_parallel_allowed_calls_preserve_per_call_results() -> None:
     calls: list[dict] = []
-    repl.install_tools([_greet_tool(calls)])
+    bridge = _ptc_host_bridge(
+        _async_greet_tool(calls),
+        gate=None,
+        runtime=_runtime_for_ptc(),
+    )
+    results = await asyncio.gather(
+        bridge({"name": "a"}),
+        bridge({"name": "b"}),
+    )
+
+    assert results == ["hi a x1", "hi b x1"]
+    assert {c["name"] for c in calls} == {"a", "b"}
+
+
+async def test_quickjs_promise_all_runs_tools_concurrently(
+    repl: _ThreadREPL,
+) -> None:
+    """`Promise.all` keeps each result associated with its input call."""
+    calls: list[dict] = []
+    repl.install_tools([_async_greet_tool(calls)])
     outcome = await repl.eval_async(
         "const results = await Promise.all([\n"
         '  tools.greet({name: "a"}),\n'
@@ -407,9 +588,47 @@ async def test_promise_all_runs_tools_concurrently(repl: _ThreadREPL) -> None:
         "]);\n"
         "results.join('|')"
     )
+
     assert outcome.error_type is None, outcome.error_message
     assert outcome.result == "hi a x1|hi b x1"
     assert {c["name"] for c in calls} == {"a", "b"}
+
+
+async def test_ptc_parallel_failure_does_not_hide_successful_sibling_results() -> None:
+    calls: list[str] = []
+
+    class _In(BaseModel):
+        value: str = Field(description="Value to return, or 'fail' to raise")
+
+    async def _sometimes_fail(value: str) -> str:
+        calls.append(value)
+        if value == "fail":
+            msg = "requested failure"
+            raise ValueError(msg)
+        return f"ok:{value}"
+
+    tool = StructuredTool.from_function(
+        name="sometimes_fail",
+        description="Return a value or fail for the sentinel input.",
+        coroutine=_sometimes_fail,
+        args_schema=_In,
+    )
+    bridge = _ptc_host_bridge(
+        tool,
+        gate=None,
+        runtime=_runtime_for_ptc(),
+    )
+    results = await asyncio.gather(
+        bridge({"value": "first"}),
+        bridge({"value": "fail"}),
+        bridge({"value": "last"}),
+        return_exceptions=True,
+    )
+
+    assert results[0] == "ok:first"
+    assert isinstance(results[1], ValueError)
+    assert results[2] == "ok:last"
+    assert sorted(calls) == ["fail", "first", "last"]
 
 
 async def test_command_tool_output_is_visible_to_js(

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 from textual.binding import Binding, BindingType
 from textual.containers import Vertical
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.widgets import OptionList, Static
 from textual.widgets.option_list import Option
@@ -359,8 +360,11 @@ class ThemeSelectorScreen(ModalScreen[str | None]):
             # The user may have dismissed the picker (Esc/Enter) while the
             # write was in flight; `is_mounted` guards the widget tree.
             if self.is_mounted:
-                self._terminal_default = name
-                self._rerender_options()
+                try:
+                    self._terminal_default = name
+                    self._rerender_options()
+                except NoMatches:
+                    logger.debug("Theme picker dismissed before badge refresh")
             self.app.notify(
                 f"Set '{name}' as the default for {term_program}.",
                 severity="information",

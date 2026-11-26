@@ -308,7 +308,9 @@ class TestAuthPromptScreen:
             assert "Sign in to Anthropic" in str(instructions.content)
             assert "create or copy an API key" in str(instructions.content)
             assert "Anthropic key page" in str(instructions.content)
-            assert "dcode stores the above key locally" in str(storage_note.content)
+            assert "Niki Agent stores the above key locally" in str(
+                storage_note.content
+            )
             assert "Advanced (F2)" in str(toggle.content)
             assert base_url_label.display is False
             assert "Base URL override" in str(base_url_label.content)

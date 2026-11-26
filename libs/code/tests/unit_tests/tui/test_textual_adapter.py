@@ -26,6 +26,7 @@ from deepagents_code._ask_user_types import (
     AskUserWidgetResult,
     Question,
 )
+from deepagents_code._cli_context import CLIContext
 from deepagents_code._session_stats import SessionStats
 from deepagents_code._tracing import RESUME_TRACE_TAG
 from deepagents_code.approval_mode import (
@@ -40,6 +41,7 @@ from deepagents_code.client.non_interactive import (
     _process_message_chunk,
 )
 from deepagents_code.config import ASCII_GLYPHS, UNICODE_GLYPHS, build_stream_config
+from deepagents_code.domain.events import RunEvent, RunEventKind
 from deepagents_code.hooks.client_lifecycle import ClientHookStopError
 from deepagents_code.hooks.manager import HooksManager, PromptOutcome
 from deepagents_code.hooks.models.domain import (
@@ -48,11 +50,13 @@ from deepagents_code.hooks.models.domain import (
     PermissionRequestDecision,
 )
 from deepagents_code.hooks.permissions import PermissionPlan, permission_hook_outcome
+from deepagents_code.niki.runtime_mode import niki_runtime_scope
 from deepagents_code.tui.textual_adapter import (
     RubricEvaluationEnd,
     TextualUIAdapter,
     _AutoModeReviewEvent,
     _build_interrupted_ai_message,
+    _coordinated_native_stream,
     _dispatch_tool_result_hook,
     _format_rubric_details,
     _format_rubric_event,
@@ -61,6 +65,8 @@ from deepagents_code.tui.textual_adapter import (
     _is_renderable_auto_mode_event,
     _parse_auto_mode_review_event,
     _read_mentioned_file,
+    _runtime_progress_for_turn,
+    _RuntimeProgress,
     _tool_call_ids_from_current_turn,
     execute_task_textual,
 )
@@ -1234,6 +1240,46 @@ class TestIsRenderableAutoModeEvent:
         payload = {"type": "auto_mode", "event": event, "reason": "tool was denied"}
 
         assert _is_renderable_auto_mode_event(payload, is_main_agent=True) is False
+
+
+class TestTeamEventBridge:
+    async def test_forwards_team_lifecycle_events_only(self) -> None:
+        received: list[RunEvent] = []
+        adapter = TextualUIAdapter(
+            mount_message=_mock_mount,
+            update_status=_noop_status,
+            request_approval=_mock_approval,
+            on_team_event=received.append,
+        )
+        task_event = RunEvent(
+            schema_version=1,
+            event_id="task-started",
+            session_id="session",
+            turn_id="team",
+            sequence=1,
+            kind=RunEventKind.task_started,
+            payload={
+                "task_id": "task",
+                "task_order": 0,
+                "agent_name": "research",
+                "status": "running",
+                "summary": "inspect repository",
+            },
+        )
+        text_event = RunEvent(
+            schema_version=1,
+            event_id="text",
+            session_id="session",
+            turn_id="team",
+            sequence=2,
+            kind=RunEventKind.text_delta,
+            payload={"text": "hidden from the team panel"},
+        )
+
+        adapter.handle_team_event(task_event)
+        adapter.handle_team_event(text_event)
+
+        assert received == [task_event]
 
 
 class TestParseAutoModeReviewEvent:
@@ -3293,6 +3339,38 @@ def _tool_call_message(
 def _text_message(text: str) -> SimpleNamespace:
     """Build a message-like object with content_blocks containing one text block."""
     return SimpleNamespace(content_blocks=[{"type": "text", "text": text}])
+
+
+async def test_niki_tui_runtime_stream_preserves_native_chunks() -> None:
+    """The coordinator bridge returns chunks to the existing TUI processor."""
+    native_chunk = ((), "messages", (_text_message("hello"), {}))
+    agent = _FakeAgent([native_chunk])
+    progress = _RuntimeProgress("turn-1")
+    stream = _coordinated_native_stream(
+        agent,
+        {"messages": [{"role": "user", "content": "say hello"}]},
+        {"configurable": {"thread_id": "thread-1"}},
+        CLIContext(),
+        "say hello",
+        progress,
+    )
+
+    chunks = [chunk async for chunk in stream]
+
+    assert chunks == [native_chunk]
+    assert progress.sequence == 2
+    assert progress.status == "completed"
+
+
+def test_tui_runtime_progress_is_scoped_to_niki_entrypoint() -> None:
+    """Legacy TUI entry points keep their direct stream composition."""
+    assert _runtime_progress_for_turn("legacy-turn") is None
+
+    with niki_runtime_scope():
+        progress = _runtime_progress_for_turn("niki-turn")
+
+    assert progress is not None
+    assert progress.turn_id == "niki-turn"
 
 
 class TestExecuteTaskTextualUserVisibleOutputStarted:

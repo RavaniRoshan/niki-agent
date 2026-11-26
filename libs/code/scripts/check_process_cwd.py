@@ -106,6 +106,22 @@ _ALLOWLIST: dict[CallSite, str] = {
         "client/non_interactive.py", "run_non_interactive", "Path.cwd", "0f2377b6"
     ): "The headless client sends its directory in run context.",
     CallSite(
+        "client/non_interactive.py",
+        "_stream_agent_with_runtime",
+        "Path.cwd",
+        "770bb7d6",
+    ): "The headless client sends its active local workspace directory.",
+    CallSite(
+        "server_graph.py",
+        "_make_graphs_in_environment._create_cli_graphs_sync",
+        "Path.cwd",
+        "1c0d7025",
+    ): "The process-default workspace falls back to the server launch directory "
+    "only when no workspace or project context was bound.",
+    CallSite(
+        "tui/textual_adapter.py", "_runtime_request", "Path.cwd", "32f88f94"
+    ): "The TUI runs in the client process and sends its local workspace.",
+    CallSite(
         "config.py", "_dotenv_environment", "Path.cwd", "55cd4e5f"
     ): "Workspace server callers pass `start_path`; client processes fall back "
     "to their own launch directory, which is the correct project directory there.",

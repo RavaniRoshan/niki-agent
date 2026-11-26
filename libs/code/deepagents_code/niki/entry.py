@@ -93,8 +93,10 @@ def niki_main() -> None:
     install_niki_app_class()
 
     from deepagents_code.main import cli_main
+    from deepagents_code.niki.runtime_mode import niki_runtime_scope
 
-    cli_main()
+    with niki_runtime_scope():
+        cli_main()
 
 
 __all__ = ["install_niki_app_class", "niki_main"]

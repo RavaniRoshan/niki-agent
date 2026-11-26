@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import html
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -2255,3 +2255,54 @@ class TestPromptSearchPanel:
             assert messages
             assert "Could not read prompt history" in messages[0]
             assert "No prompts yet" not in messages[0]
+
+
+class TestCtrlZContract:
+    """Ctrl+Z is suspend only where an app opts in.
+
+    The binding lives on the shared `ChatTextArea`, so the default must leave
+    Textual's undo in charge; otherwise `dcode` users would suspend the process
+    instead of undoing a draft.
+    """
+
+    async def test_ctrl_z_undoes_a_draft_by_default(self) -> None:
+        app = _ChatInputTestApp()
+        async with app.run_test() as pilot:
+            chat = app.query_one(ChatInput)
+            await pilot.pause()
+            composer = chat._text_area
+            assert composer is not None
+            composer.insert("draft")
+            await pilot.pause()
+            await pilot.press("ctrl+z")
+            await pilot.pause()
+
+            assert composer.suspend_on_ctrl_z is False
+            assert composer.text == "", (
+                "ctrl+z cleared nothing, so undo did not run on the default composer"
+            )
+
+    async def test_the_opt_in_routes_ctrl_z_to_the_app(self) -> None:
+        class _SuspendingHost(App[None]):
+            suspends: ClassVar[int] = 0
+
+            def compose(self) -> ComposeResult:
+                yield ChatInput(id="chat")
+
+            def action_suspend_process(self) -> None:
+                type(self).suspends += 1
+
+        app = _SuspendingHost()
+        async with app.run_test() as pilot:
+            chat = app.query_one(ChatInput)
+            await pilot.pause()
+            composer = chat._text_area
+            assert composer is not None
+            composer.suspend_on_ctrl_z = True
+            composer.insert("draft")
+            await pilot.pause()
+            await pilot.press("ctrl+z")
+            await pilot.pause()
+
+            assert _SuspendingHost.suspends == 1
+            assert composer.text == "draft"

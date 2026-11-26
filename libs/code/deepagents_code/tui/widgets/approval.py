@@ -429,6 +429,27 @@ class ApprovalMenu(Container):
             help_text += f" {glyphs.bullet} e expand"
         return help_text
 
+    def on_click(self, event: events.Click) -> None:
+        """Select the clicked option; a second click on it answers.
+
+        A single click only moves the cursor, mirroring the keyboard: the row
+        then answers to Enter. Requiring the second click keeps Approve one
+        deliberate click away, never a stray one.
+        """
+        target = event.widget
+        if target is None:
+            return
+        for index, widget in enumerate(self._option_widgets):
+            if target is not widget and widget not in target.ancestors:
+                continue
+            event.stop()
+            if index == self._selected:
+                self.action_select()
+            else:
+                self._selected = index
+                self._update_options()
+            return
+
     async def on_mount(self) -> None:
         """Focus self on mount and update tool info."""
         if is_ascii_mode():

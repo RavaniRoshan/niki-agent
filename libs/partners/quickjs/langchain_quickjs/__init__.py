@@ -1,6 +1,6 @@
 """langchain-quickjs: persistent JS REPL middleware for agents."""
 
-from langchain_quickjs._ptc import PTCOption
+from langchain_quickjs._ptc import PTCAuthorizer, PTCDecision, PTCOption
 from langchain_quickjs._subagent import (
     SUBAGENT_STREAM_EVENT_TYPE,
     SubagentCompleteEvent,
@@ -13,6 +13,8 @@ from langchain_quickjs.middleware import CodeInterpreterMiddleware
 __all__ = [
     "SUBAGENT_STREAM_EVENT_TYPE",
     "CodeInterpreterMiddleware",
+    "PTCAuthorizer",
+    "PTCDecision",
     "PTCOption",
     "SubagentCompleteEvent",
     "SubagentErrorEvent",

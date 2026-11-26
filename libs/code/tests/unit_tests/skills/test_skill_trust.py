@@ -33,6 +33,39 @@ class TestSkillTrustStore:
         assert trust_skill_dir(target, store_path=store)
         assert is_skill_dir_trusted(target, store_path=store)
 
+    def test_untrusted_skill_requires_workspace_trust(self, tmp_path: Path) -> None:
+        """Only a trusted root can authorize loading external skill content."""
+        from deepagents_code.skills.load import load_skill_content
+
+        store = tmp_path / "skill_trust.json"
+        built_in_skills = tmp_path / "built-in-skills"
+        built_in_skills.mkdir()
+        skill_dir = tmp_path / "workspace-skills"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("# approved skill", encoding="utf-8")
+
+        with pytest.raises(PermissionError, match="resolves outside all allowed"):
+            load_skill_content(
+                str(skill_file),
+                allowed_roots=[
+                    built_in_skills.resolve(),
+                    *load_trusted_skill_dirs(store_path=store),
+                ],
+            )
+
+        assert trust_skill_dir(skill_dir, store_path=store)
+        assert (
+            load_skill_content(
+                str(skill_file),
+                allowed_roots=[
+                    built_in_skills.resolve(),
+                    *load_trusted_skill_dirs(store_path=store),
+                ],
+            )
+            == "# approved skill"
+        )
+
     def test_trust_persists_approved_path_without_resolving_again(
         self, tmp_path: Path
     ) -> None:

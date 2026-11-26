@@ -651,6 +651,34 @@ def test_make_graph_defaults_to_task_workdir(
     assert captured_create[0]["assistant_id"]
 
 
+def test_make_graph_uses_benchmark_model_and_reasoning_effort(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured_init: list[dict[str, object]] = []
+
+    def fake_init_chat_model(model: str, **kwargs: object) -> object:
+        captured_init.append({"model": model, "kwargs": kwargs})
+        return "chat-model"
+
+    monkeypatch.setattr(langgraph_agent, "init_chat_model", fake_init_chat_model)
+    monkeypatch.setattr(langgraph_agent, "create_cli_agent", lambda **_kwargs: (object(), object()))
+    monkeypatch.setenv("HARBOR_SESSION_ID", "trial-session")
+
+    langgraph_agent.make_graph(
+        {
+            "configurable": {
+                "model": "anthropic/claude-opus-5-5",
+                "cwd": str(tmp_path),
+                "model_kwargs": {"reasoning_effort": "max"},
+            }
+        }
+    )
+
+    assert captured_init == [
+        {"model": "anthropic:claude-opus-5-5", "kwargs": {"reasoning_effort": "max"}}
+    ]
+
+
 def test_workdir_rejects_non_path_value() -> None:
     with pytest.raises(TypeError, match="must be a string path"):
         langgraph_agent._workdir({"cwd": 123})

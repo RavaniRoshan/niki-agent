@@ -166,6 +166,62 @@ def test_update_goal_commits_when_state_fits_the_notice_budget() -> None:
     assert command.update["_goal_status"] == "blocked"
 
 
+def test_blocker_emits_goal_progress_event_but_completion_stays_staged() -> None:
+    tool = cast("Any", GoalToolsMiddleware().tools[0])
+    events: list[dict[str, object]] = []
+    runtime = SimpleNamespace(stream_writer=events.append)
+    state = {"_goal_objective": "add refresh tokens", "_goal_status": "active"}
+
+    blocked = tool.func(
+        status="blocked",
+        note="waiting for API credentials",
+        tool_call_id="blocked-1",
+        state=state,
+        runtime=runtime,
+    )
+
+    assert blocked.update is not None
+    assert blocked.update["_goal_status"] == "blocked"
+    assert events == [
+        {
+            "type": "niki_goal_progress",
+            "status": "blocked",
+            "note": "waiting for API credentials",
+        }
+    ]
+
+    events.clear()
+    staged = tool.func(
+        status="complete",
+        note="all criteria pass",
+        tool_call_id="complete-1",
+        state=state,
+        runtime=runtime,
+    )
+
+    assert staged.update is not None
+    assert staged.update.get("_goal_status") != "complete"
+    assert staged.update["_pending_goal_completion_note"] == "all criteria pass"
+    assert events == []
+
+
+def test_paused_goal_cannot_be_completed_by_model_event() -> None:
+    tool = cast("Any", GoalToolsMiddleware().tools[0])
+    events: list[dict[str, object]] = []
+
+    result = tool.func(
+        status="complete",
+        note="all criteria pass",
+        tool_call_id="complete-1",
+        state={"_goal_objective": "add refresh tokens", "_goal_status": "paused"},
+        runtime=SimpleNamespace(stream_writer=events.append),
+    )
+
+    assert result.update is not None
+    assert "_goal_status" not in result.update
+    assert events == []
+
+
 def _capturing_handler(
     captured: dict[str, SimpleNamespace],
 ) -> Callable[[SimpleNamespace], str]:
