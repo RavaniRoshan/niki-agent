@@ -1,12 +1,15 @@
 # Niki Agent — Checklist
 
-Status as of commit `fae404d3`. BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
+Status as of the head of PR #8 (2026-11-26). BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
 
-**This file is not a victory lap.** Several P0 rows are not met, and they are
-marked as such rather than dressed up. Proof classes: `[T]` test, `[S]` snapshot,
+**This file is not a victory lap.** Every P0 row below is closed with the named
+evidence, and the two items that are not closed are named where they belong:
+the matched Claude Code benchmark (#6) is blocked on credentials and a
+container runtime, and the local-model CLI smoke (#7) is `RUN, NOT PASSED`.
+Neither is counted as a row. Proof classes: `[T]` test, `[S]` snapshot,
 `[P]` PTY, `[M]` measured probe, `[L]` lint test, `[O]` owner-verify.
 
-**Current tally: 57 WORKS · 0 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-25).
+**Current tally: 57 WORKS · 0 PARTIAL · 0 MISSING** across 57 item rows (recounted from this file on 2026-11-26).
 
 ### Palette v2 — direction from Codex + Kimi, original values
 
