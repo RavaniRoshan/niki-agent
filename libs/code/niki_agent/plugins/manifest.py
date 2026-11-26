@@ -18,8 +18,8 @@ from niki_agent.plugins.models import (
 
 logger = logging.getLogger(__name__)
 
-_EXTENSION_SETTINGS_KEYS = ("com.niki.agent", "com.langchain.deepagents.code")
-"""Product settings key, then the pre-independence alias."""
+_EXTENSION_SETTINGS_KEYS = ("com.niki.agent",)
+"""Product settings key."""
 
 _MANIFEST_RELATIVE_PATHS = (
     Path("plugin.json"),

@@ -146,8 +146,8 @@ def test_breaking_change_title_still_detects_offender() -> None:
 def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
     """Release PRs can touch generated/version files across package dirs.
 
-    `libs/evals/` is touched and the `deepagents-code` title scope does not
-    cover it, so absent the bypass `evals` is a genuine offender. The
+    A lockfile outside any package dir is touched and the `niki-agent` title
+    scope does not cover it, so absent the bypass it is a genuine offender. The
     assertion can therefore only pass via the release bypass, not ordinary
     scope coverage — deleting the early-return in `find_offenders` makes this
     test fail.
@@ -158,7 +158,7 @@ def test_release_title_with_release_files_bypasses_scope_file_check() -> None:
             "release(niki-agent): 1.1.2",
             [
                 "libs/code/niki_agent/_version.py",
-                "libs/partners/quickjs/pyproject.toml",
+                "examples/demo/uv.lock",
             ],
             CONFIG,
         )
@@ -182,7 +182,6 @@ def test_release_pr_change_requires_release_files_only() -> None:
     assert is_release_file("libs/code/pyproject.toml")
     assert is_release_file("libs/code/uv.lock")
     assert is_release_file("libs/code/niki_agent/_version.py")
-    assert is_release_file("libs/partners/quickjs/pyproject.toml")
     assert not is_release_file("libs/code/niki_agent/app.py")
     assert not is_release_file("libs/code/docs/CHANGELOG.md")
     assert not is_release_file("libs/code/niki_agent/nested/_version.py")
@@ -195,12 +194,14 @@ def test_release_pr_change_requires_release_files_only() -> None:
     assert not is_release_pr_change("release(sdk): anything", [])
 
 
-def test_release_file_covers_partner_generated_files() -> None:
-    """Partner packages nest one level deeper; their generated files match too."""
-    assert is_release_file("libs/partners/quickjs/CHANGELOG.md")
-    assert is_release_file("libs/partners/quickjs/uv.lock")
-    # A non-partner package's CHANGELOG/pyproject live at the package root
-    # (depth 3), so the same names at depth 4 are not generated-file locations.
+def test_release_files_are_limited_to_configured_package_roots() -> None:
+    """Only files a release-please package declares match, plus any `uv.lock`."""
+    assert not is_release_file("examples/demo/CHANGELOG.md")
+    assert is_release_file("examples/demo/uv.lock")
+    # The product's CHANGELOG/pyproject live at its package root (depth 3), so
+    # the same names nested inside `niki_agent/` are not generated-file
+    # locations.
+    assert is_release_file("libs/code/CHANGELOG.md")
     assert not is_release_file("libs/code/niki_agent/pyproject.toml")
     assert not is_release_file("libs/code/niki_agent/CHANGELOG.md")
 
@@ -308,22 +309,21 @@ def test_main_uv_lock_only_fails_closed_on_bad_release_config(capsys, tmp_path) 
 
 
 def test_release_pr_change_covers_repo_wide_lockfiles() -> None:
-    """Real partner release PRs regenerate `uv.lock` under `examples/` too.
+    """Release PRs regenerate `uv.lock` under `examples/` too.
 
-    Regression for a partner release PR (e.g. `release(langchain-quickjs)`)
-    whose changeset includes `examples/*/uv.lock`: the bypass must still fire so
-    the release PR is not blocked by cross-dir lockfile churn its title scope
-    cannot cover.
+    Regression for a release PR whose changeset includes `examples/*/uv.lock`:
+    the bypass must still fire so the release PR is not blocked by cross-dir
+    lockfile churn its title scope cannot cover.
     """
     assert is_release_file("libs/code/uv.lock")
     assert is_release_pr_change(
-        "release(quickjs): 0.3.9",
+        "release(niki-agent): 1.2.0",
         [
             ".release-please-manifest.json",
+            "libs/code/CHANGELOG.md",
+            "libs/code/pyproject.toml",
             "libs/code/uv.lock",
-            "libs/partners/quickjs/CHANGELOG.md",
-            "libs/partners/quickjs/pyproject.toml",
-            "libs/partners/quickjs/uv.lock",
+            "examples/demo/uv.lock",
         ],
     )
 
@@ -380,21 +380,21 @@ def test_is_release_title_boundaries() -> None:
     assert not is_release_title("Release(sdk): 1.0.0")  # case-sensitive
 
 
-def test_partner_package_dir_detected_with_real_config() -> None:
-    """Packages under `libs/partners/` are package dirs too."""
+def test_nested_module_resolves_to_the_product_package() -> None:
+    """A module nested inside `libs/code/` still resolves to `package:code`."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
     assert find_offenders(
-        "fix(sdk): repair startup",
-        ["libs/partners/quickjs/langchain_quickjs/globals.py"],
+        "fix(rust): repair startup",
+        ["libs/code/niki_agent/_vendor/quickjs/middleware.py"],
         config,
-    ) == [{"package": "package:quickjs", "dirs": ["libs/partners/quickjs/"]}]
+    ) == [{"package": "package:code", "dirs": ["libs/code/"]}]
 
 
-def test_partner_scope_aliases_resolve_with_real_config() -> None:
-    """The `sdk` alias resolves to the product package and `quickjs` to itself."""
+def test_scope_aliases_resolve_with_real_config() -> None:
+    """The `sdk` and `quickjs` aliases resolve to the product package."""
     config = json.loads(DEFAULT_CONFIG.read_text(encoding="utf-8"))
     assert declared_packages("fix(sdk): x", config) == {"package:code"}
-    assert declared_packages("fix(quickjs): x", config) == {"package:quickjs"}
+    assert declared_packages("fix(quickjs): x", config) == {"package:code"}
 
 
 def test_non_dict_file_rule_raises() -> None:

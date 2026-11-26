@@ -135,7 +135,7 @@ Paths are relative to `libs/code/niki_agent/sdk/`.
 - Filesystem persistence, shell support, routing: `backends/`.
 - Provider- or model-specific harness changes: `profiles/`.
 - Public imports and compatibility expectations: `__init__.py`.
-- The vendored SDK's upstream commit record: `PROVENANCE.md`.
+- The vendored SDK's provenance record: `PROVENANCE.md`.
 
 When in doubt, trace from the public argument in `graph.py` to the middleware or
 backend it installs, then follow how that component participates at run time.

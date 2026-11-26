@@ -5508,7 +5508,7 @@ class TestCreateCliAgentInterpreterWiring:
         assert "`fetch_url`" not in without_repo
 
     def test_appends_interpreter_middleware_when_enabled(self, tmp_path: Path) -> None:
-        from langchain_quickjs import CodeInterpreterMiddleware
+        from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -5544,7 +5544,7 @@ class TestCreateCliAgentInterpreterWiring:
         )
 
     def test_no_interpreter_middleware_when_disabled(self, tmp_path: Path) -> None:
-        from langchain_quickjs import CodeInterpreterMiddleware
+        from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         mock_agent = Mock()
@@ -5610,7 +5610,8 @@ class TestCreateCliAgentInterpreterWiring:
         build time.
         """
         from langchain_core.tools import tool
-        from langchain_quickjs import CodeInterpreterMiddleware
+
+        from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         fake_model = _make_fake_chat_model()
@@ -5698,7 +5699,8 @@ class TestCreateCliAgentInterpreterWiring:
         filesystem tools are never members of the `tools` sequence.
         """
         from langchain_core.tools import tool
-        from langchain_quickjs import CodeInterpreterMiddleware
+
+        from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 
         mock_settings = self._build_mock_settings(tmp_path)
         fake_model = _make_fake_chat_model()

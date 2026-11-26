@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from langchain.messages import ToolCall
     from langchain_core.language_models import BaseChatModel
     from langchain_core.messages import ToolMessage
-    from langchain_quickjs import PTCAuthorizer, PTCDecision, PTCOption
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.prebuilt.tool_node import ToolCallRequest
     from langgraph.pregel import Pregel
@@ -36,6 +35,7 @@ if TYPE_CHECKING:
     from langgraph.store.base import BaseStore
     from langgraph.types import Command
 
+    from niki_agent._vendor.quickjs import PTCAuthorizer, PTCDecision, PTCOption
     from niki_agent.config import CredentialsSnapshot, ModelResult
     from niki_agent.domain.events import JsonObject
     from niki_agent.extensions.registry import ExtensionRegistry
@@ -1276,7 +1276,7 @@ def _is_agent_dir_entry(entry: Path) -> bool:
 def get_available_agent_names() -> list[str]:
     """Return a sorted list of available agent names from `~/.niki/`.
 
-    Scans the user's `.deepagents` directory and returns each real
+    Scans the user's `.niki` directory and returns each real
     subdirectory that contains the `AGENTS.md` agent marker and is not an
     app-reserved name. Fail-closed: bare directories, reserved app state
     (`bin/`, `plugins/`, `conversation_history/`), symlinks, and hidden
@@ -2568,8 +2568,8 @@ def get_skill_sources(
     """Return ordered skill sources for PluginSkillsMiddleware and audit tooling.
 
     Lowest to highest precedence:
-    built-in -> plugins -> user profile skills -> user .agents
-    -> project skills -> project .agents
+    built-in -> plugins -> user .niki -> user .agents
+    -> project .niki -> project .agents
     -> user .claude (experimental) -> project .claude (experimental)
 
     Args:
@@ -2761,7 +2761,7 @@ def create_cli_agent(
         enable_shell: Enable shell execution via `LocalShellBackend`
             (only in local mode). When enabled, the `execute` tool is available.
         enable_interpreter: Wire `CodeInterpreterMiddleware` from
-            `langchain-quickjs` into the main agent.
+            `niki_agent._vendor.quickjs` into the main agent.
 
             Local-mode only — passing a non-`None` `sandbox` while
             `enable_interpreter=True` raises `ValueError`. Subagents do not
@@ -2779,7 +2779,7 @@ def create_cli_agent(
             `js_eval` itself is not gated: approval is checked for every
             `tools.*` call inside it.
 
-            Requires the core `langchain-quickjs` dependency.
+            Requires the vendored JS interpreter.
         interpreter_config: Resolver-backed interpreter settings snapshot.
 
             Direct callers may omit this to resolve one for the current

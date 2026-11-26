@@ -2,7 +2,7 @@
 
 Precedence (highest first, earlier in reduction order):
 
-1. Project: `{project_root}/.deepagents/hooks.json`
+1. Project: `{project_root}/.niki/hooks.json` (legacy: `.deepagents/hooks.json`)
 2. User: `~/.niki/hooks.json` (or `config_dir/hooks.json` in tests)
 3. Plugin: `hooks.json` documents contributed by enabled plugins
 
@@ -40,6 +40,7 @@ from typing import TYPE_CHECKING, Final, override
 
 from pydantic import ValidationError
 
+from niki_agent._paths import resolve_project_dir
 from niki_agent.hooks.migration import (
     is_legacy_hooks_document,
     migrate_legacy_hooks,
@@ -157,9 +158,11 @@ def project_hooks_path(project_root: Path) -> Path:
         project_root: Project root directory.
 
     Returns:
-        `{project_root}/.deepagents/hooks.json`.
+        `{project_root}/.niki/hooks.json`, or the legacy
+        `{project_root}/.deepagents/hooks.json` while the project has no
+        `.niki` directory.
     """
-    return project_root / ".deepagents" / "hooks.json"
+    return resolve_project_dir(project_root) / "hooks.json"
 
 
 def user_hooks_path(config_dir: Path | None = None) -> Path:

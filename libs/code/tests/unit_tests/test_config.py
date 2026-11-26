@@ -1167,10 +1167,19 @@ class TestProjectContext:
 class TestProjectAgentMdFinding:
     """Test finding project-specific AGENTS.md files."""
 
-    def test_skips_paths_with_permission_errors(self, tmp_path: Path) -> None:
-        """`OSError` from `Path.resolve()` is caught and the candidate is skipped."""
+    @pytest.mark.parametrize("project_dir_name", [".niki", ".deepagents"])
+    def test_skips_paths_with_permission_errors(
+        self, tmp_path: Path, project_dir_name: str
+    ) -> None:
+        """`OSError` from `Path.resolve()` is caught and the candidate is skipped.
+
+        Parametrized over the current and legacy directory names: a candidate
+        inside the resolved project directory is the one that can carry a
+        permission error.
+        """
         project_root = tmp_path / "project"
         project_root.mkdir()
+        (project_root / project_dir_name).mkdir()
 
         real_md = project_root / "AGENTS.md"
         real_md.write_text("root instructions")
@@ -1178,7 +1187,7 @@ class TestProjectAgentMdFinding:
         original_resolve = Path.resolve
 
         def patched_resolve(self: Path, *args: object, **kwargs: object) -> Path:
-            if self.name == "AGENTS.md" and ".deepagents" in str(self):
+            if self.name == "AGENTS.md" and project_dir_name in str(self):
                 msg = "Permission denied"
                 raise PermissionError(msg)
             return original_resolve(self, *args, **kwargs)  # ty: ignore
@@ -1229,8 +1238,9 @@ class TestProjectAgentMdFinding:
         assert result == []
         assert any("outside the project root" in r.getMessage() for r in caplog.records)
 
+    @pytest.mark.parametrize("project_dir_name", [".niki", ".deepagents"])
     def test_out_of_tree_parent_symlink_skipped(
-        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture, project_dir_name: str
     ) -> None:
         """Parent directory symlink cannot bypass project-root containment."""
         project_root = tmp_path / "project"
@@ -1240,7 +1250,7 @@ class TestProjectAgentMdFinding:
         outside_agent_md = outside / "AGENTS.md"
         outside_agent_md.write_text("attacker-controlled")
 
-        (project_root / ".deepagents").symlink_to(outside, target_is_directory=True)
+        (project_root / project_dir_name).symlink_to(outside, target_is_directory=True)
 
         with caplog.at_level(logging.WARNING, logger="niki_agent.project_utils"):
             result = _find_project_agent_md(project_root)
@@ -1296,6 +1306,33 @@ class TestProjectAgentMdFinding:
         assert not result[0].is_symlink()
         assert result[0].samefile(agent_md)
         assert result[0].is_relative_to(project_root.resolve())
+
+    def test_niki_agents_md_wins_over_legacy(self, tmp_path: Path) -> None:
+        """When both project directories exist, only `.niki/AGENTS.md` is read."""
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        (project_root / ".niki").mkdir()
+        (project_root / ".deepagents").mkdir()
+        niki_md = project_root / ".niki" / "AGENTS.md"
+        niki_md.write_text("current instructions")
+        (project_root / ".deepagents" / "AGENTS.md").write_text("legacy instructions")
+
+        result = _find_project_agent_md(project_root)
+
+        assert len(result) == 1
+        assert result[0].samefile(niki_md)
+
+    def test_legacy_agents_md_still_read(self, tmp_path: Path) -> None:
+        """A project without `.niki` keeps reading `.deepagents/AGENTS.md`."""
+        project_root = tmp_path / "project"
+        (project_root / ".deepagents").mkdir(parents=True)
+        legacy_md = project_root / ".deepagents" / "AGENTS.md"
+        legacy_md.write_text("legacy instructions")
+
+        result = _find_project_agent_md(project_root)
+
+        assert len(result) == 1
+        assert result[0].samefile(legacy_md)
 
     def test_non_canonical_project_root_handled(self, tmp_path: Path) -> None:
         """Non-canonical `project_root` (symlinked ancestor) still locates AGENTS.md.

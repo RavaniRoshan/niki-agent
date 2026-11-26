@@ -46,8 +46,14 @@ def user_extensions_dir() -> Path:
 
 
 def project_extensions_dir(project_root: Path) -> Path:
-    """Return the extension directory beneath `project_root`."""
-    return project_root / ".deepagents" / "extensions"
+    """Return the extension directory beneath `project_root`.
+
+    Prefers `.niki/extensions`, reading the legacy `.deepagents/extensions` only
+    while the project has no `.niki` directory.
+    """
+    from niki_agent._paths import resolve_project_dir
+
+    return resolve_project_dir(project_root) / "extensions"
 
 
 def _canonical(path: Path) -> Path:

@@ -14,8 +14,7 @@ LIBS_ROOT = REPO_ROOT / "libs"
 def package_dirs() -> list[Path]:
     """Return every package directory that owns a `uv.lock`, in repo-path order."""
     libs = [path.parent for path in LIBS_ROOT.glob("*/Makefile")]
-    partners = [path.parent for path in (LIBS_ROOT / "partners").glob("*/Makefile")]
-    return sorted([*libs, *partners], key=_repo_path)
+    return sorted(libs, key=_repo_path)
 
 
 def _repo_path(path: Path) -> str:

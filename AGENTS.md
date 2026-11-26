@@ -4,16 +4,14 @@ Niki Agent is a terminal coding agent. The product is a single Python package in
 `libs/code`; it vendors its agent SDK and ACP runtime inside that package, so
 nothing imports an external distribution at runtime. `rust/` holds a second
 front end for the same engine, built crate by crate; it does not replace the
-Python client until its parity gates are green.
+Python client until it can do everything the Python client does.
 
 ## Layout
 
 - `libs/code` — the whole product: Textual TUI, headless mode, MCP, skills,
-  slash commands, the vendored SDK (`niki_agent/sdk`), and ACP
-  (`niki_agent/acp_sdk`).
-- `libs/partners/quickjs` — the JS interpreter middleware the agent depends on.
-  It is built from this repository because its unreleased line carries the PTC
-  API the agent imports.
+  slash commands, the vendored SDK (`niki_agent/sdk`), ACP
+  (`niki_agent/acp_sdk`), and the vendored JS interpreter
+  (`niki_agent/_vendor/quickjs`).
 - `rust/` — the Rust client workspace (`niki`, `niki-proto`,
   `niki-engine-client`, `niki-render`, `niki-tui`) that speaks the same
   HTTP/SSE protocol as the Python engine. The port plan is `rust/MAP.md`.

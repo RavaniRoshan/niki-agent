@@ -1,0 +1,11 @@
+[package]
+name = "niki-policy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Approval modes, shell allow-lists, and the workspace path boundary for Niki"
+
+[dependencies]
+thiserror.workspace = true

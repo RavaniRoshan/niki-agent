@@ -250,10 +250,11 @@ def _list(
                 "[dim]Skills are loaded from these directories "
                 "(highest precedence first):\n"
                 "  1. .agents/skills/                 project skills\n"
-                "  2. .niki/skills/                  project (legacy .deepagents)\n"
+                "  2. .niki/skills/                   project skills\n"
                 "  3. ~/.agents/skills/               user skills\n"
                 f"  4. {user_skills_display}   user skills\n"
-                "  5. <package>/built_in_skills/      built-in skills[/dim]",
+                "  5. <package>/built_in_skills/      built-in skills\n"
+                "     (legacy project dir: .deepagents/skills/)[/dim]",
                 style=theme.MUTED,
             )
             console.print(

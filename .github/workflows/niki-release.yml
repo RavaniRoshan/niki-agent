@@ -5,8 +5,8 @@
 #
 # Why an installer and not a compiled single-file binary
 # ------------------------------------------------------
-# `niki` resolves a lot at runtime -- LangChain providers are loaded
-# lazily, Textual reads `.tcss` and bundled JSON from disk, and the plugin system
+# `niki` resolves a lot at runtime -- model providers are loaded lazily,
+# Textual reads `.tcss` and bundled JSON from disk, and the plugin system
 # imports by name. That is exactly the shape PyInstaller most often gets wrong,
 # and a frozen build that fails at runtime on someone else's machine is worse
 # than no frozen build. So each artifact is a real wheel plus a launcher that
@@ -35,8 +35,8 @@ permissions:
   contents: write
 
 jobs:
-  # The upstream monorepo pins SDK versions across sibling packages; the
-  # installer artifact must be built from the same tree, so this runs in-repo.
+  # The installer artifact must be built from the tagged tree so the wheel and
+  # the installers in it always agree.
   build:
     name: build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -117,8 +117,8 @@ jobs:
         run: |
           set -euo pipefail
           # Proves the installer creates an environment, resolves dependencies,
-          # and runs the CLI from the built wheel. It does NOT prove a model
-          # call works -- that needs a key.
+          # and runs the CLI (the installer itself ends with `niki --version`).
+          # It does NOT prove a real turn works; the next step does.
           version="${{ steps.version.outputs.value }}"
           stage="niki-${version}-${{ matrix.platform }}"
           extract="$RUNNER_TEMP/extract"
@@ -133,6 +133,27 @@ jobs:
             tar -xzf "${stage}.tar.gz" -C "$extract"
             NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
           fi
+
+      # `niki --version` (run by the installer above) imports almost nothing, so
+      # a wheel that cannot build its graph or run a tool still passes it. That
+      # is how v1.1.1 shipped a wheel whose first real turn raised TypeError.
+      # This step runs one headless turn against a loopback mock provider --
+      # no key and no external network -- and asserts a file was written and
+      # the tool result reached the model.
+      #
+      # Linux only. The script itself is stdlib-only, but this is the platform
+      # whose release gate is proven here; the macOS archive is the same pure
+      # Python wheel assembled on the same runner. Windows needs a `python`
+      # invocation and `niki.exe`, neither of which is exercised by a Linux
+      # run, so it is not wired until someone can watch it go green there.
+      - name: Prove a real turn from the installed wheel
+        if: matrix.platform == 'linux'
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/niki-smoke"
+          python3 .github/scripts/smoke_turn.py --niki "$prefix/bin/niki" --timeout 300
 
       - uses: actions/upload-artifact@v4
         with:

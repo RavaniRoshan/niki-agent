@@ -16,7 +16,7 @@ Niki Agent loads skills from five sources, listed here from lowest to highest pr
 | 0 | `<package>/built_in_skills/` | Built-in | Ships with Niki Agent |
 | 1 | `$NIKI_HOME/<agent>/skills/` | User | Default for `niki skills create` |
 | 2 | `~/.agents/skills/` | User | Shared across agent tools |
-| 3 | `.niki/skills/` | Project | Default for `niki skills create --project` |
+| 3 | `.niki/skills/` | Project | Default for `niki skills create --project` (legacy: `.deepagents/skills/`) |
 | 4 | `.agents/skills/` | Project | Shared across agent tools |
 
 `<agent>` is the agent configuration name (default: `agent`). When two directories contain a skill with the same name, the higher-precedence version wins — project skills override user skills, and any user or project skill overrides built-in skills.

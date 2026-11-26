@@ -34,8 +34,7 @@ def test_libs_code_lockfile_selects_the_product_package() -> None:
 def test_empty_paths_check_all_packages() -> None:
     """No paths preserves full-check behavior for manual runs."""
     packages = _paths(_packages_for_paths([]))
-    assert CODE in packages
-    assert "libs/partners/quickjs" in packages
+    assert packages == [CODE]
 
 
 def test_unowned_paths_skip_lock_check() -> None:

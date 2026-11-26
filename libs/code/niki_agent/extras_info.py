@@ -1427,25 +1427,25 @@ def resolve_install_hint(
 
 
 def verify_interpreter_deps() -> None:
-    """Check that `langchain-quickjs` is installed for the interpreter.
+    """Check that the vendored JS interpreter is importable.
 
     Uses `importlib.util.find_spec` for a lightweight check with no actual
     imports. Call this in the app process *before* spawning the server
     subprocess so users get a clear, actionable error instead of an opaque
-    server crash when the core dependency is missing or broken.
+    server crash when the vendored package is missing or broken.
 
     Returns silently when the package is importable.
 
     Raises:
-        ImportError: If `langchain_quickjs` is not importable.
+        ImportError: If `niki_agent._vendor.quickjs` is not importable.
     """
     try:
-        found = importlib.util.find_spec("langchain_quickjs") is not None
+        found = importlib.util.find_spec("niki_agent._vendor.quickjs") is not None
     except (ImportError, ValueError):
-        # A broken-but-installed `langchain_quickjs` (e.g., parent package
-        # raises during import) would otherwise masquerade as "not installed";
+        # A broken-but-present vendored package (e.g., a parent package raises
+        # during import) would otherwise masquerade as "not installed";
         # capture the underlying cause for debug logs.
-        logger.debug("find_spec failed for langchain_quickjs", exc_info=True)
+        logger.debug("find_spec failed for niki_agent._vendor.quickjs", exc_info=True)
         found = False
 
     if not found:
@@ -1453,14 +1453,14 @@ def verify_interpreter_deps() -> None:
 
         if _is_editable_install():
             msg = (
-                "Missing core dependency for the interpreter. Editable install "
+                "Missing vendored JS interpreter module. Editable install "
                 "detected — refresh the local environment with uv sync, or "
                 "relaunch with --no-interpreter to skip it."
             )
         else:
             msg = (
-                "Missing core dependency for the interpreter. "
-                "Reinstall niki to restore langchain-quickjs, or relaunch with "
+                "Missing vendored JS interpreter module. "
+                "Reinstall the product to restore it, or relaunch with "
                 "--no-interpreter to skip it."
             )
         raise ImportError(msg)
@@ -1501,7 +1501,6 @@ def format_extras_status_plain(status: ExtrasStatus) -> str:
 CORE_DEPENDENCIES: tuple[str, ...] = (
     "langchain",
     "langchain-core",
-    "langchain-quickjs",
     "langgraph",
     "langgraph-checkpoint",
     "langgraph-prebuilt",
@@ -1510,12 +1509,10 @@ CORE_DEPENDENCIES: tuple[str, ...] = (
 )
 """Core LangChain-ecosystem packages surfaced for editable installs.
 
-The vendored SDK is reported separately by `/version`, so it is omitted
-here. These are the packages a local checkout is most likely to pin or
-override, so their resolved versions help diagnose editable environments.
-`langchain-quickjs` powers the built-in interpreter and is a core dependency
-(not an optional extra), so it belongs here rather than under the optional
-dependencies section.
+The vendored SDK is reported separately by `/version`, and the JS
+interpreter ships inside this package, so neither is listed here. These are the
+packages a local checkout is most likely to pin or override, so their resolved
+versions help diagnose editable environments.
 """
 
 

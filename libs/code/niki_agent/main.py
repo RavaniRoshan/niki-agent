@@ -2810,13 +2810,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trust-project-hooks",
         action="store_true",
-        help="Trust project-level `.deepagents/hooks.json` command handlers "
+        help="Trust project-level `.niki/hooks.json` command handlers "
         "(required for headless/CI runs that should load repository hooks)",
     )
     parser.add_argument(
         "--trust-project-extensions",
         action="store_true",
-        help="Trust project-level `.deepagents/extensions/` Python extensions "
+        help="Trust project-level `.niki/extensions/` Python extensions "
         "(requires NIKI_EXPERIMENTAL=1)",
     )
     parser.add_argument(
@@ -5034,7 +5034,7 @@ def _verify_interpreter_or_exit() -> None:
     """Run the interpreter pre-flight check; print and exit on failure.
 
     Called before spawning the langgraph dev server subprocess so a missing
-    `langchain-quickjs` dependency surfaces a one-line, actionable hint instead
+    vendored interpreter module surfaces a one-line, actionable hint instead
     of an opaque "Server process exited with code N" downstream. Gated on the
     resolved interpreter state (`_resolve_interpreter_enabled`), not the
     `--interpreter` flag alone, since the interpreter is now on by default.

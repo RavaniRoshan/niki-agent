@@ -2087,6 +2087,7 @@ def _is_sensitive_write_path(root: Path, path: Path) -> bool:
         in {
             ".git",
             ".ssh",
+            ".niki",
             ".deepagents",
             ".agents",
             ".buildkite",

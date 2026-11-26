@@ -11,7 +11,7 @@ An installed plugin declares one or more Python entry files in its manifest:
   "name": "shared-memory",
   "version": "1.0.0",
   "extensions": {
-    "com.langchain.deepagents.code": {
+    "com.niki.agent": {
       "pythonExtensions": "./extension.py"
     }
   }
@@ -103,7 +103,7 @@ Sources load in this order:
 | `-e/--extension PATH` | Temporary file or directory authorized for one run. |
 | Enabled installed plugins | Identified by `name@marketplace`, loaded from the versioned plugin cache. Installing and enabling the plugin authorizes its code. |
 | `niki.extensions` entry points | Modules from installed Python distributions (`dcode.extensions` is read as a deprecated fallback). |
-| `.deepagents/extensions/` | Project-controlled and normally versioned with the project; never scanned before project trust. |
+| `.niki/extensions/` | Project-controlled and normally versioned with the project; never scanned before project trust. A `.deepagents/extensions/` directory is still read while the project has no `.niki`. |
 
 The project directory is the local development escape hatch. Its scan is
 shallow: direct `*.py` files are extensions, and a direct subdirectory is a

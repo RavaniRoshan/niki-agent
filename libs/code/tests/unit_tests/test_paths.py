@@ -647,3 +647,61 @@ class TestReservedAgentNameGuards:
 
 class TestEnsureDirHelpers:
     """The `ensure_*` helpers create the directory they return."""
+
+
+class TestProjectConfigDir:
+    """Project configuration reads `.niki` first and writes it unconditionally."""
+
+    def test_niki_wins_when_both_directories_exist(self, tmp_path: Path) -> None:
+        """`.niki` takes every project-config path when it exists."""
+        project = tmp_path / "project"
+        (project / ".niki").mkdir(parents=True)
+        (project / ".deepagents").mkdir()
+
+        assert _paths_module.resolve_project_dir(project) == project / ".niki"
+        assert _paths_module.project_paths(project).config_dir == project / ".niki"
+        assert (
+            _paths_module.get_project_skills_dir(project)
+            == project / ".niki" / "skills"
+        )
+        assert (
+            _paths_module.get_project_agents_dir(project)
+            == project / ".niki" / "agents"
+        )
+
+    def test_legacy_directory_is_read_and_reported_once(
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A project without `.niki` reads `.deepagents` and logs it once."""
+        project = tmp_path / "project"
+        (project / ".deepagents" / "skills").mkdir(parents=True)
+        monkeypatch.setattr(_paths_module, "_LEGACY_PROJECT_DIRS_LOGGED", set())
+
+        with caplog.at_level(logging.DEBUG, logger="niki_agent._paths"):
+            assert _paths_module.resolve_project_dir(project) == project / ".deepagents"
+            assert (
+                _paths_module.project_paths(project).skills_dir
+                == project / ".deepagents" / "skills"
+            )
+            assert _paths_module.resolve_project_dir(project) == project / ".deepagents"
+
+        legacy_records = [
+            record for record in caplog.records if ".deepagents" in record.getMessage()
+        ]
+        assert len(legacy_records) == 1
+        assert legacy_records[0].levelno == logging.DEBUG
+
+    def test_fresh_write_lands_in_niki(self, tmp_path: Path) -> None:
+        """The skills writer creates `.niki/skills`, never the legacy directory."""
+        project = tmp_path / "project"
+        (project / ".deepagents").mkdir(parents=True)
+
+        created = _paths_module.ensure_project_skills_dir(project)
+
+        assert created == project / ".niki" / "skills"
+        assert created is not None
+        assert created.is_dir()
+        assert not (project / ".deepagents" / "skills").exists()

@@ -326,9 +326,15 @@ def run_mcp_config() -> int:
     # snapshot sees a row consistent with the rest of this output; the display
     # constant is frozen at the same import and cannot follow a patch.
     user_config = PATHS.profile.mcp_config_file
+    # The project subdir row names whichever directory discovery resolved, so a
+    # repository still on the legacy `.deepagents` spelling is not shown a
+    # `.niki` path next to a `found` marker for a file that is elsewhere.
     candidates = (
         (PATHS.display(user_config), user_config),
-        (MCP_CONFIG_DISCOVERY_PATHS[1][0], project.config_mcp_config_file),
+        (
+            f"<project-root>/{project.config_dir.name}/.mcp.json",
+            project.config_mcp_config_file,
+        ),
         (MCP_CONFIG_DISCOVERY_PATHS[2][0], project.root_mcp_config_file),
     )
     rows = [

@@ -1,6 +1,5 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-# Niki Agent is a single package. The remaining upstream packages live in
-# `archive/` and are not built.
+# Niki Agent is a single package under `code/`; nothing else is built.
 LIB_PACKAGE_DIRS := code
 PACKAGE_DIRS := code
 
