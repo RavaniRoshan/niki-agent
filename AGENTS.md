@@ -20,6 +20,10 @@ Python client until it can do everything the Python client does.
 - `site/` — the marketing site (Vite + React + Tailwind, Bun toolchain). Its
   checks are `bun run typecheck`, `bun run check:brand`, and `bun run build`;
   see `site/README.md`.
+- `docs-site/` — the VitePress documentation site for the product, deployed as
+  its own Vercel project. It mirrors a few repository documents and keeps its own
+  pages in `docs-site/docs`; `npm run sync` refreshes the mirrors and
+  `npm run check:brand` gates branding. `make check` does not reach it.
 - `SECURITY.md` — reporting, supported versions, and trust boundaries.
 
 ## Commands
