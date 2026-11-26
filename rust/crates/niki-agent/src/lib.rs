@@ -9,17 +9,23 @@
 //! them live. The transcript is kept in [`Agent::messages`] and never rewritten,
 //! so a cancelled turn keeps what it already produced (RULES.md 6).
 //!
+//! A command the policy gates as [`Decision::Ask`] goes to the [`Approver`] the
+//! host installed; without one — a headless run — the request is reported to the
+//! model as a refusal, because there is nobody to ask.
+//!
 //! The loop has no opinion about transport: any [`Provider`] streams the events
 //! it already normalises, and any [`Registry`] tool is dispatched through the
 //! same gate. That keeps the crate testable without a network (RULES.md 8).
 
 #![forbid(unsafe_code)]
 
+mod approval;
 mod cancel;
 mod error;
 mod event;
 mod turn;
 
+pub use approval::{Approval, ApprovalRequest, Approver};
 pub use cancel::CancelHandle;
 pub use error::AgentError;
 pub use event::{AgentEvent, RunOutcome};

@@ -268,3 +268,89 @@ async fn an_unknown_tool_becomes_a_result_the_model_can_read() {
         message.content
     );
 }
+
+/// An approver that records every request and answers with `answer`.
+fn approver(
+    answer: niki_agent::Approval,
+) -> (
+    niki_agent::Approver,
+    Arc<Mutex<Vec<niki_agent::ApprovalRequest>>>,
+) {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let recorded = Arc::clone(&seen);
+    let approver: niki_agent::Approver = Box::new(move |request| {
+        recorded.lock().expect("lock").push(request);
+        Box::pin(async move { answer })
+    });
+    (approver, seen)
+}
+
+#[tokio::test]
+async fn an_approver_runs_a_gated_command_once() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo hi > asked.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Once);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    let outcome = agent.run("run it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("asked.txt")).expect("file"),
+        "hi\n"
+    );
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].command, "echo hi > asked.txt");
+    assert_eq!(requests[0].mode, Mode::Manual);
+}
+
+#[tokio::test]
+async fn denying_a_gated_command_is_a_refusal_the_model_reads() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"touch denied.txt"}"#),
+        text_turn("understood"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    let outcome = agent.run("touch it", &mut |_| {}).await.expect("run");
+
+    assert!(!dir.path().join("denied.txt").exists());
+    assert_eq!(seen.lock().expect("lock").len(), 1);
+    assert_eq!(outcome.text, "understood");
+    assert!(
+        agent.messages()[2].content.contains("not approved"),
+        "{}",
+        agent.messages()[2].content
+    );
+}
+
+#[tokio::test]
+async fn always_permits_the_same_command_without_asking_again() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo one > a.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo one > a.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Always);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    let outcome = agent.run("twice", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 2);
+    assert_eq!(
+        seen.lock().expect("lock").len(),
+        1,
+        "the second identical command must not ask again"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("a.txt")).expect("file"),
+        "one\n"
+    );
+}

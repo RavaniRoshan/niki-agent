@@ -1,0 +1,16 @@
+[package]
+name = "niki-tui-modals"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Approvals, the model picker and the help overlay for the Niki terminal UI"
+
+[dependencies]
+crossterm.workspace = true
+niki-agent = { path = "../niki-agent" }
+niki-config = { path = "../niki-config" }
+niki-tui = { path = "../niki-tui" }
+niki-tui-themes = { path = "../niki-tui-themes" }
+ratatui.workspace = true

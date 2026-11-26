@@ -100,6 +100,22 @@ impl AllowList {
     pub fn is_all(&self) -> bool {
         self.all
     }
+
+    /// Add one entry, with the same syntax [`AllowList::parse`] reads.
+    ///
+    /// The full-screen UI calls this when the person chooses "always allow" for
+    /// a command, so the same command runs without a second question.
+    pub fn add(&mut self, entry: &str) {
+        let entry = entry.trim();
+        if entry.is_empty() {
+            return;
+        }
+        if entry.eq_ignore_ascii_case("all") {
+            self.all = true;
+        } else if !self.patterns.iter().any(|pattern| pattern == entry) {
+            self.patterns.push(entry.to_owned());
+        }
+    }
 }
 
 impl From<&str> for AllowList {
@@ -492,5 +508,26 @@ mod tests {
         assert_eq!(decide(Mode::Manual, &empty, ""), Decision::Deny);
         assert_eq!(decide(Mode::Auto, &listed, "   "), Decision::Deny);
         assert_eq!(decide(Mode::Yolo, &everything, "\n"), Decision::Deny);
+    }
+}
+
+#[cfg(test)]
+mod allow_list_add_tests {
+    use super::*;
+
+    #[test]
+    fn adding_an_entry_permits_it_once_and_keeps_the_list_unique() {
+        let mut allow = AllowList::default();
+        assert!(!allow.permits("ls"));
+        allow.add(" ls ");
+        allow.add("ls");
+        allow.add("");
+        assert!(allow.permits("ls"));
+        assert!(!allow.permits("ls -la"));
+        assert_eq!(allow, AllowList::parse("ls"), "duplicates are dropped");
+
+        allow.add("ALL");
+        assert!(allow.is_all());
+        assert!(allow.permits("rm -rf /"));
     }
 }

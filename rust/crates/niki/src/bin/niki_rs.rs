@@ -1,26 +1,30 @@
-//! `niki-rs` — the headless entry point.
+//! `niki-rs` — the Rust entry point.
 //!
-//! Reads the same `config.toml` the Python product reads, builds the provider
-//! the `[models].default` spec names, and runs one prompt through the turn loop
-//! in the current workspace. Named `niki-rs` until cutover (RULES.md 2).
+//! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
+//! Python product reads. Without a prompt it opens the full-screen app on the
+//! same agent, provider and workspace. Named `niki-rs` until cutover
+//! (RULES.md 2).
 
-use std::io::Write;
-use std::path::PathBuf;
+use std::io::{IsTerminal, Write};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_config::{Config, Protocol, config_home};
-use niki_provider::{AnthropicProvider, OpenAiProvider, RetryPolicy};
+use niki_provider::{AnthropicProvider, OpenAiProvider, Provider, RetryPolicy};
 use niki_tools::ToolContext;
+use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
+use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
 
 const USAGE: &str = "\
-niki-rs — headless Niki agent (Rust)
+niki-rs — Niki agent (Rust)
 
 USAGE:
-    niki-rs -n <PROMPT> [options]
+    niki-rs -n <PROMPT> [options]   run one prompt and exit
+    niki-rs [options]              open the full-screen app
 
 OPTIONS:
-    -n, --prompt <TEXT>   Prompt to run (required)
+    -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
     --model <PROVIDER:MODEL>
                           Model to use; defaults to [models].default in config
     --config <PATH>       Config file (default: $NIKI_HOME/config.toml, else
@@ -33,6 +37,10 @@ OPTIONS:
     --quiet               Do not report tool calls on stderr
     --version             Print the version line
     --help                Print this text
+
+ENVIRONMENT:
+    NIKI_ASCII=1          Draw the app with ASCII characters only
+    NIKI_REDUCED_MOTION=1 Do not animate the spinner
 
 EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
@@ -64,11 +72,6 @@ fn run(args: Vec<String>) -> Result<i32> {
         Parsed::Run(options) => options,
     };
 
-    let prompt = options
-        .prompt
-        .clone()
-        .context("niki-rs needs a prompt; pass -n <TEXT> (see --help)")?;
-
     let config_path = options
         .config
         .clone()
@@ -76,58 +79,29 @@ fn run(args: Vec<String>) -> Result<i32> {
     let config =
         Config::load(&config_path).with_context(|| format!("read {}", config_path.display()))?;
 
-    let spec = options
-        .model
-        .clone()
-        .or_else(|| config.default_model.clone())
-        .with_context(|| {
-            format!(
-                "no model selected: set [models].default in {} or pass --model provider:model",
-                config_path.display()
-            )
-        })?;
-    let (provider_name, model) = spec.split_once(':').with_context(|| {
-        format!("model spec {spec:?} is not provider:model (for example groq:llama-3.3-70b)")
-    })?;
-    let block = config.provider(provider_name).with_context(|| {
-        format!(
-            "unknown provider {provider_name:?}; this build resolves: {}",
-            config.provider_names().join(", ")
-        )
-    })?;
-    let provider: Box<dyn niki_provider::Provider> = match block.protocol() {
-        Protocol::OpenAi => Box::new(
-            OpenAiProvider::from_config(provider_name, &block, RetryPolicy::default())
-                .context("build the provider")?,
-        ),
-        Protocol::Anthropic => Box::new(
-            AnthropicProvider::from_config(provider_name, &block, RetryPolicy::default())
-                .context("build the provider")?,
-        ),
-    };
+    match options.prompt.clone() {
+        Some(prompt) => headless(options, &config, &config_path, prompt),
+        None => screen(options, config, config_path),
+    }
+}
 
-    let root = options
-        .root
-        .clone()
-        .map_or_else(std::env::current_dir, Ok)
-        .context("resolve the workspace")?;
+/// One turn, answering on stdout. This is the W1 entry point and stays as it
+/// was: a script that ran `niki-rs -n …` before still does.
+fn headless(options: Options, config: &Config, config_path: &Path, prompt: String) -> Result<i32> {
+    let spec = model_spec(&options, config, config_path)?;
+    let (provider_name, _) = split_spec(&spec)?;
+    let provider = build_provider(config, provider_name)?;
+
+    let root = workspace_root(&options)?;
     let ctx = ToolContext::new(root.clone())
         .with_context(|| format!("open the workspace at {}", root.display()))?;
 
     let mode = mode(options.mode.as_deref());
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
-    let config_settings = AgentConfig {
-        model: model.trim().to_owned(),
-        system: options
-            .system
-            .clone()
-            .unwrap_or_else(|| AgentConfig::default().system),
-        max_steps: options.max_steps.unwrap_or(40),
-        ..AgentConfig::default()
-    };
+    let settings = agent_config(&options, &spec)?;
 
     let cancel = CancelHandle::new();
-    let mut agent = Agent::new(provider, ctx, config_settings)
+    let mut agent = Agent::new(provider, ctx, settings)
         .with_policy(mode, allow)
         .with_cancel(cancel.clone());
 
@@ -138,7 +112,7 @@ fn run(args: Vec<String>) -> Result<i32> {
         .context("start the async runtime")?;
 
     let quiet = options.quiet;
-    let result: Result<i32> = runtime.block_on(async move {
+    runtime.block_on(async move {
         let signal = cancel.clone();
         tokio::spawn(async move {
             if tokio::signal::ctrl_c().await.is_ok() {
@@ -167,8 +141,60 @@ fn run(args: Vec<String>) -> Result<i32> {
             outcome.usage.output_tokens,
         );
         Ok(i32::from(cancelled) * 130)
+    })
+}
+
+/// The full-screen app. The agent is built on the worker thread, once per
+/// model, so switching model mid-session needs no restart.
+fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
+    if !std::io::stdout().is_terminal() {
+        bail!(
+            "the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headlessly"
+        );
+    }
+    let spec = model_spec(&options, &config, &config_path)?;
+    let root = workspace_root(&options)?;
+    let ctx = ToolContext::new(root.clone())
+        .with_context(|| format!("open the workspace at {}", root.display()))?;
+    let mode = mode(options.mode.as_deref());
+    let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
+    let max_steps = options.max_steps.unwrap_or(40);
+    let system = options
+        .system
+        .clone()
+        .unwrap_or_else(|| AgentConfig::default().system);
+
+    let mut app = App::new(SessionInfo {
+        model: spec.clone(),
+        mode,
+        cwd: root,
     });
-    result
+    app.set_palette(palette_or_default(config.theme.as_deref()));
+    app.set_models(ModelPicker::from_config(&config));
+    app.set_glyphs(GlyphMode::from_value(env_value("NIKI_ASCII").as_deref()));
+    app.set_motion(Motion::from_value(
+        env_value("NIKI_REDUCED_MOTION").as_deref(),
+    ));
+
+    let build_config = config;
+    let mut worker = WorkerHandle::spawn_with(&spec, mode, move |parts| {
+        let (provider_name, model) =
+            split_spec(&parts.model).map_err(|error| format!("{error:#}"))?;
+        let provider =
+            build_provider(&build_config, provider_name).map_err(|error| format!("{error:#}"))?;
+        let settings = AgentConfig {
+            model: model.to_owned(),
+            system: system.clone(),
+            max_steps,
+            ..AgentConfig::default()
+        };
+        Ok(Agent::new(provider, ctx.clone(), settings)
+            .with_policy(parts.mode, allow.clone())
+            .with_cancel(parts.cancel)
+            .with_approver(parts.approver))
+    });
+
+    run_screen(&mut app, &mut worker).context("run the full-screen app")
 }
 
 #[derive(Default)]
@@ -225,6 +251,66 @@ fn value(flag: &str, value: Option<String>) -> Result<String> {
     value.with_context(|| format!("{flag} needs a value"))
 }
 
+/// The `provider:model` spec to run, from the flag or from the config.
+fn model_spec(options: &Options, config: &Config, config_path: &Path) -> Result<String> {
+    options
+        .model
+        .clone()
+        .or_else(|| config.default_model.clone())
+        .with_context(|| {
+            format!(
+                "no model selected: set [models].default in {} or pass --model provider:model",
+                config_path.display()
+            )
+        })
+}
+
+fn split_spec(spec: &str) -> Result<(&str, &str)> {
+    spec.split_once(':').with_context(|| {
+        format!("model spec {spec:?} is not provider:model (for example groq:llama-3.3-70b)")
+    })
+}
+
+fn build_provider(config: &Config, provider_name: &str) -> Result<Box<dyn Provider>> {
+    let block = config.provider(provider_name).with_context(|| {
+        format!(
+            "unknown provider {provider_name:?}; this build resolves: {}",
+            config.provider_names().join(", ")
+        )
+    })?;
+    match block.protocol() {
+        Protocol::OpenAi => Ok(Box::new(
+            OpenAiProvider::from_config(provider_name, &block, RetryPolicy::default())
+                .context("build the provider")?,
+        )),
+        Protocol::Anthropic => Ok(Box::new(
+            AnthropicProvider::from_config(provider_name, &block, RetryPolicy::default())
+                .context("build the provider")?,
+        )),
+    }
+}
+
+fn workspace_root(options: &Options) -> Result<PathBuf> {
+    options
+        .root
+        .clone()
+        .map_or_else(std::env::current_dir, Ok)
+        .context("resolve the workspace")
+}
+
+fn agent_config(options: &Options, spec: &str) -> Result<AgentConfig> {
+    let (_, model) = split_spec(spec)?;
+    Ok(AgentConfig {
+        model: model.trim().to_owned(),
+        system: options
+            .system
+            .clone()
+            .unwrap_or_else(|| AgentConfig::default().system),
+        max_steps: options.max_steps.unwrap_or(40),
+        ..AgentConfig::default()
+    })
+}
+
 fn mode(raw: Option<&str>) -> Mode {
     match raw.map(str::trim).map(str::to_ascii_lowercase).as_deref() {
         Some("auto") => Mode::Auto,
@@ -235,6 +321,10 @@ fn mode(raw: Option<&str>) -> Mode {
             Mode::Manual
         }
     }
+}
+
+fn env_value(name: &str) -> Option<String> {
+    std::env::var(name).ok()
 }
 
 /// Print one event. Answer text goes to stdout so `niki-rs -n … > out.txt`
@@ -274,4 +364,42 @@ fn one_line(text: &str) -> String {
         line = line.chars().take(117).collect::<String>() + "...";
     }
     line
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_theme_setting_selects_the_palette() {
+        let light = Config::from_str("[ui]\ntheme = \"light\"\n").expect("config");
+        assert_eq!(
+            palette_or_default(light.theme.as_deref()).name,
+            "high-contrast"
+        );
+        let colourblind = Config::from_str("[ui]\ntheme = \"colour-blind\"\n").expect("config");
+        assert_eq!(
+            palette_or_default(colourblind.theme.as_deref()).name,
+            "colorblind"
+        );
+        let unknown = Config::from_str("[ui]\ntheme = \"purple\"\n").expect("config");
+        assert_eq!(palette_or_default(unknown.theme.as_deref()).name, "niki");
+        assert_eq!(palette_or_default(None).name, "niki");
+    }
+
+    #[test]
+    fn the_glyph_and_motion_flags_read_the_environment_values() {
+        assert_eq!(GlyphMode::from_value(Some("1")), GlyphMode::Ascii);
+        assert_eq!(GlyphMode::from_value(None), GlyphMode::Unicode);
+        assert_eq!(Motion::from_value(Some("1")), Motion::Reduced);
+        assert_eq!(Motion::from_value(None), Motion::Full);
+    }
+
+    #[test]
+    fn a_model_spec_splits_into_provider_and_model() {
+        let (provider, model) = split_spec("groq:llama-3.3-70b").expect("spec");
+        assert_eq!(provider, "groq");
+        assert_eq!(model, "llama-3.3-70b");
+        assert!(split_spec("llama").is_err());
+    }
 }

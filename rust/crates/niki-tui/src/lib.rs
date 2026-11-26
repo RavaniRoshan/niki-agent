@@ -146,7 +146,37 @@ pub fn parse_chord(label: &str) -> Option<(KeyCode, KeyModifiers)> {
             _ => return None,
         }
     }
-    key.map(|key| (key, modifiers))
+    let key = key?;
+    // A terminal reports Shift+Tab as BackTab, so the written form has to mean
+    // the same key.
+    if key == KeyCode::Tab && modifiers.contains(KeyModifiers::SHIFT) {
+        return Some((KeyCode::BackTab, KeyModifiers::NONE));
+    }
+    Some((key, modifiers))
+}
+
+/// The chord a person presses for `binding`, written the way the help overlay
+/// and `niki keys` show it.
+#[must_use]
+pub fn chord_label(binding: &Binding) -> String {
+    let mut parts = Vec::new();
+    if binding.modifiers.contains(KeyModifiers::CONTROL) {
+        parts.push("ctrl".to_owned());
+    }
+    if binding.modifiers.contains(KeyModifiers::SHIFT) {
+        parts.push("shift".to_owned());
+    }
+    if binding.modifiers.contains(KeyModifiers::ALT) {
+        parts.push("alt".to_owned());
+    }
+    parts.push(match binding.key {
+        KeyCode::Char(' ') => "space".to_owned(),
+        KeyCode::Char(character) => character.to_string(),
+        KeyCode::Esc => "escape".to_owned(),
+        KeyCode::BackTab => "shift+tab".to_owned(),
+        other => format!("{other:?}").to_ascii_lowercase(),
+    });
+    parts.join("+")
 }
 
 /// Screen-reader mode is opt-in through the same env var the Python client
@@ -339,6 +369,25 @@ mod tests {
         assert!(text.contains("You: Say hello"));
         assert!(text.contains("Niki: Hello from the Niki protocol fixture."));
         assert!(!text.contains('\u{1b}'));
+    }
+
+    #[test]
+    fn chord_labels_read_back_as_the_pressed_keys() {
+        let labels: Vec<String> = BINDINGS.iter().map(chord_label).collect();
+        for (label, binding) in labels.iter().zip(BINDINGS.iter()) {
+            let (code, modifiers) =
+                parse_chord(label).unwrap_or_else(|| panic!("{label} does not parse"));
+            assert_eq!(
+                (code, modifiers),
+                (binding.key, binding.modifiers),
+                "{label}"
+            );
+        }
+        assert_eq!(chord_label(&BINDINGS[0]), "ctrl+c");
+        assert_eq!(
+            parse_chord("shift+tab"),
+            Some((KeyCode::BackTab, KeyModifiers::NONE))
+        );
     }
 
     #[test]

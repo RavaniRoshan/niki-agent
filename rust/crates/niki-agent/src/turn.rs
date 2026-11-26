@@ -7,7 +7,9 @@ use niki_provider::{
 use niki_tools::{Registry, ToolContext};
 use serde_json::{Map, Value};
 
-use crate::{AgentError, AgentEvent, CancelHandle, RunOutcome};
+use crate::{
+    AgentError, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome,
+};
 
 /// System prompt handed to the model when the caller sets none.
 pub const DEFAULT_SYSTEM_PROMPT: &str = "\
@@ -48,6 +50,7 @@ pub struct Agent {
     config: AgentConfig,
     mode: Mode,
     allow: AllowList,
+    approver: Option<Approver>,
     cancel: CancelHandle,
     messages: Vec<Message>,
     usage: Usage,
@@ -66,6 +69,7 @@ impl Agent {
             config,
             mode: Mode::default(),
             allow: AllowList::parse(""),
+            approver: None,
             cancel: CancelHandle::new(),
             messages: Vec::new(),
             usage: Usage::default(),
@@ -78,6 +82,28 @@ impl Agent {
         self.mode = mode;
         self.allow = allow;
         self
+    }
+
+    /// Install the callback that answers [`Decision::Ask`].
+    ///
+    /// Without one the agent has nobody to ask and reports the request to the
+    /// model as a refusal.
+    #[must_use]
+    pub fn with_approver(mut self, approver: Approver) -> Self {
+        self.approver = Some(approver);
+        self
+    }
+
+    /// Switch the approval mode mid-session, which is what the status bar's
+    /// Shift+Tab does.
+    pub fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+    }
+
+    /// The mode currently in force.
+    #[must_use]
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
     /// Replace the tool registry, for tests and for a host that adds tools.
@@ -237,20 +263,28 @@ impl Agent {
         })
     }
 
-    async fn execute(&self, call: &ToolCall) -> (String, bool) {
+    async fn execute(&mut self, call: &ToolCall) -> (String, bool) {
+        if self.registry.get(&call.name).is_none() {
+            return (
+                format!("error: there is no tool named {:?}", call.name),
+                true,
+            );
+        }
+        let args = match parse_arguments(&call.arguments) {
+            Ok(args) => args,
+            Err(message) => return (message, true),
+        };
+        if let Err(message) = self.gate(&call.name, &args).await {
+            return (message, true);
+        }
+        // INFALLIBLE: the registry was checked above and nothing between the
+        // two lookups can remove a tool.
         let Some(handle) = self.registry.get(&call.name) else {
             return (
                 format!("error: there is no tool named {:?}", call.name),
                 true,
             );
         };
-        let args = match parse_arguments(&call.arguments) {
-            Ok(args) => args,
-            Err(message) => return (message, true),
-        };
-        if let Err(message) = self.gate(handle.name(), &args) {
-            return (message, true);
-        }
         match handle.run(args, &self.ctx).await {
             Ok(output) => (output.text, false),
             Err(error) => (format!("error: {error}"), true),
@@ -259,9 +293,10 @@ impl Agent {
 
     /// Gate one call against the live mode.
     ///
-    /// Headless runs have nobody to ask, so an [`Decision::Ask`] is reported to
-    /// the model as a refusal rather than silently allowed.
-    fn gate(&self, name: &str, args: &Value) -> Result<(), String> {
+    /// An [`Decision::Ask`] goes to the installed [`Approver`] and waits for the
+    /// person's answer. A run with no approver — a headless one — reports the
+    /// request to the model as a refusal rather than silently allowing it.
+    async fn gate(&mut self, name: &str, args: &Value) -> Result<(), String> {
         if name != "shell" {
             return Ok(());
         }
@@ -270,11 +305,30 @@ impl Agent {
         };
         match decide(self.mode, &self.allow, command) {
             Decision::Allow => Ok(()),
-            Decision::Ask => Err(format!(
-                "refused: `{command}` needs approval and this run has nobody to ask (mode: {}). \
-                 Set the mode to auto, add the command to the allow-list, or run it yourself.",
-                self.mode.label()
-            )),
+            Decision::Ask => {
+                let request = ApprovalRequest {
+                    command: command.to_owned(),
+                    mode: self.mode,
+                };
+                let answered = match self.approver.as_ref() {
+                    Some(approver) => Some(approver(request).await),
+                    None => None,
+                };
+                match answered {
+                    None => Err(format!(
+                        "refused: `{command}` needs approval and this run has nobody to ask \
+                         (mode: {}). Set the mode to auto, add the command to the allow-list, \
+                         or run it yourself.",
+                        self.mode.label()
+                    )),
+                    Some(Approval::Once) => Ok(()),
+                    Some(Approval::Always) => {
+                        self.allow.add(command);
+                        Ok(())
+                    }
+                    Some(Approval::Deny) => Err(format!("refused: `{command}` was not approved")),
+                }
+            }
             Decision::Deny => Err(format!("refused by policy: `{command}`")),
         }
     }

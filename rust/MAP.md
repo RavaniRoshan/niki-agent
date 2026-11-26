@@ -11,8 +11,8 @@ Read order for a new session: this file, then `DECISIONS.md`, `GLOSSARY.md`,
 | | |
 | --- | --- |
 | Source | `libs/code` — 377 files, ~250k lines, 41 analyzable units |
-| Rust today | `rust/crates/` — 7,941 lines across 12 crates |
-| Fallback rate | 100% (the binary still runs the Python engine for a live turn) |
+| Rust today | `rust/crates/` — 12,725 lines across 15 crates |
+| Fallback rate | 0% for a headless or interactive turn; the `niki` engine client is unchanged |
 | Cutover | not started; Python stays the product until W6 |
 
 The analysis (`rust-anything analyze libs/code`) reports 9 ready, 28 caution and
@@ -20,8 +20,9 @@ The analysis (`rust-anything analyze libs/code`) reports 9 ready, 28 caution and
 same external contracts, not a function-by-function translation. Recorded app
 cases are the equivalence proof.
 
-W0–W2 are green. The agent has its own model client, tool registry, approval
-policy, workspace and session store; the interactive TUI is W3.
+W0–W3 are green. The agent has its own model client, tool registry, approval
+policy, workspace, session store and full-screen terminal app. W4 (extensions)
+is next.
 
 ## Waves
 
@@ -63,9 +64,9 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | open |
-| `niki-tui-modals` | approvals, model picker, theme picker, help | open |
-| `niki-tui-themes` | four palettes, contrast test, ASCII glyphs, reduced motion | open |
+| `niki-tui-live` | ratatui full screen: composer, transcript viewport, status bar | done — 69 tests |
+| `niki-tui-modals` | approvals, model picker, theme picker, help | done — 11 tests |
+| `niki-tui-themes` | four palettes, contrast test, ASCII glyphs, reduced motion | done — 7 tests |
 
 ### W4 — extensions
 
