@@ -4,7 +4,7 @@
 //! fixture into a frame with no engine running, and `session` streams the same
 //! frames from a live LangGraph engine. `replay` is what the parity tests pin.
 
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Write};
 
 use anyhow::{Context, Result, bail};
 use crossterm::event::{KeyCode, KeyModifiers};
@@ -67,22 +67,30 @@ fn main() {
 
 fn run(args: Vec<String>) -> Result<i32> {
     let Some(command) = args.first().map(String::as_str) else {
-        print!("{USAGE}");
+        emit(USAGE)?;
         return Ok(0);
     };
     match command {
         "--version" | "-V" | "version" => {
-            println!("Niki Agent {ENGINE_VERSION} (rust {CLIENT_VERSION})");
+            emit(&format!(
+                "Niki Agent {ENGINE_VERSION} (rust {CLIENT_VERSION})\n"
+            ))?;
             Ok(0)
         }
         "--help" | "-h" | "help" => {
-            print!("{USAGE}");
+            emit(USAGE)?;
             Ok(0)
         }
         "keys" => {
+            let mut table = String::new();
             for binding in BINDINGS.iter() {
-                println!("{:<16} {:?}", chord_label(binding), binding.action);
+                table.push_str(&format!(
+                    "{:<16} {:?}\n",
+                    chord_label(binding),
+                    binding.action
+                ));
             }
+            emit(&table)?;
             Ok(0)
         }
         "replay" => replay(&args[1..]),
@@ -205,7 +213,7 @@ fn render(model: &TranscriptModel, options: &Options, label: &'static str) -> Re
     let (width, height) = frame_size(options.width, options.height);
 
     if state.reader {
-        print!("{}", state.render_reader(width));
+        emit(&state.render_reader(width))?;
         return Ok(0);
     }
 
@@ -221,8 +229,19 @@ fn render(model: &TranscriptModel, options: &Options, label: &'static str) -> Re
             }
         }
     }
-    println!("{}", frame.to_text());
+    emit(&format!("{}\n", frame.to_text()))?;
     Ok(0)
+}
+
+/// Write to stdout, treating a closed pipe as success: `niki replay … | head`
+/// is a normal thing to do and must not panic.
+fn emit(text: &str) -> Result<()> {
+    let mut out = std::io::stdout().lock();
+    match out.write_all(text.as_bytes()).and_then(|()| out.flush()) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 fn frame_size(width: Option<usize>, height: Option<usize>) -> (usize, usize) {
