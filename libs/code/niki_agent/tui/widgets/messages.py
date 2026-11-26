@@ -322,7 +322,7 @@ both sides of the dot required, so a stray `.5` head is not a gutter. The
 separator is exactly two spaces (current format) or a single tab (legacy
 `cat -n`). Only the separator is consumed and leading padding is spaces-only, so
 source indentation — including leading tabs — after the gutter stays put. Kept in
-sync with the separator emitted by deepagents' `format_content_with_line_numbers`
+sync with the separator emitted by the vendored SDK's `format_content_with_line_numbers`
 (the authoritative producer). See `ToolCallMessage._compact_line_gutter`.
 """
 
@@ -3004,8 +3004,8 @@ class ToolCallMessage(Vertical):
         """Return whether search output is a terminal no-result message.
 
         These sentinels must match the empty-result strings the SDK emits
-        (`format_grep_matches` in `deepagents.backends.utils` and
-        `_format_file_paths` in `deepagents.middleware.filesystem`). If those
+        (`format_grep_matches` in the vendored backend utils and
+        `_format_file_paths` in the vendored filesystem middleware). If those
         change, this silently stops matching and empty searches revert to
         collapsing behind an expand affordance rather than rendering inline.
         """
@@ -3312,7 +3312,7 @@ class ToolCallMessage(Vertical):
 
         `read_file` prefixes each row with a right-justified line marker — `N`,
         or `N.M` for a wrapped-line continuation — then two spaces, then the
-        original source content. (Output from deepagents versions predating the
+        original source content. (Output from vendored SDK versions predating the
         gutter disambiguation in #4561 used the older `cat -n` gutter — a wide
         right-justified number and a tab — which may still surface from cached or
         persisted transcripts.) The model needs the raw gutter for edits, but the

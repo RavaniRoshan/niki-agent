@@ -16,8 +16,9 @@ if TYPE_CHECKING:
 # Consumed by LangSmith, not by this repository: saved views and cost reports
 # filter on this literal to fold a turn's sibling root runs back together.
 # Nothing in-tree reads it, so treat the string as an external contract --
-# renaming it silently breaks those saved filters. Shares the `dcode:` tag
-# namespace with `dcode:auto` (see `niki_agent.auto_mode`).
+# renaming it silently breaks those saved filters. The tag stays verbatim:
+# saved views key off the literal, and the trace namespace is an external
+# contract rather than product chrome.
 RESUME_TRACE_TAG = "dcode:resume"
 
 

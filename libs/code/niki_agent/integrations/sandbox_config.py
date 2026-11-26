@@ -184,7 +184,7 @@ class SandboxConfig:
         ):
             # Without this the value degrades to `None` and nothing is logged,
             # on the option that decides which sandbox executes agent code.
-            # `dcode doctor` covers file health, not value health -- the file
+            # `niki doctor` covers file health, not value health -- the file
             # parses fine, and the rejected entry is reported nowhere.
             logger.warning(
                 "[sandboxes].default is not a string; ignoring the default sandbox"

@@ -1,4 +1,4 @@
-"""State storage for dcode plugin marketplaces, installs, and enablement."""
+"""State storage for niki plugin marketplaces, installs, and enablement."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def plugin_storage_root() -> Path:
 
 @contextmanager
 def plugin_mutation_lock(*, timeout: float = -1) -> Iterator[None]:
-    """Serialize plugin mutations across threads and dcode processes.
+    """Serialize plugin mutations across threads and niki processes.
 
     The lock is reentrant within one thread so compound operations such as
     marketplace removal can call the normal uninstall path while holding it.

@@ -209,7 +209,7 @@ class TestLogNonstandardInvokedName:
         assert record.levelno == logging.DEBUG
         assert "'abc'" in record.getMessage()
 
-    @pytest.mark.parametrize("argv0", ["niki", "dcode", "deepagents-code"])
+    @pytest.mark.parametrize("argv0", ["niki"])
     def test_standard_names_log_nothing(
         self,
         monkeypatch: pytest.MonkeyPatch,

@@ -17,6 +17,7 @@ import contextlib
 import json
 import logging
 import os
+import socket
 import stat
 import tempfile
 from dataclasses import dataclass
@@ -50,6 +51,9 @@ _MAX_LINE_BYTES = 64 * 1024
 
 _CLIENT_IDLE_TIMEOUT_SECONDS = 60.0
 """Maximum idle time on a client connection before the server closes it."""
+
+_LIVENESS_PROBE_TIMEOUT_SECONDS = 1.0
+"""How long a stale-socket probe waits for a bound listener to accept."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -118,10 +122,11 @@ class UnixSocketEventSource:
 
     The listener creates its parent directory with mode `0o700` and binds the
     socket inside it under a transient `umask(0o077)` so the socket inherits
-    `0o600` from the moment of `bind()`. Stale sockets at the configured path
-    are removed on start, but only after a `stat` confirms the path is a
-    socket — a regular file or directory at that path is left untouched and
-    causes start to fail loudly.
+    `0o600` from the moment of `bind()`. A socket left behind by a dead process
+    at the configured path is removed on start, after a probe confirms nothing
+    is listening; a live listener at that path is never unlinked and start
+    fails instead. A regular file or directory at that path is left untouched
+    and also causes start to fail loudly.
     """
 
     def __init__(self, path: Path | None = None) -> None:
@@ -147,8 +152,8 @@ class UnixSocketEventSource:
         Raises:
             RuntimeError: If `start()` has already been called on this
                 instance without a subsequent `stop()`.
-            FileExistsError: If the socket path is occupied by a non-socket
-                filesystem entry.
+            FileExistsError: The path is occupied by a non-socket entry, or by
+                a socket a live process is still listening on.
             OSError: If the socket cannot be bound (e.g. permission denied,
                 path too long).
         """  # noqa: DOC502  # FileExistsError/OSError propagate from helpers
@@ -158,8 +163,7 @@ class UnixSocketEventSource:
 
         self._sink = sink
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with contextlib.suppress(FileNotFoundError):
-            _unlink_existing_socket(self.path)
+        self._clear_stale_socket()
 
         previous_umask = os.umask(0o077)
         try:
@@ -176,6 +180,29 @@ class UnixSocketEventSource:
         with contextlib.suppress(OSError):
             self.path.chmod(0o600)
         logger.debug("External event listener bound at %s", self.path)
+
+    def _clear_stale_socket(self) -> None:
+        """Remove a socket left by a dead process; never a live listener.
+
+        Raises:
+            FileExistsError: If the path holds a non-socket entry, or a socket
+                another process is still accepting connections on.
+            OSError: If the stale socket cannot be removed.
+        """  # noqa: DOC502  # OSError propagates from stat/unlink
+        try:
+            info = self.path.stat(follow_symlinks=False)
+        except FileNotFoundError:
+            return
+        if not stat.S_ISSOCK(info.st_mode):
+            msg = f"Refusing to remove non-socket external event path: {self.path}"
+            raise FileExistsError(msg)
+        if _socket_is_live(self.path):
+            msg = (
+                "Another process is still listening on the external event "
+                f"socket: {self.path}"
+            )
+            raise FileExistsError(msg)
+        self.path.unlink()
 
     async def serve_forever(self) -> None:
         """Park until the underlying server is cancelled or fails.
@@ -331,11 +358,32 @@ def default_unix_socket_path() -> Path:
 
     Prefers `XDG_RUNTIME_DIR` (per-user, tmpfs-backed, auto-cleaned on
     logout) and falls back to the system temp dir when the runtime
-    directory is unset.
+    directory is unset. The socket lives in the product runtime directory
+    (`.niki`), which the listener creates on start.
     """
+    from niki_agent._paths import DEFAULT_PROFILE_DIR_NAME
+
     root = os.environ.get("XDG_RUNTIME_DIR")
     base = Path(root) if root else Path(tempfile.gettempdir())
-    return base / "deepagents" / f"events-{os.getpid()}.sock"
+    return base / DEFAULT_PROFILE_DIR_NAME / f"events-{os.getpid()}.sock"
+
+
+def _socket_is_live(path: Path) -> bool:
+    """Return whether a process is accepting connections on `path`.
+
+    Returns:
+        `True` when a connect attempt succeeds, `False` for the usual
+            "connection refused" shape of a socket left by a dead process.
+    """
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(_LIVENESS_PROBE_TIMEOUT_SECONDS)
+    try:
+        probe.connect(str(path))
+    except OSError:
+        return False
+    finally:
+        probe.close()
+    return True
 
 
 def _unlink_existing_socket(path: Path) -> None:

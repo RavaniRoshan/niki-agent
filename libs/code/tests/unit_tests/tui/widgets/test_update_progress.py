@@ -74,7 +74,7 @@ async def test_update_progress_screen_warning_stays_visible(
 
         fix_command = "export PATH=/home/user/.local/bin:$PATH\nhash -r"
         screen.mark_warning(
-            "Update installed, but another `dcode` is earlier on your PATH.\n"
+            "Update installed, but another `niki` is earlier on your PATH.\n"
             "Remove the shadowing binary, or put /home/user/.local/bin earlier "
             "on your PATH, then relaunch.",
             copy_text=fix_command,
@@ -86,7 +86,7 @@ async def test_update_progress_screen_warning_stays_visible(
         spinner = screen.query(Static).filter(".up-spinner").first()
         help_text = screen.query(Static).filter(".up-help").first()
         assert "Update complete" not in str(status.render())
-        assert "another `dcode` is earlier on your PATH" in str(status.render())
+        assert "another `niki` is earlier on your PATH" in str(status.render())
         assert "Remove the shadowing binary" in str(status.render())
         assert details.display is True
         assert str(spinner.render()) == get_glyphs().warning
@@ -122,7 +122,7 @@ async def test_update_progress_screen_warning_without_copy_text_copies_log_path(
         app.push_screen(screen)
         await pilot.pause()
 
-        screen.mark_warning("Another `dcode` is earlier on your PATH.")
+        screen.mark_warning("Another `niki` is earlier on your PATH.")
         await pilot.pause()
 
         spinner = screen.query(Static).filter(".up-spinner").first()

@@ -365,7 +365,7 @@ def _download_marketplace(url: str) -> Path:
         ensure_marketplace_cache_dir() / f"marketplace-url-{opaque_cache_key(url)}.json"
     )
     request = urllib.request.Request(  # noqa: S310  # Scheme is restricted above.
-        url, headers={"User-Agent": "dcode-plugin-manager"}
+        url, headers={"User-Agent": "niki-plugin-manager"}
     )
     opener = urllib.request.build_opener(_HttpsOnlyRedirectHandler())
     try:

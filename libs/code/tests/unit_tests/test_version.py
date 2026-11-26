@@ -158,7 +158,7 @@ async def test_version_slash_command_does_not_promise_unsupported_update() -> No
         app_msgs = [m for m in app.query(AppMessage) if not m._is_markdown]
         content = str(app_msgs[-1]._content)
         assert "Update available: v99.99.99" in content
-        assert "method that installed this copy of dcode" in content
+        assert "method that installed this copy of niki" in content
         assert "automatically" not in content
         auto_update_enabled.assert_not_called()
 
@@ -348,7 +348,7 @@ async def test_update_slash_command_links_log_instead_of_listing_dependencies() 
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage, ErrorMessage
 
-    log_path = Path("/tmp/dcode update.log")
+    log_path = Path("/tmp/niki update.log")
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
@@ -391,7 +391,7 @@ async def test_update_slash_command_links_log_instead_of_listing_dependencies() 
         content = "\n".join(
             str(m._content) for m in app.query(AppMessage) if not m._is_markdown
         )
-        assert "Update log: tail -f '/tmp/dcode update.log'" in content
+        assert "Update log: tail -f '/tmp/niki update.log'" in content
         # Pin the success branch. The negative assertions below are only
         # meaningful if the flow actually reached the branch that used to print
         # the dependency summary — a swallowed exception (e.g. a `perform_upgrade`
@@ -408,7 +408,7 @@ async def test_update_slash_command_uses_powershell_to_follow_logs() -> None:
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
-    log_path = Path(r"C:\Users\dcode update.log")
+    log_path = Path(r"C:\Users\niki update.log")
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()
@@ -439,7 +439,7 @@ async def test_update_slash_command_uses_powershell_to_follow_logs() -> None:
             str(m._content) for m in app.query(AppMessage) if not m._is_markdown
         )
         assert (
-            "Update log: Get-Content -Wait -LiteralPath 'C:\\Users\\dcode update.log'"
+            "Update log: Get-Content -Wait -LiteralPath 'C:\\Users\\niki update.log'"
         ) in content
 
 
@@ -527,7 +527,7 @@ async def test_update_slash_command_reports_success_without_a_banner() -> None:
 
 
 async def test_update_slash_command_replaces_success_with_shadow_warning() -> None:
-    """A shadowed `dcode` after a successful upgrade swaps success line for warning.
+    """A shadowed `niki` after a successful upgrade swaps success line for warning.
 
     Regression guard for the inverted-conditional bug class: showing the
     user a green "relaunch to use the new version" line and then *also*
@@ -545,7 +545,7 @@ async def test_update_slash_command_replaces_success_with_shadow_warning() -> No
     from niki_agent.update_check import ShadowedDcode
 
     shadow = ShadowedDcode(
-        shadowing_bin=Path("/opt/stale/bin/dcode"),
+        shadowing_bin=Path("/opt/stale/bin/niki"),
         upgraded_bin_dir=Path("/home/user/.local/bin"),
     )
     app = DeepAgentsApp()
@@ -594,14 +594,14 @@ async def test_update_slash_command_replaces_success_with_shadow_warning() -> No
         # The warning is mounted as an `ErrorMessage` (red), not a generic
         # `AppMessage`, so it visually stands apart from neutral status text.
         error_msgs = [str(m._content) for m in app.query(ErrorMessage)]
-        assert any("/opt/stale/bin/dcode" in m for m in error_msgs)
+        assert any("/opt/stale/bin/niki" in m for m in error_msgs)
         assert any("/home/user/.local/bin" in m for m in error_msgs)
 
 
 async def test_update_deps_routes_outdated_dcode_through_regular_update(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
-    """`/update --deps` runs the normal update flow when dcode is outdated."""
+    """`/update --deps` runs the normal update flow when niki is outdated."""
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
@@ -640,7 +640,7 @@ async def test_update_deps_routes_outdated_dcode_through_regular_update(
         app_msgs = [m for m in app.query(AppMessage) if not m._is_markdown]
         content = str(app_msgs[-1]._content)
         assert "Updated to v1.1.0" in content
-        assert "Quit and relaunch dcode to use the new version" in content
+        assert "Quit and relaunch niki to use the new version" in content
         assert "Updated niki-agent:" not in content
         assert "Dependencies are already up to date." not in content
 
@@ -648,7 +648,7 @@ async def test_update_deps_routes_outdated_dcode_through_regular_update(
 async def test_update_deps_skips_refresh_prompt_when_refresh_unsupported(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
-    """Unsupported refresh installs take the normal outdated dcode update path."""
+    """Unsupported refresh installs take the normal outdated niki update path."""
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
@@ -708,7 +708,7 @@ async def test_update_deps_skips_refresh_prompt_when_refresh_unsupported(
 async def test_update_deps_decline_app_update_refreshes_current_deps(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
-    """Declining the app update refreshes deps without upgrading dcode."""
+    """Declining the app update refreshes deps without upgrading niki."""
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
@@ -764,7 +764,7 @@ async def test_update_deps_decline_app_update_refreshes_current_deps(
 async def test_update_deps_decline_app_update_reports_no_new_deps(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
-    """`/update --deps` reports current deps even when dcode has an update."""
+    """`/update --deps` reports current deps even when niki has an update."""
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
@@ -815,7 +815,7 @@ async def test_update_deps_decline_app_update_reports_no_new_deps(
 async def test_update_already_current_prompts_and_refreshes_on_confirm(
     drain_modal_commands: DrainModalCommands,
 ) -> None:
-    """Plain `/update` offers a dep refresh when dcode is already current."""
+    """Plain `/update` offers a dep refresh when niki is already current."""
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
@@ -1347,7 +1347,7 @@ async def test_perform_app_upgrade_failure_repeats_log_path() -> None:
     from niki_agent.app import DeepAgentsApp
     from niki_agent.tui.widgets.messages import AppMessage
 
-    log_path = Path("/tmp/dcode failed-update.log")
+    log_path = Path("/tmp/niki failed-update.log")
     app = DeepAgentsApp()
     async with app.run_test() as pilot:
         await pilot.pause()

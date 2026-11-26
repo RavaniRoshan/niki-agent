@@ -59,7 +59,7 @@ def _mixed_status_info() -> list[MCPServerInfo]:
             name="github",
             transport="http",
             status="unauthenticated",
-            error="Run: dcode mcp login github",
+            error="Run: niki mcp login github",
         ),
         MCPServerInfo(
             name="notion",
@@ -1199,6 +1199,6 @@ class TestModuleLevelHelpers:
             name="github",
             transport="http",
             status="unauthenticated",
-            error="Run: dcode mcp login github",
+            error="Run: niki mcp login github",
         )
         assert _visible_tools_for(info, []) == ()

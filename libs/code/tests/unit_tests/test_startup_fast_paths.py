@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 # regressions from any new top-level import in `main.py` or `ui.py` that
 # pulls in a heavy framework.
 _HEAVY_MODULE_PREFIXES = (
-    "deepagents.",
+    "niki_agent.sdk.",
     "niki_agent.agent",
     "niki_agent.sessions",
     "niki_agent.model_config",
@@ -51,7 +51,7 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
 
         from niki_agent.main import cli_main
 
-        argv = ["deepagents", *json.loads(sys.argv[1])]
+        argv = ["niki", *json.loads(sys.argv[1])]
         # An intentional monorepo SDK pin skew can make `doctor` exit unhealthy;
         # omit that environment-specific check while testing startup bootstrap.
         # Editable installs resolve the pin through `_sdk_requirement_for_cli`.
@@ -200,7 +200,7 @@ def test_lightweight_commands_check_dependency_floors_before_dispatch(
 
     calls: list[str] = []
     with (
-        patch.object(sys, "argv", ["dcode", str(args.command)]),
+        patch.object(sys, "argv", ["niki", str(args.command)]),
         patch("niki_agent.main.check_cli_dependencies"),
         patch("niki_agent.main._install_termination_signal_handlers"),
         patch("niki_agent.main.parse_args", return_value=args),
@@ -254,5 +254,5 @@ def parse_args_from(argv: list[str]) -> argparse.Namespace:
     """Run `parse_args()` with a controlled argv."""
     from unittest.mock import patch
 
-    with patch.object(sys, "argv", ["deepagents", *argv]):
+    with patch.object(sys, "argv", ["niki", *argv]):
         return parse_args()

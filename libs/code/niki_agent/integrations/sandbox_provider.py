@@ -1,4 +1,4 @@
-"""Sandbox provider interface used by Deep Agents Code."""
+"""Sandbox provider interface used by Niki Agent."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class SandboxInstallHint:
     Built-in providers ship as `niki-agent` extras (`kind="extra"`);
     third-party providers install as arbitrary packages (`kind="package"`).
     The distinction lets error messages emit the correct install command
-    (`/install daytona` vs. `/install acme-dcode-sandbox --package`).
+    (`/install daytona` vs. `/install acme-niki-sandbox --package`).
     """
 
     kind: Literal["extra", "package"]
@@ -29,12 +29,12 @@ class SandboxInstallHint:
 
         Args:
             in_app: Whether to render the in-app slash command (`/install`)
-                rather than the CLI command (`dcode install`).
+                rather than the CLI command (`niki install`).
 
         Returns:
             The install command string.
         """
-        prefix = "/install" if in_app else "dcode install"
+        prefix = "/install" if in_app else "niki install"
         suffix = " --package" if self.kind == "package" else ""
         return f"{prefix} {self.name}{suffix}"
 

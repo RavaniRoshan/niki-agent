@@ -1,4 +1,4 @@
-"""Deep Agents Code - Interactive AI coding assistant."""
+"""Niki Agent - Interactive AI coding assistant."""
 
 from __future__ import annotations
 

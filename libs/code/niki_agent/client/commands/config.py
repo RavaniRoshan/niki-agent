@@ -62,7 +62,7 @@ def setup_config_parser(
     make_help_action: Callable[[Callable[[], None]], type[argparse.Action]],
     add_output_args: Callable[..., None],
 ) -> None:
-    """Register the `dcode config` command group.
+    """Register the `niki config` command group.
 
     Args:
         subparsers: The `argparse` subparsers object from the top-level CLI
@@ -449,7 +449,7 @@ def _source_label(source: str, *, option: ConfigOption[object] | None = None) ->
 
 
 def _attribute_env_source(source: str) -> str:
-    """Append the dotenv path for an environment value loaded by dcode.
+    """Append the dotenv path for an environment value loaded by niki.
 
     Returns:
         The attributed source, or `source` when it was not dotenv-injected.
@@ -979,8 +979,8 @@ def _report_unknown_get_key(key: str, output_format: OutputFormat) -> int:
     else:
         print(  # noqa: T201
             f"Unknown config option or section: {key!r}. Run "
-            "`dcode config` to list keys, then "
-            "`dcode config get <key>` or `dcode config get <section>`.",
+            "`niki config` to list keys, then "
+            "`niki config get <key>` or `niki config get <section>`.",
             file=sys.stderr,
         )
     return 1

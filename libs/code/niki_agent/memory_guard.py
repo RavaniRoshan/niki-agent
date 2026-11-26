@@ -37,6 +37,7 @@ from langchain_core.messages import ToolMessage
 from niki_agent.onboarding import (
     _upsert_onboarding_name_memory,
     extract_onboarding_name_block,
+    normalize_onboarding_name_markers,
     strip_onboarding_name_markers,
 )
 
@@ -52,8 +53,8 @@ _GUARDED_TOOLS: frozenset[str] = frozenset({"write_file", "edit_file", "delete"}
 """Tool names whose calls can mutate a guarded file and must be inspected."""
 
 _REJECTION_MESSAGE = (
-    "The region between the `deepagents:onboarding-name:start` and "
-    "`deepagents:onboarding-name:end` markers in {path} is machine-managed and "
+    "The region between the `niki:onboarding-name:start` and "
+    "`niki:onboarding-name:end` markers in {path} is machine-managed and "
     "must not be edited. Your other changes to the file were kept, but the "
     "managed block was restored to its previous content. Do not modify content "
     "between those markers."
@@ -61,8 +62,8 @@ _REJECTION_MESSAGE = (
 """Error returned when a managed-block edit was reverted (`{path}` formatted in)."""
 
 _RESTORE_FAILED_MESSAGE = (
-    "The region between the `deepagents:onboarding-name:start` and "
-    "`deepagents:onboarding-name:end` markers in {path} is machine-managed and "
+    "The region between the `niki:onboarding-name:start` and "
+    "`niki:onboarding-name:end` markers in {path} is machine-managed and "
     "must not be edited. Your edit changed it and the previous content could "
     "not be restored, so the managed block may now be corrupted. Do not modify "
     "content between those markers, and do not rely on this edit having "
@@ -72,7 +73,7 @@ _RESTORE_FAILED_MESSAGE = (
 
 _DELETE_REJECTION_MESSAGE = (
     "The guarded memory file {path} contains a machine-managed region between "
-    "the `deepagents:onboarding-name:start` and `deepagents:onboarding-name:end` "
+    "the `niki:onboarding-name:start` and `niki:onboarding-name:end` "
     "markers and must not be deleted. Do not delete this file or a parent "
     "directory that contains it."
 )
@@ -327,8 +328,11 @@ class ManagedMemoryGuardMiddleware(AgentMiddleware):
                 )
                 return _RestoreOutcome.FAILED
             source = strip_onboarding_name_markers(source)
-        restored = _upsert_onboarding_name_memory(source, before_block)
-        if extract_onboarding_name_block(restored) != before_block:
+        # A region written under the pre-rename markers is rewritten with the
+        # current ones, migrating it in place while the block is restored.
+        restored_block = normalize_onboarding_name_markers(before_block)
+        restored = _upsert_onboarding_name_memory(source, restored_block)
+        if extract_onboarding_name_block(restored) != restored_block:
             logger.error(
                 "Restored content for %s did not reproduce the managed block; "
                 "leaving the edited file untouched",

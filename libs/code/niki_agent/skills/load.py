@@ -2,11 +2,11 @@
 
 This module provides filesystem-based skill discovery for CLI operations
 (list, create, info, delete). It wraps the prebuilt middleware functionality from
-deepagents.middleware.skills and adapts it for direct filesystem access
+the vendored skills middleware and adapts it for direct filesystem access
 needed by CLI commands.
 
 For middleware usage within agents, use
-deepagents.middleware.skills.SkillsMiddleware directly.
+the vendored skills middleware directly.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def list_skills(
 ) -> list[ExtendedSkillMetadata]:
     """List skills from built-in, user, and/or project directories.
 
-    This is a dcode-specific wrapper around the prebuilt middleware's skill loading
+    This is a niki-specific wrapper around the prebuilt middleware's skill loading
     functionality. It uses `FilesystemBackend` to load skills from local directories.
 
     Precedence order (lowest to highest):
@@ -66,7 +66,7 @@ def list_skills(
     1. `plugin_skill_sources`
     2. `user_skills_dir` (`~/.niki/{agent}/skills/`)
     3. `user_agent_skills_dir` (`~/.agents/skills/`)
-    4. `project_skills_dir` (`.niki/skills/`, legacy: `.deepagents/skills/`)
+    4. `project_skills_dir` (`.niki/skills/`, or the legacy `.deepagents/skills/`)
     5. `project_agent_skills_dir` (`.agents/skills/`)
     6. `user_claude_skills_dir` (`~/.claude/skills/`, experimental)
     7. `project_claude_skills_dir` (`.claude/skills/`, experimental)
@@ -77,7 +77,7 @@ def list_skills(
         built_in_skills_dir: Path to built-in skills shipped with the package.
         plugin_skill_sources: Plugin skill source directories with namespaces.
         user_skills_dir: Path to `~/.niki/{agent}/skills/`.
-        project_skills_dir: Path to `.niki/skills/`.
+        project_skills_dir: Path to `.niki/skills/` (legacy `.deepagents/skills/`).
         user_agent_skills_dir: Path to `~/.agents/skills/` (alias).
         project_agent_skills_dir: Path to `.agents/skills/` (alias).
         user_claude_skills_dir: Path to `~/.claude/skills/` (experimental).

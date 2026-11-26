@@ -6,8 +6,8 @@ authoritative flag list. This screen is the *key* reference: generated from
 `build_keymap`, so a key can only appear here if a mounted widget class actually
 binds it.
 
-The `niki` console script answers `--help` with this screen; `dcode` and
-`deepagents-code` keep the argparse screen while they remain as aliases.
+The `niki` console script answers `--help` with this screen; the module entry
+point (`python -m niki_agent`) keeps the argparse screen.
 
 This is also what closes K1: the footer, Help, and the generated keymap doc all
 read the same registry.

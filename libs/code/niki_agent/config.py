@@ -77,7 +77,7 @@ logger = logging.getLogger(__name__)
 # Lazy bootstrap: dotenv loading, LANGSMITH_PROJECT override, and start-path
 # detection are deferred until first access of `credentials` (via module
 # `__getattr__`).  This avoids disk I/O and path traversal during import for
-# callers that never touch credentials (e.g. `deepagents --help`).
+# callers that never touch credentials (e.g. `niki --help`).
 # ---------------------------------------------------------------------------
 
 
@@ -270,7 +270,7 @@ without checking which category it belongs to:
     attacker-controlled binary.
 - Git config/exec injection (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_OBJECT_DIRECTORY`,
     `GIT_EXEC_PATH`, `GIT_EDITOR`, `GIT_PAGER`, `GIT_SSH`, `GIT_SSH_COMMAND`):
-    `dcode` runs `git rev-parse`/`git status`/`git for-each-ref` during startup
+    `niki` runs `git rev-parse`/`git status`/`git for-each-ref` during startup
     local-context detection (`local_context.build_detect_script`), before any
     HITL approval. These keys redirect git's object store/exec path or hook its
     editor/pager/transport helpers into attacker-controlled binaries. The
@@ -414,13 +414,13 @@ setting. Choosing a classifier stays available through the trusted surfaces:
 shell exports, the global `~/.niki/.env`, `[models].auto_classifier` in
 `~/.niki/config.toml`, `--auto-classifier-model`, and `/auto model`.
 
-`FORKED_SUBAGENTS` controls whether dcode's built-in `general-purpose` subagent
+`FORKED_SUBAGENTS` controls whether niki's built-in `general-purpose` subagent
 uses fork mode. A cloned repository must not alter whether the subagent inherits
 the parent conversation and private state, so only the shell or global `.env`
 may set it.
 
 `LANGGRAPH_DEFAULT_RECURSION_LIMIT` controls the graph step budget whenever no
-Deep Agents override is configured. A project value would bypass the bounded
+Niki Agent override is configured. A project value would bypass the bounded
 `runtime.recursion_limit` resolver, so only the shell or global `.env` may set
 the upstream default.
 
@@ -904,7 +904,7 @@ def _load_dotenv(
 _TRACING_BRIDGED_ENABLE_ENV_VARS = ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2")
 """Tracing flags bootstrap propagates from a `NIKI_` prefix.
 
-`dcode doctor` runs before `_apply_prefixed_langsmith_env` bridges these to
+`niki doctor` runs before `_apply_prefixed_langsmith_env` bridges these to
 their canonical names, so it must resolve them prefix-aware (via
 `resolve_env_var`) to predict the runtime's effective state.
 
@@ -918,7 +918,7 @@ _PREFIXED_LANGSMITH_ENV_VARS = (
 )
 """LangSmith vars bridged from app-prefixed overrides to SDK names.
 
-Derived from `_TRACING_BRIDGED_ENABLE_ENV_VARS` so `dcode doctor`, which reads
+Derived from `_TRACING_BRIDGED_ENABLE_ENV_VARS` so `niki doctor`, which reads
 that tuple to predict the bridging, cannot disagree with the runtime.
 """
 
@@ -1126,7 +1126,7 @@ class _LangSmithProfileConfig(Protocol):
 
 
 _QUIET_SDK_LOGGER_NAMES = (
-    "deepagents.profiles.harness.harness_profiles",
+    "niki_agent.sdk.profiles.harness.harness_profiles",
     "genai-prices",
     "langchain",
     "langsmith",
@@ -1285,7 +1285,7 @@ def _quiet_sdk_logging() -> None:
     proxied session would otherwise get a stderr line over the TUI on every
     failed refresh. Route them to the debug log when
     `NIKI_DEBUG` is set, otherwise attach a `NullHandler` so they stay
-    off the terminal. Other Deep Agents loggers remain untouched so actionable
+    off the terminal. Other vendored SDK loggers remain untouched so actionable
     runtime warnings are still visible.
 
     The `mcp` hierarchy is handled differently: it gets no `NullHandler`, so its
@@ -1368,9 +1368,9 @@ def _build_orphaned_tracing_disabled_notice() -> str:
     if shutil.which("langsmith"):
         return (
             f"{base} Set LANGSMITH_API_KEY or run `langsmith auth login`, "
-            "then restart dcode."
+            "then restart niki."
         )
-    return f"{base} Set LANGSMITH_API_KEY, then restart dcode."
+    return f"{base} Set LANGSMITH_API_KEY, then restart niki."
 
 
 def consume_orphaned_tracing_disabled_notice() -> str | None:
@@ -1543,7 +1543,7 @@ def restore_user_langsmith_env(
 ) -> None:
     """Restore launch and project-dotenv LangSmith settings for user commands.
 
-    Precedence, highest first: the launch shell the user started `dcode` from,
+    Precedence, highest first: the launch shell the user started `niki` from,
     then the project `.env`. The global profile `.env` is deliberately excluded,
     because it configures the agent rather than the user's own commands.
 
@@ -2188,15 +2188,15 @@ Kept short so tracing metadata can never stall app flows.
 
 
 def _get_deepagents_version() -> str | None:
-    """Resolve the installed Deep Agents SDK version for diagnostics.
+    """Resolve the installed vendored SDK version for diagnostics.
 
     Editable installs can leave package metadata behind the source checkout, so
     this uses the shared resolver that prefers the editable source marker and
     appends an `+editable` suffix. A sibling monorepo workspace whose marker
-    trails dcode's exact pin reports the pinned release baseline instead.
+    trails niki's exact pin reports the pinned release baseline instead.
 
     Returns:
-        The resolved Deep Agents SDK version, or `None` when unavailable.
+        The resolved vendored SDK version, or `None` when unavailable.
     """
     # Imported lazily on purpose: `extras_info` pulls in `packaging`, which we
     # keep off `config`'s module-import path (the startup hot path). Do not
@@ -2235,9 +2235,10 @@ def _format_lc_version(base_version: str, *, editable: bool) -> str:
     # Imported lazily on purpose, for the same reason as `_get_deepagents_version`
     # above: this pulls in `packaging`, which we keep off `config`'s module-import
     # path (the startup hot path). Do not hoist this to the top of the module.
-    # Import from `extras_info` rather than `deepagents._version`: the SDK copy
-    # only exists in releases newer than the exact `deepagents` pin, and a
-    # PyPI-resolved SDK would raise `ImportError` here on every editable run.
+    # Import from `extras_info` rather than the vendored SDK's internal version
+    # module: the copy only exists in releases newer than the exact vendored-SDK
+    # pin, and a PyPI-resolved SDK would raise `ImportError` here on every
+    # editable run.
     from niki_agent.extras_info import _with_editable_local_version
 
     return _with_editable_local_version(base_version)
@@ -2579,7 +2580,7 @@ def build_coding_agent_metadata(
     Because Niki Agent is itself the runtime — there is no separate CLI
     package — `ls_integration_version` and `ls_agent_runtime_version` both come
     from the `niki-agent` package version (`__version__`). The underlying
-    `deepagents` SDK version is surfaced separately as
+    vendored SDK version is surfaced separately as
     `dcode_client_deepagents_version` by `build_stream_config`.
 
     Scope-restricted contract keys are intentionally NOT produced here:
@@ -2671,19 +2672,19 @@ def build_stream_config(
     rather than leaked. (Subagent runs still inherit the parent/root `thread_id`
     and all required keys, satisfying the contract's grouping rule.)
 
-    Also injects the dcode version into `metadata["lc_versions"]` so LangSmith
+    Also injects the niki version into `metadata["lc_versions"]` so LangSmith
     traces can be correlated with specific releases. `create_deep_agent` supplies
     the SDK version through the compiled graph config, and LangChain merges
     nested metadata dictionaries so both versions survive at stream time.
 
-    Also records `dcode_client_deepagents_version` as a dcode-client diagnostic.
-    This describes the Deep Agents package installed alongside the TUI, which
-    can differ from a remote graph's Deep Agents runtime version. Editable
+    Also records `dcode_client_deepagents_version` as a niki-client diagnostic.
+    This describes the vendored SDK package installed alongside the TUI, which
+    can differ from a remote graph's vendored SDK runtime version. Editable
     installs carry an `+editable` suffix, matching how the SDK stamps
     `lc_versions["deepagents"]`; for sibling monorepo packages that suffix
     identifies workspace HEAD relative to the pinned published SDK baseline.
 
-    Also records `editable` as an always-present boolean so editable dcode installs
+    Also records `editable` as an always-present boolean so editable niki installs
     can be filtered without parsing the `lc_versions["niki-agent"]` suffix.
 
     Also records `dcode_experimental=True` when `NIKI_EXPERIMENTAL`
@@ -2707,7 +2708,7 @@ def build_stream_config(
         thread_id: The app session thread identifier. Set both on
             `configurable.thread_id` and as the top-level `metadata.thread_id`
             used by the contract for grouping turns.
-        assistant_id: The dcode agent identifier, if any. When set, it is
+        assistant_id: The niki agent identifier, if any. When set, it is
             surfaced in trace metadata under `dcode_agent_name` and
             `agent_name`.
         sandbox_type: Sandbox provider name for trace metadata, or `None` if no
@@ -3054,7 +3055,7 @@ def _parse_retry_config(
             and provider not in known_providers
             and "param" not in raw
         ):
-            # Kept, not dropped: a provider dcode does not list can still be
+            # Kept, not dropped: a provider niki does not list can still be
             # the one the langchain registry builds, and discarding the table
             # would silently ignore a setting that does apply. Say that, rather
             # than claiming an override that never happens.
@@ -3162,7 +3163,7 @@ def _resolve_retry_param(
         model_kwargs: Constructor kwargs after all user overrides are merged.
 
     Returns:
-        The kwarg dcode will force to the provider's disable value, or `None`
+        The kwarg niki will force to the provider's disable value, or `None`
         when the provider's retry control cannot be identified.
     """
     from niki_agent.model_config import RETRY_PARAM_BY_PROVIDER
@@ -3222,7 +3223,7 @@ def _provider_retry_disable_kwargs(
             _warned_unknown_retry_providers.add(provider)
             logger.warning(
                 "No retry-disable kwarg known for provider %r, so its own SDK "
-                "retries stay active and may multiply dcode's retry attempts. "
+                "retries stay active and may multiply niki's retry attempts. "
                 "Set [retries.%s].param in config.toml to name the provider's "
                 "retry-count kwarg.",
                 provider,
@@ -3238,7 +3239,7 @@ def _provider_retry_disable_kwargs(
         and existing != disable_value
     ):
         logger.warning(
-            "Ignoring %s=%r for provider %r: dcode's model-node middleware owns "
+            "Ignoring %s=%r for provider %r: niki's model-node middleware owns "
             "the retry budget, so the provider's own retry loop is disabled. Use "
             "--max-retries or [retries.%s].max_retries to set the budget.",
             retry_param,
@@ -3252,7 +3253,7 @@ def _provider_retry_disable_kwargs(
 DEFAULT_MODEL_RETRIES = 5
 """Default model-node retry attempts after the first call when config is absent.
 
-Canonical source for the dcode retry default; `model_retry` re-exports it so the
+Canonical source for the niki retry default; `model_retry` re-exports it so the
 middleware and the config resolver never drift.
 """
 
@@ -3297,7 +3298,7 @@ def collect_retry_config_startup(
     provider: str | None = None,
     model_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[list[str], set[str]]:
-    """Return retry diagnostics and the retry kwarg dcode will force.
+    """Return retry diagnostics and the retry kwarg niki will force.
 
     Args:
         provider: Effective model provider, when it is already resolved.
@@ -3647,7 +3648,7 @@ class CredentialsSnapshot:
     """Google Cloud region for Anthropic models on Vertex AI."""
 
     deepagents_langchain_project: str | None
-    """LangSmith project name for deepagents agent tracing."""
+    """LangSmith project name for agent tracing."""
 
     user_langchain_project: str | None
     """Original `LANGSMITH_PROJECT` from environment (for user code)."""
@@ -4103,7 +4104,7 @@ class Credentials:
                 # silently changes credentials is the hard kind to debug.
                 carrier_notice = (
                     "Kept the current LangSmith settings: your launch settings "
-                    "could not be read (restart dcode if this persists)"
+                    "could not be read (restart niki if this persists)"
                 )
                 logger.warning("%s", carrier_notice)
             else:
@@ -4568,7 +4569,7 @@ def resolve_auto_classifier_model_with_problem() -> tuple[str | None, str | None
     `config.toml`, so it is detected before resolution rather than being skipped
     as unset the way the resolver treats every other option's blank env
     value. A managed value outranks that veto, so it is resolved first; a blank
-    managed value also forces inherit, credited to managed policy. `dcode
+    managed value also forces inherit, credited to managed policy. `niki
     config` shares this order via `resolve_auto_classifier_model_with_source`,
     so the two surfaces cannot disagree about which model grades gated actions.
 
@@ -4888,7 +4889,7 @@ def _get_langsmith_replica_projects_from(env: Mapping[str, str]) -> list[str]:
 def get_langsmith_replica_project() -> str | None:
     """The single extra LangSmith project to mirror agent runs to, if configured.
 
-    dcode agent runs execute inside the LangGraph server subprocess, so the only
+    niki agent runs execute inside the LangGraph server subprocess, so the only
     way to mirror them to another project is the server's own replica path: the
     SDK forwards a `langsmith_tracing` project in the run-create request, and the
     server wraps the run in a `tracing_context` whose write replicas are that
@@ -5170,7 +5171,7 @@ class TracingStatus:
     """Offline snapshot of LangSmith tracing configuration for diagnostics.
 
     Carries only presence/identity facts — never API keys or other secret
-    values — so it is safe to render in `dcode doctor` output.
+    values — so it is safe to render in `niki doctor` output.
     """
 
     enabled: bool
@@ -5203,7 +5204,7 @@ class TracingStatus:
         `enabled` and `explicitly_disabled` model a tri-state (enabled /
         explicitly disabled / not configured), so both being true is
         meaningless. Fail loud at construction rather than letting the illegal
-        state flow through to the `dcode doctor` renderer.
+        state flow through to the `niki doctor` renderer.
 
         Raises:
             ValueError: If both `enabled` and `explicitly_disabled` are true.
@@ -5219,7 +5220,7 @@ def get_tracing_status() -> TracingStatus:
     Reads only the local environment and the active LangSmith profile; never
     contacts the network and never exposes secret values. All fields are
     resolved prefix-/profile-aware so the report matches what the runtime does
-    after bootstrap, even though `dcode doctor` runs before it.
+    after bootstrap, even though `niki doctor` runs before it.
 
     Returns:
         A `TracingStatus` snapshot describing the current tracing setup.
@@ -6149,7 +6150,7 @@ def _apply_anthropic_thinking_binding(
 ) -> None:
     """Default Anthropic requests to drop thinking invalidated by a prefix edit.
 
-    dcode rewrites prompt prefixes between turns, which strands preserved
+    niki rewrites prompt prefixes between turns, which strands preserved
     thinking blocks that the provider bound to the prefix it saw last.
     `drop_block` discards those blocks; the alternative, `error`, would fail the
     turn.
@@ -6473,7 +6474,7 @@ class ModelResult:
 
         `cli_max_retries` gets the same gate. It is the field that carries the
         explicit flag onward to a re-resolution for a different provider, and
-        it was the one budget field in dcode without the check -- which is the
+        it was the one budget field in niki without the check -- which is the
         argument for a single validated budget type rather than a ninth copy of
         this predicate.
 
@@ -6582,16 +6583,16 @@ def create_model(
             except that provider-owned retry loops are disabled when known.
 
             The provider's own retry-count kwarg (`RETRY_PARAM_BY_PROVIDER`,
-            usually `max_retries`) is forced off after this merge whenever dcode
+            usually `max_retries`) is forced off after this merge whenever niki
             can identify it, because the model-node middleware owns the retry
             budget and nested SDK retries would multiply its attempts. Supplying
             that kwarg here logs a warning; use `--max-retries` or `[retries]`
-            instead. A provider dcode cannot identify (absent from the registry,
+            instead. A provider niki cannot identify (absent from the registry,
             no `[retries.<provider>].param`, and no `max_retries` already in the
             kwargs) keeps its own retry loop and logs a warning saying so.
         profile_overrides: Extra profile fields from `--profile-override`.
 
-            Merged on top of config file profile overrides (dcode wins).
+            Merged on top of config file profile overrides (niki wins).
         cli_max_retries: Explicit `--max-retries` value. When absent, the
             provider-specific or global config value applies.
         bind_preserved_thinking: Whether to apply the Anthropic
@@ -6789,7 +6790,7 @@ def create_model(
     if bind_preserved_thinking:
         _apply_anthropic_thinking_binding(provider, model_name, kwargs)
 
-    # dcode's model-node middleware owns the user-visible retry budget. Resolve
+    # niki's model-node middleware owns the user-visible retry budget. Resolve
     # that budget separately, then force the provider's own retry loop off so
     # nested SDK retries cannot multiply the configured attempt count.
     if cli_max_retries is not None and (
@@ -6934,7 +6935,7 @@ def create_model(
 
 
 def validate_model_capabilities(model: BaseChatModel, model_name: str) -> None:
-    """Validate that the model has required capabilities for `deepagents`.
+    """Validate that the model has required capabilities for the vendored SDK.
 
     Checks the model's profile (if available) to ensure it supports tool calling, which
     is required for agent functionality. Issues warnings for models without profiles or
@@ -6971,7 +6972,7 @@ def validate_model_capabilities(model: BaseChatModel, model_name: str) -> None:
             "does not support tool calling."
         )
         console.print(
-            "\nDeep Agents requires tool calling for agent functionality. "
+            "\nNiki Agent requires tool calling for agent functionality. "
             "Please choose a model that supports tool calling."
         )
         console.print("\nSee MODELS.md for supported models.")

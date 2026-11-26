@@ -1,4 +1,4 @@
-"""Skills module for Deep Agents Code.
+"""Skills module for Niki Agent.
 
 Public API:
 - execute_skills_command: Execute skills subcommands (list/create/info/delete)

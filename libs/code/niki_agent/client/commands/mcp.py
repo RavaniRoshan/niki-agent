@@ -31,7 +31,7 @@ def setup_mcp_parsers(
     *,
     make_help_action: Callable[[Callable[[], None]], type[argparse.Action]],
 ) -> None:
-    """Register the `dcode mcp` command group.
+    """Register the `niki mcp` command group.
 
     Args:
         subparsers: The `argparse` subparsers object from the top-level CLI
@@ -212,7 +212,7 @@ async def run_mcp_login_list(*, config_path: str | None) -> int:
 # keyword-only signature, async behavior, and integer exit-code contract stable
 # unless `deepagents-talon` is migrated in the same change.
 async def run_mcp_login(*, server: str, config_path: str | None) -> int:
-    """Handle `dcode mcp login <server>`.
+    """Handle `niki mcp login <server>`.
 
     When `config_path` is omitted, auto-discovered MCP configs are merged in
     the same precedence order as the runtime loader, with matching trust
@@ -282,7 +282,7 @@ async def run_mcp_login(*, server: str, config_path: str | None) -> int:
         print(  # noqa: T201
             f"Login failed: cannot write to the MCP tokens store ({exc}). "
             f"Check permissions on {token_store_display} and "
-            f"retry `dcode mcp login {selection.server_name}`.",
+            f"retry `niki mcp login {selection.server_name}`.",
             file=sys.stderr,
         )
         return 1
@@ -303,7 +303,7 @@ async def run_mcp_login(*, server: str, config_path: str | None) -> int:
 
 
 def run_mcp_config() -> int:
-    """Handle `dcode mcp config`.
+    """Handle `niki mcp config`.
 
     Prints the MCP config discovery paths in precedence order with a
     marker showing which exist on disk. Stat-only; never opens config
@@ -363,7 +363,7 @@ def run_mcp_config() -> int:
     )
     console.print(
         "Override via `--mcp-config <path>` at the top level or on "
-        "`dcode mcp login <server>`.",
+        "`niki mcp login <server>`.",
         highlight=False,
     )
     return 0

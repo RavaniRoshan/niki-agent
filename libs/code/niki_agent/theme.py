@@ -506,7 +506,7 @@ def _builtin_names() -> frozenset[str]:
     rather than creating a new theme. Derived from `_builtin_themes()` so the
     set stays in sync automatically. Lazy because `_builtin_themes()` imports
     `textual.theme.BUILTIN_THEMES`, and we don't want to pull Textual onto the
-    `deepagents --help` / `deepagents -v` cold-start path.
+    `niki --help` / `niki -v` cold-start path.
 
     Returns:
         Frozen set of built-in theme names.
@@ -738,7 +738,7 @@ def _build_registry(
 def get_registry() -> MappingProxyType[str, ThemeEntry]:
     """Return the read-only theme registry, building it on first access.
 
-    Lazy so that `theme.py` can be imported on the `deepagents --help` cold
+    Lazy so that `theme.py` can be imported on the `niki --help` cold
     path without pulling in `textual.theme.BUILTIN_THEMES` (which transitively
     imports Textual, ~470ms). Inside a Textual app, the build is microseconds
     because Textual is already loaded; callers like `_register_custom_themes()`

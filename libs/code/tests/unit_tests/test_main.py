@@ -194,7 +194,7 @@ class TestStartupAutoUpdate:
         restart.assert_not_called()
         mark_failed.assert_not_called()
         printed = " ".join(str(c.args[0]) for c in console.print.call_args_list)
-        assert "Another dcode session is updating to v9.9.9" in printed
+        assert "Another niki session is updating to v9.9.9" in printed
 
     def test_install_runs_while_holding_the_update_lock(self) -> None:
         """The install itself must be inside the lock, not merely after a check.

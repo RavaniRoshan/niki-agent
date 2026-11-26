@@ -123,7 +123,7 @@ class CodexAuthStatus:
 def default_store_path() -> Path:
     """Return the ChatGPT OAuth token store path.
 
-    Stored under Deep Agents' own state dir
+    Stored under the agent's own state dir
     (`~/.niki/.state/chatgpt-auth.json`) so the credential lives
     alongside the rest of the app's state rather than in `langchain_openai`'s
     default `~/.langchain`.

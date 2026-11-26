@@ -442,7 +442,7 @@ class TestStoredCredentials:
 
     @pytest.fixture(autouse=True)
     def _clear_dotenv_prefixed_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Strip `NIKI_*` keys preloaded from `~/.deepagents/.env`.
+        """Strip `NIKI_*` keys preloaded from `~/.niki/.env`.
 
         `dotenv.load_dotenv()` runs at config-import time and may inject
         prefixed variants that win over `monkeypatch.setenv` in
@@ -1065,7 +1065,7 @@ class TestSplitCredentialSource:
 
         `dotenv.load_dotenv()` runs during the first credentials access and may
         inject prefixed variants from a developer's
-        `~/.deepagents/.env` that would otherwise leak into these assertions.
+        `~/.niki/.env` that would otherwise leak into these assertions.
         """
         for var in (
             "OPENAI_API_KEY",

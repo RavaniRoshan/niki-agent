@@ -257,7 +257,7 @@ def _history_retention_days() -> int:
 
     Uses the canonical `history.retention_days` option, so managed config, the
     `NIKI_HISTORY_RETENTION_DAYS` env var, and `config.toml` all
-    apply with their normal precedence, and `dcode config` reports the same
+    apply with their normal precedence, and `niki config` reports the same
     value the sweep acts on. A malformed or negative value is rejected by the
     resolver and falls through to the next source, ending at the default.
 

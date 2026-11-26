@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import importlib.util
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,7 +17,17 @@ if TYPE_CHECKING:
 
     from niki_agent.plugins.models import PluginInstance
 
-ENTRY_POINT_GROUP = "dcode.extensions"
+logger = logging.getLogger(__name__)
+
+ENTRY_POINT_GROUP = "niki.extensions"
+
+LEGACY_ENTRY_POINT_GROUP = "dcode.extensions"
+"""Entry-point group declared before the product rename.
+
+Installed distributions that have not re-declared their extensions yet are
+still discovered through this group; each one is named in a single
+`INFO` deprecation line so its author can move to `ENTRY_POINT_GROUP`.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,14 +154,25 @@ def _entry_point_sources() -> DiscoveryResult:
     sources: list[SourceInfo] = []
     errors: list[str] = []
     try:
-        entries = sorted(
-            importlib.metadata.entry_points(group=ENTRY_POINT_GROUP),
-            key=lambda entry: (entry.name, entry.value),
-        )
+        current = list(importlib.metadata.entry_points(group=ENTRY_POINT_GROUP))
+        legacy = list(importlib.metadata.entry_points(group=LEGACY_ENTRY_POINT_GROUP))
     except (ImportError, OSError, ValueError) as exc:
         msg = f"Could not enumerate extension entry points: {exc}"
         return DiscoveryResult(errors=(msg,))
-    for entry in entries:
+
+    ordered = sorted(
+        [(entry, False) for entry in current] + [(entry, True) for entry in legacy],
+        key=lambda item: (item[0].name, item[0].value, item[1]),
+    )
+    seen: set[tuple[str, str]] = set()
+    reported: set[str] = set()
+    for entry, is_legacy in ordered:
+        identity = (entry.name, entry.value)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if is_legacy:
+            _log_legacy_entry_point(entry, reported)
         try:
             sources.append(_entry_point_source(entry))
         except (ImportError, OSError, ValueError) as exc:
@@ -158,6 +180,28 @@ def _entry_point_sources() -> DiscoveryResult:
                 f"Could not resolve extension entry point {entry.name}: {exc}"
             )
     return DiscoveryResult(tuple(sources), tuple(errors))
+
+
+def _log_legacy_entry_point(
+    entry: importlib.metadata.EntryPoint, reported: set[str]
+) -> None:
+    """Log the legacy-group deprecation once per distribution.
+
+    Args:
+        entry: An entry point found under `LEGACY_ENTRY_POINT_GROUP`.
+        reported: Distributions already named in this scan; mutated in place.
+    """
+    distribution = entry.dist.name if entry.dist is not None else entry.value
+    if distribution in reported:
+        return
+    reported.add(distribution)
+    logger.info(
+        "Extension entry point group %r is deprecated; distribution %r should "
+        "declare its extensions in %r",
+        LEGACY_ENTRY_POINT_GROUP,
+        distribution,
+        ENTRY_POINT_GROUP,
+    )
 
 
 def _deduplicate(sources: Iterable[SourceInfo]) -> tuple[SourceInfo, ...]:

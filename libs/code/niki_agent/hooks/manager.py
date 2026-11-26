@@ -424,10 +424,10 @@ class HooksManager:
         *,
         title: str | None = None,
     ) -> None:
-        """Run `Notification` for one supported dcode notification.
+        """Run `Notification` for one supported niki notification.
 
         Args:
-            kind: Supported dcode notification kind.
+            kind: Supported niki notification kind.
             message: User-facing notification text.
             title: Optional notification title.
 

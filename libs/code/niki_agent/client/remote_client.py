@@ -430,7 +430,7 @@ class RemoteAgent:
             else:
                 response = await self._stream_btw(path, payload, on_text)
         except NotFoundError as exc:
-            msg = "This server does not support /btw. Update the built-in dcode server."
+            msg = "This server does not support /btw. Update the built-in niki server."
             raise RuntimeError(msg) from exc
         text = response.get("text") if isinstance(response, dict) else None
         cost = response.get("cost") if isinstance(response, dict) else None
@@ -604,12 +604,12 @@ class RemoteAgent:
                 # The route itself is missing. An unregistered thread cannot
                 # reach here as a 404: the server catches that and answers 409
                 # with its own message. A custom `graph_ref` server, or one
-                # older than this operation, never registers the dcode HTTP app,
+                # older than this operation, never registers the niki HTTP app,
                 # and the SDK's bare "404 Not Found" names neither the cause nor
                 # a fix.
                 msg = (
-                    f"This server does not provide dcode's /{operation} operation. "
-                    "Use the built-in dcode server, or upgrade the server to a "
+                    f"This server does not provide niki's /{operation} operation. "
+                    "Use the built-in niki server, or upgrade the server to a "
                     "version that registers it."
                 )
                 raise RuntimeError(msg) from exc

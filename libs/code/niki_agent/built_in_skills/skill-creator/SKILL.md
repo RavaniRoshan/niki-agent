@@ -7,16 +7,16 @@ compatibility: designed for niki-agent
 
 # Skill Creator
 
-### Skill Location for Deep Agents Code
+### Skill Location for Niki Agent
 
-Deep Agents Code loads skills from five sources, listed here from lowest to highest precedence:
+Niki Agent loads skills from five sources, listed here from lowest to highest precedence:
 
 | # | Directory | Scope | Notes |
 |---|-----------|-------|-------|
-| 0 | `<package>/built_in_skills/` | Built-in | Ships with Deep Agents Code |
-| 1 | `$NIKI_HOME/<agent>/skills/` | User (deepagents alias) | Default for `dcode skills create` |
+| 0 | `<package>/built_in_skills/` | Built-in | Ships with Niki Agent |
+| 1 | `$NIKI_HOME/<agent>/skills/` | User | Default for `niki skills create` |
 | 2 | `~/.agents/skills/` | User | Shared across agent tools |
-| 3 | `.niki/skills/` | Project | Default for `dcode skills create --project` (legacy: `.deepagents/skills/`) |
+| 3 | `.niki/skills/` | Project | Default for `niki skills create --project` (legacy: `.deepagents/skills/`) |
 | 4 | `.agents/skills/` | Project | Shared across agent tools |
 
 `<agent>` is the agent configuration name (default: `agent`). When two directories contain a skill with the same name, the higher-precedence version wins — project skills override user skills, and any user or project skill overrides built-in skills.
@@ -284,11 +284,11 @@ Usage:
 scripts/init_skill.py <skill-name> --path <output-directory>
 ```
 
-For Deep Agents Code, use any of the skill directories listed in "Skill Location for Deep Agents Code" above:
+For Niki Agent, use any of the skill directories listed in "Skill Location for Niki Agent" above:
 
 ```bash
 # User skills (default)
-scripts/init_skill.py <skill-name> --path "${NIKI_HOME:-$HOME/.deepagents}/agent/skills"
+scripts/init_skill.py <skill-name> --path "${NIKI_HOME:-$HOME/.niki}/agent/skills"
 
 # Project skills
 scripts/init_skill.py <skill-name> --path .niki/skills
@@ -303,19 +303,19 @@ The script:
 
 After initialization, customize or remove the generated SKILL.md and example files as needed.
 
-#### Option B: `dcode skills create` (quick start)
+#### Option B: `niki skills create` (quick start)
 
 The built-in CLI command creates a minimal skill with just a `SKILL.md` template — no resource directories. Use this for simple skills that only need instructions and no bundled scripts, references, or assets.
 
 ```bash
 # Create in user skills directory
-dcode skills create <skill-name>
+niki skills create <skill-name>
 
 # Create in project skills directory
-dcode skills create <skill-name> --project
+niki skills create <skill-name> --project
 ```
 
-Use `init_skill.py` when the skill will include bundled resources (`scripts/`, `references/`, `assets/`). Use `dcode skills create` for a quick, minimal starting point.
+Use `init_skill.py` when the skill will include bundled resources (`scripts/`, `references/`, `assets/`). Use `niki skills create` for a quick, minimal starting point.
 
 ### Step 4: Edit the Skill
 

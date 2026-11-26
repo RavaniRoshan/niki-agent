@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from niki_agent.onboarding import (
+    LEGACY_ONBOARDING_NAME_MEMORY_END,
+    LEGACY_ONBOARDING_NAME_MEMORY_START,
     ONBOARDING_MARKER_FILENAME,
     ONBOARDING_NAME_MEMORY_END,
     ONBOARDING_NAME_MEMORY_START,
@@ -90,16 +92,16 @@ class TestOnboardingState:
     def test_default_marker_path_lives_under_state_dir(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """The default marker path resolves under `~/.deepagents/.state/`.
+        """The default marker path resolves under `~/.niki/.state/`.
 
         Pins the convention introduced when CLI internal state was moved out
         of the user-facing config directory. A regression that pointed the
-        marker back at `~/.deepagents/` would silently re-pollute the agent
+        marker back at `~/.niki/` would silently re-pollute the agent
         listing surface.
         """
         from niki_agent import onboarding as onboarding_module
 
-        fake_state_dir = tmp_path / ".deepagents" / ".state"
+        fake_state_dir = tmp_path / ".niki" / ".state"
         monkeypatch.setattr(onboarding_module, "DEFAULT_STATE_DIR", fake_state_dir)
 
         path = onboarding_marker_path()
@@ -195,6 +197,54 @@ class TestExtractOnboardingNameBlock:
         text = f"{block}\n\nUnrelated note after the block.\n"
 
         assert extract_onboarding_name_block(text) == block
+
+
+class TestOnboardingNameMemoryMarkers:
+    """Managed-block markers carry the product name, with a legacy read."""
+
+    def test_current_markers_use_the_product_namespace(self) -> None:
+        assert ONBOARDING_NAME_MEMORY_START == "<!-- niki:onboarding-name:start -->"
+        assert ONBOARDING_NAME_MEMORY_END == "<!-- niki:onboarding-name:end -->"
+
+    def test_legacy_block_is_recognised_on_read(self) -> None:
+        """A block written under the pre-rename markers is still extracted."""
+        block = (
+            f"{LEGACY_ONBOARDING_NAME_MEMORY_START}\n"
+            '- The user\'s preferred name is "Ada".\n'
+            f"{LEGACY_ONBOARDING_NAME_MEMORY_END}"
+        )
+
+        assert extract_onboarding_name_block(f"## User Preferences\n\n{block}\n") == (
+            block
+        )
+
+    def test_rewrite_migrates_a_legacy_region_in_place(self, tmp_path: Path) -> None:
+        """Re-writing the name replaces the legacy region with current markers."""
+        memory_path = tmp_path / "agent" / "AGENTS.md"
+        memory_path.parent.mkdir(parents=True)
+        memory_path.write_text(
+            "Existing notes\n\n"
+            f"{LEGACY_ONBOARDING_NAME_MEMORY_START}\n"
+            "- The user's preferred name is Ada.\n"
+            f"{LEGACY_ONBOARDING_NAME_MEMORY_END}\n\n"
+            "Keep this note.\n",
+            encoding="utf-8",
+        )
+
+        assert (
+            write_onboarding_name_memory(
+                "Grace Hopper", "agent", memory_path=memory_path
+            )
+            is True
+        )
+
+        content = memory_path.read_text(encoding="utf-8")
+        assert LEGACY_ONBOARDING_NAME_MEMORY_START not in content
+        assert LEGACY_ONBOARDING_NAME_MEMORY_END not in content
+        assert content.count(ONBOARDING_NAME_MEMORY_START) == 1
+        assert '- The user\'s preferred name is "Grace Hopper".' in content
+        assert "Existing notes" in content
+        assert "Keep this note." in content
 
 
 class TestOnboardingSkipsReservedAgents:

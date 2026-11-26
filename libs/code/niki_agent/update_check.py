@@ -67,7 +67,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 CACHE_FILE: Path = DEFAULT_STATE_DIR / "latest_version.json"
-"""On-disk cache of the latest published dcode/SDK versions and SDK release times.
+"""On-disk cache of the latest published niki/SDK versions and SDK release times.
 
 Populated by `get_latest_version`; reads short-circuit on the cached payload
 when it is younger than `CACHE_TTL`. SDK upload timestamps are stored under
@@ -75,7 +75,7 @@ when it is younger than `CACHE_TTL`. SDK upload timestamps are stored under
 """
 
 UPDATE_LOCK_FILE: Path = PATHS.installation.locks_dir / "update.lock"
-"""Advisory lock file serializing dcode self-upgrades across processes.
+"""Advisory lock file serializing niki self-upgrades across processes.
 
 Held for the duration of an install by whichever process is upgrading, so
 several concurrently launched terminals do not each run their own
@@ -158,7 +158,7 @@ _UV_TARGETED_PRERELEASE_STRATEGY: UvPrereleaseStrategy = "if-necessary-or-explic
 Unlike the global `allow` strategy, `if-necessary-or-explicit` only admits a
 pre-release when a constraint pins it exactly (explicit) or no stable release
 can satisfy the requirement (if-necessary). Combined with a constraints file
-listing the exact SDK pin, it lets a stable dcode target install its required
+listing the exact SDK pin, it lets a stable niki target install its required
 pre-release dependency without widening the candidate set for unrelated
 optional providers — the bug behind #4524, where a global `allow` pulled in an
 unbuildable `litellm` RC.
@@ -203,7 +203,7 @@ _UPGRADE_COMMANDS: dict[InstallMethod, str] = {
 `perform_upgrade` runs only the command matching the detected install method;
 no fallback chain. Unknown non-editable installs are refused rather than
 upgraded with a different package manager, because that can update a separate
-environment from the one currently providing `dcode`.
+environment from the one currently providing `niki`.
 """
 
 _UV_PRERELEASE_UPGRADE_COMMAND = f"{FALLBACK_UPGRADE_COMMAND} --prerelease allow"
@@ -532,7 +532,7 @@ def _canonical_prerelease_pin(raw: object) -> str | None:
 
     Marker-bearing pins are intentionally out of the supported contract: the uv
     tool receipt may target a different interpreter than the one currently
-    running dcode, so evaluating `python_version`/`sys_platform` markers here
+    running niki, so evaluating `python_version`/`sys_platform` markers here
     could resolve them against the wrong environment. Rather than guess, the
     initial contract is limited to unconditional exact pins (which covers the
     real-world `deepagents==0.7.0a7` SDK pin); widening it later must evaluate
@@ -1101,7 +1101,7 @@ def is_installation_stale() -> bool:
 def get_sdk_release_time(
     version: str | None, *, bypass_cache: bool = False
 ) -> str | None:
-    """Return the ISO-8601 upload time for `deepagents` SDK `version`.
+    """Return the ISO-8601 upload time for the vendored SDK `version`.
 
     Reads from `CACHE_FILE` under `sdk_release_times`, falling back to a
     single PyPI fetch on cache miss and writing the result back so
@@ -1562,7 +1562,7 @@ _DEPENDENCY_REFRESH_UNSUPPORTED: dict[InstallMethod, str] = {
     ),
     "other": (
         "Unsupported install method detected — cannot refresh dependencies "
-        "without knowing which environment provides `dcode`."
+        "without knowing which environment provides `niki`."
     ),
 }
 """Why each non-uv install method can't do a dependency-only refresh."""
@@ -1643,10 +1643,10 @@ def _upgraded_entry_point(upgraded_bin_dir: Path, name: str) -> Path:
 
 @dataclass(frozen=True)
 class ShadowedDcode:
-    """A different dcode entry point is winning on PATH than the one we upgraded.
+    """A different niki entry point is winning on PATH than the one we upgraded.
 
     Returned by `detect_shadowed_dcode` after a successful upgrade so the user
-    can be warned that a *manually* launched `dcode` will pick up the wrong
+    can be warned that a *manually* launched `niki` will pick up the wrong
     binary. The startup auto-update's own restart is unaffected: it re-execs
     `upgraded_bin` directly rather than going through a `PATH` lookup. The most
     common cause is a pre-uv install (e.g. a leftover from a previous
@@ -1660,8 +1660,8 @@ class ShadowedDcode:
     """
 
     shadowing_bin: Path
-    """Absolute path to the `dcode` (or `niki-agent`) binary the user's
-    `PATH` currently resolves first — the file their next `dcode` will run.
+    """Absolute path to the `niki` (or `niki-agent`) binary the user's
+    `PATH` currently resolves first — the file their next `niki` will run.
 
     Reported as the un-followed `shutil.which` result rather than its symlink
     target, since that's the file the user needs to either delete or demote
@@ -1715,7 +1715,7 @@ class ShadowedDcode:
 
 
 def _uv_tool_bin_dir() -> Path | None:
-    """Return the bin directory uv installed the running `dcode` shim into.
+    """Return the bin directory uv installed the running `niki` shim into.
 
     Mirrors uv's documented executable-directory precedence so a custom
     layout (e.g. `XDG_BIN_HOME` set on Linux) is compared against the same
@@ -1828,11 +1828,11 @@ def _resolves_to_upgraded_entry_point(
 
 
 def detect_shadowed_dcode() -> ShadowedDcode | None:
-    """Return the shadowing dcode entry point on the user's PATH, if any.
+    """Return the shadowing niki entry point on the user's PATH, if any.
 
     After a successful `uv tool upgrade`, the upgraded binary only takes effect
     on the next manual launch if the user's `PATH` resolves to uv's tool bin dir
-    for `dcode` (and `niki-agent`) — or to a link into it, which the
+    for `niki` (and `niki-agent`) — or to a link into it, which the
     resolved-target check below also accepts. A pre-uv install earlier on `PATH`
     will silently win and report the old version, which looks like "the upgrade
     didn't work" to the user.
@@ -1843,7 +1843,7 @@ def detect_shadowed_dcode() -> ShadowedDcode | None:
 
     The primary comparison is between *directories* rather than resolved
     symlink targets (see the inline note below for why), but a directory
-    mismatch alone would misreport a `dcode` symlink that lives in an
+    mismatch alone would misreport a `niki` symlink that lives in an
     unrelated bin dir and points *into* the upgraded tool venv (e.g. a
     manually-created convenience symlink, or a package manager that
     re-exposes uv's shim). Those launches do run the upgraded entry point, so
@@ -1863,14 +1863,14 @@ def detect_shadowed_dcode() -> ShadowedDcode | None:
         return None
     # Check every supported entry point. One healthy command name does not
     # prove another command name cannot still be shadowed earlier on PATH.
-    for name in ("dcode", "niki-agent"):
+    for name in ("niki", "niki-agent"):
         resolved = shutil.which(name)
         if resolved is None:
             continue
         # Compare the *PATH-entry directory* against uv's bin dir, NOT the
         # symlink target. uv exposes its tool entry points as symlinks under
-        # the user's bin dir (e.g. `~/.local/bin/dcode` -> the tool venv at
-        # `~/.local/share/uv/tools/niki-agent/bin/dcode`). Following the
+        # the user's bin dir (e.g. `~/.local/bin/niki` -> the tool venv at
+        # `~/.local/share/uv/tools/niki-agent/bin/niki`). Following the
         # link would make every healthy uv install look shadowed, because the
         # resolved parent is the tool venv's bin dir rather than the
         # PATH-visible one. Take the parent of the un-followed `which`
@@ -1939,7 +1939,7 @@ def detect_shadowed_dcode_safe() -> ShadowedDcode | None:
 
 
 def format_shadowed_dcode_warning(shadow: ShadowedDcode) -> str:
-    """Render a user-facing warning for a shadowed-dcode situation.
+    """Render a user-facing warning for a shadowed-niki situation.
 
     Shared by the `/update` slash command, the update-notification "Install
     now" action, and the pre-launch auto-update path so the wording stays
@@ -1956,15 +1956,15 @@ def format_shadowed_dcode_warning(shadow: ShadowedDcode) -> str:
     fix_command = format_shadowed_dcode_fix_command(shadow)
     indented_command = fix_command.replace("\n", "\n  ")
     return (
-        "Update installed, but another `dcode` is earlier on your PATH and "
+        "Update installed, but another `niki` is earlier on your PATH and "
         "will run the old version the next time you launch it yourself:\n"
         f"  Shadowing binary: {shadow.shadowing_bin}\n"
         f"  Upgraded shim:    {shadow.upgraded_bin}\n"
-        "After closing dcode, run this to make the upgraded shim win in this "
+        "After closing niki, run this to make the upgraded shim win in this "
         "terminal:\n"
         f"  {indented_command}\n"
-        "Then relaunch dcode. To make the fix permanent, add the PATH change "
-        "to your shell profile, or uninstall the older dcode if you no longer "
+        "Then relaunch niki. To make the fix permanent, add the PATH change "
+        "to your shell profile, or uninstall the older niki if you no longer "
         "need it."
     )
 
@@ -2285,7 +2285,7 @@ _UPDATE_INSTALL_THREAD_LOCK = threading.Lock()
 """Process-local half of `update_install_lock`.
 
 `update_install_lock` builds a fresh `FileLock(thread_local=False)` per call, so
-the cross-process lock alone would not stop two threads in one dcode process
+the cross-process lock alone would not stop two threads in one niki process
 from both entering the install. This guarantees a single in-process holder,
 independent of the filelock backend's cross-thread behavior.
 
@@ -2351,7 +2351,7 @@ _WARNED_LOCK_UNAVAILABLE = False
 """Whether the "no update lock" warning already reached stderr this process."""
 
 UPDATE_LOCK_CONTENDED_MESSAGE = (
-    "Another dcode update or install is already running. "
+    "Another niki update or install is already running. "
     "Wait for it to finish, then try again."
 )
 """Refusal shown when `update_install_lock` is held by another process.
@@ -2363,9 +2363,9 @@ wording no matter which command lost the race.
 
 @contextmanager
 def update_install_lock() -> Iterator[bool]:
-    """Try to claim the exclusive right to self-upgrade dcode.
+    """Try to claim the exclusive right to self-upgrade niki.
 
-    Startup auto-update, `dcode update`, `/update`, and the update notification
+    Startup auto-update, `niki update`, `/update`, and the update notification
     all replace the same installed package, so concurrently launched terminals
     would otherwise each run their own install against one tool environment.
     Whichever process wins the lock performs the upgrade; the rest keep running
@@ -2428,7 +2428,7 @@ def update_install_lock() -> Iterator[bool]:
             message = (
                 "Proceeding without the update lock; could not create "
                 f"{UPDATE_LOCK_FILE.parent} or "
-                f"{FALLBACK_UPDATE_LOCK_FILE.parent}. Concurrent dcode "
+                f"{FALLBACK_UPDATE_LOCK_FILE.parent}. Concurrent niki "
                 "upgrades will not be serialized."
             )
             global _WARNED_LOCK_UNAVAILABLE  # noqa: PLW0603  # once per process
@@ -2459,7 +2459,7 @@ def update_install_lock() -> Iterator[bool]:
                 # — the concurrent double-install this lock exists to prevent.
                 except Timeout:
                     logger.info(
-                        "Skipping update install; %s is held by another dcode process",
+                        "Skipping update install; %s is held by another niki process",
                         lock_file,
                     )
                     yield False
@@ -2489,7 +2489,7 @@ def update_install_lock() -> Iterator[bool]:
                     logger.warning(
                         "Failed to release the update lock at %s; further update "
                         "attempts in this session may report a concurrent install "
-                        "until dcode is restarted",
+                        "until niki is restarted",
                         file_lock.lock_file,
                         exc_info=True,
                     )
@@ -2517,7 +2517,7 @@ async def perform_upgrade(
             release's dependency metadata. Pre-release upgrades require the uv
             install method; returns failure otherwise.
         target_version: Release version being installed, used to detect stable
-            dcode releases that intentionally depend on pre-release packages.
+            niki releases that intentionally depend on pre-release packages.
 
     Returns:
         `(success, output, installed_version)` — *output* is the combined
@@ -2544,21 +2544,21 @@ async def perform_upgrade(
             False,
             (
                 "Unsupported install method detected — cannot auto-update without "
-                "knowing which environment provides `dcode`. Reinstall with "
+                "knowing which environment provides `niki`. Reinstall with "
                 "`uv tool install -U niki-agent` or upgrade with the package "
                 "manager originally used for this install."
             ),
             None,
         )
     resolved_include_prereleases = _resolve_include_prereleases(include_prereleases)
-    # Targeted pre-release admission: a *stable* dcode target that mandates an
+    # Targeted pre-release admission: a *stable* niki target that mandates an
     # exact pre-release dependency (e.g. `deepagents==0.7.0a7`). Rather than opt
     # the whole resolution into pre-releases with a global `--prerelease allow`
     # — which let an unrelated optional provider float to an unbuildable RC in
     # #4524 — pin that dependency in a uv constraints file and use the scoped
     # `if-necessary-or-explicit` strategy so only the named pre-release is
     # admitted. Kept separate from the explicit pre-release *channel* below,
-    # where the user deliberately follows dcode's own pre-release feed.
+    # where the user deliberately follows niki's own pre-release feed.
     targeted_pins: list[str] = []
     pin_target_version: str | None = None
     if not resolved_include_prereleases and include_prereleases is None:
@@ -2698,7 +2698,7 @@ async def perform_upgrade(
             ):
                 detail = (
                     f"v{target_version} is still propagating to the package index; "
-                    f"dcode remains on v{installed_version}. "
+                    f"niki remains on v{installed_version}. "
                     "Try again in a few minutes."
                 )
                 return False, detail, None
@@ -3417,7 +3417,7 @@ def upgrade_install_command(
     constraints_path: Path | None = None,
     prerelease_strategy: UvPrereleaseStrategy | None = None,
 ) -> str:
-    """Return the uv command that upgrades dcode while clearing stale pins.
+    """Return the uv command that upgrades niki while clearing stale pins.
 
     Built specifically to avoid the `uv tool upgrade` receipt-pin trap: when
     the tool was originally installed via `uv tool install niki-agent==X.Y.Z`
@@ -3470,7 +3470,7 @@ def dependency_refresh_command(
     include_prereleases: bool | None = None,
     distribution_name: str = "niki-agent",
 ) -> str:
-    """Return the uv command that refreshes deps for the current dcode version.
+    """Return the uv command that refreshes deps for the current niki version.
 
     Args:
         version: Exact `niki-agent` version to keep installed.
@@ -3511,7 +3511,7 @@ def dependency_refresh_dry_run_command(
         distribution_name: Name of the installed distribution to inspect for
             already-installed extras and uv receipt requirements.
         python: Python executable for the target environment. Defaults to the
-            running interpreter, which is the current dcode tool environment.
+            running interpreter, which is the current niki tool environment.
 
     Returns:
         Shell command string suitable for execution via the shell.
@@ -3543,7 +3543,7 @@ def install_package_command(
     *,
     distribution_name: str = "niki-agent",
 ) -> str:
-    """Return the shell command that adds a package to the dcode tool env.
+    """Return the shell command that adds a package to the niki tool env.
 
     The result is built for *execution* (via `perform_install_package`), not for
     display — surfacing raw `uv tool` invocations to the user is intentionally
@@ -3612,7 +3612,7 @@ def _install_script_with_env(assignment: str) -> str:
 
 
 def install_extras_command(extras: Iterable[str]) -> str:
-    """Return the install-script command that installs dcode extras.
+    """Return the install-script command that installs niki extras.
 
     Args:
         extras: Extra names to include in the tool reinstall. Validated by
@@ -3635,7 +3635,7 @@ def install_extra_command(
     *,
     distribution_name: str = "niki-agent",
 ) -> str:
-    """Return the install-script command that adds `extra` to dcode.
+    """Return the install-script command that adds `extra` to niki.
 
     The promoted install path is the install script (see `scripts/install.sh`).
     This helper is display-only and avoids uv receipt introspection so
@@ -3722,7 +3722,7 @@ def _install_extra_uv_tool_command(
     *,
     distribution_name: str = "niki-agent",
 ) -> str:
-    """Return the receipt-preserving uv command that installs one dcode extra.
+    """Return the receipt-preserving uv command that installs one niki extra.
 
     Pins the running `niki-agent` version and allows prerelease dependency
     resolution so adding an extra cannot make uv backtrack to an older app release.
@@ -3963,7 +3963,7 @@ def uninstall_extra_method_error(
     if method == "other":
         return (
             "Unsupported install method detected — cannot remove extras without "
-            "knowing which environment provides `dcode`."
+            "knowing which environment provides `niki`."
         )
     return None
 
@@ -3993,7 +3993,7 @@ def editable_package_hint(package: str) -> str:
     """
     return (
         f"Add '{package}' to your editable checkout's environment (the one your "
-        "editable install of dcode runs from), then relaunch."
+        "editable install of niki runs from), then relaunch."
     )
 
 
@@ -4020,7 +4020,7 @@ async def perform_install_extra(
     progress: UpgradeProgressCallback | None = None,
     log_path: Path | None = None,
 ) -> ExtraInstallOutcome:
-    """Add `extra` to the installed dcode tool environment.
+    """Add `extra` to the installed niki tool environment.
 
     Runs `uv tool install --reinstall -U 'niki-agent[<extras>]==<current>'
     --prerelease allow`, preserving any extras that are already installed.
@@ -4069,7 +4069,7 @@ async def perform_install_extra(
         return ExtraInstallOutcome(
             False,
             "Unsupported install method detected — cannot add extras without "
-            "knowing which environment provides `dcode`. Reinstall with "
+            "knowing which environment provides `niki`. Reinstall with "
             f"`{install_extra_command(extra)}` to switch to a uv-managed tool "
             "install with extras.",
         )
@@ -4077,7 +4077,7 @@ async def perform_install_extra(
     if not shutil.which("uv"):
         return ExtraInstallOutcome(
             False,
-            "`uv` not found on PATH. Reinstall dcode following the docs, or "
+            "`uv` not found on PATH. Reinstall niki following the docs, or "
             "install uv (https://docs.astral.sh/uv/) so extras can be added.",
         )
 
@@ -4224,7 +4224,7 @@ async def perform_install_package(
     progress: UpgradeProgressCallback | None = None,
     log_path: Path | None = None,
 ) -> tuple[bool, str]:
-    """Add an arbitrary `package` to the installed dcode tool environment.
+    """Add an arbitrary `package` to the installed niki tool environment.
 
     Runs `uv tool install --reinstall -U 'niki-agent[<extras>]==<current>'
     --with <package> --prerelease allow`, the escape hatch for a provider whose
@@ -4265,13 +4265,13 @@ async def perform_install_package(
     if method == "brew":
         return False, (
             "Homebrew install detected — packages can't be added to a brew "
-            "install. Reinstall dcode as a uv-managed tool (see the "
+            "install. Reinstall niki as a uv-managed tool (see the "
             "installation docs) to enable adding packages."
         )
     if method == "other":
         return False, (
             "Unsupported install method detected — cannot add packages without "
-            "knowing which environment provides `dcode`. Reinstall dcode "
+            "knowing which environment provides `niki`. Reinstall niki "
             "as a uv-managed tool (see the installation docs) to enable "
             "adding packages."
         )
@@ -4279,7 +4279,7 @@ async def perform_install_package(
     if not shutil.which("uv"):
         return False, (
             "Package installs require uv, which was not found. Reinstall "
-            "dcode following the installation docs so packages can be "
+            "niki following the installation docs so packages can be "
             "added."
         )
 
@@ -4578,7 +4578,7 @@ def _note_install_baseline() -> None:
     """Pre-acknowledge the auto-update default notice for a fresh install.
 
     The migration notice (`should_announce_auto_update_default`) is intended to
-    warn users who ran dcode *before* auto-update became the opt-out default; a
+    warn users who ran niki *before* auto-update became the opt-out default; a
     brand-new install never experienced the old behavior, so the notice is
     meaningless to it. Call this on the first launch ever (see
     `should_show_whats_new`) so the notice never leaks into a new install — the

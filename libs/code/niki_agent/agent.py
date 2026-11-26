@@ -290,9 +290,9 @@ def _inject_fs_tools_into_subagents(
     Raises:
         ValueError: If a `CompiledSubAgent` (identified by a `"runnable"` key,
             matching the SDK's own `"runnable" in spec` discriminator in
-            `deepagents.middleware.subagents`) is present. Such a spec is used
+            the vendored subagent middleware) is present. Such a spec is used
             as-is by the SDK and its `middleware`
-            key is never read, so we cannot enforce the restriction on it. dcode
+            key is never read, so we cannot enforce the restriction on it. niki
             adds only raw `SubAgent` dicts today, but the declared type admits
             compiled specs: fail loud rather than silently exposing an
             unrestricted filesystem via `task` delegation.
@@ -995,7 +995,7 @@ def _resolve_ptc_option(
 ) -> list[str] | None:
     """Resolve the configured PTC allowlist to a concrete list of tool names.
 
-    Names are *not* validated against `tools`. The Deep Agents SDK injects the
+    Names are *not* validated against `tools`. The vendored SDK injects the
     filesystem, `task`, and `execute` tools via middleware in
     `create_deep_agent` — *after* this point — so they are absent from `tools`
     here, and the SDK exposes no importable list of them. `CodeInterpreterMiddleware`
@@ -1241,7 +1241,7 @@ Discovery is fail-closed: only directories containing this marker are listed by
 the `/agent` picker. Real agents always create it (empty on first use when
 memory is enabled), so empty folders stay out of the picker without being
 named. Known app-owned directory names are still denylisted so a forced
-invocation such as `dcode -a plugins` cannot stamp the marker into app state
+invocation such as `niki -a plugins` cannot stamp the marker into app state
 and surface that directory as a selectable agent.
 """
 
@@ -1411,7 +1411,7 @@ def reset_agent(
             console.print(
                 f"[bold red]Error:[/bold red] Source agent '{source_agent}' not found "
                 "or has no AGENTS.md\n"
-                "  Available agents: dcode agents list"
+                "  Available agents: niki agents list"
             )
             raise SystemExit(1)
 
@@ -1479,7 +1479,7 @@ _FS_TOOL_USAGE_INSTRUCTIONS: tuple[tuple[FsToolName, str], ...] = (
     ("edit_file", "- `edit_file` over `sed`/`awk`"),
     ("write_file", "- `write_file` over `echo`/heredoc"),
 )
-"""dcode filesystem-tool preferences included in the generated prompt."""
+"""niki filesystem-tool preferences included in the generated prompt."""
 
 _WEB_SEARCH_TOOL_GUIDANCE = (
     "\n\n### Web Search Tool Usage\n\n"
@@ -1537,7 +1537,7 @@ _INTERACTIVE_CLARIFICATION_GUIDANCE = (
 
 
 def _build_fs_tool_prompt_guidance(fs_tools: list[FsToolName] | None) -> str:
-    """Build dcode prompt guidance for the enabled filesystem tools.
+    """Build niki prompt guidance for the enabled filesystem tools.
 
     Args:
         fs_tools: Filesystem tool allowlist, or `None` for all tools.
@@ -2530,7 +2530,7 @@ def _resolve_retry_owned_model(
         cli_max_retries: The `--max-retries` flag value, or `None` when unset.
 
     Returns:
-        The concrete model prepared by dcode's model factory, or `None` when it
+        The concrete model prepared by niki's model factory, or `None` when it
         cannot be built here and the caller should pass the spec through.
     """
     from niki_agent.config import create_model
@@ -2551,7 +2551,7 @@ def _resolve_retry_owned_model(
 
 
 def _has_resolvable_model_provider(model_spec: str) -> bool:
-    """Return whether dcode can resolve the provider before graph construction."""
+    """Return whether niki can resolve the provider before graph construction."""
     from niki_agent.config import detect_provider
     from niki_agent.model_config import ModelSpec
 
@@ -2674,7 +2674,7 @@ def create_cli_agent(
 ) -> tuple[Pregel[Any, Any, Any, Any], CompositeBackend]:
     """Create a CLI-configured agent with flexible options.
 
-    This is the main entry point for creating a Deep Agents Code agent, usable
+    This is the main entry point for creating an agent, usable
     both internally and from external code (e.g., benchmarking frameworks).
 
     Args:
@@ -2862,7 +2862,7 @@ def create_cli_agent(
         ModelNotAllowedError: When `model`, `auto_classifier_model`,
             `rubric_model`, or a subagent's frontmatter `model` is a string
             outside the effective `models.allowed` policy. Model strings are
-            checked before dcode resolves them with provider retries disabled;
+            checked before niki resolves them with provider retries disabled;
             a prebuilt `BaseChatModel` came from a path that already checked.
     """  # noqa: DOC502 - propagates from `ModelConfig.require_model_allowed`
     tools = list(tools or [])
@@ -3003,14 +3003,14 @@ def create_cli_agent(
 
     # Every runtime model string is checked before it is resolved. Known providers
     # go through `create_model` here so the SDK retry loop is disabled before Deep
-    # Agents builds the graph and every request carries dcode's retry metadata.
+    # Agents builds the graph and every request carries niki's retry metadata.
     # Graph-only tool enumeration leaves all strings to SDK assembly because it
     # never invokes them. Provider-less placeholders also remain strings because
-    # dcode cannot identify a retry constructor parameter for them. A
+    # niki cannot identify a retry constructor parameter for them. A
     # `BaseChatModel` was already built by a checked path, so it is exempt.
     model_policy = ModelConfig.load()
     if not enforce_model_policy:
-        # Read-only enumeration (`dcode tools list`, `/tools`) compiles a graph
+        # Read-only enumeration (`niki tools list`, `/tools`) compiles a graph
         # with a placeholder model purely to read its bound tool node. Nothing
         # is ever invoked, so a subagent whose frontmatter names a blocked model
         # must not turn listing tools into a crash. Runtime construction always
@@ -3079,7 +3079,7 @@ def create_cli_agent(
             # The async-aware stock-compatible middleware above owns approval
             # routing. A declarative subagent with no `interrupt_on` inherits
             # the parent's top-level map (`spec.get("interrupt_on", ...)` in
-            # deepagents graph assembly), which would wrap its tools in a second
+            # the vendored graph assembly), which would wrap its tools in a second
             # synchronous stock HITL. An explicit empty (falsy) map opts out.
             subagent["interrupt_on"] = {}
         custom_subagents.append(subagent)
@@ -3259,7 +3259,7 @@ def create_cli_agent(
                 "enable_interpreter."
             )
             raise ValueError(msg)
-        # Lazy import keeps `dcode -v` fast — see AGENTS.md startup-perf rule.
+        # Lazy import keeps `niki -v` fast — see AGENTS.md startup-perf rule.
         from langchain_core._api import (  # noqa: PLC2701  # re-exported in _api.__all__
             suppress_langchain_beta_warning,
         )
@@ -3484,9 +3484,9 @@ def create_cli_agent(
         # on the replacement.
         #
         # NOTE: this replacement only carries `backend`/`tools`/descriptions.
-        # The SDK also builds its default with `_permissions`; dcode passes no
+        # The SDK also builds its default with `_permissions`; niki passes no
         # filesystem `permissions` to `create_deep_agent` today, so there is
-        # nothing to preserve. If dcode ever adopts filesystem permissions,
+        # nothing to preserve. If niki ever adopts filesystem permissions,
         # they must be threaded through here (and into
         # `_inject_fs_tools_into_subagents`) or `--allow-fs-tools` would
         # silently strip them.
@@ -3497,7 +3497,7 @@ def create_cli_agent(
                 custom_tool_descriptions=main_tool_descriptions,
             )
         )
-        # dcode always supplies its own `general-purpose` spec, so the SDK's
+        # niki always supplies its own `general-purpose` spec, so the SDK's
         # auto-created-GP middleware inheritance path never fires; the
         # restriction must be injected into each subagent's own `middleware`
         # list, or delegating via `task` could bypass `--allow-fs-tools`.

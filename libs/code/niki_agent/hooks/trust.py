@@ -75,7 +75,7 @@ def _trust_store_lock(path: Path) -> Iterator[None]:
     """Serialize read-merge-write updates to the hooks trust store.
 
     Combines a single process-local threading lock with a cross-process
-    `FileLock` on a sibling `.lock` file so concurrent `dcode` processes cannot
+    `FileLock` on a sibling `.lock` file so concurrent `niki` processes cannot
     drop each other's workspace entries.
 
     Args:
@@ -374,7 +374,7 @@ class WorkspaceTrust:
 
     Headless runs set this to `False`: executing repository hooks there requires
     an explicit opt-in, so a workspace remembered during an interactive session
-    must not silently qualify a later `dcode -n` invocation.
+    must not silently qualify a later `niki -n` invocation.
     """
 
     store_path: Path | None = None

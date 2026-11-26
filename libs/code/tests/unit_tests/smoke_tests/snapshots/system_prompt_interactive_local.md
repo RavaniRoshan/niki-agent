@@ -202,7 +202,7 @@ The filesystem backend is currently operating in: `/home/user/project`
 
 ### Skill Paths
 
-Skills can come from multiple sources. The agent-specific skills directory is `<deepagents_home>/agent/skills`.
+Skills can come from multiple sources. The agent-specific skills directory is `<niki_home>/agent/skills`.
 Source directories are informational, not bases for constructing skill paths. To load a listed skill, copy its `-> Read` path verbatim into `read_file`; never join a source directory with a skill name or substitute another source directory.
 Resolve scripts and supporting files relative to the directory containing that skill's listed `SKILL.md`, following its instructions.
 

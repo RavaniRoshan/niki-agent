@@ -77,7 +77,7 @@ upstream.
     masking; it stays until Textual grows one.
 
 7. ASCII border rendering. Textual border styles are global character tables,
-    while dcode's charset preference is process-wide. In ASCII mode this patch
+    while niki's charset preference is process-wide. In ASCII mode this patch
     makes every border style render with Textual's `ascii` characters, including
     third-party and dynamically mounted widgets, without replacing edge styles
     or their resolved colors. It stays until Textual supports an application-wide

@@ -47,8 +47,8 @@ bash tools/m2_session.sh      # M2: live PTY session vs the replay frame
 - Keep user-visible language Niki Agent. Attribution belongs in `NOTICE`,
   `LICENSE`, and the vendored `PROVENANCE.md` files; the version line and help
   screen do not credit another product.
-- There is one console script: `niki`. Do not add compatibility aliases under
-  another product's name.
+- `niki` is the only console script. Do not add compatibility aliases for the
+  pre-rename product names.
 - Do not edit the vendored trees for style. They are excluded from ruff and ty so
   their diff against `PROVENANCE.md` stays auditable.
 

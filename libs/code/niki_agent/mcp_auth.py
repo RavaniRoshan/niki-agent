@@ -321,7 +321,7 @@ class FileTokenStorage(TokenStorage):
         """Sibling lock file that serializes token refreshes across processes.
 
         A dedicated `.lock` file (never the token file itself) lets `filelock`
-        coordinate refreshes between dcode processes and provider instances
+        coordinate refreshes between niki processes and provider instances
         without ever holding an exclusive lock on the credential file. It holds
         no token material.
         """
@@ -689,7 +689,7 @@ class FileTokenStorage(TokenStorage):
             msg = (
                 f"Failed to read MCP token file {path}: {exc}. "
                 f"Delete the file and run `/mcp login {self._server_name}` "
-                f"in the TUI (or `dcode mcp login {self._server_name}`)."
+                f"in the TUI (or `niki mcp login {self._server_name}`)."
             )
             raise RuntimeError(msg) from exc
         # `json.loads` yields a `dict` only for object literals; `null`, a list,
@@ -700,7 +700,7 @@ class FileTokenStorage(TokenStorage):
                 f"MCP token file {path} is not a JSON object (found "
                 f"{type(data).__name__}). Delete it and run "
                 f"`/mcp login {self._server_name}` in the TUI (or "
-                f"`dcode mcp login {self._server_name}`)."
+                f"`niki mcp login {self._server_name}`)."
             )
             # Not `TypeError` (TRY004): this is a corrupt-file report, not a
             # caller type error, and callers catch the same `RuntimeError` the
@@ -716,7 +716,7 @@ class FileTokenStorage(TokenStorage):
                 f"({type(data.get('version')).__name__}; expected "
                 f"{_STORAGE_VERSION!r}). Delete it and run "
                 f"`/mcp login {self._server_name}` in the "
-                f"TUI (or `dcode mcp login {self._server_name}`)."
+                f"TUI (or `niki mcp login {self._server_name}`)."
             )
             raise RuntimeError(msg)
         return data
@@ -892,7 +892,7 @@ class _LoopbackOAuthCallbackServer:
         self._started = True
         self._thread = threading.Thread(
             target=self._serve_forever,
-            name="deepagents-mcp-oauth-callback",
+            name="niki-mcp-oauth-callback",
             daemon=True,
         )
         self._thread.start()
@@ -1111,7 +1111,7 @@ class MCPReauthRequiredError(RuntimeError):
         super().__init__(
             f"MCP server {server_name!r} needs re-authentication. "
             f"Run `/mcp login {server_name}` in the TUI, or "
-            f"`dcode mcp login {server_name}` from the shell.",
+            f"`niki mcp login {server_name}` from the shell.",
         )
 
 
@@ -1444,7 +1444,7 @@ class _ExpiryAwareOAuthClientProvider(OAuthClientProvider):
     async def _reload_tokens_from_storage(self) -> None:
         """Re-read persisted tokens so a peer's refresh is observed.
 
-        Another dcode process (or a separate provider instance in this process)
+        Another niki process (or a separate provider instance in this process)
         may have rotated the refresh token on disk while this provider held a
         now-stale copy in memory. Re-reading before deciding to refresh keeps
         this provider from replaying an already-rotated refresh token, which
@@ -2117,7 +2117,7 @@ def find_oauth_challenge(exc: BaseException) -> str | None:
     answers an unauthenticated request with HTTP 401 plus a Bearer
     `WWW-Authenticate` challenge pointing at its protected-resource metadata.
     The MCP client surfaces that as an `httpx2.HTTPStatusError` (the MCP
-    SDK's HTTP client); dcode's own `httpx` calls raise the `httpx` one, so
+    SDK's HTTP client); niki's own `httpx` calls raise the `httpx` one, so
     both are matched. Walks
     `exceptions` (for `ExceptionGroup`), then `__cause__`/`__context__`,
     tracking visited nodes to terminate on cyclic chains.

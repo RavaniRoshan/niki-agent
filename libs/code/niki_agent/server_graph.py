@@ -1102,7 +1102,7 @@ async def _workspace_runtime(binding: WorkspaceBinding) -> ServerRuntime:
 
 
 async def get_server_runtime() -> ServerRuntime:
-    """Return resources shared by the graph and dcode operation routes.
+    """Return resources shared by the graph and niki operation routes.
 
     Builds once and caches. A construction failure is converted into a
     startup-error marker (scraped by the parent app process) before

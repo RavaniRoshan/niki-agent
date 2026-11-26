@@ -80,7 +80,7 @@ classifier model (cold provider import, credential bootstrap), which denies with
 "could not be built within 30s", is fixed. Values outside 1-300 seconds are
 ignored in favor of the next config source, so the deadline can never be
 removed. Also settable via `[models].auto_classifier_timeout` in config.toml.
-Resolved once per `dcode` start, so a change takes effect on the next launch.
+Resolved once per `niki` start, so a change takes effect on the next launch.
 
 Like `AUTO_CLASSIFIER_MODEL`, a committed *project* `.env` cannot set it (see
 `config._PROJECT_DOTENV_DENIED_ENV_KEYS`).
@@ -277,7 +277,7 @@ shell, launch env, or global `~/.niki/.env` can.
 """
 
 FORKED_SUBAGENTS = "NIKI_FORKED_SUBAGENTS"
-"""Whether dcode's built-in `general-purpose` subagent runs in fork mode.
+"""Whether niki's built-in `general-purpose` subagent runs in fork mode.
 
 On by default. Set to a falsy value to make the subagent receive only the delegated
 task instead of inheriting the parent agent's conversation and state. Parsed by
@@ -286,7 +286,7 @@ task instead of inheriting the parent agent's conversation and state. Parsed by
 """
 
 EXPERIMENTAL = "NIKI_EXPERIMENTAL"
-"""Opt into experimental, unstable dcode behavior.
+"""Opt into experimental, unstable niki behavior.
 
 Off by default; parsed by `is_env_truthy` (see there for the accepted truthy
 values). Marks experimental runs in UI/trace metadata. Behavior behind this
@@ -361,7 +361,7 @@ Not user-facing. The launch name is normally derived from `sys.argv[0]`, but the
 startup auto-update re-execs the process as `python -m niki_agent`, which
 discards it. `_restart_current_process` records the resolved name here so the
 re-exec'd process still echoes the command the user actually typed in its resume
-hints. Implausible values are ignored in favor of the `dcode` default; see
+hints. Implausible values are ignored in favor of the `niki` default; see
 `_invocation.invoked_name`.
 """
 
@@ -387,10 +387,10 @@ destinations are written today.
 """
 
 LAUNCH_TERM_PROGRAM = "NIKI_LAUNCH_TERM_PROGRAM"
-"""Internal sentinel recording the `TERM_PROGRAM` present when `dcode` started.
+"""Internal sentinel recording the `TERM_PROGRAM` present when `niki` started.
 
 Not user-facing. The resume hint echoes `TERM_PROGRAM` only when the launch
-environment supplied it (an inline `TERM_PROGRAM=x dcode`, a terminal's own
+environment supplied it (an inline `TERM_PROGRAM=x niki`, a terminal's own
 export, or a shell alias), so the value set by a project or global `.env` file
 *after* launch must not leak in. The app itself never sets `TERM_PROGRAM`, so
 `cli_main` snapshotting the variable here at entry means a set sentinel always
@@ -560,7 +560,7 @@ settable as `[features].resume_term_program` in config.toml.
 RIPGREP_INSTALLER = "NIKI_RIPGREP_INSTALLER"
 """Select how ripgrep is provisioned: `managed` (default) or `system`.
 
-`managed` downloads the pinned, SHA-256-verified upstream binary into the dcode
+`managed` downloads the pinned, SHA-256-verified upstream binary into the niki
 installation (no sudo). `system` skips that download so power users can rely on
 their distro package / existing toolchain instead; the install script's
 `system` mode keeps the brew/apt/cargo path. A system `rg` already on `PATH` is
@@ -655,7 +655,7 @@ LangSmith variable overrides its canonical counterpart (e.g. both
 different values).
 
 The override is intentional: the prefixed value overwrites the canonical
-variable inside the Deep Agents Code process (so the LangSmith SDK, which
+variable inside the Niki Agent process (so the LangSmith SDK, which
 only reads canonical names, picks it up). The value you exported in your own
 shell is unaffected, since a process cannot change its parent's environment.
 Off by default; set to a truthy value (`1`, `true`, `yes`, `on`) to suppress

@@ -92,7 +92,7 @@ async def test_runtime_reauth_preserves_login_instructions(
                 )
                 assert result.status == "error"
                 assert "/mcp login remote" in str(result.content)
-                assert "dcode mcp login remote" in str(result.content)
+                assert "niki mcp login remote" in str(result.content)
                 assert "Connection closed" not in str(result.content)
             assert auth.failures == 2
             auth.expired = False

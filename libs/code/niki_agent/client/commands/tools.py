@@ -1,16 +1,16 @@
-"""The `dcode tools` command group: provision managed external tools.
+"""The `niki tools` command group: provision managed external tools.
 
-`dcode tools install` fetches the pinned, SHA-256-verified ripgrep binary into
-the dcode installation (the same managed path used on first run) and is also
+`niki tools install` fetches the pinned, SHA-256-verified ripgrep binary into
+the niki installation (the same managed path used on first run) and is also
 handy for repairing a missing or stale `rg`. The install script calls this verb
 instead of re-encoding the pinned version + checksum table in bash.
 
-`dcode tools list` prints the tools available to the agent, grouped by source
+`niki tools list` prints the tools available to the agent, grouped by source
 (built-in tools, then per-server MCP tools), enumerated from the real tool
 objects the agent binds so the output never drifts from what the model sees.
 
-Help rendering for `dcode tools -h` / `dcode tools install -h` /
-`dcode tools list -h` is served by `ui.show_tools_help` /
+Help rendering for `niki tools -h` / `niki tools install -h` /
+`niki tools list -h` is served by `ui.show_tools_help` /
 `ui.show_tools_install_help` / `ui.show_tools_list_help`, which do not import
 this module, so the help path stays light.
 """
@@ -40,7 +40,7 @@ alone drives a non-zero exit code."""
 
 
 def run_tools_command(args: argparse.Namespace) -> int:
-    """Dispatch a `dcode tools` subcommand.
+    """Dispatch a `niki tools` subcommand.
 
     Args:
         args: Parsed CLI namespace.
@@ -54,7 +54,7 @@ def run_tools_command(args: argparse.Namespace) -> int:
     if subcommand == "list":
         return _run_tools_list(args)
 
-    # `cli_main`'s bare-group help fast path handles `dcode tools` with no
+    # `cli_main`'s bare-group help fast path handles `niki tools` with no
     # subcommand, so this is only reached for an unexpected value.
     from niki_agent import ui
 
@@ -72,7 +72,7 @@ def _run_tools_list(args: argparse.Namespace) -> int:
     is listed, `--allow-fs-tools` restricts filesystem tools, and the MCP options
     (`--no-mcp`, `--mcp-config`, `--trust-project-mcp`) control MCP discovery.
     Those are top-level flags, so
-    they must precede the subcommand (e.g. `dcode --no-mcp tools list`).
+    they must precede the subcommand (e.g. `niki --no-mcp tools list`).
 
     MCP discovery is best-effort: the built-in tools always render. Servers that
     errored, need login, or are disabled are still reported (not hidden) so a
@@ -161,7 +161,7 @@ def _run_tools_list(args: argparse.Namespace) -> int:
 
 
 def _tools_list_project_mcp_trust(args: argparse.Namespace) -> bool | None:
-    """Resolve project MCP trust behavior for `dcode tools list`.
+    """Resolve project MCP trust behavior for `niki tools list`.
 
     Args:
         args: Parsed CLI namespace.

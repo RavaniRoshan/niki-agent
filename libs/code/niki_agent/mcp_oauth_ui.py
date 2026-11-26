@@ -161,7 +161,7 @@ class OAuthInteraction(Protocol):
 class CliOAuthInteraction:
     """Default `OAuthInteraction` that drives the flow via stdin/stdout.
 
-    Preserves the previous `dcode mcp login` behavior — paste-back input,
+    Preserves the previous `niki mcp login` behavior — paste-back input,
     plain-text prompts, success messages printed to stdout.
     """
 
@@ -205,7 +205,7 @@ class CliOAuthInteraction:
         except EOFError as exc:
             msg = (
                 "No callback URL received (stdin closed). "
-                "Re-run `dcode mcp login <server>` and paste the URL."
+                "Re-run `niki mcp login <server>` and paste the URL."
             )
             raise RuntimeError(msg) from exc
         return raw.strip()

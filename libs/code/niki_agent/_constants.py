@@ -21,8 +21,8 @@ FS_TOOL_NAMES: Final[frozenset[str]] = frozenset(
 )
 """Mirror of the SDK's `FsToolName` literal members.
 
-Hardcoded here rather than derived from `deepagents.FsToolName` because
-`deepagents` must not be imported on the arg-parsing hot path (see AGENTS.md
+Hardcoded here rather than derived from the vendored SDK's filesystem tool
+enum because the SDK must not be imported on the arg-parsing hot path (see AGENTS.md
 "Startup performance"); this module is dependency-free and safe for `main.py` to
 import. Consumers (`main._parse_allow_fs_tools_flag`,
 `tool_catalog.collect_built_in_tools`) alias this set, and `get_args(FsToolName)`
@@ -78,10 +78,10 @@ so the producer and the tests asserting the message share one literal.
 """
 
 FILE_NOT_FOUND: Final[str] = "file_not_found"
-"""Mirror of the SDK's `deepagents.backends.protocol.FILE_NOT_FOUND` sentinel.
+"""Mirror of the vendored backend protocol's missing-file sentinel.
 
 Hardcoded here rather than imported because `file_ops` is on the TUI import
-path and importing `deepagents` at module scope violates the
+path and importing the vendored SDK at module scope violates the
 startup-performance rule (see AGENTS.md); this module is dependency-free.
 `test_file_ops.py::test_file_not_found_matches_sdk` is the drift guard that
 fails if the SDK renames the sentinel.

@@ -1,4 +1,4 @@
-"""dcode-owned HTTP boundary for server-side thread offload."""
+"""niki-owned HTTP boundary for server-side thread offload."""
 
 from __future__ import annotations
 
@@ -170,7 +170,7 @@ async def _lifespan(_app: Starlette) -> AsyncIterator[None]:
     """Flush buffered traces once the server stops serving.
 
     `Client` registers an `atexit` handler that only closes its session, never
-    flushes, so without this hook anything still queued when dcode signals the
+    flushes, so without this hook anything still queued when niki signals the
     server is lost. The flush is in a `finally` so it also runs when the app
     body raises -- the crash case where the buffered traces matter most.
 

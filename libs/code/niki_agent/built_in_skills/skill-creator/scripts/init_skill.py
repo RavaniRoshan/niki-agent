@@ -9,8 +9,8 @@ Examples:
  init_skill.py my-api-helper --path skills/private
  init_skill.py custom-skill --path /custom/location
 
-For deepagents CLI:
- init_skill.py my-skill --path "${NIKI_HOME:-$HOME/.deepagents}/agent/skills"
+For the niki CLI:
+ init_skill.py my-skill --path "${NIKI_HOME:-$HOME/.niki}/agent/skills"
 """
 
 import sys
@@ -336,8 +336,8 @@ def main():
         print(" init_skill.py my-new-skill --path skills/public")
         print(" init_skill.py my-api-helper --path skills/private")
         print(" init_skill.py custom-skill --path /custom/location")
-        print("\nFor deepagents CLI:")
-        skills_dir = "${NIKI_HOME:-$HOME/.deepagents}/agent/skills"
+        print("\nFor the niki CLI:")
+        skills_dir = "${NIKI_HOME:-$HOME/.niki}/agent/skills"
         print(f' init_skill.py my-skill --path "{skills_dir}"')
         sys.exit(1)
 

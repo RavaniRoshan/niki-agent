@@ -8,7 +8,7 @@ async def extension(d: ExtensionAPI) -> None:  # noqa: RUF029  # Public extensio
     """Make LangGraph store data available under `/memories/`.
 
     Args:
-        d: The dcode extension API.
+        d: The Niki extension API.
     """
     d.register_backend_route(
         "/memories/",

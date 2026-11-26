@@ -1,4 +1,4 @@
-"""`NikiApp`: the Niki presentation layer over upstream's `DeepAgentsApp`.
+"""`NikiApp`: the Niki presentation layer over the engine's `DeepAgentsApp`.
 
 Subclassing rather than patching is what keeps a future merge from `main`
 cheap, so every override here is a decision with a measurement behind it.
@@ -71,12 +71,14 @@ def composer_hint(width: int) -> str:
 
 
 class NikiApp(DeepAgentsApp):
-    """`DeepAgentsApp` with Niki's presentation defaults applied."""
+    """The engine app with Niki's presentation defaults applied."""
 
     TITLE = "Niki Agent"
-    """Window and header title. Upstream sets `TITLE = "Deep Agents"`
-    (`app.py:3331`); it is a plain class attribute, so rebranding needs no
-    string surgery anywhere else."""
+    """Window and header title.
+
+    The engine sets its own default; `TITLE` is a plain class attribute, so
+    rebranding needs no string surgery anywhere else.
+    """
 
     PRODUCT_NAME = "Niki Agent"
     """Product name inside user-visible sentences (the deferred-start notice)."""
@@ -270,7 +272,7 @@ class NikiApp(DeepAgentsApp):
         """Give Niki's composer its hint, blink preference, and suspend key.
 
         Per-instance rather than class-level: the shared `ChatInput` must keep
-        upstream's empty placeholder and Textual's ctrl+z undo for `dcode`.
+        upstream's empty placeholder and Textual's ctrl+z undo for `niki`.
         """
         hint = composer_hint(self.size.width)
         for text_area in self.query(ChatTextArea):

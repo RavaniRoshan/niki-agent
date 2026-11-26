@@ -142,7 +142,7 @@ def _patch_available_agents(names: list[str] | None = None) -> Any:  # noqa: ANN
 
 @pytest.fixture(autouse=True)
 def _isolate_available_agents() -> Any:  # noqa: ANN401
-    """Keep the agent filter independent of the machine's `~/.deepagents/`.
+    """Keep the agent filter independent of the machine's `~/.niki/`.
 
     `_load_threads` scans the user's agents directory to populate the filter
     dropdown. Without isolation the option set would vary by developer/CI host,

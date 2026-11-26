@@ -1,1 +1,1 @@
-"""Integrations for external systems used by the Deep Agents Code."""
+"""Integrations for external systems used by Niki Agent."""

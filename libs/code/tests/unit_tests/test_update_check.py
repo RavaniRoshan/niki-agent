@@ -906,15 +906,15 @@ class TestDetectShadowedDcode:
     """Regression coverage for the post-upgrade shadowing detector.
 
     The detector is the only thing standing between a successful `uv tool
-    upgrade` and the user silently relaunching into a pre-uv `dcode` earlier on
+    upgrade` and the user silently relaunching into a pre-uv `niki` earlier on
     PATH, so each branch of the comparison is covered explicitly.
     """
 
     def test_returns_none_for_uv_symlink_shim(self, tmp_path) -> None:
         """A uv-style symlink shim under the user bin dir is NOT a shadow.
 
-        On a healthy uv tool install, `~/.local/bin/dcode` is a symlink to
-        `~/.local/share/uv/tools/niki-agent/bin/dcode`. If we followed
+        On a healthy uv tool install, `~/.local/bin/niki` is a symlink to
+        `~/.local/share/uv/tools/niki-agent/bin/niki`. If we followed
         that symlink the parent would be the tool venv's internal bin dir,
         which differs from uv's user-facing bin dir and would make every
         healthy install look shadowed. The detector must compare the
@@ -924,9 +924,9 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         tool_internal_bin = tmp_path / "tools" / "niki-agent" / "bin"
         tool_internal_bin.mkdir(parents=True)
-        real_entry_point = tool_internal_bin / "dcode"
+        real_entry_point = tool_internal_bin / "niki"
         real_entry_point.write_text("")
-        shim = uv_bin / "dcode"
+        shim = uv_bin / "niki"
         shim.symlink_to(real_entry_point)
 
         with (
@@ -942,7 +942,7 @@ class TestDetectShadowedDcode:
     def test_returns_shadow_when_path_resolves_outside_uv_bin_dir(
         self, tmp_path
     ) -> None:
-        """A different `dcode` earlier on PATH is the bug we're protecting against.
+        """A different `niki` earlier on PATH is the bug we're protecting against.
 
         Also pins the reported `shadowing_bin` to the PATH-visible path
         (not the resolved symlink target), since that's the file the user
@@ -950,14 +950,14 @@ class TestDetectShadowedDcode:
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        (uv_bin / "dcode").write_text("")  # the upgraded shim uv would install
+        (uv_bin / "niki").write_text("")  # the upgraded shim uv would install
         stale_bin = tmp_path / "stale-bin"
         stale_bin.mkdir()
-        stale = stale_bin / "dcode"
+        stale = stale_bin / "niki"
         stale.write_text("")
 
         def _which(name: str) -> str | None:
-            return str(stale) if name == "dcode" else None
+            return str(stale) if name == "niki" else None
 
         with (
             patch(
@@ -975,7 +975,7 @@ class TestDetectShadowedDcode:
         )
 
     def test_returns_shadow_for_symlink_shim_in_wrong_directory(self, tmp_path) -> None:
-        """A symlinked `dcode` outside uv's bin dir is still a real shadow.
+        """A symlinked `niki` outside uv's bin dir is still a real shadow.
 
         Distinguishes the genuine shadow case (symlink in some other PATH
         directory) from the false-positive case the previous test covers
@@ -984,15 +984,15 @@ class TestDetectShadowedDcode:
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        (uv_bin / "dcode").write_text("")
+        (uv_bin / "niki").write_text("")
         other_bin = tmp_path / "homebrew-bin"
         other_bin.mkdir()
-        target = tmp_path / "Cellar" / "dcode" / "bin"
+        target = tmp_path / "Cellar" / "niki" / "bin"
         target.mkdir(parents=True)
-        real_dcode = target / "dcode"
-        real_dcode.write_text("")
-        stale_shim = other_bin / "dcode"
-        stale_shim.symlink_to(real_dcode)
+        real_niki = target / "niki"
+        real_niki.write_text("")
+        stale_shim = other_bin / "niki"
+        stale_shim.symlink_to(real_niki)
 
         with (
             patch(
@@ -1026,7 +1026,7 @@ class TestDetectShadowedDcode:
         tool_internal_bin.mkdir(parents=True)
         other_bin = tmp_path / "usr-local-bin"
         other_bin.mkdir()
-        for name in ("dcode", "niki-agent"):
+        for name in ("niki", "niki-agent"):
             real_entry_point = tool_internal_bin / name
             real_entry_point.write_text("")
             (uv_bin / name).symlink_to(real_entry_point)
@@ -1054,13 +1054,13 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         other_bin = tmp_path / "usr-local-bin"
         other_bin.mkdir()
-        upgraded_shim = uv_bin / "dcode.exe"
+        upgraded_shim = uv_bin / "niki.exe"
         upgraded_shim.write_text("")
-        alias = other_bin / "dcode.cmd"
+        alias = other_bin / "niki.cmd"
         alias.symlink_to(upgraded_shim)
 
         def _which(name: str) -> str | None:
-            return str(alias) if name == "dcode" else None
+            return str(alias) if name == "niki" else None
 
         with (
             patch(
@@ -1090,11 +1090,11 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         other_bin = tmp_path / "usr-local-bin"
         other_bin.mkdir()
-        stale = other_bin / "dcode"
+        stale = other_bin / "niki"
         stale.write_text("")
 
         def _which(name: str) -> str | None:
-            return str(stale) if name == "dcode" else None
+            return str(stale) if name == "niki" else None
 
         real_resolve = Path.resolve
 
@@ -1121,8 +1121,8 @@ class TestDetectShadowedDcode:
         assert shadow is not None
         assert shadow.shadowing_bin == stale
 
-    def test_returns_none_when_no_dcode_on_path(self, tmp_path) -> None:
-        """Without any `dcode` on PATH there's nothing to be shadowed by."""
+    def test_returns_none_when_no_niki_on_path(self, tmp_path) -> None:
+        """Without any `niki` on PATH there's nothing to be shadowed by."""
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
         with (
@@ -1136,11 +1136,11 @@ class TestDetectShadowedDcode:
             assert detect_shadowed_dcode() is None
 
     def test_falls_back_to_niki_agent_binary_name(self, tmp_path) -> None:
-        """The `niki-agent` binary is checked when `dcode` is missing.
+        """The `niki-agent` binary is checked when `niki` is missing.
 
         Mirrors the install-script verification loop so an install that only
         exposes `niki-agent` (e.g. an older `uv tool install` that
-        predates the `dcode` entry point) still gets shadow-checked.
+        predates the `niki` entry point) still gets shadow-checked.
         """
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
@@ -1151,7 +1151,7 @@ class TestDetectShadowedDcode:
         stale.write_text("")
 
         def _which(name: str) -> str | None:
-            if name == "dcode":
+            if name == "niki":
                 return None
             if name == "niki-agent":
                 return str(stale)
@@ -1180,12 +1180,12 @@ class TestDetectShadowedDcode:
         non-destructive because the shadowing binary may be package-managed.
         """
         shadow = ShadowedDcode(
-            shadowing_bin=tmp_path / "old-bin" / "dcode",
+            shadowing_bin=tmp_path / "old-bin" / "niki",
             upgraded_bin_dir=tmp_path / "uv-bin",
         )
         rendered = format_shadowed_dcode_warning(shadow)
         assert str(shadow.shadowing_bin) in rendered
-        assert str(shadow.upgraded_bin_dir / "dcode") in rendered
+        assert str(shadow.upgraded_bin_dir / "niki") in rendered
         assert "earlier on your PATH" in rendered
         command = format_shadowed_dcode_fix_command(shadow)
         assert command.replace("\n", "\n  ") in rendered
@@ -1198,12 +1198,12 @@ class TestDetectShadowedDcode:
         """The direct restart target uses uv's `.exe`, not a stale `.cmd`."""
         uv_bin = tmp_path / "uv-bin"
         uv_bin.mkdir()
-        upgraded_shim = uv_bin / "dcode.exe"
+        upgraded_shim = uv_bin / "niki.exe"
         upgraded_shim.write_text("")
         shadow = ShadowedDcode(
-            shadowing_bin=tmp_path / "old-bin" / "dcode.cmd",
+            shadowing_bin=tmp_path / "old-bin" / "niki.cmd",
             upgraded_bin_dir=uv_bin,
-            entry_point="dcode",
+            entry_point="niki",
         )
 
         with (
@@ -1220,12 +1220,12 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         project = tmp_path / "project"
         project.mkdir()
-        project_shim = project / "dcode.exe"
+        project_shim = project / "niki.exe"
         project_shim.write_text("")
         shadow = ShadowedDcode(
-            shadowing_bin=tmp_path / "old-bin" / "dcode.cmd",
+            shadowing_bin=tmp_path / "old-bin" / "niki.cmd",
             upgraded_bin_dir=uv_bin,
-            entry_point="dcode",
+            entry_point="niki",
         )
         monkeypatch.chdir(project)
 
@@ -1233,13 +1233,13 @@ class TestDetectShadowedDcode:
             patch.dict(os.environ, {"PATHEXT": ".exe;.cmd"}),
             patch("niki_agent.update_check._is_windows", return_value=True),
         ):
-            assert shadow.upgraded_bin == uv_bin / "dcode"
+            assert shadow.upgraded_bin == uv_bin / "niki"
         assert shadow.upgraded_bin != project_shim
 
     def test_warning_text_quotes_fix_command_path(self, tmp_path) -> None:
         """The suggested PATH command must be safe to copy with odd paths."""
         shadow = ShadowedDcode(
-            shadowing_bin=tmp_path / "old bin" / "dcode",
+            shadowing_bin=tmp_path / "old bin" / "niki",
             upgraded_bin_dir=tmp_path / "uv bin's dir",
         )
 
@@ -1256,8 +1256,8 @@ class TestDetectShadowedDcode:
     def test_windows_fix_command_uses_powershell_literal_path(self, tmp_path) -> None:
         """PowerShell paths must not expand `$` or evaluate subexpressions."""
         shadow = ShadowedDcode(
-            shadowing_bin=tmp_path / "old-bin" / "dcode",
-            upgraded_bin_dir=tmp_path / "uv $dcode's $(bin)",
+            shadowing_bin=tmp_path / "old-bin" / "niki",
+            upgraded_bin_dir=tmp_path / "uv $niki's $(bin)",
         )
 
         with patch("niki_agent.update_check.os.name", "nt"):
@@ -1267,12 +1267,12 @@ class TestDetectShadowedDcode:
         assert command == f"$env:PATH = '{quoted_bin_dir};' + $env:PATH"
 
     def test_canonicalize_failure_continues_to_niki_agent_name(self, tmp_path) -> None:
-        """A `resolve()` failure on `dcode` must not hide another shadow.
+        """A `resolve()` failure on `niki` must not hide another shadow.
 
         The detector deliberately `continue`s to the `niki-agent` name
-        when canonicalizing `dcode`'s PATH directory raises, rather than
+        when canonicalizing `niki`'s PATH directory raises, rather than
         returning `None` (which would silently report "no shadow"). This pins
-        that fall-through: `dcode`'s directory raises, but `niki-agent`
+        that fall-through: `niki`'s directory raises, but `niki-agent`
         resolves to a stale directory and is still reported as the shadow. A
         regression that turned the `continue` into `return None` would
         re-introduce the exact silent-hide bug the inline comment warns about.
@@ -1281,15 +1281,15 @@ class TestDetectShadowedDcode:
         uv_bin.mkdir()
         bad_dir = tmp_path / "bad-dir"
         bad_dir.mkdir()
-        (bad_dir / "dcode").write_text("")
+        (bad_dir / "niki").write_text("")
         stale_bin = tmp_path / "stale-bin"
         stale_bin.mkdir()
         stale_niki_agent = stale_bin / "niki-agent"
         stale_niki_agent.write_text("")
 
         def _which(name: str) -> str | None:
-            if name == "dcode":
-                return str(bad_dir / "dcode")
+            if name == "niki":
+                return str(bad_dir / "niki")
             if name == "niki-agent":
                 return str(stale_niki_agent)
             return None
@@ -1297,7 +1297,7 @@ class TestDetectShadowedDcode:
         real_resolve = Path.resolve
 
         def _resolve(self: Path, strict: bool = False) -> Path:
-            # Only `dcode`'s PATH-entry directory raises; the other binary's
+            # Only `niki`'s PATH-entry directory raises; the other binary's
             # directory resolves cleanly so the loop can reach a real answer.
             if self == bad_dir:
                 msg = "simulated resolve failure"

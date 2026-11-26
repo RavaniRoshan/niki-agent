@@ -468,9 +468,9 @@ class WelcomeBanner(Static):
 
         # Render the name this process was actually launched with. `AGENTS.md`
         # already requires this ("hints that tell the user to run something must
-        # render `_invocation.invoked_name()` rather than a literal `dcode`"),
+        # render `_invocation.invoked_name()` rather than a literal `niki`"),
         # and the welcome banner was the surface that broke the rule -- so a
-        # `niki` launch greeted itself as `dcode`.
+        # shim launch greeted itself with the default name.
         parts: list[str | tuple[str, str | TStyle]] = [
             (f"{get_glyphs().cursor} ", title_style),
             (_invocation.invoked_name(), "bold"),

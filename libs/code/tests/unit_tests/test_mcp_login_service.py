@@ -803,7 +803,7 @@ class TestFormatLegacyIgnoredNotice:
         assert "docs" in notice
         assert "slack" in notice
         assert "enabled_project_servers is no longer used" in notice
-        assert "dcode" in notice
+        assert "niki" in notice
 
 
 class TestFormatMalformedApprovalsNotice:
@@ -817,7 +817,7 @@ class TestFormatMalformedApprovalsNotice:
         assert "2" in notice
         assert "enabled_project_server_approvals" in notice
         assert "could not be read" in notice
-        assert "dcode" in notice
+        assert "niki" in notice
 
 
 class TestFormatPolicyErrorNotice:

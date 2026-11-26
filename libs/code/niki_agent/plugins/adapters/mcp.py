@@ -1,4 +1,4 @@
-"""Adapter from plugin MCP declarations to dcode MCP config dictionaries."""
+"""Adapter from plugin MCP declarations to niki MCP config dictionaries."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _safe_mcp_name_part(value: str) -> str:
 def scoped_mcp_server_name(plugin_id: str, server_name: str) -> str:
     """Namespace a plugin-declared MCP server's name under its plugin id.
 
-    Plugin identifiers may contain characters rejected by dcode's MCP loader.
+    Plugin identifiers may contain characters rejected by niki's MCP loader.
     Use `__` as the namespace separator so names stay unique and valid.
 
     Args:
@@ -64,7 +64,7 @@ def plugin_mcp_server_entries(
     """List plugin MCP servers as `(label, scoped_name, needs_login)` tuples.
 
     `label` is the unscoped name from the plugin config (for UI). `scoped_name`
-    is what dcode registers after namespacing.
+    is what niki registers after namespacing.
 
     Args:
         plugin: Plugin whose MCP declarations should be listed.
@@ -231,7 +231,7 @@ def plugin_mcp_configs(
         project_dir: Project directory for `${CLAUDE_PROJECT_DIR}` substitution.
 
     Returns:
-        MCP config layers ready for dcode's merge path.
+        MCP config layers ready for niki's merge path.
     """
     configs: list[JsonObject] = []
     for plugin in plugins:

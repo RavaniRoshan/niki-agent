@@ -170,7 +170,7 @@ def _retry_budget(model: object) -> int | None:
     """Read the effective budget without persisting the provider model.
 
     Returns:
-        The dcode-owned retry count, if the model carries one.
+        The niki-owned retry count, if the model carries one.
     """
     from niki_agent.config import MODEL_RETRIES_ATTR
 

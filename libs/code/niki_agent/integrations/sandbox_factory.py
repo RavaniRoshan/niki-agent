@@ -246,7 +246,7 @@ def _import_provider_module(
         msg = (
             f"The '{provider}' sandbox provider requires the '{package}' package. "
             f"Install it with: /install {provider} (in-app) or "
-            f"dcode install {provider} (CLI)"
+            f"niki install {provider} (CLI)"
         )
         raise ImportError(msg) from exc
 

@@ -281,7 +281,7 @@ def _parse_rubric_max_iterations(raw: str) -> tuple[int | None, str | None]:
 # lock's docstring.
 
 _DEEPAGENTS_IMPORT_LOCK = threading.RLock()
-"""Serializes process-local cold imports into the Deep Agents SDK graph.
+"""Serializes process-local cold imports into the vendored SDK graph.
 
 The SDK currently has a package-to-backend circular import that is safe when a
 single thread imports it re-entrantly, but can trip CPython's per-module import
@@ -638,7 +638,7 @@ def _format_cost_breakdown_table(
 
 _PRICING_UNAVAILABLE_MESSAGE = (
     "We couldn't calculate costs because the pricing data failed to load. "
-    "Reinstalling Deep Agents Code should restore cost estimates; see the debug "
+    "Reinstalling Niki Agent should restore cost estimates; see the debug "
     "log for details. Untracked usage may still count toward subscription "
     "limits or incur charges."
 )
@@ -882,7 +882,7 @@ def _create_model_with_deepagents_import_lock(
     profile_overrides: dict[str, Any] | None = None,
     cli_max_retries: int | None = None,
 ) -> ModelResult:
-    """Create a model while serializing Deep Agents SDK import entry.
+    """Create a model while serializing vendored SDK import entry.
 
     Args:
         model_spec: Model specification in `provider:model` format.
@@ -3045,7 +3045,7 @@ class TextualSessionState:
 _COMMAND_URLS: dict[str, str] = {
     "/changelog": CHANGELOG_URL,
     "/docs": DOCS_URL,
-    "/feedback": "https://github.com/langchain-ai/deepagents/issues/new/choose",
+    "/feedback": "https://github.com/RavaniRoshan/niki-agent/issues/new/choose",
 }
 """Slash-command to URL mapping for commands that just open a browser."""
 
@@ -3329,10 +3329,10 @@ class _GoalGradeObservation:
 class DeepAgentsApp(App):
     """Main Textual application for niki-agent."""
 
-    TITLE = "Deep Agents"
+    TITLE = "Niki Agent"
     """Textual application title."""
 
-    PRODUCT_NAME: ClassVar[str] = "Deep Agents"
+    PRODUCT_NAME: ClassVar[str] = "Niki Agent"
     """Product name used inside user-visible sentences.
 
     Kept separate from `TITLE` so a fork can rename the chrome without
@@ -3533,7 +3533,7 @@ class DeepAgentsApp(App):
         sub_title: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize the Deep Agents application.
+        """Initialize the Niki Agent application.
 
         Args:
             agent: Pre-configured LangGraph agent, or `None` when server
@@ -3848,7 +3848,7 @@ class DeepAgentsApp(App):
         self._mcp_unauthenticated = sum(
             1 for s in (mcp_server_info or []) if s.needs_attention()
         )
-        """MCP servers awaiting a `dcode mcp login` run."""
+        """MCP servers awaiting a `niki mcp login` run."""
 
         self._mcp_errored = sum(
             1 for s in (mcp_server_info or []) if s.status == "error"
@@ -4047,7 +4047,7 @@ class DeepAgentsApp(App):
             days = installed_days_old()
             if days is None:
                 # The cache changed between the staleness gate and this read
-                # (e.g. a concurrent `dcode` process). Drop the banner rather
+                # (e.g. a concurrent `niki` process). Drop the banner rather
                 # than render "installed version is None days old".
                 self._installation_stale = False
             else:
@@ -4352,7 +4352,7 @@ class DeepAgentsApp(App):
         (incognito) never appends here."""
 
         self._prewarm_worker: Worker[None] | None = None
-        """Background worker that prewarms `deepagents`/LangChain imports.
+        """Background worker that prewarms vendored SDK/LangChain imports.
 
         Awaited via `_await_prewarm_imports` before any caller on the event
         loop re-enters the same module graph (see that method for why).
@@ -6002,7 +6002,7 @@ class DeepAgentsApp(App):
         )
 
         try:
-            # Discovery and prewarm import overlapping parts of the Deep Agents
+            # Discovery and prewarm import overlapping parts of the vendored
             # graph in separate workers. Let prewarm finish first so CPython's
             # per-module import locks cannot form a cycle.
             await self._await_prewarm_imports()
@@ -6089,7 +6089,7 @@ class DeepAgentsApp(App):
     def _discover_skills_and_roots_with_import_lock(
         self,
     ) -> tuple[list[ExtendedSkillMetadata], list[Path]]:
-        """Discover skills while serializing Deep Agents SDK import entry.
+        """Discover skills while serializing vendored SDK import entry.
 
         Returns:
             Tuple of `(skill metadata list, pre-resolved containment roots)`.
@@ -6373,7 +6373,7 @@ class DeepAgentsApp(App):
         # are already set eagerly for the status bar display; this call
         # does the heavy langchain import + SDK init and may refine them
         # (e.g., context_limit from the model profile).
-        # Persist the user-chosen default so a later bare `deepagents`
+        # Persist the user-chosen default so a later bare `niki`
         # relaunch brings the user back to it. See
         # `_restart_server_for_agent_swap` for why one-off resumes don't
         # mutate `_default_assistant_id` and why the persisted default
@@ -6767,7 +6767,7 @@ class DeepAgentsApp(App):
         """Wait for prewarm imports before re-entering their module graph.
 
         Prevents a multi-threaded import deadlock: the prewarm worker runs in
-        `asyncio.to_thread`, and any caller that imports `deepagents` or
+        `asyncio.to_thread`, and any caller that imports the vendored SDK or
         LangChain from the event-loop thread while it's still running can
         race on partially-initialized module locks.
 
@@ -6949,7 +6949,7 @@ class DeepAgentsApp(App):
             days: Whole days since the installed release, or `None` when the
                 age is unknown. `None` with *update_available* set leaves the
                 header untouched: the release-time cache can go cold mid-session
-                (a concurrent `dcode` rewrites it), and an unknown age is no
+                (a concurrent `niki` rewrites it), and an unknown age is no
                 reason to retract an advisory the user has already read.
             update_available: Whether a newer version was just confirmed. `False`
                 hides the banner and restores the base subtitle.
@@ -7206,7 +7206,7 @@ class DeepAgentsApp(App):
                         release_age=release_age,
                         installed_age=installed_age,
                     )
-                    + "Quit and relaunch dcode to install the update automatically."
+                    + "Quit and relaunch niki to install the update automatically."
                 )
                 await self._surface_update_message(
                     latest,
@@ -7466,7 +7466,7 @@ class DeepAgentsApp(App):
                         f"Already on the latest version (v{cli_version}{age_suffix}).",
                     ),
                 )
-                # dcode is current, but its dependencies may have newer in-range
+                # niki is current, but its dependencies may have newer in-range
                 # releases. Compute a dry-run plan first so the confirmation only
                 # appears when there are concrete updates to apply. Keep the support
                 # gate before the check so brew/other users aren't asked about an
@@ -7550,7 +7550,7 @@ class DeepAgentsApp(App):
         planned_changes: str,
         include_prereleases: bool | None,
     ) -> None:
-        """Confirm and run a dependency refresh for an already-current dcode.
+        """Confirm and run a dependency refresh for an already-current niki.
 
         Must be scheduled via `_schedule_off_message_pump`, never awaited from a
         command handler. It therefore catches its own exceptions, because the
@@ -7586,7 +7586,7 @@ class DeepAgentsApp(App):
         upgrade_include_prereleases: bool | None,
         pin_upgrade_version: str | None,
     ) -> None:
-        """Ask whether `/update --deps` upgrades dcode or refreshes its deps.
+        """Ask whether `/update --deps` upgrades niki or refreshes its deps.
 
         Must be scheduled via `_schedule_off_message_pump`, never awaited from a
         command handler. It therefore catches its own exceptions, because the
@@ -7632,7 +7632,7 @@ class DeepAgentsApp(App):
         """Show the installed version in the splash after an in-session update.
 
         Call this only once the install is known to be the version a relaunch
-        will actually run: the shadowed-`dcode` paths deliberately leave the
+        will actually run: the shadowed-`niki` paths deliberately leave the
         old version on the banner, because a stale shim earlier on PATH means
         relaunching keeps the old binary.
 
@@ -7778,7 +7778,7 @@ class DeepAgentsApp(App):
             upgraded_to = installed or latest
             # uv may have installed the upgraded shim into a directory that
             # isn't first on the user's PATH (e.g. a leftover pre-uv
-            # `dcode` from a former `pipx` install). Detect that before
+            # `niki` from a former `pipx` install). Detect that before
             # mounting the success line so we don't follow a green
             # "relaunch to use the new version" with a warning that
             # relaunching will keep the old version. Use the
@@ -7788,7 +7788,7 @@ class DeepAgentsApp(App):
             if shadow is None:
                 await self._mount_message(
                     AppMessage(
-                        f"Updated to v{upgraded_to}. Quit and relaunch dcode "
+                        f"Updated to v{upgraded_to}. Quit and relaunch niki "
                         "to use the new version."
                     ),
                 )
@@ -7936,7 +7936,7 @@ class DeepAgentsApp(App):
             )
         await self._mount_message(
             AppMessage(
-                "\n".join(message_parts) + "\nQuit and relaunch dcode to use them.",
+                "\n".join(message_parts) + "\nQuit and relaunch niki to use them.",
             ),
         )
 
@@ -8044,7 +8044,7 @@ class DeepAgentsApp(App):
         """Handle the `/install <extra>` slash command.
 
         Adds an optional extra (e.g. `daytona`, `fireworks`) to the installed
-        dcode tool by re-running
+        niki tool by re-running
         `uv tool install --reinstall -U 'niki-agent[<extra>]'`.
         Refuses unknown extras unless the user passes a `--force` token.
 
@@ -8280,7 +8280,7 @@ class DeepAgentsApp(App):
                 await self._mount_message(
                     AppMessage(
                         f"Installed extra '{extra}', but this app is connected "
-                        "to a remote LangGraph server. Relaunch dcode to load it, "
+                        "to a remote LangGraph server. Relaunch niki to load it, "
                         "then select the model again."
                     ),
                 )
@@ -8295,7 +8295,7 @@ class DeepAgentsApp(App):
             return False
 
         if not restart_capable:
-            next_step = "Exit and relaunch dcode to use the new dependencies."
+            next_step = "Exit and relaunch niki to use the new dependencies."
             await self._mount_message(
                 AppMessage(f"Installed extra '{extra}'. {next_step}"),
             )
@@ -8473,7 +8473,7 @@ class DeepAgentsApp(App):
         )
 
     async def _handle_install_package(self, package: str, *, force: bool) -> None:
-        """Install an arbitrary package into the dcode tool env via `uv --with`.
+        """Install an arbitrary package into the niki tool env via `uv --with`.
 
         Backs `/install <package> --package`, the escape hatch for a provider
         whose package is not a `niki-agent` extra (e.g. a custom
@@ -8631,7 +8631,7 @@ class DeepAgentsApp(App):
         await self._mount_message(
             AppMessage(
                 f"Installed package '{package}'. Run `/restart` to load it "
-                "now, or relaunch dcode.",
+                "now, or relaunch niki.",
             ),
         )
         # Scheduled off the message pump so the restart modal stays responsive
@@ -8771,7 +8771,7 @@ class DeepAgentsApp(App):
         available, latest = self._update_available
         if available and latest:
             manual_hint = "Run /update or `niki update` to install it."
-            hint = "Update it using the method that installed this copy of dcode."
+            hint = "Update it using the method that installed this copy of niki."
             upgrade_supported = False
             try:
                 # Imported function-locally on purpose: tests patch these on the
@@ -8787,7 +8787,7 @@ class DeepAgentsApp(App):
                 upgrade_supported = method in {"uv", "brew"}
                 if upgrade_supported:
                     if await asyncio.to_thread(is_auto_update_enabled):
-                        hint = "Quit and relaunch dcode to install it automatically."
+                        hint = "Quit and relaunch niki to install it automatically."
                     else:
                         hint = manual_hint
             except Exception:
@@ -10031,7 +10031,7 @@ class DeepAgentsApp(App):
 
         remote = self._remote_agent()
         if remote is None:
-            msg = "No dcode server is connected"
+            msg = "No niki server is connected"
             raise RuntimeError(msg)
         # Thread switches can happen at any await, including while the summary
         # is running. Keep the child tied to the source's configuration.
@@ -12611,7 +12611,7 @@ class DeepAgentsApp(App):
         if not os.environ.get("TAVILY_API_KEY"):
             self.notify(
                 "Saved your Tavily key, but couldn't activate it this "
-                "session. Restart dcode, or re-add it with /auth.",
+                "session. Restart niki, or re-add it with /auth.",
                 severity="warning",
                 markup=False,
             )
@@ -14565,7 +14565,7 @@ class DeepAgentsApp(App):
             await self._mount_message(
                 AppMessage(
                     "Python extensions require `NIKI_EXPERIMENTAL=1` "
-                    "before starting dcode."
+                    "before starting niki."
                 )
             )
             return
@@ -16138,7 +16138,7 @@ class DeepAgentsApp(App):
             "  /goal clear\n"
             "  /goal model [provider:model|clear]\n"
             "  /goal max-iterations <N|clear>\n\n"
-            "Use /goal when you have a plain-language objective; dcode will "
+            "Use /goal when you have a plain-language objective; niki will "
             "draft a checklist for it. Once applied, the goal stays active for "
             "this thread until paused, completed, blocked, or cleared. "
             "Follow-up prompts continue working toward that goal.\n"
@@ -16213,9 +16213,7 @@ class DeepAgentsApp(App):
         """Submit one typed criteria request through the normal agent stream."""
         if not self._agent or not self._ui_adapter or not self._session_state:
             await self._mount_message(
-                ErrorMessage(
-                    "Goal criteria generation requires the Deep Agents Code server."
-                )
+                ErrorMessage("Goal criteria generation requires the Niki Agent server.")
             )
             return
         if self._remote_agent() is None:
@@ -17648,7 +17646,7 @@ class DeepAgentsApp(App):
                 or self._connecting
                 or self._thread_switching
             ):
-                self.notify("Connect to a dcode session before asking /btw.")
+                self.notify("Connect to a niki session before asking /btw.")
                 return
             if not await self._has_conversation_messages():
                 self.notify("Send a message before asking /btw.")
@@ -18881,7 +18879,7 @@ class DeepAgentsApp(App):
         remote = self._remote_agent()
         if remote is None:
             await self._mount_message(
-                ErrorMessage("Offload failed: no dcode server is connected.")
+                ErrorMessage("Offload failed: no niki server is connected.")
             )
             return
         # Set once the server reports a committed compaction. Everything after
@@ -19098,7 +19096,7 @@ class DeepAgentsApp(App):
                 logger.exception("Failed to dismiss spinner after offload")
 
     async def _offload_impl(self) -> None:
-        """Offload older messages through the dcode server operation."""
+        """Offload older messages through the niki server operation."""
         if not self._agent or not self._lc_thread_id:
             await self._mount_message(
                 AppMessage("Nothing to offload — start a conversation first"),
@@ -24809,7 +24807,7 @@ class DeepAgentsApp(App):
             curated=curated,
             title="Choose a Recommended Model" if curated else None,
             description=(
-                "These models have performed well in Deep Agents evals and are "
+                "These models have performed well in our evals and are "
                 "a solid starting set. You can explore the full model list "
                 "later with /model. Sandboxes and other integrations install "
                 "anytime with /install."
@@ -25952,7 +25950,7 @@ class DeepAgentsApp(App):
                 group="agent-switch-skill-discovery",
             )
 
-            # Persist explicit picker swaps so a bare `deepagents` relaunch
+            # Persist explicit picker swaps so a bare `niki` relaunch
             # returns to that agent. One-off thread resumes deliberately match
             # launch-time `-r` and leave the saved default alone.
             saved = True
@@ -26941,7 +26939,7 @@ class DeepAgentsApp(App):
                     )
                     if success:
                         self._notice_registry.remove(entry.key)
-                        # Same shadowing risk as `/update`: if a stale `dcode` is
+                        # Same shadowing risk as `/update`: if a stale `niki` is
                         # earlier on PATH, the user's next launch will silently
                         # run the old version. Surface that loudly even when only
                         # a toast is visible. Keep the modal itself out of the
@@ -26978,7 +26976,7 @@ class DeepAgentsApp(App):
                             return
                         self.notify(
                             f"Updated to v{upgraded_to}. "
-                            "Quit and relaunch dcode to use the new version.",
+                            "Quit and relaunch niki to use the new version.",
                             severity="information",
                             timeout=10,
                             markup=False,
@@ -27633,7 +27631,7 @@ class DeepAgentsApp(App):
             logger.exception("Failed to mount MCP reconnect force-confirm modal")
             self.notify(
                 "Couldn't open the reconnect confirmation. Try again, or "
-                "relaunch dcode to pick up the new MCP token.",
+                "relaunch niki to pick up the new MCP token.",
                 severity="warning",
                 markup=False,
             )
@@ -28203,7 +28201,7 @@ class DeepAgentsApp(App):
             # token would never reach the MCP tool factory.
             self.notify(
                 "Cannot log into MCP servers against a remote server. "
-                "Relaunch dcode locally to authenticate.",
+                "Relaunch niki locally to authenticate.",
                 severity="warning",
                 markup=False,
             )
@@ -28548,7 +28546,7 @@ class DeepAgentsApp(App):
         # Clear the pending flag up front so deferred state can't leak
         # past a no-op early return — e.g. the server died between defer
         # and `/mcp reconnect`. The token is on disk; the user must
-        # relaunch dcode to pick it up, and `/mcp reconnect` shouldn't
+        # relaunch niki to pick it up, and `/mcp reconnect` shouldn't
         # keep claiming there's something to do.
         self._pending_mcp_login_reconnect = False
         self._pending_mcp_disable_reconnect_servers.clear()
@@ -28557,7 +28555,7 @@ class DeepAgentsApp(App):
         if self._server_kwargs is None or self._server_proc is None:
             self.notify(
                 "Cannot restart the LangGraph server automatically; "
-                "relaunch dcode to pick up the new MCP token.",
+                "relaunch niki to pick up the new MCP token.",
                 severity="warning",
                 markup=False,
             )
@@ -28758,7 +28756,7 @@ class DeepAgentsApp(App):
 
         Provider/sandbox extras and `--package` installs are imported by the
         app-owned LangGraph server subprocess, so a `/restart` loads them
-        without exiting the TUI. When dcode owns that subprocess and is idle,
+        without exiting the TUI. When niki owns that subprocess and is idle,
         prompt to run the restart immediately instead of making the user type
         `/restart`.
 
@@ -28779,7 +28777,7 @@ class DeepAgentsApp(App):
         await self._offer_server_restart(
             label=label,
             verb="Installed",
-            relaunch_hint=f"Relaunch dcode to load '{label}'.",
+            relaunch_hint=f"Relaunch niki to load '{label}'.",
             busy_hint=(
                 f"Run `/restart` to load '{label}' once the current task finishes."
             ),
@@ -28813,7 +28811,7 @@ class DeepAgentsApp(App):
             prompt_body=(
                 "Restart the server to enable web search, or defer with `/restart`."
             ),
-            relaunch_hint="Relaunch dcode to enable web search with your Tavily key.",
+            relaunch_hint="Relaunch niki to enable web search with your Tavily key.",
             busy_hint=(
                 "Run `/restart` to enable web search once the current task finishes."
             ),
@@ -29232,12 +29230,12 @@ class DeepAgentsApp(App):
                 "Cannot restart: this app is connected to a remote LangGraph "
                 "server (no owned subprocess). Configuration was reloaded; "
                 "queued prompts were returned to the input. Re-submit them to "
-                "send on the current session, or relaunch dcode to fully "
+                "send on the current session, or relaunch niki to fully "
                 "restart.",
                 empty_notice=(
                     "Cannot restart: this app is connected to a remote LangGraph "
                     "server (no owned subprocess). Configuration was reloaded; "
-                    "relaunch dcode to fully restart."
+                    "relaunch niki to fully restart."
                 ),
             )
             return False
@@ -29288,25 +29286,25 @@ class DeepAgentsApp(App):
                     "starting. Configuration was reloaded; queued prompts were "
                     "returned to the input. Update credentials with `/auth` if "
                     "needed, then pick a model with `/model` to try again. You "
-                    "can also relaunch dcode.\n\n"
+                    "can also relaunch niki.\n\n"
                     f"Last error: {self._server_startup_error}"
                 )
                 empty_notice = (
                     "Cannot restart yet because the server did not finish "
                     "starting. Configuration was reloaded. Update credentials "
                     "with `/auth` if needed, then pick a model with `/model` to "
-                    "try again. You can also relaunch dcode.\n\n"
+                    "try again. You can also relaunch niki.\n\n"
                     f"Last error: {self._server_startup_error}"
                 )
             else:
                 notice = (
                     "Cannot restart yet because the server is not running. "
                     "Configuration was reloaded; queued prompts were returned "
-                    "to the input. Relaunch dcode to start again."
+                    "to the input. Relaunch niki to start again."
                 )
                 empty_notice = (
                     "Cannot restart yet because the server is not running. "
-                    "Configuration was reloaded. Relaunch dcode to start again."
+                    "Configuration was reloaded. Relaunch niki to start again."
                 )
             await self._restore_queue_to_input(notice, empty_notice=empty_notice)
             return False
@@ -30361,7 +30359,7 @@ class DeepAgentsApp(App):
         if self._server_kwargs is None or self._server_proc is None:
             self.notify(
                 "Switched cwd locally, but this session cannot restart its server. "
-                "Relaunch dcode from the thread directory if tools look stale.",
+                "Relaunch niki from the thread directory if tools look stale.",
                 severity="warning",
                 timeout=10,
                 markup=False,
@@ -30461,7 +30459,7 @@ class DeepAgentsApp(App):
                 self.notify(
                     "Server restart failed and the previous directory could not "
                     "be restored. The session may be in the wrong directory — "
-                    "please restart dcode.",
+                    "please restart niki.",
                     severity="error",
                     timeout=15,
                     markup=False,
@@ -30904,7 +30902,7 @@ class DeepAgentsApp(App):
             self.notify(
                 "Could not restore the previous working directory after a failed "
                 "thread switch. The session may be in the wrong directory — please "
-                "restart dcode.",
+                "restart niki.",
                 severity="error",
                 timeout=15,
                 markup=False,
@@ -31987,7 +31985,7 @@ async def run_textual_app(
         title: Override the Textual `App.title` shown in the optional header
             bar (gated on `NIKI_SHOW_HEADER`, or shown automatically
             when the installation is stale). When `None`, the default
-            `"Deep Agents"` is used.
+            `"Niki Agent"` is used.
         sub_title: Override the Textual `App.sub_title` shown in the optional
             header bar.
 

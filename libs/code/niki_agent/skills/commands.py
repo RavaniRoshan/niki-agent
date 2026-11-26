@@ -59,8 +59,8 @@ def _validate_name(name: str) -> tuple[bool, str]:
     if len(name) > MAX_SKILL_NAME_LENGTH:
         return False, "cannot exceed 64 characters"
 
-    # Check for path traversal sequences (dcode-specific; the SDK validates
-    # against the directory name instead, but dcode accepts user input
+    # Check for path traversal sequences (niki-specific; the SDK validates
+    # against the directory name instead, but niki accepts user input
     # directly so we need explicit path-safety checks)
     if ".." in name or "/" in name or "\\" in name:
         return False, "cannot contain path components"
@@ -206,7 +206,7 @@ def _list(
             )
             console.print(
                 "\n[dim]Create a project skill:\n"
-                "  dcode skills create my-skill --project[/dim]",
+                "  niki skills create my-skill --project[/dim]",
                 style=theme.MUTED,
             )
             return
@@ -252,13 +252,13 @@ def _list(
                 "  1. .agents/skills/                 project skills\n"
                 "  2. .niki/skills/                   project skills\n"
                 "  3. ~/.agents/skills/               user skills\n"
-                f"  4. {user_skills_display}   user skills (alias)\n"
+                f"  4. {user_skills_display}   user skills\n"
                 "  5. <package>/built_in_skills/      built-in skills\n"
                 "     (legacy project dir: .deepagents/skills/)[/dim]",
                 style=theme.MUTED,
             )
             console.print(
-                "\n[dim]Create your first skill:\n  dcode skills create my-skill[/dim]",
+                "\n[dim]Create your first skill:\n  niki skills create my-skill[/dim]",
                 style=theme.MUTED,
             )
             return
@@ -358,7 +358,7 @@ description: "{description}"
 # (Warning: SKILL.md files exceeding 10 MB are silently skipped at load time.)
 # Optional fields per Agent Skills spec:
 # license: Apache-2.0
-# compatibility: Designed for Deep Agents Code
+# compatibility: Designed for Niki Agent
 # metadata:
 #   author: your-org
 #   version: "1.0"
@@ -1005,7 +1005,7 @@ def setup_skills_parser(
     """Setup the skills subcommand parser with all its subcommands.
 
     Each subcommand gets a dedicated help screen so that
-    `deepagents skills -h` shows skills-specific help, not the
+    `niki skills -h` shows skills-specific help, not the
     global help.
 
     Args:

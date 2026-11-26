@@ -1025,7 +1025,7 @@ class TestProjectDotenvDeniedKeys:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A repo cannot bypass the bounded Deep Agents recursion setting."""
+        """A repo cannot bypass the bounded agent recursion setting."""
         import os
 
         import niki_agent.config as config_mod
@@ -4171,7 +4171,7 @@ class TestQuietSdkLogging:
 
         monkeypatch.setenv(DEBUG, "1")
         harness_logger = logging.getLogger(
-            "deepagents.profiles.harness.harness_profiles"
+            "niki_agent.sdk.profiles.harness.harness_profiles"
         )
         harness_logger.handlers.clear()
         monkeypatch.setattr(harness_logger, "propagate", True)
@@ -4210,14 +4210,14 @@ class TestQuietSdkLogging:
             )
             assert transport_logger.propagate is True
 
-    def test_leaves_other_deepagents_loggers_untouched(
+    def test_leaves_other_sdk_loggers_untouched(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Actionable Deep Agents runtime warnings keep their normal routing."""
+        """Actionable SDK runtime warnings keep their normal routing."""
         from niki_agent._env_vars import DEBUG
 
         monkeypatch.delenv(DEBUG, raising=False)
-        runtime_logger = logging.getLogger("deepagents.backends.filesystem")
+        runtime_logger = logging.getLogger("niki_agent.sdk.backends.filesystem")
         runtime_logger.handlers.clear()
         monkeypatch.setattr(runtime_logger, "propagate", True)
 

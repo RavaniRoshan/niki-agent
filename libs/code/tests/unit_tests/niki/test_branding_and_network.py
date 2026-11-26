@@ -88,16 +88,14 @@ def test_niki_source_does_not_spell_upstream_names(name: str) -> None:
     )
 
 
-def test_niki_is_the_primary_script_and_aliases_still_work() -> None:
-    """`niki` is primary; `dcode` and `deepagents-code` stay as deprecated aliases."""
+def test_niki_is_the_only_console_script() -> None:
+    """`niki` is the product's only entry point; the old aliases are gone."""
     import tomllib
 
     pyproject = PACKAGE_ROOT / "pyproject.toml"
     scripts = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["scripts"]
 
-    assert scripts["niki"] == "niki_agent.niki.entry:niki_main"
-    assert scripts["dcode"] == "niki_agent:cli_main"
-    assert scripts["deepagents-code"] == "niki_agent:cli_main"
+    assert scripts == {"niki": "niki_agent.niki.entry:niki_main"}
 
 
 @pytest.mark.parametrize(

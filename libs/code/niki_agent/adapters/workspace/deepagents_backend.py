@@ -1,4 +1,4 @@
-"""Workspace adapters for in-memory use and Deep Agents backends."""
+"""Workspace adapters for in-memory use and the vendored backends."""
 
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ class DeepAgentsWorkspaceAdapter:
         """Wrap a backend already selected for one workspace.
 
         Args:
-            backend: Deep Agents backend that owns file and command execution.
+            backend: Vendored backend that owns file and command execution.
             workspace_id: Validated server identity for this workspace.
             workspace_root: Canonical root directory bound to the runtime.
 

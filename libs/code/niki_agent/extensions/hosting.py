@@ -121,7 +121,7 @@ def validate_backend_route(
 
     The sandbox check is deliberately shallow. Wrapping a filesystem backend
     in another `BackendProtocol` implementation changes who owns that safety
-    contract, so dcode does not inspect arbitrary backend object graphs.
+    contract, so niki does not inspect arbitrary backend object graphs.
 
     Args:
         item: Backend route registration to validate.

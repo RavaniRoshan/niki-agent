@@ -11,6 +11,8 @@ from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from niki_agent.memory_guard import ManagedMemoryGuardMiddleware
 from niki_agent.onboarding import (
+    LEGACY_ONBOARDING_NAME_MEMORY_END,
+    LEGACY_ONBOARDING_NAME_MEMORY_START,
     ONBOARDING_NAME_MEMORY_END,
     ONBOARDING_NAME_MEMORY_START,
     extract_onboarding_name_block,
@@ -69,6 +71,39 @@ def test_edit_inside_managed_block_is_reverted(tmp_path) -> None:
     content = path.read_text(encoding="utf-8")
     assert '- The user\'s preferred name is "Ada".' in content
     assert "Mallory" not in content
+    assert "Keep this note." in content
+
+
+def test_legacy_block_is_guarded_and_migrated_on_restore(tmp_path) -> None:
+    """A block under the pre-rename markers is protected and rewritten."""
+    path = tmp_path / "agent" / "AGENTS.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "## User Preferences\n\n"
+        f"{LEGACY_ONBOARDING_NAME_MEMORY_START}\n"
+        '- The user\'s preferred name is "Ada".\n'
+        f"{LEGACY_ONBOARDING_NAME_MEMORY_END}\n\n"
+        "Keep this note.\n",
+        encoding="utf-8",
+    )
+    middleware = ManagedMemoryGuardMiddleware([str(path)])
+
+    def handler(_request: ToolCallRequest) -> ToolMessage:
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("Ada", "Mallory"),
+            encoding="utf-8",
+        )
+        return _success()
+
+    result = middleware.wrap_tool_call(_request("edit_file", str(path)), handler)
+
+    assert isinstance(result, ToolMessage)
+    assert result.status == "error"
+    content = path.read_text(encoding="utf-8")
+    assert "Mallory" not in content
+    assert LEGACY_ONBOARDING_NAME_MEMORY_START not in content
+    assert ONBOARDING_NAME_MEMORY_START in content
+    assert '- The user\'s preferred name is "Ada".' in content
     assert "Keep this note." in content
 
 
