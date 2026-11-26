@@ -849,6 +849,7 @@ dependencies = [
  "niki-proto",
  "niki-provider",
  "niki-render",
+ "niki-skills",
  "niki-tools",
  "niki-tui",
  "niki-tui-live",
@@ -961,6 +962,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "niki-skills"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "niki-tools"
 version = "0.1.0"
 dependencies = [
@@ -992,6 +1001,7 @@ dependencies = [
  "niki-policy",
  "niki-provider",
  "niki-render",
+ "niki-skills",
  "niki-tools",
  "niki-tui",
  "niki-tui-modals",

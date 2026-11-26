@@ -11,6 +11,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_agent::{AgentEvent, Approval, ApprovalRequest, RunOutcome, StopReason, Usage};
 use niki_policy::Mode;
 use niki_render::Glyphs;
+use niki_skills::SkillCatalog;
 use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -78,6 +79,8 @@ pub struct App {
     pub modal: Option<Modal>,
     /// The models the configuration offers, for `/model`.
     pub models: ModelPicker,
+    /// The skills discovery found for this session, shown by `/skills`.
+    skills: SkillCatalog,
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
     /// one screenful.
     pub page: usize,
@@ -99,6 +102,7 @@ impl App {
             pending: None,
             modal: None,
             models: ModelPicker::default(),
+            skills: SkillCatalog::default(),
             page: 10,
             spinner: 0,
         }
@@ -112,6 +116,11 @@ impl App {
     /// Offer these models to the model picker.
     pub fn set_models(&mut self, models: ModelPicker) {
         self.models = models;
+    }
+
+    /// Offer the skills discovery found, which `/skills` prints.
+    pub fn set_skills(&mut self, skills: SkillCatalog) {
+        self.skills = skills;
     }
 
     /// Switch the marker registry.
@@ -285,6 +294,30 @@ impl App {
         }
     }
 
+    /// Print the discovered skills into the transcript.
+    ///
+    /// One row per skill, with the description and the path to read: the same
+    /// three things the model is given, so a person can tell why the model
+    /// reached for a skill and where its instructions live.
+    fn show_skills(&mut self) {
+        if self.skills.is_empty() {
+            self.transcript
+                .push_notice("no skills found; add one at .niki/skills/<name>/SKILL.md");
+            return;
+        }
+        for skill in self.skills.list() {
+            self.transcript.push_notice(format!(
+                "{}: {}\n  {}",
+                skill.name(),
+                skill.description(),
+                skill.location()
+            ));
+        }
+        for warning in self.skills.warnings() {
+            self.transcript.push_notice(format!("skipped: {warning}"));
+        }
+    }
+
     /// Move the transcript one wheel notch, away from the newest line or back
     /// towards it.
     pub fn wheel(&mut self, up: bool) {
@@ -434,6 +467,10 @@ impl App {
                 self.theme(argument);
                 None
             }
+            "/skills" => {
+                self.show_skills();
+                None
+            }
             "/model" => match argument {
                 Some(spec) => Some(Command::SelectModel(spec.to_owned())),
                 None => {
@@ -443,7 +480,7 @@ impl App {
             },
             other => {
                 self.transcript.push_notice(format!(
-                    "there is no {other} command; try /help, /model, /theme or /quit"
+                    "there is no {other} command; try /help, /model, /skills, /theme or /quit"
                 ));
                 None
             }
@@ -844,6 +881,78 @@ mod tests {
         assert_eq!(press(&mut app, KeyCode::Enter), None);
         assert!(matches!(app.modal, Some(Modal::Help(_))));
         assert!(app.composer.is_empty());
+    }
+
+    #[test]
+    fn the_skills_command_lists_name_description_and_path() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let directory = project.path().join(".niki/skills/deploy");
+        std::fs::create_dir_all(&directory).expect("skill directory");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            "---\nname: deploy\ndescription: Ship a release safely.\n---\nbody\n",
+        )
+        .expect("skill");
+
+        let mut app = app();
+        app.set_skills(SkillCatalog::discover(project.path(), user.path()));
+        type_text(&mut app, "/skills");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        let texts: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .map(|row| row.text.as_str())
+            .collect();
+        assert!(
+            texts.iter().any(|text| text.contains("deploy")
+                && text.contains("Ship a release safely.")
+                && text.contains("deploy/SKILL.md")),
+            "{texts:?}"
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|text| text.starts_with("commit:") && text.contains("built-in")),
+            "the built-in skills are listed too: {texts:?}"
+        );
+        assert!(app.composer.is_empty());
+        assert_eq!(app.status.turn, TurnState::Idle, "a command is not a turn");
+    }
+
+    #[test]
+    fn the_skills_command_reports_a_skill_it_could_not_load() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let directory = project.path().join(".niki/skills/broken");
+        std::fs::create_dir_all(&directory).expect("skill directory");
+        std::fs::write(directory.join("SKILL.md"), "# no front matter\n").expect("skill");
+
+        let mut app = app();
+        app.set_skills(SkillCatalog::discover(project.path(), user.path()));
+        type_text(&mut app, "/skills");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .any(|row| row.text.starts_with("skipped: ") && row.text.contains("broken")),
+            "{:?}",
+            app.transcript.rows()
+        );
+    }
+
+    #[test]
+    fn skills_without_a_catalog_say_where_to_add_one() {
+        let mut app = app();
+        type_text(&mut app, "/skills");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        assert!(last.text.contains(".niki/skills"), "{}", last.text);
     }
 
     #[test]
