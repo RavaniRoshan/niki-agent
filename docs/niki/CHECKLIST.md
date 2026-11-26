@@ -41,8 +41,10 @@ Four variants register under `/theme`: **`niki`** (default), **`niki-light`**, *
 | Remaining effort | **Stop.** Owner takes the OWNER-VERIFY pass. |
 | V13 16-colour fallback (2026-11-25) | **Measured; default truecolor palette is the guarantee.** `NIKI_COLOR_DEPTH=16` is a best-effort path for limited-colour terminals. Against xterm's documented palette the dark mapping now clears every text and glyph floor; the light grey (3.95:1) and Solarized's saturated accents cannot meet the floors using sixteen ANSI colours without abandoning the hue that carries the meaning. The app cannot choose the user's palette, so those limits are recorded here. |
 | S1 / S2 / S7 thresholds (2026-11-25) | **Deferred with measurements.** 400 ms first-frame and 50 ms echo are below what a Python process plus the headless driver can prove; S7's 2 s clock is pause overhead, not resize latency. S1 is judged against a 1,500 ms guard (met); S7's outcome half is verified. Recorded here because the instruction was to finish the product, which delegates these threshold calls rather than leaving them pending. |
-The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, so
-**the MVP is not done.** What follows is the accurate picture.
+The definition of done requires **zero** P0 rows in BROKEN/MISSING/PARTIAL, and
+every P0 row below is closed with the evidence named against it. What follows is
+the full picture, including the two items that are not rows and are **not**
+closed: the matched benchmark (#6) and the local-model CLI smoke (#7).
 
 Run everything with:
 
