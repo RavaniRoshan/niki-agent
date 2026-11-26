@@ -83,7 +83,7 @@ const DEFAULT_PR = {
   user: { login: "contributor", type: "User" },
   head: {
     ref: "feature-branch",
-    repo: { full_name: "langchain-ai/deepagents" },
+    repo: { full_name: "RavaniRoshan/niki-agent" },
   },
 };
 
@@ -164,7 +164,7 @@ function makeGithub({
 // claims, so a test can prove the payload's version is never consulted.
 function makeContext({ number = 7, stale = {} } = {}) {
   return {
-    repo: { owner: "langchain-ai", repo: "deepagents" },
+    repo: { owner: "RavaniRoshan", repo: "niki-agent" },
     payload: {
       pull_request: { number, ...stale },
     },
@@ -250,17 +250,17 @@ test("the default file-list limit truncates at exactly one over", () => {
 });
 
 test("recognizes release-please PRs only on full provenance", () => {
-  const repo = { owner: "langchain-ai", repo: "deepagents" };
+  const repo = { owner: "RavaniRoshan", repo: "niki-agent" };
   const genuine = {
     authorLogin: "github-actions[bot]",
     authorType: "Bot",
-    headRef: `${RELEASE_PLEASE_BRANCH_PREFIX}deepagents`,
-    headRepo: "langchain-ai/deepagents",
+    headRef: `${RELEASE_PLEASE_BRANCH_PREFIX}niki-agent`,
+    headRepo: "RavaniRoshan/niki-agent",
   };
   assert.equal(isReleasePleasePr(genuine, repo), true);
   // Case-insensitive repo comparison, since GitHub is inconsistent about case.
   assert.equal(
-    isReleasePleasePr({ ...genuine, headRepo: "LangChain-AI/DeepAgents" }, repo),
+    isReleasePleasePr({ ...genuine, headRepo: "RavaniRoshan/Niki-Agent" }, repo),
     true,
   );
 
@@ -281,7 +281,7 @@ test("recognizes release-please PRs only on full provenance", () => {
   );
   // A fork cannot borrow the exemption.
   assert.equal(
-    isReleasePleasePr({ ...genuine, headRepo: "attacker/deepagents" }, repo),
+    isReleasePleasePr({ ...genuine, headRepo: "attacker/niki-agent" }, repo),
     false,
   );
   assert.equal(isReleasePleasePr({ ...genuine, headRepo: undefined }, repo), false);
@@ -387,7 +387,7 @@ test("passes a release-please PR that adds a new component CHANGELOG", async () 
       user: { login: "github-actions[bot]", type: "Bot" },
       head: {
         ref: `${RELEASE_PLEASE_BRANCH_PREFIX}newpkg`,
-        repo: { full_name: "langchain-ai/deepagents" },
+        repo: { full_name: "RavaniRoshan/niki-agent" },
       },
     },
     files: [{ filename: "libs/newpkg/CHANGELOG.md", status: "added" }],
@@ -407,7 +407,7 @@ test("blocks a PR imitating a release-please branch from a fork", async () => {
       user: { login: "attacker", type: "User" },
       head: {
         ref: `${RELEASE_PLEASE_BRANCH_PREFIX}newpkg`,
-        repo: { full_name: "attacker/deepagents" },
+        repo: { full_name: "attacker/niki-agent" },
       },
     },
     files: [{ filename: "sneaky.md", status: "added" }],
@@ -484,7 +484,7 @@ test("release-please provenance is read live, not from the payload", async () =>
       user: { login: "github-actions[bot]", type: "Bot" },
       head: {
         ref: `${RELEASE_PLEASE_BRANCH_PREFIX}newpkg`,
-        repo: { full_name: "langchain-ai/deepagents" },
+        repo: { full_name: "RavaniRoshan/niki-agent" },
       },
     },
   });

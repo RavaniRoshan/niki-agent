@@ -171,13 +171,13 @@ test('applyBypassLabel adds the default bypass label when absent', async () => {
   github.rest.issues.get = async () => ({ data: { labels: [] } });
 
   const applied = await applyBypassLabel({
-    github, owner: 'langchain-ai', repo: 'deepagents', issueNumber: 42,
+    github, owner: 'RavaniRoshan', repo: 'niki-agent', issueNumber: 42,
   });
 
   assert.equal(applied, true);
   assert.deepEqual(calls.addLabels, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 42,
     labels: [DEFAULT_BYPASS_LABEL],
   }]);
@@ -190,7 +190,7 @@ test('applyBypassLabel no-ops when the label is already present', async () => {
   });
 
   const applied = await applyBypassLabel({
-    github, owner: 'langchain-ai', repo: 'deepagents', issueNumber: 42,
+    github, owner: 'RavaniRoshan', repo: 'niki-agent', issueNumber: 42,
   });
 
   assert.equal(applied, false);
@@ -213,13 +213,13 @@ test('clearPendingDeletion removes the label and minimizes the warning', async (
   const core = makeCore();
 
   const removed = await clearPendingDeletion({
-    github, core, owner: 'langchain-ai', repo: 'deepagents', issueNumber: 42,
+    github, core, owner: 'RavaniRoshan', repo: 'niki-agent', issueNumber: 42,
   });
 
   assert.equal(removed, true);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 42,
     name: DEFAULT_PENDING_DELETION_LABEL,
   }]);
@@ -243,7 +243,7 @@ test('clearPendingDeletion tolerates an absent label and still minimizes', async
   const core = makeCore();
 
   const removed = await clearPendingDeletion({
-    github, core, owner: 'langchain-ai', repo: 'deepagents', issueNumber: 42,
+    github, core, owner: 'RavaniRoshan', repo: 'niki-agent', issueNumber: 42,
   });
 
   assert.equal(removed, false);
@@ -258,7 +258,7 @@ test('clearPendingDeletion propagates non-404 removal failures', async () => {
 
   await assert.rejects(
     clearPendingDeletion({
-      github, core: makeCore(), owner: 'langchain-ai', repo: 'deepagents', issueNumber: 42,
+      github, core: makeCore(), owner: 'RavaniRoshan', repo: 'niki-agent', issueNumber: 42,
     }),
     /forbidden/,
   );
@@ -412,7 +412,7 @@ function makeGithub({
           // defaults would silently rewrite that into a valid-looking value.
           const field = (name, fallback) =>
             Object.hasOwn(pr, name) ? pr[name] : fallback;
-          const headRepo = field('headRepo', 'contributor/deepagents');
+          const headRepo = field('headRepo', 'contributor/niki-agent');
           return {
             data: {
               created_at: field('created_at', '2026-04-01T00:00:00Z'),
@@ -468,7 +468,7 @@ function makeGithub({
   return { github, calls };
 }
 
-const context = { repo: { owner: 'langchain-ai', repo: 'deepagents' } };
+const context = { repo: { owner: 'RavaniRoshan', repo: 'niki-agent' } };
 const now = new Date('2026-05-08T00:00:00Z');
 const workflowBot = { login: 'github-actions[bot]', type: 'Bot' };
 
@@ -491,8 +491,8 @@ function releasePleasePr(labels, overrides = {}) {
   return {
     authorLogin: 'github-actions[bot]',
     authorType: 'Bot',
-    headRef: 'release-please--branches--main--components--deepagents',
-    headRepo: 'langchain-ai/deepagents',
+    headRef: 'release-please--branches--main--components--niki-agent',
+    headRepo: 'RavaniRoshan/niki-agent',
     labels,
     ...overrides,
   };
@@ -542,8 +542,8 @@ test('warns after 14 days and closes after 30 days from opening', async () => {
   assert.match(calls.updateComment[0].body, /open for at least 30 days/);
   assert.deepEqual(calls.close, [102]);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 102,
     name: 'auto:pending-deletion',
   }]);
@@ -842,8 +842,8 @@ test('does not close a release PR already past the close threshold', async () =>
   assert.deepEqual(calls.close, []);
   assert.equal(calls.updateComment.length, 0);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 909,
     name: 'auto:pending-deletion',
   }]);
@@ -853,7 +853,7 @@ test('does not close a release PR already past the close threshold', async () =>
 // guard that stops being enforced fails precisely one of these rather than
 // hiding behind the others.
 const provenanceDenials = [
-  ['a fork head repository', { headRepo: 'attacker/deepagents' }, 'repo'],
+  ['a fork head repository', { headRepo: 'attacker/niki-agent' }, 'repo'],
   ['a non-release branch name', {
     headRef: 'chore/a-branch-name-longer-than-the-release-please-prefix-string',
   }, 'branch'],
@@ -878,8 +878,8 @@ for (const [description, overrides, expectedReason] of provenanceDenials) {
     assert.equal(summary.skippedRelease, 0);
     assert.equal(calls.createComment.length, 1);
     assert.deepEqual(calls.addLabels, [{
-      owner: 'langchain-ai',
-      repo: 'deepagents',
+      owner: 'RavaniRoshan',
+      repo: 'niki-agent',
       issue_number: 106,
       labels: ['auto:pending-deletion'],
     }]);
@@ -897,7 +897,7 @@ for (const [description, overrides, expectedReason] of provenanceDenials) {
 test('matches the head repository case-insensitively', async () => {
   const { github, calls } = makeGithub({
     items: [{ number: 111, created_at: '2026-04-08T00:00:00Z' }],
-    live: new Map([[111, releasePleasePr(['auto:release-pr'], { headRepo: 'LangChain-AI/DeepAgents' })]]),
+    live: new Map([[111, releasePleasePr(['auto:release-pr'], { headRepo: 'RavaniRoshan/Niki-Agent' })]]),
   });
   const core = makeCore();
 
@@ -928,8 +928,8 @@ test('does not report drift for a label that only resembles a release label', as
   assert.equal(summary.skippedRelease, 0);
   assert.equal(calls.createComment.length, 1);
   assert.deepEqual(calls.addLabels, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 107,
     labels: ['auto:pending-deletion'],
   }]);
@@ -998,8 +998,8 @@ test('sweep clears auto:pending-deletion from a release PR', async () => {
 
   assert.equal(summary.staleCleared, 1);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 108,
     name: 'auto:pending-deletion',
   }]);
@@ -1176,8 +1176,8 @@ test('warns an old PR that was never warned instead of closing it', async () => 
   assert.match(calls.createComment[0].body, /open for at least 14 days/);
   assert.match(calls.createComment[0].body, /warning is at least 16 days old/);
   assert.deepEqual(calls.addLabels, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 201,
     labels: ['auto:pending-deletion'],
   }]);
@@ -1247,8 +1247,8 @@ test('backfills auto:pending-deletion on already-warned PRs', async () => {
   assert.equal(summary.skipped, 1);
   assert.equal(calls.createComment.length, 0);
   assert.deepEqual(calls.addLabels, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 305,
     labels: ['auto:pending-deletion'],
   }]);
@@ -1468,8 +1468,8 @@ test('removes auto:pending-deletion when a PR gains ci:keep-open', async () => {
 
   assert.equal(summary.skipped, 1);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 321,
     name: 'auto:pending-deletion',
   }]);
@@ -1491,8 +1491,8 @@ test('warns a draft PR past the warning threshold', async () => {
   assert.equal(calls.createComment[0].issue_number, 322);
   assert.match(calls.createComment[0].body, /open for at least 14 days/);
   assert.deepEqual(calls.addLabels, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 322,
     labels: ['auto:pending-deletion'],
   }]);
@@ -1516,8 +1516,8 @@ test('closes a draft PR past the close threshold with an old-enough warning', as
   assert.equal(calls.createComment.length, 0);
   assert.match(calls.updateComment[0].body, /open for at least 30 days/);
   assert.deepEqual(calls.removeLabel, [{
-    owner: 'langchain-ai',
-    repo: 'deepagents',
+    owner: 'RavaniRoshan',
+    repo: 'niki-agent',
     issue_number: 323,
     name: 'auto:pending-deletion',
   }]);
@@ -1663,7 +1663,7 @@ test('uses all open PRs and rejects invalid thresholds', async () => {
   const { github, calls } = makeGithub();
   await run({ github, context, core: makeCore(), options: { now } });
 
-  assert.equal(calls.queries[0].q, 'repo:langchain-ai/deepagents is:pr is:open');
+  assert.equal(calls.queries[0].q, 'repo:RavaniRoshan/niki-agent is:pr is:open');
   assert.equal(calls.queries[0].sort, 'created');
   assert.equal(calls.queries[0].order, 'asc');
 

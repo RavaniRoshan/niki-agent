@@ -342,7 +342,7 @@ for (const mode of ['live', 'release helper']) {
   });
 
   test(`${mode} applies the release marker without touching lifecycle labels`, async () => {
-    const api = labelerApi('release(deepagents-code): 1.2.0', ['type:chore', 'auto:release-pending']);
+    const api = labelerApi('release(niki-agent): 1.2.0', ['type:chore', 'auto:release-pending']);
     await runLabeler(mode, api);
     assert.ok(api.assigned.has('auto:release-pr'));
     assert.ok(api.assigned.has('auto:release-pending'));
