@@ -23,6 +23,17 @@ pub trait Tool: Send + Sync {
     /// JSON Schema for the argument object.
     fn schema(&self) -> Value;
 
+    /// Whether the approval policy must ask the person before this tool runs.
+    ///
+    /// The default is `false`, which every built-in declares today: `shell` is
+    /// gated by its command instead. A tool that acts outside the workspace —
+    /// an MCP server, which may reach the network — overrides this so the agent
+    /// sends it through the same approval callback a gated command uses. A
+    /// server that declared the tool read-only keeps the default.
+    fn requires_approval(&self) -> bool {
+        false
+    }
+
     /// Execute one call. Arguments are the model's JSON object.
     fn run(
         &self,

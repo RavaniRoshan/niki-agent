@@ -11,7 +11,7 @@ Read this file, then `DECISIONS.md`, `GLOSSARY.md`, `RULES.md`, and
 | | |
 | --- | --- |
 | Source | `libs/code` — 377 files, ~250k lines, 41 analyzable units |
-| Rust today | `rust/crates/` — 12,725 lines across 15 crates |
+| Rust today | `rust/crates/` — 15,153 lines across 16 crates |
 | Fallback rate | 0% for a headless or interactive turn; the `niki` engine client is unchanged |
 | Cutover | not started; Python stays the product until W6 |
 
@@ -22,7 +22,8 @@ cases are the equivalence proof.
 
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
-is next.
+has started: `niki-mcp` is done for stdio and HTTP, and skills, hooks and slash
+commands remain.
 
 ## Waves
 
@@ -41,7 +42,7 @@ A unit is `open`, `in progress`, or `done <gate/replay>`.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-config` | `~/.niki/config.toml`, `NIKI_*`, provider blocks, defaults | done — 10 tests |
+| `niki-config` | `~/.niki/config.toml`, `NIKI_*`, provider blocks, defaults | done — 20 tests |
 | `niki-provider` | OpenAI-compatible Chat Completions and Anthropic Messages, SSE streaming, tool-call assembly, retries, usage | done — 6 fixture tests |
 | `niki-agent` | turn loop: model → tool calls → results → model, cancel, max steps | done — 7 tests |
 | `niki-tools` | fs read/write/edit/list, shell exec, grep, glob, todo write | done — 14 tests |
@@ -72,7 +73,7 @@ the answer reaches stdout.
 
 | Unit | Scope | State |
 | --- | --- | --- |
-| `niki-mcp` | stdio and HTTP MCP clients, tool bridging | open |
+| `niki-mcp` | stdio and HTTP MCP clients, tool bridging | done — 22 tests |
 | `niki-skills` | skill discovery, front matter, injection | open |
 | `niki-hooks` | pre/post tool hooks | open |
 | `niki-commands` | slash commands | open |

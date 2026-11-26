@@ -3,10 +3,10 @@
 //! ADR-005: one config file serves both binaries during the port. The table
 //! names are the ones the Python product already uses — `[providers.<name>]`
 //! for user providers (also accepted under `[models.providers.<name>]`),
-//! `[models].default` for the default model, and `[ui].theme` for the theme.
-//! Unknown keys are ignored, so a file written for a newer Python release
-//! still loads. This crate only reads; the Rust binary does not write the file
-//! in W1.
+//! `[models].default` for the default model, `[ui].theme` for the theme, and
+//! `[mcp_servers.<name>]` for MCP servers. Unknown keys are ignored, so a file
+//! written for a newer Python release still loads. This crate only reads; the
+//! Rust binary does not write the file.
 
 #![forbid(unsafe_code)]
 
@@ -112,7 +112,42 @@ impl fmt::Debug for Provider {
     }
 }
 
-/// The parts of `config.toml` this wave consumes.
+/// One `[mcp_servers.<name>]` entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpServer {
+    /// How the client reaches this server.
+    pub transport: McpTransport,
+}
+
+/// The transport a `[mcp_servers.<name>]` entry declares.
+///
+/// The shape is the one the Python product accepts for `.mcp.json`: `command`
+/// plus `args` and `env` for stdio, `url` plus `headers` for HTTP. An entry
+/// without a `type` infers the transport from which of `url` and `command` it
+/// sets.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum McpTransport {
+    /// A child process speaking line-delimited JSON-RPC on stdin/stdout.
+    Stdio {
+        /// Executable to run.
+        command: String,
+        /// Arguments passed to the executable.
+        args: Vec<String>,
+        /// Extra environment variables for the child; the parent's are kept.
+        env: BTreeMap<String, String>,
+        /// Working directory for the child, when one is configured.
+        cwd: Option<PathBuf>,
+    },
+    /// A streamable HTTP endpoint.
+    Http {
+        /// Endpoint URL.
+        url: String,
+        /// Headers sent with every request.
+        headers: BTreeMap<String, String>,
+    },
+}
+
+/// The parts of `config.toml` this port consumes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     /// Provider blocks, keyed by the table name after `providers.`.
@@ -121,6 +156,8 @@ pub struct Config {
     pub default_model: Option<String>,
     /// `[ui].theme`.
     pub theme: Option<String>,
+    /// MCP servers, keyed by the table name after `mcp_servers.`.
+    pub mcp_servers: BTreeMap<String, McpServer>,
 }
 
 impl Config {
@@ -129,14 +166,15 @@ impl Config {
     /// # Errors
     ///
     /// Returns [`ConfigError::Parse`] when the text is not valid TOML or a
-    /// known key has the wrong type. Unknown keys never fail.
+    /// known key has the wrong type, and [`ConfigError::McpServer`] when one
+    /// `[mcp_servers.<name>]` entry cannot be used. Unknown keys never fail.
     #[expect(
         clippy::should_implement_trait,
         reason = "the wave API names Config::from_str, and callers should not have to import a trait"
     )]
     pub fn from_str(text: &str) -> Result<Self, ConfigError> {
         let raw: RawConfig = toml::from_str(text)?;
-        Ok(raw.into_config())
+        raw.into_config()
     }
 
     /// Read `path`, treating a missing file as [`Config::default`].
@@ -144,8 +182,8 @@ impl Config {
     /// # Errors
     ///
     /// Returns [`ConfigError::Read`] for any read failure other than the file
-    /// being absent, and [`ConfigError::ParseFile`] when the file is not valid
-    /// TOML.
+    /// being absent, [`ConfigError::ParseFile`] when the file is not valid
+    /// TOML, and [`ConfigError::McpServer`] when one MCP entry is malformed.
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
         match fs::read_to_string(path) {
             Ok(text) => {
@@ -154,7 +192,7 @@ impl Config {
                         path: path.to_path_buf(),
                         source,
                     })?;
-                Ok(raw.into_config())
+                raw.into_config()
             }
             Err(source) if source.kind() == ErrorKind::NotFound => Ok(Self::default()),
             Err(source) => Err(ConfigError::Read {
@@ -255,6 +293,15 @@ pub enum ConfigError {
     /// Configuration text is not valid TOML.
     #[error("invalid TOML: {0}")]
     Parse(#[from] toml::de::Error),
+    /// One MCP server entry is malformed. The message names the server so the
+    /// user can fix the block.
+    #[error("mcp server `{server}` in config.toml: {message}")]
+    McpServer {
+        /// The table name after `mcp_servers.`.
+        server: String,
+        /// What the entry needs or got wrong.
+        message: String,
+    },
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -263,6 +310,7 @@ struct RawConfig {
     providers: BTreeMap<String, Provider>,
     models: RawModels,
     ui: RawUi,
+    mcp_servers: BTreeMap<String, toml::Value>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -278,18 +326,133 @@ struct RawUi {
     theme: Option<String>,
 }
 
+/// One `[mcp_servers.<name>]` table, before validation.
+///
+/// Every field is optional here so a malformed entry produces a message that
+/// names the server; the typed [`McpTransport`] is built only when the shape
+/// makes sense.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+struct RawMcpServer {
+    #[serde(rename = "type", alias = "transport")]
+    kind: Option<String>,
+    command: Option<String>,
+    args: Vec<String>,
+    env: BTreeMap<String, String>,
+    cwd: Option<String>,
+    url: Option<String>,
+    headers: BTreeMap<String, String>,
+}
+
+impl RawMcpServer {
+    fn into_server(self, name: &str) -> Result<McpServer, ConfigError> {
+        let kind = self.kind.as_deref().map(normalize_kind);
+        match kind.as_deref() {
+            Some("stdio") => self.stdio(name),
+            Some("http") => self.http(name),
+            Some(other) => Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: format!(
+                    "unsupported transport `{other}`; this build speaks `stdio` and `http`"
+                ),
+            }),
+            None if self.url.is_some() => self.http(name),
+            None if self.command.is_some() => self.stdio(name),
+            None => Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "add `command = \"…\"` for a stdio server or `url = \"…\"` for an \
+                          HTTP server"
+                    .to_owned(),
+            }),
+        }
+    }
+
+    fn stdio(self, name: &str) -> Result<McpServer, ConfigError> {
+        if self.url.is_some() {
+            return Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "a stdio entry cannot also set `url`; remove it or set \
+                          `type = \"http\"`"
+                    .to_owned(),
+            });
+        }
+        let Some(command) = self.command.filter(|command| !command.trim().is_empty()) else {
+            return Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "a stdio entry needs a `command`".to_owned(),
+            });
+        };
+        let cwd = self.cwd.filter(|cwd| !cwd.is_empty()).map(PathBuf::from);
+        Ok(McpServer {
+            transport: McpTransport::Stdio {
+                command,
+                args: self.args,
+                env: self.env,
+                cwd,
+            },
+        })
+    }
+
+    fn http(self, name: &str) -> Result<McpServer, ConfigError> {
+        if self.command.is_some() {
+            return Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "an HTTP entry cannot also set `command`; remove it or set \
+                          `type = \"stdio\"`"
+                    .to_owned(),
+            });
+        }
+        let Some(url) = self.url.filter(|url| !url.trim().is_empty()) else {
+            return Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "an HTTP entry needs a `url`".to_owned(),
+            });
+        };
+        Ok(McpServer {
+            transport: McpTransport::Http {
+                url,
+                headers: self.headers,
+            },
+        })
+    }
+}
+
+fn normalize_kind(kind: &str) -> String {
+    match kind.trim().to_ascii_lowercase().as_str() {
+        "streamable_http" | "streamable-http" => "http".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
 impl RawConfig {
-    fn into_config(self) -> Config {
+    fn into_config(self) -> Result<Config, ConfigError> {
         let mut providers = self.models.providers;
         // The README documents `[providers.<name>]`; the Python reader also
         // accepts `[models.providers.<name>]`. A name present in both resolves
         // to the documented top-level block.
         providers.extend(self.providers);
-        Config {
+
+        let mut mcp_servers = BTreeMap::new();
+        for (name, value) in self.mcp_servers {
+            if name.trim().is_empty() {
+                return Err(ConfigError::McpServer {
+                    server: name,
+                    message: "the server name is empty".to_owned(),
+                });
+            }
+            let raw: RawMcpServer = value.try_into().map_err(|source| ConfigError::McpServer {
+                server: name.clone(),
+                message: source.to_string(),
+            })?;
+            mcp_servers.insert(name.clone(), raw.into_server(&name)?);
+        }
+
+        Ok(Config {
             providers,
             default_model: self.models.default,
             theme: self.ui.theme,
-        }
+            mcp_servers,
+        })
     }
 }
 
@@ -403,6 +566,105 @@ display_name = "Read from the providers table"
                 .and_then(|provider| provider.display_name.as_deref()),
             Some("Read from the providers table")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn stdio_mcp_servers_parse() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[mcp_servers.fs]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+env = { LOG_LEVEL = "debug" }
+cwd = "/tmp/work"
+"#,
+        )?;
+        let server = config.mcp_servers.get("fs").expect("fs");
+        let McpTransport::Stdio {
+            command,
+            args,
+            env,
+            cwd,
+        } = &server.transport
+        else {
+            panic!("expected stdio, got {:?}", server.transport);
+        };
+        assert_eq!(command, "npx");
+        assert_eq!(args.len(), 3);
+        assert_eq!(env.get("LOG_LEVEL").map(String::as_str), Some("debug"));
+        assert_eq!(cwd.as_deref(), Some(Path::new("/tmp/work")));
+        Ok(())
+    }
+
+    #[test]
+    fn http_mcp_servers_parse_and_a_url_selects_the_transport() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[mcp_servers.docs]
+url = "https://example.com/mcp"
+headers = { Authorization = "Bearer token" }
+"#,
+        )?;
+        let server = config.mcp_servers.get("docs").expect("docs");
+        let McpTransport::Http { url, headers } = &server.transport else {
+            panic!("expected http, got {:?}", server.transport);
+        };
+        assert_eq!(url, "https://example.com/mcp");
+        assert_eq!(
+            headers.get("Authorization").map(String::as_str),
+            Some("Bearer token")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn an_mcp_entry_with_no_transport_is_an_error_naming_the_server() {
+        let error = Config::from_str("[mcp_servers.broken]\nargs = [\"x\"]\n").expect_err("error");
+        assert!(matches!(error, ConfigError::McpServer { ref server, .. } if server == "broken"));
+        let text = error.to_string();
+        assert!(text.contains("broken"), "{text}");
+        assert!(text.contains("command"), "{text}");
+    }
+
+    #[test]
+    fn an_mcp_entry_with_the_wrong_field_type_names_the_server() {
+        let error = Config::from_str("[mcp_servers.broken]\ncommand = \"x\"\nargs = 3\n")
+            .expect_err("error");
+        assert!(matches!(error, ConfigError::McpServer { ref server, .. } if server == "broken"));
+        assert!(error.to_string().contains("broken"), "{error}");
+    }
+
+    #[test]
+    fn an_mcp_entry_cannot_set_both_command_and_url() {
+        let error = Config::from_str(
+            "[mcp_servers.broken]\ncommand = \"x\"\nurl = \"https://example.com/mcp\"\n",
+        )
+        .expect_err("error");
+        assert!(matches!(error, ConfigError::McpServer { ref server, .. } if server == "broken"));
+    }
+
+    #[test]
+    fn an_explicit_mcp_type_overrides_the_field_inference() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[mcp_servers.remote]
+type = "streamable_http"
+url = "https://example.com/mcp"
+
+[mcp_servers.local]
+type = "stdio"
+command = "server"
+"#,
+        )?;
+        assert!(matches!(
+            config.mcp_servers["remote"].transport,
+            McpTransport::Http { .. }
+        ));
+        assert!(matches!(
+            config.mcp_servers["local"].transport,
+            McpTransport::Stdio { .. }
+        ));
         Ok(())
     }
 

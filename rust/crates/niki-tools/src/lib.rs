@@ -5,7 +5,8 @@
 //! when the result leaves the root (RULES.md 7). The crate carries the tools and
 //! their schemas; approval policy lives in `niki-policy`, not here.
 //!
-//! [`Registry`] holds one instance of each tool. Providers receive
+//! [`Registry`] holds one instance of each built-in tool, plus any tool a host
+//! registers at runtime — an MCP server's, for example. Providers receive
 //! [`Registry::specs`] as the tool array of a request and dispatch a model's
 //! tool call through [`Registry::get`].
 
