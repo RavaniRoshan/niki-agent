@@ -139,7 +139,6 @@ jobs:
               "acp": "package:acp",
               "dcode": "package:dcode",
               "talon": "package:talon",
-              "evals": "package:evals",
               "daytona": "integration:daytona",
               "modal": "integration:modal",
               "quickjs": "integration:quickjs",

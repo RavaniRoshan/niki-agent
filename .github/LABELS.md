@@ -41,7 +41,6 @@ Rules that are easy to get wrong:
 | `package:dcode` | `code`, `deepagents-code` | `libs/code/` |
 | `package:acp` | `acp`, `deepagents-acp` | `libs/acp/` |
 | `package:talon` | `talon`, `deepagents-talon` | `libs/talon/` |
-| `package:evals` | `evals`, `harbor` | `libs/evals/`, `libs/harbor/` |
 | `package:examples` | `examples` | `examples/` |
 | `integration:daytona` | `daytona`, `langchain-daytona` | `libs/partners/daytona/` |
 | `integration:modal` | `modal`, `langchain-modal` | `libs/partners/modal/` |

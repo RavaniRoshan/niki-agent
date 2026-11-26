@@ -65,7 +65,6 @@ Production helpers are nested by domain:
 ```text
 scripts/
 ├── checks/      # repo integrity / sync checkers
-├── evals/       # eval/harbor matrix and aggregation
 ├── labeling/    # PR/issue labeling and triage automation
 ├── release/     # release-please guards, notes, pin checks
 └── tests/       # tests for the helpers above (and some workflow contracts)
@@ -94,7 +93,7 @@ Special cases:
 | `scripts/tests/workflows/` | Contract tests over workflow/action YAML (job graphs, options matrices, secret scoping, root `action.yml`) — not a production `scripts/workflows/` tree |
 | `scripts/tests/conftest.py` | Shared pytest path setup so domain helpers import without packaging |
 
-`conftest.py` puts each domain directory (`checks`, `evals`, `labeling`, `release`) on `sys.path`. New domains must be added there if their tests import modules by bare filename the same way.
+`conftest.py` puts each domain directory (`checks`, `labeling`, `release`) on `sys.path`. New domains must be added there if their tests import modules by bare filename the same way.
 
 ## Related docs
 

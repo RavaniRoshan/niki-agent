@@ -20,7 +20,6 @@ updates:
     directories:
       - "/libs/deepagents"
       - "/libs/code"
-      - "/libs/evals"
       - "/libs/acp"
       - "/libs/talon"
       - "/libs/partners/daytona"
@@ -41,7 +40,6 @@ updates:
     ignore:
       - dependency-name: "deepagents"
       - dependency-name: "deepagents-code"
-      - dependency-name: "deepagents-evals"
       - dependency-name: "deepagents-acp"
       - dependency-name: "deepagents-talon"
       - dependency-name: "langchain-daytona"
@@ -83,8 +81,7 @@ updates:
         update-types:
           - "major"
 
-  # The Talon example Dockerfile is a maintained runnable topology. Dataset
-  # fixture Dockerfiles under libs/evals/datasets are intentionally unmanaged.
+  # The Talon example Dockerfile is a maintained runnable topology.
   - package-ecosystem: "docker"
     directory: "/examples/talon"
     schedule:

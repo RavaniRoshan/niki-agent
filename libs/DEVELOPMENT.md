@@ -35,7 +35,6 @@ This is a monorepo of independently versioned packages under `libs/`:
 libs/
 ├── deepagents/     # Core SDK — create_deep_agent, middleware, backends
 ├── acp/            # Agent Client Protocol integration
-├── evals/          # Evaluation suite and Harbor integration
 ├── code/           # Prebuilt coding agent for interactive and headless use
 ├── talon/          # Local runtime host for long-running agents
 └── partners/       # Provider/sandbox integrations
@@ -197,7 +196,7 @@ Maintainers can apply the `ci:allow-warnings` PR label and re-run failed jobs to
 
 ## Benchmarks
 
-Three packages carry benchmarks: `libs/deepagents`, `libs/code`, and `libs/partners/quickjs`. Each defines `bench` (walltime) and `bench-memory` (heap) Make targets. Other packages have no `bench` target, so `make -C libs/evals bench` fails.
+Three packages carry benchmarks: `libs/deepagents`, `libs/code`, and `libs/partners/quickjs`. Each defines `bench` (walltime) and `bench-memory` (heap) Make targets. Other packages have no `bench` target.
 
 These targets are the single source of truth for the benchmark invocation. Both local runs and the reusable CI workflow (`.github/workflows/_benchmark.yml`) call them. To change how benchmarks run, edit the Makefile; CI inherits the change.
 
@@ -227,7 +226,7 @@ Conventions live in [`AGENTS.md`](../AGENTS.md) at the repo root: Conventional C
 ```txt
 feat(sdk): add new chat completion feature
 fix(sdk): resolve type hinting issue
-chore(evals): update infrastructure dependencies
+chore(repo): update shared infrastructure dependencies
 test(code): missing unit tests for `_git`
 feat(code): `--startup-cmd` flag
 style(code): strip trailing annotations from `ask_user` questions

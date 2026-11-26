@@ -29,7 +29,7 @@ the parser task, and it is not claimed as one.
 
 Status: **removed (2026-11-26).** The Harbor rig and the Claude Code comparison are
 out of scope until a later session has a working sandbox runtime and keys; see
-`docs/niki/EVALUATION.md`. The harness code is being deleted, so this section
+`docs/niki/EVALUATION.md`. The harness was deleted on 2026-11-26, so this section
 will not survive the next change to this file.
 
 Rechecked 2026-11-25 before publishing the completion branch: `ANTHROPIC_API_KEY`,

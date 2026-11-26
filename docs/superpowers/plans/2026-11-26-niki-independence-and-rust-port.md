@@ -15,6 +15,19 @@ Rust slice by slice once the client has parity.
 
 ---
 
+## Workflow status
+
+| Slice | State | Evidence |
+| --- | --- | --- |
+| Phase 0 — delete the rig | in progress | deletions staged; `libs/code` check running |
+| Phase 1 — rename | not started | — |
+| Phase 1 — vendor SDK | not started | — |
+| Phase 1 — trim workspace | not started | — |
+| Phase 1 — brand gate | not started | — |
+| Phase 2 — accessibility | not started | — |
+| Phase 2 — parity rows | not started | — |
+| Phase 3 — M0–M2 | not started | — |
+
 ## Owner decisions taken (2026-11-26)
 
 1. **The Harbor/Claude Code comparison leaves the critical path.** It cannot run
@@ -51,15 +64,21 @@ Rust slice by slice once the client has parity.
 Small, mechanical, and first, because everything else is easier with the noise
 gone.
 
+The rig is deleted as **one unit**, not surgically. `libs/evals` exists only to
+host the harness; editing it in place and then archiving it in Phase 1 would
+touch the same files twice. Its non-Harbor modules (`deepagents_evals`) are the
+same package, so they leave with it.
+
 | Step | Change | Verify |
 | --- | --- | --- |
-| 0.1 | Delete `libs/evals/deepagents_harbor/`, `libs/evals/harbor_adapters/`, `libs/evals/scripts/harbor_langsmith.py`, `libs/evals/scripts/compare_niki_terminal_bench.py`, `libs/evals/terminal-bench-4.1.yaml` and the `harbor`/`harbor-langsmith` dependencies | `uv lock` resolves; `make -C libs/evals test` passes |
-| 0.2 | Delete the ten Harbor-referencing test files and the `run-*-terminal-bench`, `run-hello-world`, `stage-harbor-local-deps` Make targets | `make -C libs/evals lint test type` passes |
-| 0.3 | Delete `harbor-jobs/` from `.gitignore`/docs references; drop `deepagents_harbor` from ruff per-file ignores and packaging `include` | `grep -ri harbor libs/evals` returns only the archived note |
-| 0.4 | Rewrite `docs/niki/EVALUATION.md`, `docs/niki/evaluations/SMOKE.md`, and the gate doc to the deferral wording | `readiness --phase python` still exits 0; `check_readme.py` consistent |
+| 0.1 | Delete `libs/evals` and the workflows that exist only to drive it (`evals.yml`, `evals_trials.yml`, `unified_evals.yml`, `harbor.yml`, `_harbor_run.yml`, `_eval.yml`, `clbench.yml`, `niki-smoke.yml`) | no workflow references a deleted path |
+| 0.2 | Delete `.github/scripts/evals/`, its tests, `prepare_local_dataset.py`, and its test | `.github/scripts/tests` passes |
+| 0.3 | Remove the eval package from `ci.yml`, `release.yml`, `dependabot.yml`, `pre-commit`, label config, `SECRETS.md`, `LAYOUT.md`, `AGENTS.md`, `libs/README.md`, `libs/DEVELOPMENT.md`, and the openwiki eval page | `grep -ri "libs/evals\|harbor"` outside docs history returns nothing actionable |
+| 0.4 | Rewrite `docs/niki/EVALUATION.md`, `docs/niki/evaluations/SMOKE.md`, and the gate doc to the deferral wording (already landed in `39a7a8c5`) | `readiness --phase python` still exits 0; `check_readme.py` consistent |
 
-**Gate:** `make check` green in `libs/code` and `make -C libs/evals check`
-green; no CI job references a deleted target.
+**Gate:** `make check` green in `libs/code`, `.github/scripts/tests` green
+except the pre-existing environment failures, and no CI job references a
+deleted path.
 
 ---
 
@@ -246,7 +265,7 @@ implementations stay comparable.
 
 | # | Slice | Depends on | Evidence |
 | --- | --- | --- | --- |
-| 1 | Phase 0 deletions | — | `make check`, `libs/evals` check |
+| 1 | Phase 0 deletions | — | `make check`, helper-script tests |
 | 2 | Rename module + distribution + scripts | 1 | full suite + install test |
 | 3 | Env vars + state dir migration | 2 | drift test, migration test |
 | 4 | Vendor SDK + provenance | 2 | import graph test, license check |

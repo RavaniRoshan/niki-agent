@@ -49,7 +49,6 @@ PACKAGE_MAP = {
     "deepagents-acp": "libs/acp",
     "deepagents-code": "libs/code",
     "deepagents-talon": "libs/talon",
-    "deepagents-evals": "libs/evals",
     "langchain-daytona": "libs/partners/daytona",
     "langchain-modal": "libs/partners/modal",
     "langchain-quickjs": "libs/partners/quickjs",

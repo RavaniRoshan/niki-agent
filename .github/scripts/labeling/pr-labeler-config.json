@@ -86,7 +86,6 @@
     "package:dcode": "Changes related to the `deepagents-code` terminal coding agent.",
     "package:acp": "Changes related to the Agent Client Protocol package.",
     "package:talon": "Changes related to the Talon package.",
-    "package:evals": "Changes related to the evaluation suite, benchmarks, and Harbor integration.",
     "package:examples": "Changes to example code or tutorials.",
     "integration:daytona": "Integration with the Daytona sandbox service.",
     "integration:modal": "Integration with the Modal sandbox service.",
@@ -108,9 +107,7 @@
     "deepagents-acp": "package:acp",
     "deepagents-code": "package:dcode",
     "deepagents-talon": "package:talon",
-    "evals": "package:evals",
     "examples": "package:examples",
-    "harbor": "package:evals",
     "langchain-daytona": "integration:daytona",
     "langchain-modal": "integration:modal",
     "langchain-quickjs": "integration:quickjs",
@@ -155,16 +152,6 @@
     {
       "label": "package:talon",
       "prefix": "libs/talon/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "package:evals",
-      "prefix": "libs/evals/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "package:evals",
-      "prefix": "libs/harbor/",
       "skipExcludedFiles": true
     },
     {
