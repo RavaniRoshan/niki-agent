@@ -10,6 +10,7 @@ description = "Approvals, the model picker and the help overlay for the Niki ter
 [dependencies]
 crossterm.workspace = true
 niki-agent = { path = "../niki-agent" }
+niki-commands = { path = "../niki-commands" }
 niki-config = { path = "../niki-config" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-themes = { path = "../niki-tui-themes" }

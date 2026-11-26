@@ -17,6 +17,13 @@ use std::io::{BufRead, Write};
 use serde_json::{Value, json};
 
 fn main() {
+    if std::env::var_os("MCP_FIXTURE_SILENT").is_some() {
+        // A server that accepts the process and then never answers the
+        // handshake, which is what the startup budget is measured against.
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(60));
+        }
+    }
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
     for line in stdin.lock().lines() {

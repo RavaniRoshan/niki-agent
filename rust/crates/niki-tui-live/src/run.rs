@@ -8,7 +8,8 @@ use std::io::{self, Stdout, Write};
 use std::time::Duration;
 
 use crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind, MouseEventKind,
+    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    Event, KeyEventKind, MouseEventKind,
 };
 use crossterm::execute;
 use crossterm::terminal::{
@@ -55,7 +56,7 @@ impl Screen {
     fn enter() -> io::Result<Self> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+        enable_modes(&mut stdout)?;
         let terminal = Terminal::new(CrosstermBackend::new(stdout))?;
         Ok(Self {
             terminal,
@@ -69,14 +70,34 @@ impl Screen {
         }
         self.active = false;
         let _ = disable_raw_mode();
-        let _ = execute!(
-            self.terminal.backend_mut(),
-            LeaveAlternateScreen,
-            DisableMouseCapture
-        );
+        let _ = disable_modes(self.terminal.backend_mut());
         let _ = self.terminal.show_cursor();
         let _ = io::stdout().flush();
     }
+}
+
+/// The terminal modes the screen needs, in the order they are entered.
+///
+/// Bracketed paste makes a terminal deliver a paste as one [`Event::Paste`]
+/// instead of a burst of key presses, so a pasted newline cannot send the
+/// prompt.
+fn enable_modes(out: &mut impl Write) -> io::Result<()> {
+    execute!(
+        out,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        EnableBracketedPaste
+    )
+}
+
+/// Undo [`enable_modes`], whatever happened to the screen.
+fn disable_modes(out: &mut impl Write) -> io::Result<()> {
+    execute!(
+        out,
+        LeaveAlternateScreen,
+        DisableMouseCapture,
+        DisableBracketedPaste
+    )
 }
 
 impl Drop for Screen {
@@ -149,6 +170,7 @@ fn event_loop(
                 MouseEventKind::ScrollDown => app.wheel(false),
                 _ => {}
             },
+            Event::Paste(text) => app.handle_paste(&text),
             _ => {}
         }
     }
@@ -159,5 +181,31 @@ fn exit_code(app: &App) -> i32 {
         130
     } else {
         0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_screen_enables_bracketed_paste_and_disables_it_on_the_way_out() {
+        let mut entered = Vec::new();
+        enable_modes(&mut entered).expect("enable the terminal modes");
+        let entered = String::from_utf8(entered).expect("ANSI text");
+        assert!(entered.contains("\x1b[?2004h"), "{entered:?}");
+        assert!(
+            entered.contains("\x1b[?1049h"),
+            "the alternate screen: {entered:?}"
+        );
+
+        let mut left = Vec::new();
+        disable_modes(&mut left).expect("disable the terminal modes");
+        let left = String::from_utf8(left).expect("ANSI text");
+        assert!(left.contains("\x1b[?2004l"), "{left:?}");
+        assert!(
+            left.contains("\x1b[?1049l"),
+            "the alternate screen is left: {left:?}"
+        );
     }
 }
