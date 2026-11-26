@@ -907,6 +907,7 @@ export const FOOTER_COLUMNS = {
     { label: 'Test Suite', detailId: 'ci-tests' },
   ],
   docs: [
+    { label: 'Documentation site', href: 'https://niki-docs.vercel.app' },
     { label: 'README.md', href: 'https://github.com/RavaniRoshan/niki-agent' },
     { label: 'ARCHITECTURE.md', href: 'https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/ARCHITECTURE.md' },
     { label: 'INDEPENDENCE.md', href: 'https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/INDEPENDENCE.md' },
