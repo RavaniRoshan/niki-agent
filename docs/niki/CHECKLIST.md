@@ -1,6 +1,7 @@
 # Niki Agent — Checklist
 
-Status as of the head of PR #8 (2026-11-26). BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
+Status as of `v1.0.1` on `niki-agent` (2026-11-26). The rows were closed against
+BASE_SHA `f57c6f383b7018024ca5cde2dc565048ea83202a`.
 
 **This file is not a victory lap.** Every P0 row below is closed with the named
 evidence, and the two items that are not closed are named where they belong:
