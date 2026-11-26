@@ -162,7 +162,7 @@ pruning at 5,000 is **UNVERIFIED**.
 
 | Probe | Measured | Target | Verdict |
 | --- | --- | --- | --- |
-| Input echo p95, 20 presses while streaming | **173.9 ms** (median 130.3 ms) | ≤ 50 ms | **NOT MET** |
+| Input echo p95, 20 presses while streaming | **173.9 ms** (median 130.3 ms) raw; **146.5 ms** after subtracting a paired harness round-trip (2026-11-26 run: raw 172.3, round-trip p95 66.3) | ≤ 50 ms | **NOT MET** |
 | Input echo samples reaching the composer | 20 / 20 | all | probe is measuring a real path |
 | 100-resize storm, random 50-170 x 16-46 | **11.4 s** | ≤ 2 s | outcome verified, duration not |
 | Resize storm outcome | no crash, final 80x24 correct, still painting | must hold | **MET** |
@@ -176,7 +176,12 @@ driver charges that to the event loop. So:
 - **S2** measures `pilot.press` -> composer, plus one event-loop round-trip.
   Real-terminal latency is strictly lower, but nothing here proves it is below
   50 ms, and a 173.9 ms p95 with only ~130 ms median says the tail is real work,
-  not just jitter. Treated as an open gap rather than a pass.
+  not just jitter. Treated as an open gap rather than a pass. Since 2026-11-26
+  the probe also times that round-trip separately (no keypress, same streaming
+  condition) and gates on the excess, because on a runner driving four Textual
+  apps at once the round-trip alone reached ~200 ms and pushed raw p95 past the
+  250 ms gate; the raw figure is still recorded for comparability with the
+  numbers above.
 - **S7** measures 100 resizes each followed by a pause. The 11.4 s is dominated
   by that overhead, so the *outcome* (survives, correct final layout, still
   painting) is asserted and the *duration* is recorded but not gated.

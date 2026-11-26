@@ -320,3 +320,71 @@ was recorded in, not from the product.
 - `make check` on this tree: **9467 passed, 1 skipped** in 530 s, exit 0;
   `ruff`, `ruff format --diff`, `ty`, the commands catalog, the lockfile,
   the extras sync, and the version equality checks all pass.
+
+## Session 7 — the CI rounds after the repairs (2026-11-26)
+
+The second and third pull-request runs found the rest: two 3.14-only flakes,
+one PTY identity assumption, and a completion race that only a real terminal
+could show. Everything here was reproduced locally on the matching interpreter
+before the fix, and the merged tree is verified again below.
+
+### Repairs
+
+- **`TestReplayTiming` compared a live clock to a patched one.** The replay
+  phase re-stamps its start from the real clock, so on 3.14 the difference came
+  back as `19.998999…` and an exact `== 20` failed. It now compares at the
+  0.1 s precision the table displays.
+- **S7 demanded an unprompted repaint.** A starved runner can schedule the app
+  only after the keystroke that follows the resize, which says nothing about
+  the product. Either paint — unprompted or on that first keystroke — now
+  proves the app rendered at the final size; the echo assertion stays strict.
+- **The PTY suite inherited its launch name.** It starts the app through
+  `python -c`, so the header's name rested on the child's `argv[0]` and a CI
+  run drew `dcode`. The profile pins `DEEPAGENTS_CODE_INVOKED_AS=niki`, the
+  same way the snapshot harness already did.
+- **`tab` stopped completing after the command list was rebuilt.** Skills are
+  discovered asynchronously and merged into the slash controller after the
+  popup is already painted; `update_commands` resets the suggestions without
+  replaying the draft, so the key that owns the popup found nothing to apply
+  and returned `IGNORED`. On a real terminal that sent `tab` to focus
+  navigation — the popup closed and the draft stayed `/hel`, so `Enter`
+  submitted an unknown command. `MultiCompletionManager` now recomputes the
+  suggestions from the text in hand and retries once when the active
+  controller ignores a completion key, mirroring the path already taken when
+  no controller is active. A unit test drives the rebuild-then-`tab` sequence
+  so the race is covered without a pty.
+- **The echo probe gated on the driver's own overhead.** S2's headless probe
+  times `pilot.press` plus one `pilot.pause()` round-trip, and the docstring
+  already said so; on a run that drives four Textual apps at once that
+  round-trip alone reached ~200 ms, so a quiet machine's 250 ms ceiling became a
+  measurement of runner load rather than of the composer. The probe now times
+  the same round-trip without a keypress in the same streaming condition and
+  gates on the excess, while still recording the raw p95 for comparability with
+  `BASELINE.md`.
+- **The MCP login modal's test could starve instead of failing.** Its prompt
+  poll allowed 2 s, and a driver that missed that window left `login` awaiting a
+  prompt nobody submitted, so the run surfaced as the repo-wide 30 s timeout.
+  The poll now allows 10 s — a passing run returns on the first poll, so the
+  deadline only bounds the failure path — and `login` is itself bounded so a
+  missed submission reports a timeout instead of killing the worker.
+- **K6's end-state wait is bounded at 8 s.** A passing run shows the help body
+  in well under a second; the old 15 s bound let a failing run overshoot the
+  repo-wide 30 s per-test timeout, which kills the xdist worker and reports a
+  crash instead of an assertion.
+
+### Verification
+
+- K6 on Python 3.12: 3/3 passing; `test_pty_paste_and_suspend.py` **17 passed**
+  on 3.12, 3.13, and 3.14. `test_keyboard.py` **20 passed** on 3.13 and 3.14;
+  `test_autocomplete.py` **25 passed** on 3.12 and 3.14.
+- PR #9 CI: `libs/code` **pass on 3.12, 3.13, and 3.14** (6m13s / 6m02s /
+  6m27s), Lint pass, `CI Success` pass.
+- `make check` on this tree with `PYTEST_EXTRA="-n 4"`: **9469 passed, 1 skipped**
+  in 632 s, exit 0 — lint, `ty`, imports, the commands catalog, the lockfile,
+  the extras sync, the version equality check, and the SDK pin all pass.
+- A clean clone of the merged branch installs and runs: `uv sync --all-extras`
+  then `uv run niki --version` prints `Niki Agent 0.1.80, built on Deep Agents`,
+  and `niki --help` is the Niki-branded surface.
+- Two checks can never go green on this fork and are documented, not worked
+  around: `curated release notes` checks out a `main` branch this fork does not
+  have, and `PR Labeler` needs a GitHub App `client-id` secret.
