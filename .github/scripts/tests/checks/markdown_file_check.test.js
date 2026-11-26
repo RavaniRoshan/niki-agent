@@ -294,14 +294,14 @@ test("recognizes release-please PRs only on full provenance", () => {
 // used to carry — fails here, while fixtures built from the constant keep
 // passing.
 test("exempts the branch release-please opens against the default branch", () => {
-  const repo = { owner: "langchain-ai", repo: "deepagents" };
+  const repo = { owner: "RavaniRoshan", repo: "niki-agent" };
   assert.equal(
     isReleasePleasePr(
       {
         authorLogin: "github-actions[bot]",
         authorType: "Bot",
         headRef: "release-please--branches--niki-agent--components--niki-agent",
-        headRepo: "langchain-ai/deepagents",
+        headRepo: "RavaniRoshan/niki-agent",
       },
       repo,
     ),
