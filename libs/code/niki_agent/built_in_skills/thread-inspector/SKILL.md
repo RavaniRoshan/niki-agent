@@ -1,11 +1,11 @@
 ---
-name: deepagents-thread-inspector
-description: Inspect and explain conversations in the local Deep Agents Code SQLite session store. Use as a fallback when LangSmith trace tooling is unavailable, for offline or untraced sessions, or when asked to identify or summarize a local dcode thread, inspect checkpoint metadata, list recent local threads, or parse $NIKI_HOME/.state/sessions.db and a thread UUID or prefix.
+name: thread-inspector
+description: Inspect and explain conversations in the local Niki Agent SQLite session store. Use as a fallback when LangSmith trace tooling is unavailable, for offline or untraced sessions, or when asked to identify or summarize a local Niki thread, inspect checkpoint metadata, list recent local threads, or parse $NIKI_HOME/.state/sessions.db and a thread UUID or prefix.
 license: MIT
 compatibility: designed for niki-agent
 ---
 
-# Deep Agents Thread Inspector
+# Thread Inspector
 
 If LangSmith tooling is available for a traced thread, prefer it. Otherwise, use `scripts/inspect_sessions.py` instead of manually decoding database blobs. It opens the database read-only and deserializes the root message channel with LangGraph's strict MsgPack loader — reading the materialized messages from the latest checkpoint, or replaying writes in checkpoint order when that fast path is unavailable — and emits JSON.
 

@@ -1,4 +1,4 @@
-# Deep Agents Code Development Guide
+# Niki Agent Development Guide
 
 New to the package? Start with [`ARCHITECTURE.md`](./ARCHITECTURE.md) for a high-level map of how the TUI, the `langgraph dev` server subprocess, and the agent graph fit together.
 
@@ -6,7 +6,7 @@ New to the package? Start with [`ARCHITECTURE.md`](./ARCHITECTURE.md) for a high
 
 - [Quickstart](#quickstart) — get a local checkout running and run the checks CI enforces
 - [LangSmith tracing projects](#langsmith-tracing-projects) — route dev traces away from the shared GA project
-- [Local dev installs](#local-dev-installs) — keep an editable `dcode-dev` separate from a released install
+- [Local dev installs](#local-dev-installs) — keep an editable `niki-dev` separate from a released install
 - [Debugging](#debugging) — diagnose startup crashes and client-side issues
 - [Live CSS development with Textual devtools](#live-css-development-with-textual-devtools) — UI/CSS hot-reload
 
@@ -21,8 +21,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Clone the monorepo and bootstrap the `code` package. This creates the virtualenv, installs test dependencies, and installs local git hooks (`pre-commit` + `commit-msg`) so the same checks can run before you push:
 
 ```bash
-git clone https://github.com/langchain-ai/deepagents.git
-cd deepagents/libs/code
+git clone https://github.com/RavaniRoshan/niki-agent.git
+cd niki-agent/libs/code
 make bootstrap
 ```
 
@@ -34,7 +34,7 @@ Run the TUI from `libs/code` in your local checkout:
 uv run niki-agent
 ```
 
-`uv run` uses the project environment with the package installed editable, so source changes take effect on the next launch. If you want a persistent `dcode-dev` command that stays separate from a released install, use the local dev install setup below.
+`uv run` uses the project environment with the package installed editable, so source changes take effect on the next launch. If you want a persistent `niki-dev` command that stays separate from a released install, use the local dev install setup below.
 
 ### Running the tests and linters
 
@@ -85,7 +85,7 @@ export NIKI_LANGSMITH_PROJECT=shared-niki-agent-dev
 uv run niki-agent
 ```
 
-Set the same override for [local dev installs](#local-dev-installs) (`dcode-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the GA project before doing noisy work.
+Set the same override for [local dev installs](#local-dev-installs) (`niki-dev`), not only ad-hoc `uv run` sessions. You can also set it persistently under `[tracing]` in the config file (`tracing.langsmith_project`) or from the `/auth` screen. The startup splash and `/trace` show the project a run is writing to — confirm it is not the GA project before doing noisy work.
 
 When onboarding a new tracing project to Engine, capture the nature of that project first: a production/GA app warrants high-priority alerts, while a staging or active-dev project should use looser thresholds (or stay off Engine) so it does not generate false positives.
 
@@ -93,7 +93,7 @@ A server keeps the first workspace's tracing configuration for its lifetime. Wor
 
 ## Debugging
 
-Deep Agents Code runs as two processes: the **Textual TUI** you interact with, and a **`langgraph dev` subprocess** that hosts the agent graph. Each writes its own log, and a single switch turns both on:
+Niki Agent runs as two processes: the **Textual TUI** you interact with, and a **`langgraph dev` subprocess** that hosts the agent graph. Each writes its own log, and a single switch turns both on:
 
 ```bash
 cd libs/code
@@ -104,15 +104,15 @@ uv run niki-agent
 | Variable | Effect |
 | --- | --- |
 | `NIKI_DEBUG` | Master switch. Preserves the server subprocess log on exit (printing its path to stderr) and attaches the client `DEBUG` file handler. Truthy: `1`/`true`/`yes`/`on` (case-insensitive). Falsy: `0`/`false`/`no`/`off`/empty/unset. |
-| `NIKI_DEBUG_DIRECTORY=<path>` | Overrides the client log directory (default `/tmp/deepagents_debug`). Each thread writes to `<thread-id>.log`. **Only takes effect when `NIKI_DEBUG` is truthy**; does **not** affect the server subprocess log. |
+| `NIKI_DEBUG_DIRECTORY=<path>` | Overrides the client log directory (default `/tmp/niki_debug`). Each thread writes to `<thread-id>.log`. **Only takes effect when `NIKI_DEBUG` is truthy**; does **not** affect the server subprocess log. |
 | `NIKI_DEBUG_FILE=<path>` | Deprecated compatibility override. When `NIKI_DEBUG_DIRECTORY` and `[debug].directory` are unset, per-thread logs use this path's parent directory. Existing `[debug].file` config works the same way. |
 
 Then pick the log you need by symptom:
 
 | Symptom | Log you want | Default location |
 | --- | --- | --- |
-| App crashes on launch (one-line failure banner) | **Server subprocess log** — the real traceback | `$TMPDIR/deepagents_server_log_*.txt` |
-| App starts, then misbehaves (UI, model calls, slash commands) | **Client app log** — `niki_agent` at `DEBUG` | `/tmp/deepagents_debug/<thread-id>.log` |
+| App crashes on launch (one-line failure banner) | **Server subprocess log** — the real traceback | `$TMPDIR/niki_server_log_*.txt` |
+| App starts, then misbehaves (UI, model calls, slash commands) | **Client app log** — `niki_agent` at `DEBUG` | `/tmp/niki_debug/<thread-id>.log` |
 
 ### Startup crash -> server subprocess log
 
@@ -123,10 +123,10 @@ The TUI only surfaces a one-line banner; the actual exception lives in the subpr
 
    ```bash
    # Newest first
-   ls -lt ${TMPDIR:-/tmp}/deepagents_server_log_*.txt | head -5
+   ls -lt ${TMPDIR:-/tmp}/niki_server_log_*.txt | head -5
 
    # Or tail the latest live while you reproduce the crash
-   tail -F "$(ls -t ${TMPDIR:-/tmp}/deepagents_server_log_*.txt | head -1)"
+   tail -F "$(ls -t ${TMPDIR:-/tmp}/niki_server_log_*.txt | head -1)"
    ```
 
 3. **Search for `Failed to initialize server graph`.** The traceback beneath it names the concrete failure — MCP config validation, sandbox init, model resolution, subagent load, and so on. Everything above that line is uvicorn/lifespan unwinding and can be ignored.
@@ -136,7 +136,7 @@ The TUI only surfaces a one-line banner; the actual exception lives in the subpr
 For problems that appear after the app is up, tail the client log in another terminal while reproducing:
 
 ```bash
-tail -f /tmp/deepagents_debug/<thread-id>.log
+tail -f /tmp/niki_debug/<thread-id>.log
 ```
 
 To send logs elsewhere, also `export NIKI_DEBUG_DIRECTORY=<path>`. Each thread gets its own append-only file, and changing threads in the app switches the active log file.
@@ -155,10 +155,10 @@ In `/btw`, `Esc` hides the modal and cancels any unfinished answer. Completed si
 
 ## Local dev installs
 
-A *local dev install* gives you a persistent `dcode-dev` command that launches your checkout directly. It lives in a dedicated editable venv under `~/.local/share/dcode-dev`, symlinked into `~/.local/bin/dcode-dev`. It can sit alongside a released `dcode` without interfering:
+A *local dev install* gives you a persistent `niki-dev` command that launches your checkout directly. It lives in a dedicated editable venv under `~/.local/share/niki-dev`, symlinked into `~/.local/bin/niki-dev`. It can sit alongside a released `niki` without interfering:
 
-- `dcode` / `niki-agent` — the released tool, installed via `curl -LsSf https://langch.in/dcode | bash` (the install script).
-- `dcode-dev` — your local checkout.
+- `niki` — the released tool, installed with `install/install.sh` (or the one-line installer in the README).
+- `niki-dev` — your local checkout.
 
 That lets you compare released behavior against local, and fall back to a known-good build if your checkout breaks. Either way, the dedicated venv keeps the dev binary's dependency experiments out of the repo's locked `uv sync` environment.
 
@@ -168,13 +168,13 @@ That lets you compare released behavior against local, and fall back to a known-
 
 ```bash
 # 1. Create an isolated venv for the dev binary
-uv venv ~/.local/share/dcode-dev --python 3.13
+uv venv ~/.local/share/niki-dev --python 3.13
 
 # 2. Install your checkout into it, editable
-uv pip install --python ~/.local/share/dcode-dev/bin/python -e <repo>/libs/code
+uv pip install --python ~/.local/share/niki-dev/bin/python -e <repo>/libs/code
 
-# 3. Expose it as `dcode-dev` on your PATH
-ln -sf ~/.local/share/dcode-dev/bin/dcode ~/.local/bin/dcode-dev
+# 3. Expose it as `niki-dev` on your PATH
+ln -sf ~/.local/share/niki-dev/bin/niki ~/.local/bin/niki-dev
 ```
 
 The `--python 3.13` is illustrative — any interpreter satisfying the package's `requires-python` (currently `>=3.12`) works; omit the flag to let `uv` pick.
@@ -186,19 +186,19 @@ The `--python 3.13` is illustrative — any interpreter satisfying the package's
 When dependency constraints change in `libs/code/pyproject.toml`, refresh the dev venv:
 
 ```bash
-uv pip install --python ~/.local/share/dcode-dev/bin/python -e <repo>/libs/code --upgrade
+uv pip install --python ~/.local/share/niki-dev/bin/python -e <repo>/libs/code --upgrade
 ```
 
 ### Verifying
 
-Confirm command resolution and editable imports (the `dcode` checks assume the released tool is installed separately, per above):
+Confirm command resolution and editable imports (the `niki` checks assume the released tool is installed separately, per above):
 
 ```bash
-which dcode
-which dcode-dev
-dcode --version
-dcode-dev --version
-~/.local/share/dcode-dev/bin/python -c 'import niki_agent; print(niki_agent.__file__)'
+which niki
+which niki-dev
+niki --version
+niki-dev --version
+~/.local/share/niki-dev/bin/python -c 'import niki_agent; print(niki_agent.__file__)'
 ```
 
 ## Live CSS development with Textual devtools
@@ -208,10 +208,10 @@ After completing the [Quickstart](#quickstart), use Textual's devtools console f
 Create the dev wrapper script once:
 
 ```bash
-cat > /tmp/dev_deepagents.py << 'PYEOF'
-"""Dev wrapper to run Deep Agents Code with textual devtools."""
+cat > /tmp/dev_niki.py << 'PYEOF'
+"""Dev wrapper to run Niki Agent with textual devtools."""
 import sys
-sys.argv = ["deepagents"] + sys.argv[1:]
+sys.argv = ["niki"] + sys.argv[1:]
 
 from niki_agent.main import cli_main
 cli_main()
@@ -229,7 +229,7 @@ uv run --group test textual console
 **Terminal 2** — TUI with live reload:
 
 ```bash
-uv run --group test textual run --dev /tmp/dev_deepagents.py
+uv run --group test textual run --dev /tmp/dev_niki.py
 ```
 
 Edit any `.tcss` file and save — changes appear immediately. Any `self.log()` calls in widget code show in the console.

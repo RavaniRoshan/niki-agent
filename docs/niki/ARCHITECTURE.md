@@ -21,7 +21,7 @@ Managed server composition root (server_graph.py)
 - Provider execution stays inside the LangGraph runtime so streamed text, tool calls, retries, usage metadata, and checkpoint resumes share one path.
 - Textual presentation stays in client adapters and widgets. Provider, MCP, skill, and hook integrations do not import Textual UI classes.
 - Do not add separate model-generation or tool-registry ports until a concrete consumer can use them without duplicating the active runtime or losing its event and permission behavior.
-- Framework objects (LangGraph, LangChain, Textual, Rich, Deep Agents) stay outside the domain and application layers.
+- Framework objects (LangGraph, LangChain, Textual, Rich) stay outside the domain and application layers.
 
 ## Entry-point ownership
 

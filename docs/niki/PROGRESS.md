@@ -5,8 +5,8 @@
 These rules changed at 1.0.0. The earlier log below records the fork-era rules;
 this block is the current contract.
 
-- The Deep Agents SDK is **vendored** at `niki_agent/sdk`; there is no separate
-  `libs/deepagents` package. Vendored code is not edited for style or branding.
+- The agent SDK is **vendored** at `niki_agent/sdk`; there is no separate
+  upstream package to install. Vendored code is not edited for style or branding.
 - The product owns its names: module `niki_agent`, distribution `niki-agent`,
   command `niki`, state `~/.niki`, env prefix `NIKI_*`.
 - `dcode` and `deepagents-code` stay as deprecated aliases for two minor
@@ -22,7 +22,7 @@ Clone: `https://github.com/RavaniRoshan/deepagents.git` → `/home/shiva/project
 `libs/code` at BASE_SHA: `deepagents-code` 0.1.80, SDK `deepagents` 0.7.21, textual 8.2.8, Python 3.12.3.
 
 ## Phase 0 — design note (COMPLETE)
-Bootstrap, contributor docs read, subsystems mapped, baselines measured, `docs/niki/DESIGN.md` written (35 lines).
+Bootstrap, contributor docs read, subsystems mapped, baselines measured, `docs/niki/history/DESIGN.md` written (35 lines).
 Confirmed the current terminal agent is `libs/code` (`deepagents-code` 0.1.80, module `niki_agent`); `deepagents-cli` no longer exists.
 
 ## Phase 1 — harness (COMPLETE)
@@ -100,7 +100,7 @@ its recorded status and priority until the owner decides keep/change/defer.
 
 | Row | Written criterion | Evidence / measured limitation | Recommended decision |
 | --- | --- | --- | --- |
-| S1 | first frame ≤400 ms warm | Real pty: first output 470 ms, composer 553 ms; upstream prewarms the 4,546.8 ms import chain off the hot path (`BASELINE.md`). 400 ms is unreachable for this Python process. | Change the target to the honest 1,500 ms regression guard; keep the real-terminal feel check. |
+| S1 | first frame ≤400 ms warm | Real pty: first output 470 ms, composer 553 ms; upstream prewarms the 4,546.8 ms import chain off the hot path (`docs/niki/history/BASELINE.md`). 400 ms is unreachable for this Python process. | Change the target to the honest 1,500 ms regression guard; keep the real-terminal feel check. |
 | S2 | input echo p95 ≤50 ms | 173.9 ms p95 / 130.3 ms median, 20/20 presses landing; every sample includes one `pilot.pause()` round-trip, so it is a floor, not a real-terminal number. | Change to a real-terminal probe; keep the row PARTIAL until measured. |
 | S7 | 100-resize storm in 2 s | 11.4 s headless, dominated by 100 `pause()` calls; crash-free outcome and final 80x24 layout are verified. | Split outcome (already MET) from latency (needs a real-terminal probe). |
 | L5 | crash → traceback to file + friendly message | File handler only attaches with `DEEPAGENTS_CODE_DEBUG` truthy and a known thread, which requires the real CLI; headless run writes no file. | Keep PARTIAL; owner supplies the real-terminal observation. |
@@ -369,7 +369,7 @@ before the fix, and the merged tree is verified again below.
   measurement of runner load rather than of the composer. The probe now times
   the same round-trip without a keypress in the same streaming condition and
   gates on the excess, while still recording the raw p95 for comparability with
-  `BASELINE.md`.
+  `docs/niki/history/BASELINE.md`.
 - **The MCP login modal's test could starve instead of failing.** Its prompt
   poll allowed 2 s, and a driver that missed that window left `login` awaiting a
   prompt nobody submitted, so the run surfaced as the repo-wide 30 s timeout.
@@ -468,8 +468,7 @@ before the fix, and the merged tree is verified again below.
 
 - `openwiki/` describes the pre-trim monorepo and has not been regenerated.
 - The issue templates and a few historical notes still spell the upstream
-  project name; `UPSTREAM_README.md` and `DESIGN.md` are deliberately kept as
-  snapshots.
+  project name; the fork-era snapshots now live under `docs/niki/history/`.
 
 ## Session 4 — CI cleanup, release, install proof
 
@@ -554,3 +553,19 @@ before the fix, and the merged tree is verified again below.
 - `bash rust/tools/m2_session.sh` re-run against the released tree: the live PTY
   transcript equals the replay frame, exit 0.
 - CI on the two follow-up PRs (`make check`, `rust client`, `CI Success`) green.
+
+### 1.1.0 — documentation rebrand and the history split
+- User-facing docs name only Niki Agent: the root and package READMEs, the
+  independence record, and the architecture note. Provider help links point at
+  this repository instead of an upstream docs site, and the empty-thread hint in
+  `threads list` prints the launched command name.
+- Fork-era records moved to `docs/niki/history/` with a framing note: the
+  upstream README, `UPSTREAM_DIFF.md`, the design audit, and the pre-change
+  baselines. Their internal paths were updated everywhere they are cited.
+- `NOTICE` rewritten: the product is an independent implementation under the
+  root MIT license, with the two vendored MIT components named, versioned, and
+  attributed verbatim. Each vendored directory now carries its own `LICENSE`,
+  and both `PROVENANCE.md` files point at it.
+- Packaging metadata: version 1.1.0, `Production/Stable` classifier, the
+  changelog URL now points at the releases page, and `langgraph` is gone from
+  the keyword list.

@@ -4,7 +4,7 @@ Every number these produce is written to stderr and to `perf_results.json`, so
 the evidence lands in the run output rather than in a claim.
 
 Thresholds are the *baseline*, recorded before any UI change in
-`docs/niki/BASELINE.md`. They are ceilings, not targets: a change is kept only
+`docs/niki/history/BASELINE.md`. They are ceilings, not targets: a change is kept only
 if it moves a number, and a ceiling is tightened once the improvement lands.
 A probe that fails is reporting a real regression.
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 ARTIFACT = Path(__file__).parent / "perf_results.json"
 
-# Baselines recorded in docs/niki/BASELINE.md before any UI change.
+# Baselines recorded in docs/niki/history/BASELINE.md before any UI change.
 FIRST_FRAME_CEILING_MS = 2500.0
 IDLE_RENDER_CEILING = 12
 IDLE_CPU_CEILING_PERCENT = 100.0
@@ -186,7 +186,7 @@ async def test_upstream_baseline_is_recorded_for_comparison() -> None:
 
     assert sample.renders > 0, (
         "upstream now paints nothing when idle; the S4 comparison is stale and "
-        "the baseline in docs/niki/BASELINE.md needs re-measuring"
+        "the baseline in docs/niki/history/BASELINE.md needs re-measuring"
     )
 
 
@@ -314,7 +314,7 @@ async def test_s5_scrolling_a_five_thousand_message_transcript() -> None:
 
 
 def test_artifact_is_readable_json() -> None:
-    """The artifact is cited by docs/niki/BASELINE.md, so it must stay parseable."""
+    """The artifact is cited by `docs/niki/history/BASELINE.md`, so it parses."""
     data: Any = (
         json.loads(ARTIFACT.read_text(encoding="utf-8")) if ARTIFACT.exists() else {}
     )
@@ -329,7 +329,7 @@ async def test_input_echo_latency_while_streaming() -> None:
     to the event loop. The probe therefore measures that round-trip separately
     in the same streaming condition and gates on the excess, which is the part
     the composer owns. The raw figure is still recorded so it stays comparable
-    with `docs/niki/BASELINE.md`; on a contended runner the round-trip alone can
+    with `docs/niki/history/BASELINE.md`; on a contended runner the round-trip alone can
     reach 200 ms, and gating on it makes the probe a machine-speed measurement.
     """
     sample = await measure_input_echo(_niki_app(), (80, 24), presses=20)

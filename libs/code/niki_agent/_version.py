@@ -2,7 +2,7 @@
 
 # Keep the `x-release-please-version` annotation — release-please uses it to
 # bump `__version__` in sync with `pyproject.toml` on every release PR.
-__version__ = "1.0.1"  # x-release-please-version
+__version__ = "1.1.0"  # x-release-please-version
 
 DOCS_URL = "https://github.com/RavaniRoshan/niki-agent"
 """URL for `niki-agent` documentation."""

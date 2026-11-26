@@ -1,12 +1,12 @@
 name: "\U0001F512 Privileged"
-description: You are a Deep Agents maintainer. If not, check the other options.
+description: You are a Niki Agent maintainer. If not, check the other options.
 body:
   - type: markdown
     attributes:
       value: |
-        > **All contributions must be in English.** See the [language policy](https://docs.langchain.com/oss/python/contributing/overview#language-policy).
+        > **All contributions must be in English.**
 
-        If you are not a Deep Agents maintainer, employee, or were not asked directly by a maintainer to create an issue, then please start the conversation on the [Deep Agents Forum](https://forum.langchain.com/c/oss-product-help-lc-and-lg/deep-agents/18) instead.
+        If you are not a Niki Agent maintainer, employee, or were not asked directly by a maintainer to create an issue, then please use the bug report or feature request form instead.
 
         **Note:** Do not begin work on a PR unless explicitly assigned to this issue by a maintainer.
   - type: checkboxes
@@ -15,7 +15,7 @@ body:
       label: Privileged issue
       description: Confirm that you are allowed to create an issue here.
       options:
-        - label: I am a Deep Agents maintainer.
+        - label: I am a Niki Agent maintainer.
           required: true
   - type: textarea
     id: content
@@ -23,22 +23,22 @@ body:
       label: Issue Content
       description: Add the content of the issue here.
   - type: checkboxes
-    id: package
+    id: area
     attributes:
       label: Area (Required)
       description: |
         Please select area(s) that this issue is related to.
       options:
-        - label: deepagents (SDK)
-        - label: dcode
-        - label: talon
-        - label: acp
-        - label: daytona
-        - label: modal
-        - label: quickjs
-        - label: runloop
-        - label: vercel
-        - label: langsmith-sandbox
+        - label: TUI / composer / keymap
+        - label: Headless mode (`-n`)
+        - label: Sessions and state (`~/.niki`)
+        - label: Providers and authentication
+        - label: MCP
+        - label: Skills / plugins / subagents
+        - label: Sandboxes
+        - label: Rust client (`rust/`)
+        - label: Installer / release artifacts
+        - label: Documentation
         - label: Other / not sure / general
   - type: markdown
     attributes:

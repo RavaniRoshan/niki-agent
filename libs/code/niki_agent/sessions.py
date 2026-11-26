@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypedDict, cast
 
 from niki_agent._constants import DEFAULT_THREAD_LIMIT
+from niki_agent._invocation import invoked_name
 from niki_agent._paths import harden_state_dir
 from niki_agent.goal_state_notice import is_internal_message
 
@@ -1819,7 +1820,7 @@ async def list_threads_command(
     *,
     output_format: OutputFormat = "text",
 ) -> None:
-    """CLI handler for `deepagents threads list`.
+    """CLI handler for `niki threads list`.
 
     Fetches and displays a table of recent conversation threads, optionally
     filtered by agent name, git branch, or working directory.
@@ -1923,7 +1924,7 @@ async def list_threads_command(
                     "no cwd metadata; run without --cwd to see "
                     f"{'them' if legacy_count != 1 else 'it'}.[/dim]"
                 )
-        console.print("[dim]Start a conversation with: deepagents[/dim]")
+        console.print(f"[dim]Start a conversation with: {invoked_name()}[/dim]")
         return
 
     title_parts = []
@@ -1992,7 +1993,7 @@ async def delete_thread_command(
     dry_run: bool = False,
     output_format: OutputFormat = "text",
 ) -> None:
-    """CLI handler for: deepagents threads delete.
+    """CLI handler for: niki threads delete.
 
     Args:
         thread_id: ID of the thread to delete.

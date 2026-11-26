@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect conversations in the local Deep Agents Code session store."""
+"""Inspect conversations in the local Niki Agent session store."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import json
 import os
 import shutil
 import sqlite3
-import subprocess  # noqa: S404  # Used only to probe resolved dcode Python launchers.
+import subprocess  # noqa: S404  # Used only to probe resolved Niki Python launchers.
 import sys
 import warnings
 from pathlib import Path
@@ -42,15 +42,12 @@ def _has_runtime() -> bool:
 def _ensure_runtime() -> None:
     if _has_runtime():
         return
-    if os.environ.get("DEEPAGENTS_THREAD_INSPECTOR_REEXEC") == "1":
-        msg = (
-            "The selected Python runtime does not contain Deep Agents Code "
-            "dependencies."
-        )
+    if os.environ.get("NIKI_THREAD_INSPECTOR_REEXEC") == "1":
+        msg = "The selected Python runtime does not contain Niki Agent dependencies."
         raise SystemExit(msg)
 
     candidates: list[Path] = []
-    for command in ("dcode", "niki-agent"):
+    for command in ("niki", "dcode", "niki-agent"):
         executable = shutil.which(command)
         if not executable:
             continue
@@ -70,7 +67,7 @@ def _ensure_runtime() -> None:
             continue
         seen.add(candidate_key)
         try:
-            check = subprocess.run(  # noqa: S603  # Runs a resolved dcode interpreter.
+            check = subprocess.run(  # noqa: S603  # Runs a resolved niki interpreter.
                 [
                     str(candidate),
                     "-c",
@@ -90,26 +87,26 @@ def _ensure_runtime() -> None:
             continue
         if check.returncode == 0:
             env = os.environ.copy()
-            env["DEEPAGENTS_THREAD_INSPECTOR_REEXEC"] = "1"
+            env["NIKI_THREAD_INSPECTOR_REEXEC"] = "1"
             os.execve(  # noqa: S606  # Replaces this process with that interpreter.
                 str(candidate),
                 [str(candidate), str(Path(__file__).resolve()), *sys.argv[1:]],
                 env,
             )
 
-    msg = "Could not import Deep Agents Code dependencies or locate dcode on PATH."
+    msg = "Could not import Niki Agent dependencies or locate niki on PATH."
     raise SystemExit(msg)
 
 
 def _default_db_path() -> Path:
-    """Return the sessions DB path dcode itself would use.
+    """Return the sessions DB path Niki itself would use.
 
     Returns:
         The default sessions database path.
 
     Raises:
-        SystemExit: If `NIKI_HOME` is set to a value dcode rejects, so
-            this script never reads a database dcode never writes.
+        SystemExit: If `NIKI_HOME` is set to a value niki rejects, so
+            this script never reads a database niki never writes.
     """
     explicit = os.environ.get("DEEPAGENTS_SESSIONS_DB")
     if explicit:
@@ -557,9 +554,7 @@ def _turns(
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "Inspect Deep Agents Code thread state without modifying the database."
-        )
+        description=("Inspect Niki Agent thread state without modifying the database.")
     )
     parser.add_argument("thread_id", nargs="?", help="Full thread ID or unique prefix")
     parser.add_argument(
@@ -596,7 +591,7 @@ def main() -> None:
 
     Raises:
         SystemExit: If the command-line arguments are invalid, the local session
-            store is missing or unsupported, or the Deep Agents Code runtime
+            store is missing or unsupported, or the Niki Agent runtime
             cannot be located.
     """
     args = _build_parser().parse_args()

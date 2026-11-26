@@ -12,7 +12,7 @@ _SCRIPT = (
     Path(__file__).resolve().parents[3]
     / "niki_agent"
     / "built_in_skills"
-    / "deepagents-thread-inspector"
+    / "thread-inspector"
     / "scripts"
     / "inspect_sessions.py"
 )

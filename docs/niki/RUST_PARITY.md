@@ -118,7 +118,7 @@ is the PTY provider the plan names.
 Measured on the development machine (16 cores, Linux, Rust 1.99.0), release
 build, 20 runs each, wall clock per process:
 
-| Command | Rust client | Python client (from `docs/niki/BASELINE.md`) |
+| Command | Rust client | Python client (from `docs/niki/history/BASELINE.md`) |
 | --- | --- | --- |
 | `niki --version` | **1 ms** | 349 ms cold / 260 ms warm (`dcode -v`) |
 | First replay frame, 80×24 | **4 ms** | 194.3 ms to first paint |
