@@ -5,7 +5,7 @@ import logging
 import subprocess
 import sys
 import warnings
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, ClassVar
@@ -5718,6 +5718,51 @@ class TestLazySingletons:
         finally:
             config_mod._bootstrap_state.done = original_done
             config_mod._bootstrap_state.original_langsmith_project = original_ls
+
+    def test_forced_rebootstrap_does_not_outlive_its_test(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        restore_bootstrap_snapshot: Callable[[], None],
+    ) -> None:
+        """A second bootstrap must not decide what later tests inherit.
+
+        `_ensure_bootstrap()` rewrites the process-global launch snapshot from
+        the environment it runs in, and every later reload re-applies that
+        snapshot to `os.environ`. The bootstrap tests above force a second one
+        with a `LANGSMITH_API_KEY` set, so without the isolation fixture the
+        key outlives them and the next Ctrl+R in the same worker resolves a
+        credential the test never set.
+        """
+        import niki_agent.config as config_mod
+        from niki_agent.config import _ensure_bootstrap
+
+        original_done = config_mod._bootstrap_state.done
+        config_mod._bootstrap_state.done = False
+
+        try:
+            monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_rebootstrap")
+            with (
+                patch("niki_agent.config._load_dotenv"),
+                patch(
+                    "niki_agent.project_utils.get_server_project_context",
+                    return_value=None,
+                ),
+            ):
+                _ensure_bootstrap()
+
+            assert (
+                config_mod._bootstrap_state.launch_langsmith_env["LANGSMITH_API_KEY"]
+                == "lsv2_rebootstrap"
+            )
+        finally:
+            config_mod._bootstrap_state.done = original_done
+
+        restore_bootstrap_snapshot()
+
+        assert (
+            config_mod._bootstrap_state.launch_langsmith_env.get("LANGSMITH_API_KEY")
+            is None
+        )
 
     def test_bootstrap_defaults_project_when_tracing_and_key(
         self, monkeypatch: pytest.MonkeyPatch
