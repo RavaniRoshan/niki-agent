@@ -74,7 +74,7 @@ Install just one provider's extra instead of all of them with
 ```bash
 uv run niki                      # interactive
 uv run niki --help               # usage and options
-uv run niki --version            # Niki Agent 1.0.0
+uv run niki --version            # Niki Agent 1.0.1
 uv run niki -n "summarize this repo"   # headless
 ```
 

@@ -1,4 +1,4 @@
-# Niki Agent 1.0.0
+# Niki Agent
 
 A calm, fast, keyboard-native terminal coding agent — an independent
 implementation. The agent loop lives in this repository: the Deep Agents SDK and
@@ -69,9 +69,9 @@ repeating here:
 
 | File | Platform |
 | --- | --- |
-| `niki-1.0.0-linux.tar.gz` | Linux x86-64 and WSL |
-| `niki-1.0.0-macos.tar.gz` | macOS, Apple Silicon and Intel |
-| `niki-1.0.0-windows.zip` | Windows x86-64 |
+| `niki-<version>-linux.tar.gz` | Linux x86-64 and WSL |
+| `niki-<version>-macos.tar.gz` | macOS, Apple Silicon and Intel |
+| `niki-<version>-windows.zip` | Windows x86-64 |
 
 `SHA256SUMS` covers all three. Each archive contains the pinned wheel, both
 installers, `NOTICE`, and `README.md`. The macOS archive is

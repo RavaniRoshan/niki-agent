@@ -29,6 +29,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+from niki_agent._invocation import invoked_name
 from niki_agent.output import write_json
 
 if TYPE_CHECKING:
@@ -915,10 +916,12 @@ def _report_missing_get_key(output_format: OutputFormat) -> int:
         )
         return 2
 
+    command = invoked_name()
     print(  # noqa: T201
-        f"`dcode config get` needs an option key, e.g. `dcode config get "
-        f"{_GET_KEY_EXAMPLE}`. Run `dcode config` to list options and their "
-        "effective values, or `dcode config --verbose` to see every key.",
+        f"`{command} config get` needs an option key, e.g. "
+        f"`{command} config get {_GET_KEY_EXAMPLE}`. Run `{command} config` "
+        "to list options and their effective values, or "
+        f"`{command} config --verbose` to see every key.",
         file=sys.stderr,
     )
     return 2

@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
+from niki_agent._invocation import invoked_name
 from niki_agent.output import write_json
 
 if TYPE_CHECKING:
@@ -808,14 +809,18 @@ def _render_text(sections: list[DiagnosticSection]) -> None:
             )
         console.print()
 
+    # Name the command the user actually launched: the package also ships the
+    # deprecated `dcode` alias, and a per-checkout shim is common.
+    command = escape(invoked_name())
     console.print(
-        "  Tip: Run `dcode config` or `dcode config get <key>` "
+        f"  Tip: Run `{command} config` or `{command} config get <key>` "
         "to drill into config details.",
         style=theme.MUTED,
         highlight=False,
     )
     console.print(
-        "       Run `dcode --version` (or `dcode -v`) for dependency versions.",
+        f"       Run `{command} --version` (or `{command} -v`) "
+        "for dependency versions.",
         style=theme.MUTED,
         highlight=False,
     )
