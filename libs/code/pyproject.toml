@@ -163,7 +163,7 @@ niki = "niki_agent.niki.entry:niki_main"
 
 [project.urls]
 Homepage = "https://github.com/RavaniRoshan/niki-agent"
-Documentation = "https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/README.md"
+Documentation = "https://niki-docs.vercel.app"
 Repository = "https://github.com/RavaniRoshan/niki-agent"
 Issues = "https://github.com/RavaniRoshan/niki-agent/issues"
 Changelog = "https://github.com/RavaniRoshan/niki-agent/releases"
