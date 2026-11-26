@@ -938,12 +938,11 @@ class ThreadSelectorScreen(ModalScreen[str | None]):
             initial_threads: Optional preloaded rows to render immediately.
             filter_cwd: Working-directory filter for the picker.
 
-                When the default sentinel, the picker mirrors Claude Code's
-                `/resume` and scopes to the current working directory; the
-                "Show threads from" select in the Options panel widens the
-                view to "all directories". Pass an explicit path to scope to
-                that directory, or `None` to start the picker with no cwd
-                filter.
+                When the default sentinel, the picker scopes to the current
+                working directory; the "Show threads from" select in the
+                Options panel widens the view to "all directories". Pass an
+                explicit path to scope to that directory, or `None` to start
+                the picker with no cwd filter.
             initial_query: Search text carried from the compact picker.
             reference_mode: Whether selection returns a reference instead of
                 resuming the selected thread.
@@ -2420,9 +2419,9 @@ class ThreadSelectorScreen(ModalScreen[str | None]):
         The agent branch updates the in-memory `_filter_agent` and re-filters
         the loaded threads without re-querying the database; selecting the
         "All agents" sentinel (`_AGENT_VALUE_ALL`) clears the filter. The scope
-        branch mirrors Claude Code's `/resume`: the picker is scoped to the
-        current working directory by default, and choosing "All directories"
-        widens the view to threads from every cwd (which does re-query).
+        branch: the picker is scoped to the current working directory by
+        default, and choosing "All directories" widens the view to threads from
+        every cwd (which does re-query).
 
         Args:
             event: The `Select.Changed` message; `event.select.id` selects the

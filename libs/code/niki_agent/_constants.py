@@ -36,7 +36,7 @@ SESSION_END_DRAIN_TIMEOUT_SECONDS: Final[float] = 2.0
 SDK_DEFAULT_RUBRIC_MAX_ITERATIONS: Final[int] = 3
 """Default `RubricMiddleware.max_iterations`, shown without importing the SDK.
 
-Hardcoded rather than read from `deepagents.middleware.rubric.RubricMiddleware`
+Hardcoded rather than read from `niki_agent.sdk.middleware.rubric.RubricMiddleware`
 because this module is dependency-free and importing the SDK for a display
 string would violate the startup-performance rule (see AGENTS.md). This is a
 hand-maintained duplicate that can rot if the SDK bumps its default, so

@@ -4,8 +4,6 @@ When the user pastes text exceeding a size or line threshold, the full text
 is stored off-screen and a compact `[Pasted text #N +M lines]` placeholder
 is inserted into the input box instead.  At submission time the placeholder
 is expanded back to the original content so the agent receives the full text.
-
-This mirrors the behavior of Claude Code's paste-collapsing system.
 """
 
 from __future__ import annotations

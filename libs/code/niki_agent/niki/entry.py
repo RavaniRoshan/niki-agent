@@ -50,7 +50,7 @@ def install_niki_app_class() -> None:
 
 
 def install_niki_glyphs() -> None:
-    """Point upstream's glyph lookup at Niki's motion language.
+    """Point the base glyph lookup at Niki's motion language.
 
     Every spinner in the app reads `get_glyphs()` (`loading.py:31`,
     `messages.py:2207`), so binding it once gives Niki a single coherent glyph
@@ -65,7 +65,7 @@ def install_niki_glyphs() -> None:
     from niki_agent.config import get_glyphs
     from niki_agent.niki.motion import spinner_frames_for_this_terminal
 
-    # Substitute upstream's FULL Glyphs with only `spinner_frames` replaced.
+    # Substitute the FULL `Glyphs` object with only `spinner_frames` replaced.
     # A narrow stand-in satisfies the type but crashes every widget that reads
     # another glyph field; see the note in `niki/motion.py`.
     resolved = replace(get_glyphs(), spinner_frames=spinner_frames_for_this_terminal())
@@ -75,7 +75,7 @@ def install_niki_glyphs() -> None:
 def niki_main() -> None:
     """Run Niki Agent. Registered as the `niki` console script."""
     if len(sys.argv) == 2 and sys.argv[1] in _VERSION_FLAGS:  # noqa: PLR2004
-        # Answered before any heavy import, matching upstream's own fast path.
+        # Answered before any heavy import, matching the base entry point's fast path.
         print(version_line())  # noqa: T201 - console script output, not a library
         return
 

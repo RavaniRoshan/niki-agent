@@ -1,14 +1,12 @@
 """Niki's motion language: glyphs, cadence, and the reduced-motion switch.
 
-Three things live here, and all three are Niki's own:
+Three things live here.
 
 **The activity glyph.** A rotating quadrant sweep — `◐◓◑◒` — ping-ponging so the
-motion reverses at each end rather than snapping back. Upstream ships braille
-(`⠋⠙⠹…`) and Claude Code ships an asterisk family (`·✢✳✶✻✽`); this is
-deliberately neither. The quadrant glyph reads as a continuous rotation at any
-size, and it is one codepoint wide everywhere, which matters because a glyph
-with an ambiguous width makes a spinner jitter -- the reason Ghostty users see a
-different spinner set in Claude Code.
+motion reverses at each end rather than snapping back. The quadrant glyph reads
+as a continuous rotation at any size, and it is one codepoint wide everywhere,
+which matters because a glyph with an ambiguous width makes a spinner jitter.
+An ASCII frame set covers terminals that cannot draw it.
 
 **The cadence.** 120 ms per frame, 100 ms when the work is known to be waiting
 on something (a tool, a rate limit) and a slower, calmer 200 ms once a turn has
@@ -17,13 +15,13 @@ run long enough that urgency reads as noise.
 **Reduced motion.** Honours `NIKI_REDUCED_MOTION` and `NO_MOTION`. When set,
 every animated element degrades to a single static glyph and the timers stop
 altogether. This is not cosmetic: continuous motion is a documented accessibility
-problem, and it also costs CPU and repaints. Note the interaction with S4 --
-an idle app must still paint **zero** frames, so a reduced-motion app must be at
-least as still as an animated one, not more.
+problem, and it also costs CPU and repaints. A reduced-motion app must be at
+least as still as an animated one -- an idle app still paints **zero** frames
+either way.
 
 Nothing here is imported at package import time. `install_niki_glyphs()` in
-`entry.py` binds it, and only when the process was launched as `niki` -- so
-`niki` keeps upstream's glyphs exactly.
+`entry.py` binds it, and only when the process was launched as `niki`, so the
+module entry point keeps the base glyph set.
 """
 
 from __future__ import annotations
@@ -94,8 +92,8 @@ def charset_is_ascii() -> bool:
 
     Returns:
         `True` when the encoded stdout cannot represent the Unicode motif, or
-        when the charset is forced to ASCII. Mirrors aider's approach of probing
-        the encoding rather than trusting a terminal-detection heuristic.
+        when the charset is forced to ASCII. Probing the encoding is more
+        reliable than a terminal-detection heuristic.
     """
     forced = os.environ.get("UI_CHARSET_MODE", "").strip().lower()
     if forced == "ascii":
@@ -117,7 +115,7 @@ def charset_is_ascii() -> bool:
 #: like a clean delta and satisfied the type in places -- but the compositor
 #: asks the glyph set for `.checkmark`, `.spinner_frames`, and more, so the TUI
 #: died with `AttributeError` before it ever painted a composer. The fix is to
-#: substitute upstream's FULL `Glyphs` with one field replaced, which
+#: take the full `Glyphs` object and replace one field, which
 #: `install_niki_glyphs` does via `dataclasses.replace`. Narrow stand-ins for a
 #: 34-field configuration object are a trap; record it so nobody repeats it.
 

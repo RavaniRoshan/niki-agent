@@ -394,7 +394,7 @@ def _resolve_server_type(server_config: Mapping[str, Any]) -> str:
 
     Accepts `type` or `transport` interchangeably. When neither is set, a
     `url` field implies a remote server (defaulting to `http`) and the
-    absence of `url` implies stdio. This matches Claude Code's `.mcp.json`
+    absence of `url` implies stdio. This follows the shared `.mcp.json`
     convention where remote entries are commonly written as `{"url": "..."}`
     alone.
 

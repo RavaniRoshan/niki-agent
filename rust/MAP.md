@@ -1,10 +1,10 @@
 # Niki Agent — whole-app port map
 
-Goal: a standalone Rust program that is the product, with the Python package kept
-only as reference. The port outlives one session, so this file carries it.
+Goal: a standalone Rust program that becomes the product, with the Python package
+kept as the reference implementation while the port is built.
 
-Read order for a new session: this file, then `DECISIONS.md`, `GLOSSARY.md`,
-`RULES.md`, then `HANDOFF.md` when it exists.
+Read this file, then `DECISIONS.md`, `GLOSSARY.md`, `RULES.md`, and
+`HANDOFF.md` for current status.
 
 ## State of the port
 
@@ -26,7 +26,7 @@ is next.
 
 ## Waves
 
-A unit is `open`, `claimed by <session> <date>`, or `done <gate/replay>`.
+A unit is `open`, `in progress`, or `done <gate/replay>`.
 
 ### W0 — protocol and shell (done, pre-existing)
 
@@ -84,10 +84,11 @@ the answer reaches stdout.
 | `niki-acp` | editor protocol over stdio | open |
 | `niki-headless` | `-n`, JSON output, exit codes | open |
 
-### W6 — parity and cutover
+### W6 — cutover
 
-Parity rows, packaging for Linux/WSL (then macOS/Windows), the `niki` binary
-renamed, Python retired to reference. Out of scope until W1–W5 are green.
+Every remaining surface reaches the same behaviour as the Python client, then
+packaging for Linux/WSL (then macOS/Windows), the `niki` binary renamed, Python
+retired to reference. Out of scope until W1–W5 are green.
 
 ## Blocked and kept
 

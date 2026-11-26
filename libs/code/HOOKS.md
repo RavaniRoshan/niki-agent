@@ -9,8 +9,11 @@ Hooks are user-configured shell commands that run at agent lifecycle events. Eac
 | Scope | Path | When it loads |
 | --- | --- | --- |
 | User | `~/.niki/hooks.json` | Always (when the file exists) |
-| Project | `{project_root}/.deepagents/hooks.json` | Only after workspace trust |
+| Project | `{project_root}/.niki/hooks.json` | Only after workspace trust |
 | Plugin | `hooks/hooks.json` inside an installed plugin | Whenever the plugin is enabled |
+
+A project directory that still has only the legacy `.deepagents/` name is read
+from there, and never written back to it.
 
 Matcher groups are applied project first, then user, then plugin. Precedence decides whose answer wins, not who runs: every matching handler for an event runs concurrently, and their results are then reduced in that order, so the first handler that stops processing decides the event. A plugin handler still executes even when a project or user handler stops the event, so treat a plugin's side effects as unconditional.
 
@@ -18,7 +21,7 @@ Matcher groups are applied project first, then user, then plugin. Precedence dec
 
 Project-scoped hooks can execute arbitrary commands from the repository. Before they load:
 
-- Interactive `niki` prompts for approval when `.deepagents/hooks.json` is present and the workspace is not already trusted.
+- Interactive `niki` prompts for approval when `.niki/hooks.json` is present (or its legacy `.deepagents/` fallback) and the workspace is not already trusted.
 - Choosing always-allow persists trust for that canonical workspace root in `~/.niki/.state/hooks_trust.json`.
 - Cancelling the prompt (Esc / Ctrl+D) aborts startup.
 - Denying skips project hooks for the session and continues with user hooks only.

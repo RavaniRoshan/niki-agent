@@ -75,6 +75,6 @@ Users can add their own overrides for models neither catalog covers via
 `prices.json` in the Niki user config directory (`~/.niki/prices.json`,
 same provider-array schema). On conflicting `(provider id, model id)` entries,
 the user file wins over this built-in one. See
-[`PRICING.md`](https://github.com/langchain-ai/deepagents/blob/main/libs/code/PRICING.md)
+[`PRICING.md`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/libs/code/PRICING.md)
 for the user-facing documentation — linked by URL because this file ships inside
 the wheel, where the repo tree is not there to walk.

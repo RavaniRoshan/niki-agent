@@ -9,8 +9,8 @@ binds it.
 The `niki` console script answers `--help` with this screen; the module entry
 point (`python -m niki_agent`) keeps the argparse screen.
 
-This is also what closes K1: the footer, Help, and the generated keymap doc all
-read the same registry.
+This is also what keeps the footer, Help, and the generated keymap doc on one
+registry.
 """
 
 from __future__ import annotations

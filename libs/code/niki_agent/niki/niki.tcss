@@ -1,8 +1,9 @@
 /* Niki Agent — the look.
  *
- * Loaded after upstream's `app.tcss` so these rules win the cascade. Everything
- * here is a *layer*, not a rewrite: upstream's layout, widgets, and behaviour
- * are untouched, and every selector targets something upstream already ships.
+ * Loaded after the base `app.tcss` so these rules win the cascade. Everything
+ * here is a *layer*, not a rewrite: the base layout, widgets, and behaviour
+ * are untouched, and every selector targets something the base sheet already
+ * defines.
  *
  * The design direction, and where each rule comes from:
  *
@@ -16,7 +17,8 @@
  *     registered by `NikiApp` as `$primary`, `$background`, `$surface`,
  *     `$panel`, `$text`, `$error`, `$success`, and friends; the seven tokens
  *     Textual has no field for are published as `$niki-*`. There is not one
- *     literal in this file, which is what lets `test_lint_rules.py` enforce V1.
+ *     literal in this file, which is what lets `test_lint_rules.py` enforce the
+ *     token rule.
  *
  * A first draft used `$niki-background` for everything. Textual has no such
  * variable, so the whole sheet failed to parse, Textual dropped it, and every

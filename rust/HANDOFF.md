@@ -1,9 +1,12 @@
-# Handoff — after W3
+# Rust client status
 
-State: W0, W1, W2 and W3 are green on `shiva/rust/tui-live`. W4 (extensions) is
-next.
+The Rust workspace in `rust/` is a second front end for the same engine, built
+one crate at a time. Python is still the product until the port reaches its
+cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
+[`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done;
+W4 (extensions) is next.
 
-## What is on the branch
+## What is implemented
 
 | Crate | What it answers from Rust |
 | --- | --- |
@@ -44,7 +47,7 @@ The W3 gates need no terminal:
 buffer and reads the cells back; `tests/turn.rs` runs real turns through the
 worker against a scripted provider and drives approvals end to end.
 
-## Decisions a new session must know
+## Decisions a contributor must know
 
 - The agent assembles tool calls from `StreamEvent::ToolCallDelta` itself, using
   `niki_provider::openai::ToolCallAssembler`. The adapters emit fragments; nobody

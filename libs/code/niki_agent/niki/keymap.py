@@ -1,10 +1,9 @@
-"""The single keymap registry (K1).
+"""The single keymap registry.
 
-Checklist row K1 asks for one registry that the footer, Help, and the slash
-popup all read, so none of them can advertise a dead action. Upstream declares
-`BINDINGS` per class and merges them at runtime, but `ui.show_help()` is
-hand-maintained text -- which is precisely how a product ends up advertising a
-key that does nothing.
+One registry that the footer, Help, and the slash popup all read, so none of
+them can advertise a dead action. Widgets declare `BINDINGS` per class and
+Textual merges them at runtime, but `ui.show_help()` is hand-maintained text --
+which is precisely how a product ends up advertising a key that does nothing.
 
 This module derives the keymap from the **live** binding declarations instead of
 restating them. Two consequences worth stating:
@@ -12,8 +11,8 @@ restating them. Two consequences worth stating:
 - A key appears in the footer and in `docs/niki/KEYMAP.md` only because some
   class actually binds it. There is no second list to drift.
 - `check_action` is honoured. Textual hides a binding whose action is
-  unavailable, so a row marked `show=False` upstream stays out of the hints
-  instead of being advertised and doing nothing.
+  unavailable, so a row marked `show=False` stays out of the hints instead of
+  being advertised and doing nothing.
 
 `build_keymap` reads `BINDINGS` off the classes, which is Textual's public
 class-level declaration API. It does not reach into the merged runtime binding
@@ -37,7 +36,7 @@ def _separator() -> str:
     """The charset-aware separator between footer hints.
 
     Returns:
-        Upstream's separator glyph for the active terminal, or two spaces if it
+        The separator glyph for the active terminal, or two spaces if it
         cannot be resolved (rendering must never fail over a divider).
     """
     try:
@@ -56,7 +55,7 @@ class KeymapEntry:
         key: The key sequence, e.g. `"ctrl+t"`.
         action: The action name, e.g. `"toggle_subagent_panel"`.
         description: What the key does, for the footer and Help.
-        show: Whether upstream marks this binding as footer-visible.
+        show: Whether the base class marks this binding as footer-visible.
         namespace: Where the binding was declared, e.g. `"DeepAgentsApp"`.
     """
 
@@ -90,8 +89,8 @@ def build_keymap(root: DOMNode, *, visible_only: bool = False) -> list[KeymapEnt
 
     Args:
         root: Usually the app or its screen.
-        visible_only: Drop bindings upstream marks `show=False`. Off by default,
-            because **every** upstream binding sets `show=False` -- upstream
+        visible_only: Drop bindings the base class marks `show=False`. Off by
+            default, because **every** base binding sets `show=False` -- the app
             hand-renders its own footer hints instead of using Textual's. With
             the filter on, the registry comes back empty and Help would document
             nothing. The `show` flag is recorded per entry so a surface can still

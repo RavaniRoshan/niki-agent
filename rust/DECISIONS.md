@@ -118,8 +118,8 @@ Status: accepted (2026-11-26)
 Context: the Python product is released and installable today.
 
 Decision: the Rust binary ships as `niki-rs` from the `rust/` workspace until
-W6. The Python `niki` remains the product. Cutover requires every parity row
-green and a release carrying both archives.
+cutover. The Python `niki` remains the product. Cutover requires every remaining
+surface to reach the same behaviour and a release carrying both archives.
 
 Consequences: no user is forced onto an incomplete port, and a regression in the
 Rust path is answered by telling the user to run `niki`.

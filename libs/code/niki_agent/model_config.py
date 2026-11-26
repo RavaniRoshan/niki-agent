@@ -159,6 +159,19 @@ Referenced by `UnknownProviderError` and the `/auth` manager so the same
 URL is used everywhere a user is sent to read about provider setup.
 """
 
+GATEWAY_DOCS_URL = (
+    "https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/"
+    "PROVIDERS.md#any-openai-compatible-endpoint"
+)
+"""Docs section on how a provider's API key and endpoint resolve together.
+
+Linked from `PermissionDeniedError` guidance and the `/auth` custom endpoint
+prompt: a common cause is a provider key that does not match the endpoint it is
+sent to — e.g. an `OPENAI_API_KEY` exported in the shell while a gateway
+overrides the provider base URL, so the key is sent to the gateway, which
+rejects it.
+"""
+
 
 MANAGED_CONFIG_SOURCE = "managed config"
 """Resolver provenance label for a value managed policy decided.
@@ -5604,8 +5617,9 @@ def load_mcp_server_trust_lists(
     a project's `.mcp.json` or any repo-committed file. There is no
     project-level `config.toml` discovery, so an attacker who commits a
     malicious `.mcp.json` plus an in-repo config cannot pre-approve their own
-    servers; the approval must live in the user's home config. This mirrors
-    Claude Code's "untrusted folder → only non-checked-in settings" rule.
+    servers; the approval must live in the user's home config. The rule is the
+    one that applies to any untrusted folder: only settings the user controls
+    outside it can widen what it may do.
 
     Source resolution differs by list, matching each one's security direction:
 

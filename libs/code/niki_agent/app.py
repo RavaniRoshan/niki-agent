@@ -136,6 +136,7 @@ from niki_agent.goal_state_notice import (
     validated_summarization_cutoff as _validated_summarization_cutoff,
 )
 from niki_agent.iterm_cursor_guide import restore_iterm_cursor_guide
+from niki_agent.model_config import GATEWAY_DOCS_URL
 from niki_agent.notifications import (
     ActionId,
     MissingDepPayload,
@@ -181,7 +182,7 @@ _monotonic = time.monotonic
 
 @runtime_checkable
 class _SupportsReverseNav(Protocol):
-    """Cursor-style modal that can step its selection up on `shift+tab`.
+    """List modal that can step its selection up on `shift+tab`.
 
     The app's priority `shift+tab -> toggle_auto_approve` binding consumes the
     key before any screen binding fires, so `action_toggle_auto_approve`
@@ -2715,10 +2716,7 @@ def _build_model_switch_error_body(exc: BaseException) -> str | Content:
     return f"Failed to switch model: {format_agent_exception(exc)}"
 
 
-_GATEWAY_DOCS_URL = (
-    "https://docs.langchain.com/oss/python/deepagents/code/configuration"
-    "#endpoints-keys-and-gateways"
-)
+_GATEWAY_DOCS_URL = GATEWAY_DOCS_URL
 """Docs section on how a provider's API key and endpoint resolve together.
 
 Linked from `PermissionDeniedError` guidance: a common cause is a provider key
@@ -3335,9 +3333,8 @@ class DeepAgentsApp(App):
     PRODUCT_NAME: ClassVar[str] = "Niki Agent"
     """Product name used inside user-visible sentences.
 
-    Kept separate from `TITLE` so a fork can rename the chrome without
-    rewriting prose, and so the deferred-start notice never spells the
-    upstream product in a rebranded app.
+    Kept separate from `TITLE` so the chrome can be retitled without rewriting
+    prose, and so the deferred-start notice has one name to read.
     """
 
     CSS_PATH = "app.tcss"
@@ -5055,8 +5052,8 @@ class DeepAgentsApp(App):
         self._message_measure_width = chat.size.width
         # Don't establish bottom-follow intent at startup. `_ChatScroll.anchor()`
         # defers the real anchor until content overflows, but not calling it at
-        # all keeps the welcome banner pinned to the top of an empty chat (like
-        # Claude Code). Content-producing paths (streaming, shell output,
+        # all keeps the welcome banner pinned to the top of an empty chat.
+        # Content-producing paths (streaming, shell output,
         # commands, model switches) call `anchor()` to opt into bottom-follow as
         # content arrives; thread resume instead scrolls to the bottom once via
         # `scroll_end()`.

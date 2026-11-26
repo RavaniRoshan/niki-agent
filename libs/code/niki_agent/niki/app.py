@@ -1,13 +1,13 @@
-"""`NikiApp`: the Niki presentation layer over the engine's `DeepAgentsApp`.
+"""`NikiApp`: the Niki presentation layer over the base `DeepAgentsApp`.
 
-Subclassing rather than patching is what keeps a future merge from `main`
-cheap, so every override here is a decision with a measurement behind it.
+Subclassing rather than patching keeps every override a deliberate, measured
+change, so the presentation layer stays a diff rather than a copy of the app.
 
-**Cursor blink is off by default.** This is the S4 fix and it is measured, not
-assumed. The composer is a `TextArea`, and Textual's `cursor_blink` reactive
-defaults to True; because the composer holds focus, its blink timer runs
-forever. Measured at BASE_SHA, that produced **10 repaints in 5 s while idle**
-at 0.46 % CPU. `NikiApp` turns it off, which takes it to **0 repaints in 5 s**.
+**Cursor blink is off by default.** This is measured, not assumed. The composer
+is a `TextArea`, and Textual's `cursor_blink` reactive defaults to True; because
+the composer holds focus, its blink timer runs forever. Measured against the
+unmodified app, that produced **10 repaints in 5 s while idle** at 0.46 % CPU.
+`NikiApp` turns it off, which takes it to **0 repaints in 5 s**.
 
 A blinking cursor is a legitimate preference, not a defect, so this is a
 setting rather than a hard-off: set `app.blink_cursor = True` before the app
@@ -16,9 +16,9 @@ genuinely wired, so it cannot quietly become permanent.
 
 `blink_cursor` is a plain attribute rather than an `__init__` keyword on
 purpose. `DeepAgentsApp.__init__` takes thirty-odd typed parameters; re-declaring
-them to thread one flag through would copy a signature that must track upstream.
-A class-level default plus an instance attribute keeps `ty` honest about the
-forwarding and adds no signature to keep in sync.
+them to thread one flag through would copy a signature that must stay in sync
+with the base class. A class-level default plus an instance attribute keeps `ty`
+honest about the forwarding and adds no signature to maintain.
 
 Nothing here changes agent behavior, tools, or the permission posture. Approval
 defaults are inherited untouched from `DeepAgentsApp`.
@@ -76,8 +76,8 @@ class NikiApp(DeepAgentsApp):
     TITLE = "Niki Agent"
     """Window and header title.
 
-    The engine sets its own default; `TITLE` is a plain class attribute, so
-    rebranding needs no string surgery anywhere else.
+    The base app sets its own default; `TITLE` is a plain class attribute, so a
+    new title needs no string surgery anywhere else.
     """
 
     PRODUCT_NAME = "Niki Agent"
@@ -142,22 +142,22 @@ class NikiApp(DeepAgentsApp):
     DEFAULT_THEME_NAME: ClassVar[str] = niki_theme.NIKI_THEME_NAME
 
     #: Textual resolves `CSS_PATH` relative to the *subclass's* module, so
-    #: inheriting upstream's bare `"app.tcss"` would look for a stylesheet in
+    #: inheriting the base `"app.tcss"` would look for a stylesheet in
     #: `niki_agent/niki/`. Point at the real file explicitly instead.
     #: Niki's own sheet is listed second so it wins the cascade: it overrides
-    #: upstream's rules without editing or deleting any of them.
+    #: the base rules without editing or deleting any of them.
     CSS_PATH: ClassVar[list[str]] = [
         str(Path(niki_agent.__file__).parent / "app.tcss"),
         str(Path(__file__).parent / "niki.tcss"),
     ]
 
     def _register_custom_themes(self) -> None:
-        """Register upstream's themes, then add Niki's through the same path.
+        """Register the base themes, then add Niki's through the same path.
 
-        Upstream builds `Theme` objects from `theme.get_registry()` and hands them
-        to Textual's `register_theme` (app.py:24963). Niki registers through that
-        same mechanism rather than around it, so `/theme` lists the Niki theme
-        beside the built-ins and any owner CSS override keeps working.
+        The base app builds `Theme` objects from `theme.get_registry()` and hands
+        them to Textual's `register_theme` (app.py:24963). Niki registers through
+        that same mechanism rather than around it, so `/theme` lists the Niki
+        theme beside the built-ins and any user CSS override keeps working.
 
         Every Niki palette is registered so a light-terminal owner has
         somewhere to switch to; Niki defaults to the dark one. Set
@@ -223,7 +223,7 @@ class NikiApp(DeepAgentsApp):
         )
 
     async def on_mount(self) -> None:
-        """Mount upstream's app, then schedule the Niki presentation defaults."""
+        """Mount the base app, then schedule the Niki presentation defaults."""
         self._turn_summary_events = {}
         self._turn_summary_started_at = {}
         await super().on_mount()
@@ -245,7 +245,7 @@ class NikiApp(DeepAgentsApp):
         `DeepAgentsApp` asked for a theme it had never registered and failed.
         Real apps run one per process and never noticed; the test suite did.
 
-        So instead: if the app landed on the upstream default, nothing chose it,
+        So instead: if the app landed on the base default, nothing chose it,
         and Niki's default applies. Managed policy, `NIKI_THEME`, and
         a saved user preference all still win, because each of those resolves to
         something other than the default.
@@ -261,7 +261,7 @@ class NikiApp(DeepAgentsApp):
 
         `DeepAgentsApp.__init__` assigns `self._message_store = MessageStore()`
         (app.py:4535). Overwriting the attribute afterwards is the extension
-        route -- upstream's constructor takes no store argument, and adding one
+        route -- the base constructor takes no store argument, and adding one
         would edit the 31,916-line module for a single line of effect.
         """
         if not isinstance(self._message_store, MessageStore):
@@ -272,7 +272,7 @@ class NikiApp(DeepAgentsApp):
         """Give Niki's composer its hint, blink preference, and suspend key.
 
         Per-instance rather than class-level: the shared `ChatInput` must keep
-        upstream's empty placeholder and Textual's ctrl+z undo for `niki`.
+        the base empty placeholder and Textual's ctrl+z undo for `niki`.
         """
         hint = composer_hint(self.size.width)
         for text_area in self.query(ChatTextArea):
@@ -446,10 +446,10 @@ class NikiApp(DeepAgentsApp):
             await self._handle_command(command.name)
 
     async def _handle_command(self, command: str) -> None:
-        """Render `/help` from the keymap registry, not upstream's text block.
+        """Render `/help` from the keymap registry, not the base text block.
 
-        K1 asks for one registry behind every help surface. Upstream's `/help`
-        is hand-maintained in `app.py`, so it can advertise a key nothing binds;
+        One registry sits behind every help surface. The base `/help` is
+        hand-maintained in `app.py`, so it can advertise a key nothing binds;
         `render_help_for` walks the mounted tree instead. Every other command
         falls through untouched.
         """

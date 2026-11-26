@@ -472,9 +472,8 @@ def _will_collapse(text: str) -> bool:
 def _collapse_user_message(text: str) -> _UserMessageDisplay:
     """Collapse a very long user message for transcript display.
 
-    Keeps the first and last portions and elides the middle. This mirrors
-    Claude Code's `UserPromptMessage` head+tail truncation for rendering
-    performance.
+    Keeps the first and last portions and elides the middle, so a message far
+    larger than the viewport still renders at a bounded cost.
 
     Args:
         text: Full message content.
