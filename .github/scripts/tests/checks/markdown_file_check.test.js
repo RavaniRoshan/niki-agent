@@ -287,6 +287,28 @@ test("recognizes release-please PRs only on full provenance", () => {
   assert.equal(isReleasePleasePr({ ...genuine, headRepo: undefined }, repo), false);
 });
 
+// The exemption must match the branch release-please actually opens, so this
+// spells that branch out from the repository default branch (`niki-agent`)
+// instead of reusing the module constant. A constant pinned to a branch
+// release-please never targets — the `--branches--main--` shape this module
+// used to carry — fails here, while fixtures built from the constant keep
+// passing.
+test("exempts the branch release-please opens against the default branch", () => {
+  const repo = { owner: "RavaniRoshan", repo: "niki-agent" };
+  assert.equal(
+    isReleasePleasePr(
+      {
+        authorLogin: "github-actions[bot]",
+        authorType: "Bot",
+        headRef: "release-please--branches--niki-agent--components--niki-agent",
+        headRepo: "RavaniRoshan/niki-agent",
+      },
+      repo,
+    ),
+    true,
+  );
+});
+
 test("acknowledged and blocking bodies are distinguishable and carry the marker", () => {
   const files = ["a.md"];
   const blocking = buildBody({ acknowledged: false, markdownFiles: files });
@@ -714,11 +736,11 @@ const path = require("node:path");
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
-// RELEASE_PLEASE_BRANCH_PREFIX is a hardcoded literal duplicated across six
-// workflows, and nothing notices when the config that determines the real
-// branch name changes. Here the consequence is a stalled release pipeline: the
-// exemption stops matching, a new component's first CHANGELOG.md is blocked,
-// and the bot cannot label its way out. Mirrors the pin in close-old-prs.test.js.
+// RELEASE_PLEASE_BRANCH_PREFIX is a hardcoded literal, and nothing notices
+// when the config that determines the real branch name changes. Here the
+// consequence is a stalled release pipeline: the exemption stops matching, a
+// new component's first CHANGELOG.md is blocked, and the bot cannot label its
+// way out. Mirrors the pin in close-old-prs.test.js.
 test("the release branch prefix matches release-please-config.json", () => {
   const config = JSON.parse(
     fs.readFileSync(path.join(REPO_ROOT, "release-please-config.json"), "utf8"),
@@ -734,9 +756,14 @@ test("the release branch prefix matches release-please-config.json", () => {
     undefined,
     "a target-branch override changes the <base> segment of the branch name",
   );
+  // Not `main`: this repository's default branch is `niki-agent` and no `main`
+  // branch exists (AGENTS.md; `origin/HEAD` points at `niki-agent`), so a `main`
+  // segment would mean the exemption never matches the branches
+  // release-please opens.
   assert.equal(
     RELEASE_PLEASE_BRANCH_PREFIX,
-    "release-please--branches--main--components--",
+    "release-please--branches--niki-agent--components--",
+    "release-please derives <base> from the default branch, which is niki-agent",
   );
 });
 

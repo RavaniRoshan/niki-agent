@@ -24,12 +24,13 @@ const WORKFLOW_BOT_LOGIN = "github-actions[bot]";
 const RELEASE_PLEASE_AUTHOR = "github-actions[bot]";
 
 // Mirrors the branch shape `separate-pull-requests: true` produces in
-// release-please-config.json. The same literal is independently hardcoded in
-// close-old-prs.js, release-notes.js, check_sdk_pin.yml, check_partner_bounds.yml,
-// release_please_fanout_watch.yml, and release-please.yml — keep them in
-// lockstep. A test pins this against release-please-config.json.
+// release-please-config.json. The `<base>` segment is the branch release-please
+// targets: with no `target-branch` in that config it is the repository default
+// branch, `niki-agent`, not `main`. The same literal is hardcoded in
+// close-old-prs.js — keep them in lockstep. A test pins this against
+// release-please-config.json and the default branch.
 const RELEASE_PLEASE_BRANCH_PREFIX =
-  "release-please--branches--main--components--";
+  "release-please--branches--niki-agent--components--";
 
 // How many file paths the sticky comment lists before collapsing the rest into
 // a count. Bounds an author-controlled list against GitHub's 65536-character
