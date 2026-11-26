@@ -5,37 +5,46 @@ checks CI runs, and the conventions a pull request has to follow.
 
 ## Set up
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+The product is the Rust workspace in `rust/`. Requires a Rust toolchain (1.85+).
 
 ```bash
 git clone https://github.com/RavaniRoshan/niki-agent.git
-cd niki-agent/libs/code
-uv sync --all-groups
-uv run niki            # the product
+cd niki-agent/rust
+cargo build --release -p niki --bin niki
+cargo run -q -p niki --bin niki -- --version
 ```
 
-For the Rust client, the docs site, and the marketing site, see the subproject
-notes in [`rust/MAP.md`](rust/MAP.md), [`docs-site/README.md`](docs-site/README.md),
-and [`site/README.md`](site/README.md).
-
-## Checks
-
-`make check` is the local CI for the Python package. Run it before you open a
-pull request:
+The Python reference implementation in `libs/code` needs Python 3.12+ and
+[uv](https://docs.astral.sh/uv/); it supplies the behavioural fixtures and is not
+the shipped client:
 
 ```bash
 cd libs/code
-make check
+uv sync --all-groups
 ```
 
-It runs Ruff, `ty`, the import boundaries, the command catalogue, the test
-suite, and the repository gates (brand, version equality, docs mirrors). CI runs
-the same target.
+For the docs site and the marketing site, see
+[`docs-site/README.md`](docs-site/README.md) and [`site/README.md`](site/README.md).
+
+## Checks
+
+The Rust gate is the local CI for the shipped client. Run it before you open a
+pull request:
+
+```bash
+cd rust
+cargo fmt --all -- --check
+cargo clippy -j 2 --workspace --all-targets -- -D warnings
+cargo test -j 2 --workspace
+```
+
+`make check` in `libs/code` is the gate for the Python reference package (Ruff,
+`ty`, import boundaries, tests, and repository gates). Run it when you change
+`libs/code`.
 
 The other surfaces have their own gates:
 
 ```bash
-cd rust && cargo fmt --all -- --check && cargo clippy -j 2 --workspace --all-targets -- -D warnings && cargo test -j 2 --workspace
 cd site && bun install --frozen-lockfile && bun run typecheck && bun run check:brand && bun run build
 cd docs-site && npm ci && npm run check:brand && npm run build
 ```
