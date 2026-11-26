@@ -11,7 +11,7 @@ from rich.markup import escape
 from niki_agent import theme
 from niki_agent._constants import DEFAULT_AGENT_NAME, DEFAULT_THREAD_LIMIT
 from niki_agent._paths import PATHS
-from niki_agent._version import DOCS_URL, __version__
+from niki_agent._version import DOCS_URL
 from niki_agent.config import (
     _get_editable_install_path,
     _is_editable_install,
@@ -107,13 +107,14 @@ def _print_option_section(*lines: str, title: str = "Options") -> None:
 
 def show_help() -> None:
     """Show top-level help information."""
+    from niki_agent.niki.branding import version_line
+
     editable_path = _get_editable_install_path()
     install_type = f" (local: {escape(editable_path)})" if editable_path else ""
     banner_color = theme.PRIMARY_DEV if _is_editable_install() else theme.PRIMARY
     console.print()
     console.print(
-        f"[bold {banner_color}]niki-agent[/bold {banner_color}]"
-        f" v{__version__}{install_type}"
+        f"[bold {banner_color}]{version_line()}[/bold {banner_color}]{install_type}"
     )
     console.print()
     console.print(
