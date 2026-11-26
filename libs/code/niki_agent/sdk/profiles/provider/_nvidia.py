@@ -21,7 +21,7 @@ from niki_agent.sdk.profiles.provider.provider_profiles import (
 _NVIDIA_BILLING_ORIGIN_HEADER = "X-BILLING-INVOKE-ORIGIN"
 """NVIDIA NIM header used to attribute requests to an originating app."""
 
-_NVIDIA_APP_ORIGIN = "DeepAgents"
+_NVIDIA_APP_ORIGIN = "Niki Agent"
 """SDK identity reported to NVIDIA NIM."""
 
 

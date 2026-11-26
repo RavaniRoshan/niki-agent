@@ -620,7 +620,7 @@ class _DeepAgentsSummarizationMiddleware(AgentMiddleware):
             ```
         """
         if "history_path_prefix" in deprecated_kwargs:
-            msg = "`history_path_prefix` was removed in deepagents 0.7. Configure `CompositeBackend.artifacts_root` instead."
+            msg = "`history_path_prefix` was removed in 0.7. Configure `CompositeBackend.artifacts_root` instead."
             raise TypeError(msg)
 
         # Initialize langchain helper for core summarization logic

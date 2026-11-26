@@ -33,7 +33,11 @@ else:
 logger = logging.getLogger(__name__)
 
 
-MISSING_VIDEO_HINT = "Reading video files requires the optional video dependencies. Install them with `uv add 'deepagents[video]'`."
+MISSING_VIDEO_HINT = (
+    "Reading video files requires the optional media dependencies. "
+    "Install them with `pip install 'niki-agent[media]'`, or "
+    "`uv sync --extra media` in a checkout."
+)
 """User-facing message shown when a video read is attempted without the `[video]` extra installed."""
 
 
