@@ -47,19 +47,20 @@ const WORKFLOW_BOT_LOGIN = 'github-actions[bot]';
 const RELEASE_PLEASE_AUTHOR = 'github-actions[bot]';
 // Mirrors the branch shape `separate-pull-requests: true` produces in
 // release-please-config.json: `release-please--branches--<base>--components--<pkg>`.
-// Nothing derives this — the same literal is independently hardcoded in
-// .github/scripts/release/release-notes.js and in check_sdk_pin.yml,
-// check_partner_bounds.yml, release_please_fanout_watch.yml, and
-// release-please.yml. Keep them in lockstep; two distinct changes break it:
+// `<base>` is the branch release-please targets, and with no `target-branch` in
+// that config it is the repository default branch: `niki-agent`, not `main`
+// (AGENTS.md, and `origin/HEAD` in a clone). Nothing derives this; the two
+// distinct config changes that break it are:
 //   * `separate-pull-requests: false` drops the `--components--<pkg>` suffix
-//     entirely (the branch becomes `release-please--branches--main`).
-//   * renaming the default branch changes the `main` segment, keeping the suffix.
+//     entirely (the branch becomes `release-please--branches--niki-agent`).
+//   * renaming the default branch, or adding a `target-branch`, changes the
+//     `niki-agent` segment, keeping the suffix.
 // Either disarms the exemption. isReleasePr warns when a release label appears
 // without matching provenance, but that warning is only a log annotation: the
 // run still passes and the PR is still closed at closeDays. The test in
 // close-old-prs.test.js that pins this constant against
 // release-please-config.json is the actual guard.
-const RELEASE_PLEASE_BRANCH_PREFIX = 'release-please--branches--main--components--';
+const RELEASE_PLEASE_BRANCH_PREFIX = 'release-please--branches--niki-agent--components--';
 
 function parsePositiveInt(value, fallback, name) {
   if (value === undefined || value === null || value === '') return fallback;

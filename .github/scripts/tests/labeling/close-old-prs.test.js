@@ -265,9 +265,9 @@ test('clearPendingDeletion propagates non-404 removal failures', async () => {
 });
 
 // RELEASE_PLEASE_BRANCH_PREFIX is a hardcoded literal, not derived, and the
-// same string is duplicated in five other workflows. Nothing else notices when
-// the config that determines the real branch name changes — and here the
-// consequence is closing real release PRs, so pin the coupling explicitly.
+// config that determines the real branch name can change without any other
+// signal — and here the consequence is closing real release PRs, so pin the
+// coupling explicitly.
 test('the release branch prefix matches release-please-config.json', () => {
   const config = JSON.parse(fs.readFileSync(
     path.join(REPO_ROOT, 'release-please-config.json'),
@@ -286,13 +286,20 @@ test('the release branch prefix matches release-please-config.json', () => {
   );
 
   // A `target-branch` override (or a renamed default branch) changes the
-  // `<base>` segment; absent one, release-please branches off main.
+  // `<base>` segment; absent one, release-please branches off the repository
+  // default branch.
   assert.equal(
     config['target-branch'], undefined,
     'a target-branch override changes the <base> segment of the branch name',
   );
+  // Not `main`: this repository's default branch is `niki-agent` and no `main`
+  // branch exists (AGENTS.md; `origin/HEAD` points at `niki-agent`), so a `main`
+  // segment would mean the exemption never matches the branches
+  // release-please opens.
   assert.equal(
-    RELEASE_PLEASE_BRANCH_PREFIX, 'release-please--branches--main--components--',
+    RELEASE_PLEASE_BRANCH_PREFIX,
+    'release-please--branches--niki-agent--components--',
+    'release-please derives <base> from the default branch, which is niki-agent',
   );
 
   // Drafts are warned and closed like any other PR, so if release PRs ever
@@ -491,7 +498,7 @@ function releasePleasePr(labels, overrides = {}) {
   return {
     authorLogin: 'github-actions[bot]',
     authorType: 'Bot',
-    headRef: 'release-please--branches--main--components--niki-agent',
+    headRef: `${RELEASE_PLEASE_BRANCH_PREFIX}niki-agent`,
     headRepo: 'RavaniRoshan/niki-agent',
     labels,
     ...overrides,
@@ -820,6 +827,29 @@ test('skips genuine release-please PRs without warning or closing', async () => 
   assert.deepEqual(core.warnings, []);
 });
 
+// The exemption must match the branch release-please actually opens, so this
+// spells that branch out from the repository default branch (`niki-agent`)
+// instead of reusing the module constant. A constant pinned to a branch
+// release-please never targets — the `--branches--main--` shape this script
+// used to carry — fails here, while the positive fixtures built from the
+// constant would keep passing.
+test('exempts a PR on the branch release-please opens against the default branch', async () => {
+  const { github, calls } = makeGithub({
+    items: [{ number: 105, created_at: '2026-04-08T00:00:00Z' }],
+    live: new Map([[105, releasePleasePr(['auto:release-pr'], {
+      headRef: 'release-please--branches--niki-agent--components--niki-agent',
+    })]]),
+  });
+  const core = makeCore();
+
+  const summary = await run({ github, context, core, options: { now } });
+
+  assert.equal(summary.closed, 0);
+  assert.equal(summary.skippedRelease, 1);
+  assert.deepEqual(calls.close, []);
+  assert.equal(calls.createComment.length, 0);
+});
+
 // The regression this exemption exists for: a release PR already past
 // closeDays *and* already carrying a bot warning from an earlier run is
 // close-eligible on every axis except the release check. Also the only
@@ -858,7 +888,7 @@ const provenanceDenials = [
     headRef: 'chore/a-branch-name-longer-than-the-release-please-prefix-string',
   }, 'branch'],
   ['a bare branch prefix with no component', {
-    headRef: 'release-please--branches--main--components--',
+    headRef: RELEASE_PLEASE_BRANCH_PREFIX,
   }, 'branch'],
   ['a human impersonating the bot login', { authorType: 'User' }, 'author'],
   ['a different bot', { authorLogin: 'dependabot[bot]' }, 'author'],
