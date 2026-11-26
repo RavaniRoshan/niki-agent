@@ -1,6 +1,7 @@
 # Niki Agent — Independence, UI Parity, and the Rust Port
 
-**Status:** planned 2026-11-26. Supersedes Tasks 6–7 of
+**Status:** implemented and released as `v1.0.1` on `niki-agent` (2026-11-26);
+every phase gate in the table below is green. Supersedes Tasks 6–7 of
 `2026-11-24-niki-product-completion-dynamic-workflow.md`.
 
 **Goal:** make Niki an independent product — own name, own module, own state
