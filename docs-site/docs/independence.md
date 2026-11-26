@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/INDEPENDENCE.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 023734028bf98ebc7c7f42b5bc7b72c8e1827a7caaaf7a77015a7a124e2ef989
+  source-sha256: 2d9c9fb3d7596e48ea84a89cbcede009e9b756b14e0a2b980659cf876f3cef84
 -->
 # Independent by design
 
@@ -29,7 +29,8 @@ The same executable serves both.
 
 The loop, the tools, the policy and the presentation are separate crates in one
 workspace, but they are linked together at build time. There is no second
-distribution to install and no version lockstep to maintain.
+distribution to install and no version lockstep to maintain. The ACP editor
+server is a host around the same loop, not a second agent.
 
 The provider adapters speak the two HTTP wire protocols directly: OpenAI Chat
 Completions and Anthropic Messages. A provider is an endpoint plus a key

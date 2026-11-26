@@ -27,8 +27,8 @@ features:
     details: Configuration, skills, hooks and the SQLite session store live under ~/.niki. NIKI_HOME moves the whole tree. No account, no cloud sync, and no telemetry.
   - title: A real approval gate
     details: Manual, Auto and YOLO modes, a shell allow-list, and a workspace path boundary that refuses a path outside the root. Mutating MCP tools are gated too.
-  - title: Headless when you need it
-    details: niki -n runs one prompt, writes the answer to stdout and tool activity to stderr, and exits 0, 1 or 130. A pipe captures the answer and nothing else.
+  - title: Headless or editor-driven
+    details: niki -n runs one prompt, writes the answer to stdout and tool activity to stderr, and exits 0, 1 or 130. niki --acp serves the Agent Client Protocol on stdin/stdout so an editor can drive the same agent.
   - title: Accessible by construction
     details: Four palettes with WCAG contrast measured in the test suite, an ASCII glyph mode, and a reduced-motion setting.
 ---

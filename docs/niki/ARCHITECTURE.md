@@ -8,7 +8,7 @@ to run it.
 ## The shape of a turn
 
 ```
-niki                      niki -n "prompt"
+niki                      niki -n "prompt"          niki --acp
   -> load config, provider, workspace, tools, policy, MCP, hooks, skills
   -> Agent::run (niki-agent)
        UserPromptSubmit hook
@@ -20,7 +20,7 @@ niki                      niki -n "prompt"
          PostToolUse hook
        tool result back to the model
      until the model stops calling tools, the step budget runs out, or a cancel
-  -> AgentEvent stream -> full-screen app or stdout
+  -> AgentEvent stream -> full-screen app, stdout, or ACP notifications
 ```
 
 A turn is a loop of model requests and tool calls. The provider streams events;
@@ -33,10 +33,11 @@ reached, or when the person cancels.
 
 | Crate | Responsibility |
 | --- | --- |
-| `niki` | The binary: `niki` opens the full-screen app, `niki -n` runs one prompt headlessly. |
+| `niki` | The binary: `niki` opens the full-screen app, `niki -n` runs one prompt headlessly, `niki --acp` serves an editor. |
 | `niki-config` | `config.toml`: provider blocks, `[models].default`, `[ui].theme`, `[mcp_servers.<name>]`, and `NIKI_HOME`. |
 | `niki-provider` | One streaming turn against an OpenAI Chat Completions or Anthropic Messages endpoint, including retries and usage. |
 | `niki-agent` | The turn loop, the event callback, the approval callback, the step budget, hooks and cancellation. |
+| `niki-acp` | The Agent Client Protocol server over stdin/stdout: sessions, notifications, and the permission round-trip to an editor. |
 | `niki-tools` | `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, all rooted at the workspace. |
 | `niki-policy` | Manual/Auto/YOLO, the shell allow-list, and the workspace path boundary. |
 | `niki-workspace` | Root detection, ignore rules, and the file index. |
@@ -73,13 +74,16 @@ registered tool is dispatched through the same gate.
 | --- | --- |
 | Full-screen (`niki`) | Input, approvals, the transcript, and presentation. |
 | Headless (`niki -n`) | One prompt and exit; the answer goes to stdout, tool activity to stderr. |
+| Editor (`niki --acp`) | The Agent Client Protocol on stdin/stdout; the editor answers permission requests. |
 
-Both entry points build the same agent from the same configuration. The
+All three entry points build the same agent from the same configuration. The
 full-screen app runs the turn on a worker thread with its own runtime, talks to
 it over a channel, and answers approvals over a one-shot reply. Dropping that
 reply unblocks the turn with a refusal, which is what Esc and Ctrl-C rely on.
 The app offers the model picker, themes, sessions and slash commands; the
-headless path prints the answer and a one-line summary.
+headless path prints the answer and a one-line summary; the ACP server turns the
+same events into `session/update` notifications and turns a gated action into a
+`session/request_permission` request.
 
 ## Extensions
 
@@ -91,7 +95,9 @@ Three surfaces extend a session without changing the binary:
   commands around a prompt and a tool call, and may block either.
 - **Skills** from `.niki/skills/<name>/SKILL.md`, `~/.niki/skills/<name>/SKILL.md`
   and two built-ins. Their names and descriptions are injected into the system
-  prompt; the model reads the body only when a skill applies.
+  prompt; the model reads the body only when a skill applies. A project skill is
+  inside the workspace and readable; a user skill is outside the root, and
+  opening it is a known gap in this build.
 
 ## State
 

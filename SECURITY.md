@@ -51,7 +51,9 @@ permissions. It is not a sandbox by itself.
   workspace root; `..`, symlinks or an absolute path that leaves the root are
   refused, not clamped.
 - **A headless run has nobody to ask.** `niki -n` installs no approval callback,
-  so a gated action is reported to the model as a refusal.
+  so a gated action is reported to the model as a refusal. An ACP session asks
+  the editor through `session/request_permission`, and that answer feeds the
+  same gate.
 
 For a hard boundary, run Niki inside a container or a dedicated user account,
 keep the shell allow-list narrow, and stay in Manual mode. There is no sandbox

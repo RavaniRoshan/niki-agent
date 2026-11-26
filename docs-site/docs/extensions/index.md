@@ -23,9 +23,12 @@ match for a name in this order:
 2. `~/.niki/skills/<name>/SKILL.md` (or `$NIKI_HOME/skills`)
 3. the built-in `commit` and `review` skills, compiled into the binary
 
-The model sees each skill's name, description and, for a file skill, the path to
-read. It reads the body only when the skill applies, so a long skill costs
-nothing on a turn that does not use it. `/skills` lists what discovery found.
+The model sees each skill's name, description and, for a project skill, the path
+to read. It reads the body only when the skill applies, so a long skill costs
+nothing on a turn that does not use it. Built-in bodies are short and are
+included directly. A user skill under `~/.niki/skills` is outside the workspace
+root, and `read_file` refuses a path there in this build; put a skill the model
+must read in `.niki/skills/`. `/skills` lists what discovery found.
 
 [Skills](/extensions/skills) covers the format, precedence, warnings, and the
 two built-ins.
@@ -77,7 +80,9 @@ headers = { Authorization = "Bearer token" }
 An entry without `type` infers the transport: `url` selects HTTP, `command`
 selects stdio. `type = "stdio"` and `type = "http"` (or `streamable_http`) can
 state it explicitly. A legacy `type = "sse"` long-lived GET stream is rejected at
-load with a message naming the server.
+load with a message naming the server. `${VAR}` interpolation in `command`,
+`args`, `env`, `url` and `headers` is not implemented; write the values
+literally.
 
 At startup both entry points connect every configured server, concurrently, and
 register each tool the server advertises as `mcp__<server>__<tool>`. A server

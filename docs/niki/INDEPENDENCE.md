@@ -24,7 +24,8 @@ The same executable serves both.
 
 The loop, the tools, the policy and the presentation are separate crates in one
 workspace, but they are linked together at build time. There is no second
-distribution to install and no version lockstep to maintain.
+distribution to install and no version lockstep to maintain. The ACP editor
+server is a host around the same loop, not a second agent.
 
 The provider adapters speak the two HTTP wire protocols directly: OpenAI Chat
 Completions and Anthropic Messages. A provider is an endpoint plus a key

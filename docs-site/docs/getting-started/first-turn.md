@@ -53,6 +53,7 @@ The complete option list:
 | Flag | What it does |
 | --- | --- |
 | `-n`, `--prompt <TEXT>` | Run one prompt headlessly and exit. Without it, the app opens. |
+| `--acp` | Serve an editor over stdin/stdout. Cannot be combined with `-n`. |
 | `--model <PROVIDER:MODEL>` | Select the model. Defaults to `[models].default`. |
 | `--config <PATH>` | Config file. Defaults to `$NIKI_HOME/config.toml`, else `~/.niki/config.toml`. |
 | `--root <PATH>` | Workspace root. Defaults to the current directory. |
@@ -74,6 +75,7 @@ An unknown `--mode` is a warning, and the run continues in `manual`.
 | --- | --- |
 | `0` | The turn finished. A refused tool is a result, not a failure. |
 | `1` | A configuration, provider, or workspace failure. |
+| `2` | A usage error: `--acp` combined with `-n`. |
 | `130` | Cancelled with <kbd>Ctrl</kbd>+<kbd>C</kbd>. |
 
 ## Slash commands
@@ -135,6 +137,22 @@ niki -n "fix the failing test" --root ../other-repo --max-steps 60
 A headless run has nobody to ask, so a shell command that the policy would ask
 about is reported to the model as a refusal. Put the command on `--allow`, or
 run the same prompt in the app, when you want it to proceed.
+
+## Editor protocol
+
+`--acp` serves the Agent Client Protocol on stdin/stdout, so an editor can drive
+the same agent, provider and workspace. The editor answers a gated action through
+`session/request_permission`. Only protocol frames may reach stdout while this
+runs; warnings go to stderr. `--acp` cannot be combined with `-n`:
+
+```text
+--acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
+```
+
+This build emits text and tool-call updates but no reasoning chunks, refuses
+image and audio prompt blocks, ignores `mcpServers` and `additionalDirectories`
+in the protocol, and `session/load` replays the transcript without seeding the
+model's context. Tools still come from `config.toml` at startup.
 
 ## Where your session lives
 

@@ -33,8 +33,9 @@ For one shell call, the policy answers in this order:
 1. An empty command is refused. No mode can upgrade that refusal.
 2. In YOLO, the command runs.
 3. If the command is on the allow-list, it runs.
-4. Otherwise the call asks: the full-screen app shows the approval prompt; a
-   headless run has nobody to ask and reports a refusal to the model.
+4. Otherwise the call asks: the full-screen app shows the approval prompt, an
+   ACP session sends `session/request_permission` to the editor, and a headless
+   run has nobody to ask and reports a refusal to the model.
 
 The model sees an approval outcome as a tool result, not as an agent failure,
 so it can adapt to a refusal.
@@ -101,7 +102,7 @@ requirement comes from the server's tool annotation:
 - "Always" on the prompt records the tool name for the session. It is separate
   from the shell allow-list.
 - A headless run has no approver, so a gated MCP call is reported to the model as
-  a refusal.
+  a refusal; the full-screen app and an ACP session ask the person or editor.
 
 An MCP server runs as you and may reach the network and filesystem. The approval
 covers the call, not the server's behaviour after it.

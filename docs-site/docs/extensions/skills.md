@@ -4,7 +4,8 @@ A skill is a directory holding a `SKILL.md`: a YAML front-matter block with a
 `name` and a `description`, then instructions for a recurring job. The model sees
 the name, the description and, for a skill on disk, the path to read. It reads
 the instructions only when the skill applies, so a long body costs nothing on a
-turn that does not use it.
+turn that does not use it. A user skill's file sits outside the workspace root,
+and reading it is a known gap in this build; see [Readability](#readability).
 
 ## Where skills live
 
@@ -68,6 +69,17 @@ not read a skill that does not apply.
 A description longer than 1024 characters is cut in the prompt; `/skills` shows
 the full text. Built-in skills have no file to read, so their bodies are small
 and are included in the section directly.
+
+## Readability
+
+| Origin | Can the model open the body? |
+| --- | --- |
+| Project (`.niki/skills/`) | Yes. The file is under the workspace root, so `read_file` resolves it. |
+| Built-in | Yes, indirectly: the body is included in the skills section. |
+| User (`~/.niki/skills/`) | **Not in this build.** The file is outside the workspace root and the path boundary refuses it. The model sees the name, description and path but cannot read the body. |
+
+Keep a skill the model must read in the project's `.niki/skills/` until a read
+path for user skills exists.
 
 ## `/skills`
 

@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: b9ff0c54099061900bea5d75eca560236162b891bf754e5cf35117dce550b81f
+  source-sha256: 10f8f562333544f1e85378769d35af9f8dfcd455e659827d42f28e4ba64f5c0f
 -->
 # Security policy
 
@@ -56,7 +56,9 @@ permissions. It is not a sandbox by itself.
   workspace root; `..`, symlinks or an absolute path that leaves the root are
   refused, not clamped.
 - **A headless run has nobody to ask.** `niki -n` installs no approval callback,
-  so a gated action is reported to the model as a refusal.
+  so a gated action is reported to the model as a refusal. An ACP session asks
+  the editor through `session/request_permission`, and that answer feeds the
+  same gate.
 
 For a hard boundary, run Niki inside a container or a dedicated user account,
 keep the shell allow-list narrow, and stay in Manual mode. There is no sandbox

@@ -121,6 +121,14 @@ the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headles
 
 `niki` without `-n` requires a terminal. In CI or a pipe, use `-n`.
 
+```
+--acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
+```
+
+`--acp` and `-n` are two different entry points; choose one. The ACP server
+writes protocol frames to stdout, so a client that does not speak the protocol
+sees JSON, and warnings appear on stderr. A usage error of this kind exits `2`.
+
 ## The turn stops early
 
 ```
