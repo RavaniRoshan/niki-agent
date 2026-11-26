@@ -44,7 +44,7 @@ dependencies = [
     "langchain-anthropic>=1.7.5,<2.0.0",
     "langchain-google-genai>=4.4.0,<5.0.0",
     "langchain-openai>=1.6.7,<2.0.0",
-    "pydantic>=2.12.5,<2.14.0a0",
+    "pydantic>=2.12.5,<2.15.0",
 
     # UI/Terminal
     # Textual 8.2.8 handles colon-separated Kitty associated text.
@@ -69,7 +69,7 @@ dependencies = [
     # Native dependencies of the vendored JS interpreter
     # (`niki_agent/_vendor/quickjs`), declared here because the product imports
     # them directly rather than through a separate distribution.
-    "quickjs-rs>=0.2.5,<0.3.0",
+    "quickjs-rs>=0.2.5,<0.4.0",
     "bsdiff4>=1.2.6,<2.0.0",
 
     # Cost estimation (bundled offline pricing data).
@@ -176,7 +176,7 @@ test = [
     "hatchling>=1.31.0,<2.0.0",
     "ruff>=0.16.0,<1.0.0",
     # ty 0.0.62+ panics during full-package `ty check` (dependency-graph cycle).
-    "ty>=0.0.61,<0.0.62",
+    "ty>=0.0.61,<0.0.109",
     "pytest>=9.1.1,<10.0.0",
     "pytest-asyncio>=1.4.0,<2.0.0",
     "pytest-benchmark>=5.2.3,<6.0.0",
