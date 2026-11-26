@@ -14,7 +14,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -179,9 +178,6 @@ id_ed25519
 
 # Rope project settings
 .ropeproject
-
-# mkdocs documentation
-/site
 
 # mypy
 .mypy_cache/

@@ -1,0 +1,408 @@
+import React from 'react';
+
+interface BrandIconProps {
+  className?: string;
+}
+
+export function NikiMark({ className = 'w-5 h-5' }: BrandIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M12 2.75A9.25 9.25 0 0 0 12 21.25V2.75Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function FooterOutlinedWordmark() {
+  return (
+    <div
+      className="w-full select-none overflow-hidden py-4 md:py-6 text-foreground/25 dark:text-chart-2/25"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 1280 218"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-auto"
+      >
+        <g stroke="currentColor" strokeWidth="1.6" fill="none">
+          <circle cx="102" cy="109" r="76" />
+          <line x1="102" y1="33" x2="102" y2="185" />
+          <path d="M102 45 A64 64 0 0 0 102 173" strokeDasharray="4 6" opacity="0.65" />
+        </g>
+        <text
+          x="220"
+          y="170"
+          textLength="1050"
+          lengthAdjust="spacing"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fontFamily='"Geist", -apple-system, sans-serif'
+          fontSize="196"
+          fontWeight="600"
+          letterSpacing="-6"
+        >
+          Niki Agent
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Single source of truth for all authentic provider & ecosystem brand icons
+ * rendered in their official brand colors (calibrated for high contrast on
+ * both light and dark neutral card surfaces).
+ */
+export function ProviderIcon({
+  id,
+  className = 'w-4 h-4',
+}: {
+  id: string;
+  className?: string;
+}) {
+  switch (id) {
+    case 'anthropic':
+      // Official Anthropic monogram (#D97757)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017l-1.344 3.46H0L6.57 3.522zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z"
+            fill="#D97757"
+          />
+        </svg>
+      );
+    case 'openai':
+      // Official OpenAI blossom (#10A37F)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"
+            fill="#10A37F"
+          />
+        </svg>
+      );
+    case 'google':
+      // Official 4-color Google G (#4285F4, #34A853, #FBBC05, #EA4335)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M23 12.245c0-.905-.075-1.565-.236-2.25h-10.54v4.083h6.186c-.124 1.014-.797 2.542-2.294 3.569l-.021.136 3.332 2.53.23.022C21.779 18.417 23 15.593 23 12.245z"
+            fill="#4285F4"
+          />
+          <path
+            d="M12.225 23c3.03 0 5.574-.978 7.433-2.665l-3.542-2.688c-.948.648-2.22 1.1-3.891 1.1a6.745 6.745 0 01-6.386-4.572l-.132.011-3.465 2.628-.045.124C4.043 20.531 7.835 23 12.225 23z"
+            fill="#34A853"
+          />
+          <path
+            d="M5.84 14.175A6.65 6.65 0 015.463 12c0-.758.138-1.491.361-2.175l-.006-.147-3.508-2.67-.115.054A10.831 10.831 0 001 12c0 1.772.436 3.447 1.197 4.938l3.642-2.763z"
+            fill="#FBBC05"
+          />
+          <path
+            d="M12.225 5.253c2.108 0 3.529.892 4.34 1.638l3.167-3.031C17.787 2.088 15.255 1 12.225 1 7.834 1 4.043 3.469 2.197 7.062l3.63 2.763a6.77 6.77 0 016.398-4.572z"
+            fill="#EA4335"
+          />
+        </svg>
+      );
+    case 'ollama':
+      // Official Ollama monochrome llama emblem (theme-adaptive black/white)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-foreground`}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M7.905 1.09c.216.085.411.225.588.41.295.306.544.744.734 1.263.191.522.315 1.1.362 1.68a5.054 5.054 0 012.049-.636l.051-.004c.87-.07 1.73.087 2.48.474.101.053.2.11.297.17.05-.569.172-1.134.36-1.644.19-.52.439-.957.733-1.264a1.67 1.67 0 01.589-.41c.257-.1.53-.118.796-.042.401.114.745.368 1.016.737.248.337.434.769.561 1.287.23.934.27 2.163.115 3.645l.053.04.026.019c.757.576 1.284 1.397 1.563 2.35.435 1.487.216 3.155-.534 4.088l-.018.021.002.003c.417.762.67 1.567.724 2.4l.002.03c.064 1.065-.2 2.137-.814 3.19l-.007.01.01.024c.472 1.157.62 2.322.438 3.486l-.006.039a.651.651 0 01-.747.536.648.648 0 01-.54-.742c.167-1.033.01-2.069-.48-3.123a.643.643 0 01.04-.617l.004-.006c.604-.924.854-1.83.8-2.72-.046-.779-.325-1.544-.8-2.273a.644.644 0 01.18-.886l.009-.006c.243-.159.467-.565.58-1.12a4.229 4.229 0 00-.095-1.974c-.205-.7-.58-1.284-1.105-1.683-.595-.454-1.383-.673-2.38-.61a.653.653 0 01-.632-.371c-.314-.665-.772-1.141-1.343-1.436a3.288 3.288 0 00-1.772-.332c-1.245.099-2.343.801-2.67 1.686a.652.652 0 01-.61.425c-1.067.002-1.893.252-2.497.703-.522.39-.878.935-1.066 1.588a4.07 4.07 0 00-.068 1.886c.112.558.331 1.02.582 1.269l.008.007c.212.207.257.53.109.785-.36.622-.629 1.549-.673 2.44-.05 1.018.186 1.902.719 2.536l.016.019a.643.643 0 01.095.69c-.576 1.236-.753 2.252-.562 3.052a.652.652 0 01-1.269.298c-.243-1.018-.078-2.184.473-3.498l.014-.035-.008-.012a4.339 4.339 0 01-.598-1.309l-.005-.019a5.764 5.764 0 01-.177-1.785c.044-.91.278-1.842.622-2.59l.012-.026-.002-.002c-.293-.418-.51-.953-.63-1.545l-.005-.024a5.352 5.352 0 01.093-2.49c.262-.915.777-1.701 1.536-2.269.06-.045.123-.09.186-.132-.159-1.493-.119-2.73.112-3.67.127-.518.314-.95.562-1.287.27-.368.614-.622 1.015-.737.266-.076.54-.059.797.042zm4.116 9.09c.936 0 1.8.313 2.446.855.63.527 1.005 1.235 1.005 1.94 0 .888-.406 1.58-1.133 2.022-.62.375-1.451.557-2.403.557-1.009 0-1.871-.259-2.493-.734-.617-.47-.963-1.13-.963-1.845 0-.707.398-1.417 1.056-1.946.668-.537 1.55-.849 2.485-.849zm0 .896a3.07 3.07 0 00-1.916.65c-.461.37-.722.835-.722 1.25 0 .428.21.829.61 1.134.455.347 1.124.548 1.943.548.799 0 1.473-.147 1.932-.426.463-.28.7-.686.7-1.257 0-.423-.246-.89-.683-1.256-.484-.405-1.14-.643-1.864-.643zm.662 1.21l.004.004c.12.151.095.37-.056.49l-.292.23v.446a.375.375 0 01-.376.373.375.375 0 01-.376-.373v-.46l-.271-.218a.347.347 0 01-.052-.49.353.353 0 01.494-.051l.215.172.22-.174a.353.353 0 01.49.051zm-5.04-1.919c.478 0 .867.39.867.871a.87.87 0 01-.868.871.87.87 0 01-.867-.87.87.87 0 01.867-.872zm8.706 0c.48 0 .868.39.868.871a.87.87 0 01-.868.871.87.87 0 01-.867-.87.87.87 0 01.867-.872zM7.44 2.3l-.003.002a.659.659 0 00-.285.238l-.005.006c-.138.189-.258.467-.348.832-.17.692-.216 1.631-.124 2.782.43-.128.899-.208 1.404-.237l.01-.001.019-.034c.046-.082.095-.161.148-.239.123-.771.022-1.692-.253-2.444-.134-.364-.297-.65-.453-.813a.628.628 0 00-.107-.09L7.44 2.3zm9.174.04l-.002.001a.628.628 0 00-.107.09c-.156.163-.32.45-.453.814-.29.794-.387 1.776-.23 2.572l.058.097.008.014h.03a5.184 5.184 0 011.466.212c.086-1.124.038-2.043-.128-2.722-.09-.365-.21-.643-.349-.832l-.004-.006a.659.659 0 00-.285-.239h-.004z"
+          />
+        </svg>
+      );
+    case 'openrouter':
+      // Official OpenRouter emblem (#6366F1 / #818CF8)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#6366F1] dark:text-[#818CF8]`}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M18.654 3.87a5.087 5.087 0 110 10.174L23.7 19.09c.64.641.187 1.737-.72 1.737H8.48a8.479 8.479 0 010-16.958h10.175zM8.479 7.26a5.087 5.087 0 100 10.176 5.087 5.087 0 000-10.175z"
+          />
+        </svg>
+      );
+    case 'nvidia':
+      // Official NVIDIA eye-spiral emblem (#74B71B)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M10.212 8.976V7.62c.127-.01.256-.017.388-.021 3.596-.117 5.957 3.184 5.957 3.184s-2.548 3.647-5.282 3.647a3.227 3.227 0 01-1.063-.175v-4.109c1.4.174 1.681.812 2.523 2.258l1.873-1.627a4.905 4.905 0 00-3.67-1.846 6.594 6.594 0 00-.729.044m0-4.476v2.025c.13-.01.259-.019.388-.024 5.002-.174 8.261 4.226 8.261 4.226s-3.743 4.69-7.643 4.69c-.338 0-.675-.031-1.007-.092v1.25c.278.038.558.057.838.057 3.629 0 6.253-1.91 8.794-4.169.421.347 2.146 1.193 2.501 1.564-2.416 2.083-8.048 3.763-11.24 3.763-.308 0-.603-.02-.894-.048V19.5H24v-15H10.21zm0 9.756v1.068c-3.356-.616-4.287-4.21-4.287-4.21a7.173 7.173 0 014.287-2.138v1.172h-.005a3.182 3.182 0 00-2.502 1.178s.615 2.276 2.507 2.931m-5.961-3.3c1.436-1.935 3.604-3.148 5.961-3.336V6.523C5.81 6.887 2 10.723 2 10.723s2.158 6.427 8.21 7.015v-1.166C5.77 16 4.25 10.958 4.25 10.958h-.002z"
+            fill="#74B71B"
+            fillRule="nonzero"
+          />
+        </svg>
+      );
+    case 'groq':
+      // Official Groq emblem (#F55036)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z"
+            fill="#F55036"
+          />
+        </svg>
+      );
+    case 'together':
+      // Official Together AI 3-color interlocking mark (#EF2CC1, #CAAEF5, #FC4C02)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M23.197 4.503A6 6 0 0015 2.307a5.973 5.973 0 00-2.995 4.933l5.996.008v.515h-5.996c.039.937.298 1.87.8 2.74a6 6 0 1010.39-6z"
+            fill="#EF2CC1"
+          />
+          <path
+            d="M.805 4.5A6 6 0 003 12.697a5.972 5.972 0 005.77.127L5.779 7.627l.446-.257 2.997 5.192A6 6 0 10.804 4.5z"
+            fill="#A87FF3"
+          />
+          <path
+            d="M12 23.894a6 6 0 005.999-6c0-2.13-1.1-3.996-2.775-5.06l-3.005 5.189-.444-.258 2.997-5.192A6 6 0 1012 23.894z"
+            fill="#FC4C02"
+          />
+        </svg>
+      );
+    case 'deepseek':
+      // Official DeepSeek whale mark (#4D6BFE)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z"
+            fill="#4D6BFE"
+          />
+        </svg>
+      );
+    case 'kimi':
+      // Official Kimi (Moonshot AI) geometric K + electric blue dot (#1783FF)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-foreground`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M21.846 0a1.923 1.923 0 110 3.846H20.15a.226.226 0 01-.227-.226V1.923C19.923.861 20.784 0 21.846 0z"
+            fill="#1783FF"
+          />
+          <path
+            d="M11.065 11.199l7.257-7.2c.137-.136.06-.41-.116-.41H14.3a.164.164 0 00-.117.051l-7.82 7.756c-.122.12-.302.013-.302-.179V3.82c0-.127-.083-.23-.185-.23H3.186c-.103 0-.186.103-.186.23V19.77c0 .128.083.23.186.23h2.69c.103 0 .186-.102.186-.23v-3.25c0-.069.025-.135.069-.178l2.424-2.406a.158.158 0 01.205-.023l6.484 4.772a7.677 7.677 0 003.453 1.283c.108.012.2-.095.2-.23v-3.06c0-.117-.07-.212-.164-.227a5.028 5.028 0 01-2.027-.807l-5.613-4.064c-.117-.078-.132-.279-.028-.381z"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    case 'kilo':
+      // Official Kilo Code geometric pixel-K emblem (#CA8A04 / #FACC15)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#CA8A04] dark:text-[#FACC15]`}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M0 0v24h24V0H0zm22.222 22.222H1.778V1.778h20.444v20.444zm-7.555-4.964h2.222v1.778h-2.794L12.89 17.83v-2.794h1.778v2.222zm4 0h-1.778v-2.222h-2.222v-1.778h2.793l1.207 1.207v2.793zm-7.556-2.591H9.333v-1.778h1.778v1.778zm-5.778-1.778h1.778v4h4v1.778H6.54L5.333 17.46V12.89zm13.334-3.556v1.778h-5.778V9.333h1.987V7.111h-1.987V5.333h2.558l1.206 1.207v2.793h2.014zm-11.556-2h2.222l1.778 1.778v2H9.333v-2H7.111v2H5.333V5.333h1.778v2zm4 0H9.333v-2h1.778v2z"
+          />
+        </svg>
+      );
+    case 'opencode':
+      // Official OpenCode framed block mark (#0D9488 / #2DD4BF)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 text-[#0D9488] dark:text-[#2DD4BF]`}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path fillRule="evenodd" d="M16 6H8v12h8V6zm4 16H4V2h16v20z" />
+        </svg>
+      );
+    case 'python':
+      // Official two-tone Python mark (#3776AB blue + #FFD43B yellow)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M11.9 2C7.8 2 8.1 3.8 8.1 3.8v1.9h4v.6H6.5S3.8 6 3.8 10.2s2.4 4 2.4 4h1.4v-1.9s-.1-2.4 2.3-2.4h4s2.2 0 2.2-2.1V4.1S16.4 2 11.9 2Zm-2.2 1.2a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Z"
+            fill="#3776AB"
+          />
+          <path
+            d="M12.1 22c4.1 0 3.8-1.8 3.8-1.8v-1.9h-4v-.6h5.6s2.7.3 2.7-3.9-2.4-4-2.4-4h-1.4v1.9s.1 2.4-2.3 2.4h-4s-2.2 0-2.2 2.1v3.7S7.6 22 12.1 22Zm2.2-1.2a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"
+            fill="#FFD43B"
+          />
+        </svg>
+      );
+    case 'uv':
+      // Official Astral uv ultraviolet mark (#9333EA / #DE5FE9)
+      return (
+        <svg
+          viewBox="0 0 20 20"
+          className={`${className} shrink-0 text-[#9333EA] dark:text-[#DE5FE9]`}
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M2 4h3v8.5c0 1.1.9 2 2 2s2-.9 2-2V4h3v8.5a5 5 0 0 1-10 0V4Zm11 0h2.8l1.2 7.2L18.2 4H20l-2.2 12h-2.6L13 4Z" />
+        </svg>
+      );
+    case 'textual':
+      // Official Textualize violet terminal badge (#7E22CE / #C084FC)
+      return (
+        <svg
+          viewBox="0 0 20 20"
+          className={`${className} shrink-0 text-[#7E22CE] dark:text-[#C084FC]`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.85"
+          aria-hidden="true"
+        >
+          <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+          <path d="M6 8h8M10 8v5" strokeLinecap="round" />
+        </svg>
+      );
+    case 'pytest':
+      // Official 4-color pytest stepped bar mark (#0A9EDC, #78BE20, #F4B400, #E53935)
+      return (
+        <svg
+          viewBox="0 0 20 20"
+          className={`${className} shrink-0`}
+          fill="none"
+          aria-hidden="true"
+        >
+          <rect x="2.5" y="4" width="2.8" height="12" rx="0.6" fill="#0A9EDC" />
+          <rect x="6.7" y="4" width="2.8" height="9.2" rx="0.6" fill="#78BE20" />
+          <rect x="10.9" y="4" width="2.8" height="6.4" rx="0.6" fill="#F4B400" />
+          <rect x="15.1" y="4" width="2.8" height="3.8" rx="0.6" fill="#E53935" />
+        </svg>
+      );
+    case 'github':
+      // Official GitHub Octocat (theme-adaptive monochrome)
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          className={`${className} shrink-0 fill-current text-foreground`}
+          aria-hidden="true"
+        >
+          <path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.54 2.87 8.39 6.84 9.75.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.72-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.36 9.36 0 0 1 12 6.84c.85 0 1.71.12 2.51.35 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.59.69.49A10.05 10.05 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z" />
+        </svg>
+      );
+    default:
+      return <NikiMark className={`${className} shrink-0 text-chart-1 dark:text-chart-2`} />;
+  }
+}
+
+const ECOSYSTEM_WORDMARK_STYLE: Record<string, { label: string; className: string }> = {
+  anthropic: { label: 'ANTHROPIC', className: 'text-[12.5px] font-semibold tracking-[0.11em]' },
+  openai: { label: 'OpenAI', className: 'text-[14.5px] font-semibold tracking-tight' },
+  google: { label: 'Google', className: 'text-[14.5px] font-medium tracking-tight' },
+  ollama: { label: 'Ollama', className: 'text-[14.5px] font-semibold tracking-tight' },
+  openrouter: { label: 'OpenRouter', className: 'text-[13.5px] font-medium tracking-tight' },
+  nvidia: { label: 'NVIDIA', className: 'text-[13px] font-bold tracking-[0.08em]' },
+  groq: { label: 'groq', className: 'text-[15.5px] font-bold tracking-tight' },
+  together: { label: 'together.ai', className: 'text-[13.5px] font-semibold tracking-tight' },
+  deepseek: { label: 'deepseek', className: 'text-[14px] font-semibold tracking-tight' },
+  kimi: { label: 'KIMI', className: 'text-[13.5px] font-semibold tracking-[0.06em]' },
+  python: { label: 'Python 3.12', className: 'text-[13.5px] font-medium tracking-tight' },
+  uv: { label: 'Astral uv', className: 'font-tech text-[13.5px] font-semibold tracking-tight' },
+  textual: { label: 'Textual 8', className: 'font-tech text-[13px] font-medium tracking-tight' },
+  kilo: { label: 'Kilo', className: 'font-tech text-[13px] font-semibold tracking-wide' },
+  opencode: { label: 'OpenCode', className: 'font-tech text-[12.5px] font-medium' },
+  pytest: { label: 'pytest', className: 'font-tech text-[13px] font-medium' },
+  github: { label: 'GitHub', className: 'text-[14px] font-semibold tracking-tight' },
+};
+
+export function EcosystemLogo({ id, name }: { id: string; name: string }) {
+  const spec = ECOSYSTEM_WORDMARK_STYLE[id];
+  return (
+    <span
+      className={`inline-flex items-center gap-2 text-foreground whitespace-nowrap ${
+        spec ? spec.className : 'text-sm font-medium'
+      }`}
+    >
+      <ProviderIcon id={id} className="w-[18px] h-[18px]" />
+      <span>{spec ? spec.label : name}</span>
+    </span>
+  );
+}
+
+export function BenchmarkCardHeader({
+  id,
+  badge,
+  metric,
+}: {
+  id: string;
+  badge: string;
+  metric: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="font-tech text-[12px] text-chart-1 tracking-wide">{badge}</div>
+      <div
+        data-testid={`benchmark-metric-${id}`}
+        className="font-display text-[28px] sm:text-[31px] font-medium tracking-[-0.03em] text-foreground leading-none tabular-nums"
+      >
+        {metric}
+      </div>
+    </div>
+  );
+}

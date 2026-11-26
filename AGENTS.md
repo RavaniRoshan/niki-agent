@@ -17,6 +17,9 @@ Python client until it can do everything the Python client does.
   HTTP/SSE protocol as the Python engine. The port plan is `rust/MAP.md`.
 - `install/` — the release installer for Linux/macOS and Windows.
 - `docs/niki` — architecture, independence, keymap, and provider guides.
+- `site/` — the marketing site (Vite + React + Tailwind, Bun toolchain). Its
+  checks are `bun run typecheck`, `bun run check:brand`, and `bun run build`;
+  see `site/README.md`.
 - `SECURITY.md` — reporting, supported versions, and trust boundaries.
 
 ## Commands
@@ -63,7 +66,7 @@ justify a suppression, the code is probably the problem.
 - Branch names: `<github-username>/<scope>/<short-description>`.
 - Conventional Commits, with a scope. Allowed scopes are defined in
   `.github/workflows/pr_lint.yml`: `ci`, `code`, `deps`, `docs`, `examples`,
-  `infra`, `quickjs`, `repo`, `rust`, `sdk`.
+  `infra`, `quickjs`, `repo`, `rust`, `sdk`, `site`.
 - Text after `type(scope):` starts lowercase unless it begins with a proper noun
   or a code entity. Wrap code identifiers in backticks.
 - Never create a `main` branch. The default branch is `niki-agent`.
@@ -79,7 +82,8 @@ this repository has no macOS runner entitlement. See `.github/RELEASING.md`.
 ## CI
 
 `.github/workflows/ci.yml` runs `make check` in `libs/code` and exposes the
-aggregate check **✅ CI Success**. Archived packages have no CI.
+aggregate check **✅ CI Success**. `.github/workflows/site.yml` typechecks,
+brand-checks, and builds `site/`. Archived packages have no CI.
 
 ## Scoped guide
 

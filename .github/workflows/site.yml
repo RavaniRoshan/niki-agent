@@ -1,0 +1,47 @@
+# Niki Agent marketing site CI.
+#
+# The site is a separate Bun toolchain (site/package.json), so it gets its own
+# job rather than riding along with `make check`: typecheck, the branding guard,
+# and a production build.
+
+name: "🏗️ Site"
+
+on:
+  push:
+    branches: [niki-agent]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: "🏗️ marketing site"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: "📋 Checkout Code"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Tag-pinned, not SHA-pinned: the current major is v2.
+      - name: "🥟 Set up Bun"
+        uses: oven-sh/setup-bun@v2 # v2
+
+      - name: "📦 Install dependencies"
+        run: bun install --frozen-lockfile
+
+      - name: "🧠 Typecheck"
+        run: bun run typecheck
+
+      - name: "🏷️ Brand guard"
+        run: bun run check:brand
+
+      - name: "🏗️ Build"
+        run: bun run build
