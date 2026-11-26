@@ -1,7 +1,7 @@
 """Video frame extraction for filesystem reads.
 
-This module is the boundary between Deep Agents middleware and the optional
-video backend (PyAV). It imports PyAV lazily so a `deepagents` install without
+This module is the boundary between SDK middleware and the optional
+video backend (PyAV). It imports PyAV lazily so an SDK install without
 the `[video]` extra stays lightweight; the import only fires when the agent
 actually tries to read a video.
 
@@ -33,7 +33,11 @@ else:
 logger = logging.getLogger(__name__)
 
 
-MISSING_VIDEO_HINT = "Reading video files requires the optional video dependencies. Install them with `uv add 'deepagents[video]'`."
+MISSING_VIDEO_HINT = (
+    "Reading video files requires the optional media dependencies. "
+    "Install them with `pip install 'niki-agent[media]'`, or "
+    "`uv sync --extra media` in a checkout."
+)
 """User-facing message shown when a video read is attempted without the `[video]` extra installed."""
 
 

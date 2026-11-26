@@ -1,6 +1,6 @@
 """Built-in NVIDIA provider profile and helpers.
 
-Injects Deep Agents app-origin attribution into NVIDIA NIM requests via the
+Injects SDK app-origin attribution into NVIDIA NIM requests via the
 header supported by `langchain-nvidia-ai-endpoints`.
 
 Registered directly by `_ensure_builtin_profiles_loaded` during the first
@@ -21,8 +21,8 @@ from niki_agent.sdk.profiles.provider.provider_profiles import (
 _NVIDIA_BILLING_ORIGIN_HEADER = "X-BILLING-INVOKE-ORIGIN"
 """NVIDIA NIM header used to attribute requests to an originating app."""
 
-_NVIDIA_APP_ORIGIN = "DeepAgents"
-"""Deep Agents identity reported to NVIDIA NIM."""
+_NVIDIA_APP_ORIGIN = "Niki Agent"
+"""SDK identity reported to NVIDIA NIM."""
 
 
 def _nvidia_attribution_kwargs() -> dict[str, Any]:

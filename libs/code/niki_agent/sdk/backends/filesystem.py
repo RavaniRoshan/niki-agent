@@ -56,7 +56,7 @@ _DEFAULT_GLOB_TIMEOUT = 5
 A fixed bound keeps `glob` from hanging on huge or slow trees; when it elapses
 the walk returns whatever it found so far with `GlobResult.truncated=True`
 rather than erroring. Kept below the middleware's `GLOB_TIMEOUT`
-(`deepagents.middleware.filesystem.GLOB_TIMEOUT`, currently 10s) so the backend
+(`niki_agent.sdk.middleware.filesystem.GLOB_TIMEOUT`, currently 10s) so the backend
 returns partial results before that outer net abandons the call; the ordering is
 guarded by `test_glob_backend_budget_below_middleware_deadline`.
 """

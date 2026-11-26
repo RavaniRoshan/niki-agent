@@ -367,7 +367,7 @@ _READ_ONLY_TOOL_PREFIXES = frozenset(
         "search",
     }
 )
-# This list mirrors Deep Agents built-in tool names so model-level heuristics do
+# This list mirrors the SDK built-in tool names so model-level heuristics do
 # not treat framework scaffolding as application/domain tools.
 _BUILTIN_NON_DOMAIN_TOOLS: frozenset[str] = frozenset(
     {

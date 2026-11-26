@@ -4,7 +4,7 @@
 
     This profiles API may receive minor changes in future releases.
 
-Provider profiles declare how Deep Agents should construct a chat model for a
+Provider profiles declare how the SDK should construct a chat model for a
 given provider or specific model spec. The registry is consumed by
 `resolve_model` and is the extension point for controlling `init_chat_model`
 kwargs, running pre-initialization side effects, and deriving kwargs from
@@ -217,7 +217,7 @@ def register_provider_profile(key: str, profile: ProviderProfile) -> None:
     )
     ```
 
-    When Deep Agents constructs `my_provider:my-model:tag`, the profile supplies
+    When the SDK constructs `my_provider:my-model:tag`, the profile supplies
     `temperature=0` and `timeout=30`. Other models from `my_provider` receive
     `temperature=0.7` and `timeout=30`. The model identifier is `my-model:tag`;
     only the first colon separates it from the provider.
@@ -240,7 +240,7 @@ def register_provider_profile(key: str, profile: ProviderProfile) -> None:
     Future construction of this model uses `temperature=0` and `timeout=60`;
     other models still use the provider's defaults.
 
-    Deep Agents also ships **built-in profiles**: model-construction defaults
+    The SDK also ships **built-in profiles**: model-construction defaults
     registered automatically for selected providers. Registering under one of
     those keys customizes the shipped settings using the same merge rules.
 

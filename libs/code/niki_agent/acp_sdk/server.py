@@ -1,4 +1,4 @@
-"""ACP server implementation for Deep Agents."""
+"""ACP server implementation for Niki Agent."""
 
 from __future__ import annotations
 
@@ -222,7 +222,7 @@ class AgentSessionContext:
 
 
 class AgentServerACP(ACPAgent):
-    """ACP agent server that bridges Deep Agents with the Agent Client Protocol."""
+    """ACP agent server that bridges the Niki Agent SDK with the Agent Client Protocol."""
 
     _conn: Client
 
@@ -988,7 +988,7 @@ class AgentServerACP(ACPAgent):
                 )
             elif isinstance(block, EmbeddedResourceContentBlock):
                 content_blocks.extend(convert_embedded_resource_block_to_content_blocks(block))
-        # Stream the deep agent response with multimodal content
+        # Stream the agent response with multimodal content
         config = self._session_config(session_id)
 
         # Track active tool calls and accumulate chunks by index
@@ -1155,7 +1155,7 @@ class AgentServerACP(ACPAgent):
                 # Extract action requests from interrupt_value
                 action_requests = []
                 if isinstance(interrupt_value, dict):
-                    # Deep Agents wraps tool calls in action_requests
+                    # The SDK wraps tool calls in action_requests
                     action_requests = interrupt_value.get("action_requests", [])
 
                 # Process each action request

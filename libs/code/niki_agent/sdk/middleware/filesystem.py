@@ -1579,10 +1579,10 @@ def _route_host_path_prompt(backend: BackendProtocol) -> str:
 def supports_execution(backend: BackendProtocol) -> bool:
     """Check if a backend supports command execution.
 
-    For [`CompositeBackend`][deepagents.backends.composite.CompositeBackend],
+    For [`CompositeBackend`][niki_agent.sdk.backends.composite.CompositeBackend],
     checks if the default backend supports execution.
     For other backends, checks if they implement
-    [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol].
+    [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol].
 
     Args:
         backend: The backend to check.
@@ -1697,19 +1697,19 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
     `edit_file`, `glob`, and `grep`.
 
     Files can be stored using any backend that implements the
-    [`BackendProtocol`][deepagents.backends.protocol.BackendProtocol].
+    [`BackendProtocol`][niki_agent.sdk.backends.protocol.BackendProtocol].
 
     If the backend implements
-    [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol],
+    [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol],
     an `execute` tool is also added for running shell commands. Its results carry
-    [`ExecuteArtifact`][deepagents.backends.protocol.ExecuteArtifact] metadata on
+    [`ExecuteArtifact`][niki_agent.sdk.backends.protocol.ExecuteArtifact] metadata on
     `ToolMessage.artifact`.
 
     This middleware also automatically evicts large tool results to the file system when
     they exceed a token threshold, preventing context window saturation.
 
     When using `create_agent` directly, add
-    [`UnsupportedContentMiddleware`][deepagents.middleware.unsupported_content.UnsupportedContentMiddleware]
+    [`UnsupportedContentMiddleware`][niki_agent.sdk.middleware.unsupported_content.UnsupportedContentMiddleware]
     last in the `middleware` list, so `read_file` results the model can't accept are
     replaced with a text notice. `create_deep_agent` adds it automatically.
 
@@ -1717,15 +1717,15 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
         backend: Backend for file storage and optional execution.
 
             If not provided, defaults to
-            [`StateBackend`][deepagents.backends.state.StateBackend]
+            [`StateBackend`][niki_agent.sdk.backends.state.StateBackend]
             (ephemeral storage in agent state).
 
             For persistent storage or hybrid setups, use
-            [`CompositeBackend`][deepagents.backends.composite.CompositeBackend]
+            [`CompositeBackend`][niki_agent.sdk.backends.composite.CompositeBackend]
             with custom routes.
 
             For execution support, use a backend that implements
-            [`SandboxBackendProtocol`][deepagents.backends.protocol.SandboxBackendProtocol].
+            [`SandboxBackendProtocol`][niki_agent.sdk.backends.protocol.SandboxBackendProtocol].
         system_prompt: Optional custom system prompt override.
         custom_tool_descriptions: Optional custom tool descriptions override.
         tool_token_limit_before_evict: Token limit before evicting a tool result to the

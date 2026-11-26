@@ -1,7 +1,7 @@
 """Built-in OpenAI Codex harness profile.
 
 Registers a `HarnessProfile` for each OpenAI Codex model spec with a
-behavior-shaping `system_prompt_suffix` that aligns Deep Agents'
+behavior-shaping `system_prompt_suffix` that aligns the SDK's
 runtime defaults with how Codex was trained to operate — autonomous
 senior engineer demeanor, bias to action, parallel tool use, and TODO
 hygiene.

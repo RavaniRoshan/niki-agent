@@ -2,7 +2,7 @@
 
 `FilesystemMiddleware` itself doesn't know about HITL — it only enforces deny
 rules and filters denied results. The graph-assembly code in
-`deepagents.graph` calls `_build_interrupt_on_from_permissions` to turn the
+`niki_agent.sdk.graph` calls `_build_interrupt_on_from_permissions` to turn the
 filesystem permissions into an `interrupt_on` mapping for
 `HumanInTheLoopMiddleware`, using a `when` predicate that decides per call
 whether the access intersects an interrupt-mode rule.

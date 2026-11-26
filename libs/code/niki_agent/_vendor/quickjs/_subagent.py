@@ -1,4 +1,4 @@
-"""QuickJS adapter for the Deep Agents `task` subagent tool."""
+"""QuickJS adapter for the `task` subagent tool."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from niki_agent._vendor.quickjs._format import coerce_tool_output_for_ptc
 
 try:
     from niki_agent.sdk.middleware.subagents import SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY
-except ImportError:  # pragma: no cover - compatibility with older deepagents
+except ImportError:  # pragma: no cover - compatibility with older SDK versions
     SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY = "__deepagents_subagent_response_format"
 
 
@@ -41,7 +41,7 @@ _SCHEMA_MAX_PROPERTIES = 32
 """Maximum total property count allowed across a `response_schema`."""
 
 _SUBAGENT_TASK_TOOL_FIELDS = frozenset({"description", "subagent_type"})
-"""Input field names that identify the Deep Agents task tool."""
+"""Input field names that identify the `task` subagent tool."""
 
 _EVENT_DESCRIPTION_MAX_CHARS = 200
 """Character cap on the `description` carried in a start event."""
@@ -225,7 +225,7 @@ def _event_label(label: str | None, description: str) -> str:
 
 
 def find_subagent_task_tool(tools: Sequence[BaseTool]) -> BaseTool | None:
-    """Return the Deep Agents task tool that backs top-level `task()`."""
+    """Return the `task` subagent tool that backs top-level `task()`."""
     for tool in tools:
         if (
             getattr(tool, "name", None) == "task"
@@ -260,7 +260,7 @@ async def call_subagent_task_tool(
     label: str | None = None,
     dispatch_ordinal: int = 0,
 ) -> Any:
-    """Call the Deep Agents task tool and return a JavaScript-friendly value.
+    """Call the `task` subagent tool and return a JavaScript-friendly value.
 
     This also emits `start` then `complete`/`error` subagent lifecycle
     events on the custom stream.
@@ -273,7 +273,7 @@ async def call_subagent_task_tool(
     Without a parent tool-call id, every dispatch gets a random id.
 
     Args:
-        task_tool: The Deep Agents task tool to invoke.
+        task_tool: The `task` subagent tool to invoke.
         description: Instructions handed to the subagent.
         subagent_type: Name of the subagent to dispatch.
         response_schema: JSON schema for structured output, if any.

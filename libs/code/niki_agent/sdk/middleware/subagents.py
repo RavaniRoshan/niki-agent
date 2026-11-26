@@ -305,7 +305,7 @@ class CompiledSubAgent(TypedDict):
     mode: NotRequired[Literal["isolated", "fork"]]
     """Use `fork` to inherit the parent's conversation without changing the runnable prompt.
 
-    A declarative [`SubAgent`][deepagents.middleware.subagents.SubAgent] fork
+    A declarative [`SubAgent`][niki_agent.sdk.middleware.subagents.SubAgent] fork
     inherits the full state, including private keys.
     """
 
@@ -829,7 +829,7 @@ def _build_task_tool(  # noqa: C901, PLR0915
         # automatically: langgraph's `ensure_config` seeds each run from the
         # ambient parent config and (as of langgraph#7926) merges it per-key, so
         # the subagent's bound config still wins collisions (e.g. `lc_agent_name`,
-        # `recursion_limit`) and parent metadata propagates (deepagents#3634).
+        # `recursion_limit`) and parent metadata propagates (issue #3634).
         # Forwarding those keys explicitly would double-count under the merge
         # (e.g. duplicate `tags`), so we only stamp the subagent tracing tag.
         subagent_config: RunnableConfig = {"configurable": {"ls_agent_type": "subagent"}}
@@ -859,7 +859,7 @@ def _build_task_tool(  # noqa: C901, PLR0915
         # automatically: langgraph's `ensure_config` seeds each run from the
         # ambient parent config and (as of langgraph#7926) merges it per-key, so
         # the subagent's bound config still wins collisions (e.g. `lc_agent_name`,
-        # `recursion_limit`) and parent metadata propagates (deepagents#3634).
+        # `recursion_limit`) and parent metadata propagates (issue #3634).
         # Forwarding those keys explicitly would double-count under the merge
         # (e.g. duplicate `tags`), so we only stamp the subagent tracing tag.
         subagent_config: RunnableConfig = {"configurable": {"ls_agent_type": "subagent"}}
