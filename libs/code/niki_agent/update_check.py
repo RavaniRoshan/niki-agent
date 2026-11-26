@@ -131,7 +131,7 @@ _SDK_RELEASE_TIMES_KEY = "sdk_release_times"
 _RELEASE_PRERELEASE_PINS_KEY = "release_prerelease_pins"
 """`CACHE_FILE` key mapping a release version to its targeted pre-release pins.
 
-Values are lists of exact pin strings (e.g. `["deepagents==0.7.0a7"]`) that a
+Values are lists of exact pin strings (e.g. `["some-sdk==0.7.0a7"]`) that a
 stable `niki-agent` release mandates as direct, unconditional dependencies.
 An empty list means the release needs no pre-release admission.
 
@@ -535,11 +535,11 @@ def _canonical_prerelease_pin(raw: object) -> str | None:
     running niki, so evaluating `python_version`/`sys_platform` markers here
     could resolve them against the wrong environment. Rather than guess, the
     initial contract is limited to unconditional exact pins (which covers the
-    real-world `deepagents==0.7.0a7` SDK pin); widening it later must evaluate
+    real-world `some-sdk==0.7.0a7` SDK pin); widening it later must evaluate
     markers against the *target* environment, not the running one.
 
     Returns:
-        The canonical pin string (e.g. `"deepagents==0.7.0a7"`), or `None` when
+        The canonical pin string (e.g. `"some-sdk==0.7.0a7"`), or `None` when
             `raw` falls outside the contract above.
     """
     if not isinstance(raw, str):
@@ -593,7 +593,7 @@ def _prerelease_pin_requirements(
     by `_canonical_prerelease_pin`; see it for the supported contract.
 
     Returns:
-        A sorted list of canonical pin strings (e.g. `["deepagents==0.7.0a7"]`).
+        A sorted list of canonical pin strings (e.g. `["some-sdk==0.7.0a7"]`).
             Empty when the release needs no targeted pre-release admission.
     """
     if not requirements:
@@ -805,7 +805,7 @@ def release_prerelease_pins(
     """Return the targeted pre-release pins installing `version` requires.
 
     A stable `niki-agent` release may mandate an exact pre-release
-    dependency (for example `deepagents==0.7.0a7`). This resolves those pins from
+    dependency (for example `some-sdk==0.7.0a7`). This resolves those pins from
     the release's PyPI metadata so command builders can pass them to uv as
     first-party constraints — admitting *only* the named pre-release rather than
     opting the whole resolution into pre-releases with a global `--prerelease
@@ -816,7 +816,7 @@ def release_prerelease_pins(
         bypass_cache: Skip cached release metadata and fetch PyPI directly.
 
     Returns:
-        A sorted list of exact pin strings (e.g. `["deepagents==0.7.0a7"]`), or
+        A sorted list of exact pin strings (e.g. `["some-sdk==0.7.0a7"]`), or
             an empty list when the release needs no targeted pre-release
             admission.
 
@@ -2552,7 +2552,7 @@ async def perform_upgrade(
         )
     resolved_include_prereleases = _resolve_include_prereleases(include_prereleases)
     # Targeted pre-release admission: a *stable* niki target that mandates an
-    # exact pre-release dependency (e.g. `deepagents==0.7.0a7`). Rather than opt
+    # exact pre-release dependency (e.g. `some-sdk==0.7.0a7`). Rather than opt
     # the whole resolution into pre-releases with a global `--prerelease allow`
     # — which let an unrelated optional provider float to an unbuildable RC in
     # #4524 — pin that dependency in a uv constraints file and use the scoped
@@ -3360,7 +3360,7 @@ def _append_uv_prerelease_flags(
 def _prerelease_constraints_file(pins: Sequence[str]) -> Iterator[Path | None]:
     """Yield a temp uv constraints file listing `pins`, removed on exit.
 
-    Writes one pin per line (e.g. `deepagents==0.7.0a7`) to a `mkstemp` file so
+    Writes one pin per line (e.g. `some-sdk==0.7.0a7`) to a `mkstemp` file so
     the exact pre-release dependency can be handed to uv as a first-party
     constraint. Yields `None` when `pins` is empty so callers can use one code
     path regardless of whether targeted constraints are needed.

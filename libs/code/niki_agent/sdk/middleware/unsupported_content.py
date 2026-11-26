@@ -115,8 +115,7 @@ class UnsupportedContentMiddleware(AgentMiddleware[AgentState[ResponseT], Contex
     on every model request. The thread itself keeps the original content, so switching
     to a model that accepts it sends it again.
 
-    Support is read from
-    [`model.profile`](https://docs.langchain.com/oss/python/langchain/models#model-profiles).
+    Support is read from the model's profile.
 
     Place this middleware last in the `middleware` list, so that if
     `ModelRequest.model` changes, this middleware will apply to the correct one.

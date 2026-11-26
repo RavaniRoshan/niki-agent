@@ -292,10 +292,10 @@ class CompiledSubAgent(TypedDict):
     runnable: Runnable
     """A custom agent implementation.
 
-    Create a custom agent using either:
+    Create a custom agent with either:
 
-    1. LangChain's [`create_agent()`](https://docs.langchain.com/oss/python/langchain/quickstart)
-    2. A custom graph using [`langgraph`](https://docs.langchain.com/oss/python/langgraph/quickstart)
+    1. This SDK's `create_agent()`
+    2. A custom graph whose state schema includes a `messages` key
 
     If you're creating a custom graph, make sure the state schema includes
     a 'messages' key. This is required for the subagent to communicate

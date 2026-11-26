@@ -2,9 +2,7 @@
 
 !!! beta
 
-    `deepagents.profiles` exposes beta APIs that may receive minor changes in
-    future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-    for more details.
+    This profiles API may receive minor changes in future releases.
 
 Provider profiles declare how Deep Agents should construct a chat model for a
 given provider or specific model spec. The registry is consumed by
@@ -40,9 +38,8 @@ class ProviderProfile:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     A `ProviderProfile` describes provider- or model-specific kwargs,
     pre-initialization side effects, and runtime-derived kwargs that should be
@@ -197,9 +194,8 @@ def register_provider_profile(key: str, profile: ProviderProfile) -> None:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     Register under a provider name to set defaults for its models, or under
     `provider:model` to customize one model. Model-specific settings override
@@ -252,8 +248,7 @@ def register_provider_profile(key: str, profile: ProviderProfile) -> None:
     Both `init_kwargs_factory` callables run in that order too, with the new
     factory's output winning on shared keys.
 
-    See the [Profiles guide](https://docs.langchain.com/oss/python/deepagents/profiles)
-    for registration workflows and configuration files.
+    Registration workflows and configuration files use the YAML shape above.
 
     Args:
         key: Either a provider name (no colon) for provider-wide defaults,
@@ -279,9 +274,8 @@ def get_provider_profile(spec: str) -> ProviderProfile | None:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     Resolution order:
 
@@ -352,9 +346,8 @@ def apply_provider_profile(
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     This is the recommended entry point for honoring `ProviderProfile`
     registrations when building a chat model — it composes lookup, `pre_init`

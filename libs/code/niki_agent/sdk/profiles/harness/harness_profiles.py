@@ -2,9 +2,7 @@
 
 !!! beta
 
-    `deepagents.profiles` exposes beta APIs that may receive minor changes in
-    future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-    for more details.
+    This profiles API may receive minor changes in future releases.
 
 Harness profiles declare how `create_deep_agent` should shape the agent's
 runtime behavior for a given provider or specific model spec. They tune
@@ -85,9 +83,8 @@ class GeneralPurposeSubagentProfile:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     These settings only affect the default subagent that `create_deep_agent`
     inserts when the caller does not explicitly provide a subagent named
@@ -194,9 +191,8 @@ class HarnessProfileConfig:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     A `HarnessProfileConfig` contains the file-friendly subset of harness
     settings: plain strings, bools, lists, and nested dicts that can be loaded
@@ -263,7 +259,7 @@ class HarnessProfileConfig:
     For the main agent, a caller-supplied `system_prompt=` (`USER`) is placed
     before this `BASE`, and `system_prompt_suffix` (`SUFFIX`) follows it. See
     `create_deep_agent`'s `system_prompt` parameter or
-    [Prompt assembly](https://docs.langchain.com/oss/deepagents/customization#prompt-assembly)
+    the prompt assembly order
     for the full assembly order.
     """
 
@@ -485,9 +481,8 @@ class HarnessProfile:
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     A `HarnessProfile` describes prompt-assembly, tool visibility, middleware,
     and default-subagent adjustments applied by `create_deep_agent` once a
@@ -551,7 +546,7 @@ class HarnessProfile:
     For the main agent, a caller-supplied `system_prompt=` (`USER`) is placed
     before this `BASE`, and `system_prompt_suffix` (`SUFFIX`) follows it. See
     `create_deep_agent`'s `system_prompt` parameter or
-    [Prompt assembly](https://docs.langchain.com/oss/deepagents/customization#prompt-assembly)
+    the prompt assembly order
     for the full assembly order.
 
     Most profiles only set `system_prompt_suffix`, so each stack retains its
@@ -572,7 +567,7 @@ class HarnessProfile:
     main agent, the subagent's authored prompt, and the GP base respectively).
 
     See `create_deep_agent`'s `system_prompt` parameter or
-    [Prompt assembly](https://docs.langchain.com/oss/deepagents/customization#prompt-assembly)
+    the prompt assembly order
     for how `SUFFIX` composes with caller-supplied prompts and
     `base_system_prompt`.
     """
@@ -982,9 +977,8 @@ def register_harness_profile(key: str, profile: HarnessProfile | HarnessProfileC
 
     !!! beta
 
-        `deepagents.profiles` exposes beta APIs that may receive minor changes in
-        future releases. Refer to the [versioning documentation](https://docs.langchain.com/oss/python/versioning)
-        for more details.
+        This profiles API exposes beta APIs that may receive minor changes in
+        future releases.
 
     Accepts a runtime `HarnessProfile` or converts a declarative
     `HarnessProfileConfig` at registration time.
@@ -1057,8 +1051,7 @@ def register_harness_profile(key: str, profile: HarnessProfile | HarnessProfileC
     Excluded-tool sets union, middleware sequences merge
     by type, and `general_purpose_subagent` settings merge field-wise.
 
-    See the [Profiles guide](https://docs.langchain.com/oss/python/deepagents/profiles)
-    for registration workflows and configuration files.
+    Registration workflows and configuration files use the YAML shape above.
 
     Args:
         key: Either a provider name (no colon) for provider-wide defaults,
