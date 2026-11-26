@@ -28,7 +28,7 @@ concurrency:
 jobs:
   remove-label:
     if: >-
-      github.repository == 'langchain-ai/deepagents' &&
+      github.repository == 'RavaniRoshan/niki-agent' &&
       github.event.workflow_run.conclusion == 'success' &&
       contains(
         fromJSON('["issue_comment", "pull_request_review", "pull_request_review_comment"]'),
