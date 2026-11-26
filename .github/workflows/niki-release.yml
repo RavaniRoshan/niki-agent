@@ -47,10 +47,15 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             ext: tar.gz
-          # One macOS artifact covers both architectures: the wheel is pure
-          # Python (py3-none-any) and the installer resolves the rest at
-          # install time, so there is nothing to compile per-arch.
-          - os: macos-14
+          # The macOS archive is assembled on Linux. The payload is the pure
+          # Python wheel (py3-none-any) plus the installers, so nothing in it is
+          # built for, or differs by, the host that assembles it. A macOS runner
+          # is not available to this repository (its jobs are cancelled at queue
+          # time before a runner is assigned), and gating the release on a runner
+          # that never starts would hold the product hostage to an entitlement.
+          # The macOS-specific code is `install.sh`'s `uname -s` branch, which
+          # picks the `macos` asset name.
+          - os: ubuntu-latest
             platform: macos
             ext: tar.gz
           - os: windows-latest

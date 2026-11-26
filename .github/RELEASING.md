@@ -27,9 +27,12 @@ on drift.
 
    Or dispatch **Niki Release** with the version (no leading `v`).
 
-`Niki Release` builds on `ubuntu-latest`, `macos-14`, and `windows-latest`.
-The macOS job produces one architecture-independent artifact, because the
-wheel is pure Python and the installer resolves dependencies at install time.
+`Niki Release` builds `linux` and `macos` on `ubuntu-latest` and `windows` on
+`windows-latest`. One macOS artifact covers both architectures, because the
+wheel is pure Python (`py3-none-any`) and the installer resolves dependencies at
+install time — nothing in the archive differs by the host that assembles it, and
+this repository has no macOS runner entitlement (those jobs are cancelled before
+a runner is assigned). The macOS-only code is `install.sh`'s `uname -s` branch.
 Each job runs `uv build --wheel --sdist` in `libs/code`,
 copies the wheel plus `install/install.sh` or `install/install.ps1` and
 `NOTICE`/`README.md` into `niki-<version>-<platform>.{tar.gz,zip}`, then runs
