@@ -183,7 +183,7 @@ export function FeatureBenchmarksSection({
         <div className="px-5 sm:px-8 lg:px-10 py-9 lg:py-12 border-b border-grid flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="bench-seq-header">
             <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[52px] font-semibold leading-[1.08] tracking-[-0.03em] text-foreground max-w-[760px] [text-wrap:balance]">
-              Verified against real engineering baselines
+              Every mechanism ships with a check
             </h2>
           </div>
           <button
@@ -350,12 +350,12 @@ export function FeatureBenchmarksSection({
         <SectionEyebrow
           index="05"
           label="What Ships, Tested"
-          rightMeta="HERMETIC TESTS · NO API KEY"
+          rightMeta="WORKSPACE TESTS · NO API KEY"
         />
 
         <div className="px-5 sm:px-8 lg:px-10 py-8 lg:py-10 border-b border-grid">
           <h2 className="stats-seq-item font-display text-[36px] sm:text-[44px] lg:text-[52px] font-semibold leading-[1.08] tracking-[-0.03em] text-foreground max-w-[740px] [text-wrap:balance]">
-            Every claim here has a test behind it
+            The mechanisms here have tests behind them
           </h2>
         </div>
 
@@ -375,9 +375,9 @@ export function FeatureBenchmarksSection({
                 1
               </span>
               <span className="font-tech text-[17px] sm:text-[19px] leading-[1.25] text-foreground/80">
-                Console{' '}
+                Self-contained{' '}
                 <br />
-                Script
+                Binary
               </span>
             </div>
             <p className="mt-2.5 font-tech font-medium text-[12px] text-muted-foreground">

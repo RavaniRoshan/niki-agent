@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Copy } from 'lucide-react';
-import { NIKI_THEMES, NikiThemePalette } from '../../../entities/niki';
+import { NIKI_THEMES } from '../../../entities/niki';
 import {
   BTN,
   CARD,
@@ -24,24 +24,24 @@ const TOML_GATEWAYS = [
   {
     id: 'kimi',
     label: 'Kimi',
-    section: '[models.providers.kimi]',
-    cls: 'langchain_openai:ChatOpenAI',
+    section: '[providers.kimi]',
+    protocol: 'openai',
     env: 'MOONSHOT_API_KEY',
     model: 'kimi-k2.7-code',
   },
   {
     id: 'kilo',
     label: 'Kilo',
-    section: '[models.providers.kilo]',
-    cls: 'langchain_openrouter:ChatOpenRouter',
+    section: '[providers.kilo]',
+    protocol: 'openai',
     env: 'KILO_API_KEY',
     model: 'claude-opus-4.7',
   },
   {
     id: 'opencode',
     label: 'OpenCode',
-    section: '[models.providers.opencode_zen]',
-    cls: 'langchain_openai:ChatOpenAI',
+    section: '[providers.opencode_zen]',
+    protocol: 'openai',
     env: 'OPENCODE_API_KEY',
     model: 'deepseek-v4-pro',
   },
@@ -49,45 +49,30 @@ const TOML_GATEWAYS = [
 
 const KEYMAP_BINDINGS = [
   {
-    key: '1',
+    key: 'y',
     short: 'Approve',
-    handler: 'approval_position(0)',
-    output: 'Applied write_file · keymap.py (+12 −4)',
+    handler: 'approval_yes',
+    output: 'Applied write_file · rust/crates/niki-agent/src/turn.rs (+12 −4)',
   },
   {
-    key: 'ctrl+o',
-    short: 'Tools',
-    handler: 'toggle_tool_output',
-    output: 'Inline diff output expanded (14 lines)',
+    key: 'n',
+    short: 'Reject',
+    handler: 'approval_no',
+    output: 'Rejected write_file · workspace unchanged',
   },
   {
-    key: 'ctrl+t',
-    short: 'Subagents',
-    handler: 'toggle_subagent_panel',
-    output: 'Subagent runner docked · timers still',
+    key: 'shift+tab',
+    short: 'Mode',
+    handler: 'toggle_auto_approve',
+    output: 'Approval mode: manual → auto',
   },
   {
-    key: 'a',
-    short: 'Auto',
-    handler: 'approval_auto',
-    output: 'Tool call accepted in auto mode',
+    key: 'ctrl+shift+p',
+    short: 'Palette',
+    handler: 'command_palette',
+    output: 'Slash command started in the composer',
   },
 ];
-
-const NO_COLOR_THEME: NikiThemePalette = {
-  id: 'no-color',
-  name: 'NO_COLOR',
-  description: 'Monochrome ANSI fallback.',
-  tag: 'MONO',
-  bg: '#0c0c0d',
-  surface: '#161618',
-  border: '#47474d',
-  text: '#f2f2f2',
-  muted: '#a6a6ad',
-  accent: '#e2e2e6',
-};
-
-const COMPOSER_PALETTES: NikiThemePalette[] = [...NIKI_THEMES, NO_COLOR_THEME];
 
 /**
  * Level 01 Feature Widget: Asymmetric 12-Column Hairline-Ruled Bento Grid
@@ -222,16 +207,16 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
 
   const handleKeymapKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const key = e.key.toLowerCase();
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && key === '1') {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && key === 'y') {
       e.preventDefault();
       handleSelectKeycap(0, 'keyboard');
-    } else if (e.ctrlKey && key === 'o') {
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey && key === 'n') {
       e.preventDefault();
       handleSelectKeycap(1, 'keyboard');
-    } else if (e.ctrlKey && key === 't') {
+    } else if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       handleSelectKeycap(2, 'keyboard');
-    } else if (!e.ctrlKey && !e.metaKey && !e.altKey && key === 'a') {
+    } else if (e.ctrlKey && e.shiftKey && key === 'p') {
       e.preventDefault();
       handleSelectKeycap(3, 'keyboard');
     }
@@ -239,13 +224,12 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
 
   const currentGateway = TOML_GATEWAYS[activeGateway];
   const currentKey = KEYMAP_BINDINGS[activeKeyIdx];
-  const activePalette =
-    COMPOSER_PALETTES.find((p) => p.id === composerPaletteId) || COMPOSER_PALETTES[0];
+  const activePalette = NIKI_THEMES.find((p) => p.id === composerPaletteId) || NIKI_THEMES[0];
 
   const handleCopyToml = () => {
     const snippet = [
       currentGateway.section,
-      `class_path = "${currentGateway.cls}"`,
+      `protocol = "${currentGateway.protocol}"`,
       `api_key_env = "${currentGateway.env}"`,
       `models = ["${currentGateway.model}"]`,
     ].join('\n');
@@ -270,7 +254,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
       <SectionEyebrow
         index="01"
         label="Core Surface Architecture"
-        rightMeta="4 MODULES · QUIET AT REST"
+        rightMeta="4 MODULES · ONE BINARY"
       />
 
       {/* Editorial Section Header Cell */}
@@ -281,23 +265,23 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
           </h2>
         </div>
         <p className="bento-seq-header lg:col-span-5 font-normal text-[16px] sm:text-[17px] leading-[1.55] text-muted-foreground">
-          Single-rule composer, one-line install, any model, and a live keymap registry verified in pytest.
+          Self-contained binary, single-rule composer, any model, and a live keymap registry checked by cargo test.
         </p>
       </div>
 
       {/* Asymmetric 12-Column Hairline-Ruled Matrix (7+5, 5+7) */}
       <div className="grid grid-cols-1 lg:grid-cols-12">
-        {/* TILE 1 (7 Cols): Zero-Flicker Composer + Live 4-Theme & NO_COLOR Preview */}
+        {/* TILE 1 (7 Cols): Composer + Live 4-Theme Preview */}
         <article
           className={`bento-seq-card lg:col-span-7 border-b lg:border-r flex flex-col justify-between ${CARD.cell}`}
         >
           <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="max-w-[440px]">
               <h3 className="font-feature-heading text-foreground">
-                Single-rule composer with adaptive phase motion
+                Single-rule composer with bracketed paste
               </h3>
               <p className="mt-2 font-normal text-[16px] leading-[1.55] text-muted-foreground">
-                Motion runs only while streaming. Switch palettes or NO_COLOR live below; at rest, timers stop completely.
+                Paste multi-line text as one block. Switch palettes live below; NIKI_REDUCED_MOTION=1 stops the spinner.
               </p>
             </div>
             <div
@@ -327,7 +311,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Idle Stillness
+                Idle
               </button>
             </div>
           </div>
@@ -351,7 +335,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                 rightLabel={
                   composerState === 'streaming'
                     ? `${activePalette.name} · streaming`
-                    : `${activePalette.name} · at rest`
+                    : `${activePalette.name} · idle`
                 }
                 bgColor={activePalette.surface}
                 borderColor={activePalette.border}
@@ -363,13 +347,13 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                   <div className="flex items-center gap-2 truncate">
                     <span style={{ color: activePalette.accent }}>✓</span>
                     <span style={{ color: activePalette.muted }}>
-                      pytest tests/unit_tests/niki · passed
+                      cargo test -j 4 --workspace · passed
                     </span>
                   </div>
                   <div className="flex items-center gap-2 truncate">
                     <span style={{ color: activePalette.accent }}>~</span>
                     <span style={{ color: activePalette.text }}>
-                      niki_agent/tui/widgets/chat_input.py
+                      rust/crates/niki-tui/src/lib.rs
                     </span>
                     <span style={{ color: activePalette.muted }}>(+14 −3)</span>
                   </div>
@@ -397,7 +381,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                     <span className="text-[10.5px]" style={{ color: activePalette.muted }}>
                       {composerState === 'streaming'
                         ? 'Thinking · adaptive cadence'
-                        : 'Idle · timers halted'}
+                        : 'Idle · waiting on you'}
                     </span>
                   </div>
                   <div
@@ -411,20 +395,20 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                     style={{ color: activePalette.text }}
                   >
                     <span style={{ color: activePalette.accent }}>›</span>
-                    <span>Extract bounded mount window tests</span>
+                    <span>Resume the last session and summarise it</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Live 4-Theme + NO_COLOR Switcher Bar */}
+            {/* Live 4-Theme Switcher Bar */}
             <div
               role="group"
               aria-label="Live terminal theme preview"
               className="bento-seq-satellite absolute left-4 right-4 bottom-3.5 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none"
             >
               <div className="pointer-events-auto inline-flex flex-wrap items-center rounded-[2px] border border-[#3d5170] bg-[#0e131f]/95 p-0.5 shadow-xl font-tech text-[10px]">
-                {COMPOSER_PALETTES.map((palette) => {
+                {NIKI_THEMES.map((palette) => {
                   const selected = palette.id === activePalette.id;
                   return (
                     <button
@@ -450,9 +434,9 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
               </div>
 
               <div className="pointer-events-auto rounded-[2px] border border-[#3d5170] bg-[#141c2b]/95 px-3 py-1.5 shadow-xl font-tech text-[10.5px] flex items-center gap-2.5">
-                <span className="text-[#9eb0c7]">Idle frames</span>
+                <span className="text-[#9eb0c7]">Spinner</span>
                 <span className="text-[#9ec8f8] font-medium tabular-nums">
-                  {composerState === 'idle' ? 'none' : 'active'}
+                  {composerState === 'idle' ? 'paused' : 'running'}
                 </span>
               </div>
             </div>
@@ -474,7 +458,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
             </div>
             <button
               type="button"
-              onClick={() => onSelectDetail('quickstart-uv')}
+              onClick={() => onSelectDetail('install')}
               aria-label="Inspect the install"
               className={`${BTN.base} ${BTN.icon}`}
             >
@@ -484,7 +468,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
 
           <div className={`${CARD.stageFrame} h-[268px] sm:h-[282px] border-t font-tech`}>
             <div className="absolute left-5 top-5 -right-8 -bottom-6 rounded-tl-[2px] border-t border-l border-[#282e46] bg-[#0d1018] shadow-xl flex flex-col">
-              <TerminalTitleBar title="~/.niki" rightLabel="py 3.12" />
+              <TerminalTitleBar title="~/.niki" rightLabel="v2.0.0" />
               <div className="p-5 space-y-2.5 text-[11.5px]">
                 <div className="text-[#dce7f5]">
                   <span className="text-[#9ec8f8] mr-2">$</span>niki
@@ -498,7 +482,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                     <span className="text-[#9ec8f8] mr-1.5">✓</span>keymap registry · every binding bound
                   </div>
                   <div className="truncate">
-                    <span className="text-[#9ec8f8] mr-1.5">✓</span>theme: niki · mount: 30-row window
+                    <span className="text-[#9ec8f8] mr-1.5">✓</span>theme: niki · sessions: sqlite
                   </div>
                   <div className="truncate text-[#dce7f5]">
                     <span className="text-[#9ec8f8] mr-1.5">›</span>Ready · add key on first prompt
@@ -508,7 +492,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
             </div>
 
             <div className="bento-seq-satellite absolute left-4 bottom-3.5 z-20 rounded-[2px] border border-[#3d5170] bg-[#141c2b]/95 px-3.5 py-2 shadow-xl text-[10.5px] flex items-center gap-2.5">
-              <span className="text-[#eef4fa]">one package</span>
+              <span className="text-[#eef4fa]">one binary</span>
               <span className="text-[#8295ae]">·</span>
               <span className="text-[#9ec8f8]">no API key</span>
             </div>
@@ -525,7 +509,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                 Any model, zero extra lock-in
               </h3>
               <p className="mt-2 font-normal text-[16px] leading-[1.55] text-muted-foreground">
-                Three providers built in, eighteen extras, and any OpenAI-compatible gateway in one TOML block.
+                Eleven providers built in, and any OpenAI-compatible gateway in one TOML block.
               </p>
             </div>
             <button
@@ -540,7 +524,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
 
           <div className={`${CARD.stageFrame} h-[260px] sm:h-[272px] border-t font-tech`}>
             <div className="absolute -left-4 top-5 right-10 -bottom-6 rounded-tr-[2px] border-t border-r border-[#282e46] bg-[#0d1018] shadow-xl flex flex-col">
-              <TerminalTitleBar title="~/.niki/config.toml" rightLabel="zero deps" />
+              <TerminalTitleBar title="~/.niki/config.toml" rightLabel="one block" />
               <div className="p-5 pl-8 space-y-1.5 text-[11px] text-[#a5b9d1]">
                 <div className="flex items-center justify-between gap-2 pr-2">
                   <span className="text-[#9ec8f8]">{currentGateway.section}</span>
@@ -564,8 +548,8 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                   </button>
                 </div>
                 <div className="truncate">
-                  <span className="text-[#8295ae]">class_path = </span>
-                  <span className="text-[#eef4fa]">&quot;{currentGateway.cls}&quot;</span>
+                  <span className="text-[#8295ae]">protocol = </span>
+                  <span className="text-[#eef4fa]">&quot;{currentGateway.protocol}&quot;</span>
                 </div>
                 <div className="truncate">
                   <span className="text-[#8295ae]">api_key_env = </span>
@@ -631,7 +615,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                 Keyboard-native bindings with zero dead shortcuts
               </h3>
               <p className="mt-2 font-normal text-[16px] leading-[1.55] text-muted-foreground">
-                Footer hints, --help, and KEYMAP.md render from one live registry checked in CI. Focus the preview and press 1, a, ctrl+o, or ctrl+t.
+                The help overlay and handlers share one binding table checked by cargo test. Focus the preview and press y, n, shift+tab, or ctrl+shift+p.
               </p>
             </div>
             <button
@@ -647,14 +631,14 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
           <div
             tabIndex={0}
             onKeyDown={handleKeymapKeyDown}
-            aria-label="Interactive keymap terminal preview. Press 1, a, Control+O, or Control+T to test bindings."
+            aria-label="Interactive keymap terminal preview. Press y, n, Shift+Tab, or Control+Shift+P to test bindings."
             data-testid="bento-keymap-stage"
             data-active-key={currentKey.key}
             className={`${CARD.stageFrame} h-[260px] sm:h-[272px] border-t font-tech focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
           >
             <div className="absolute left-6 sm:left-8 top-5 -right-8 -bottom-6 rounded-tl-[2px] border-t border-l border-[#282e46] bg-[#0d1018] shadow-xl flex flex-col">
               <TerminalTitleBar
-                title="niki_agent/niki/keymap.py"
+                title="rust/crates/niki-tui/src/lib.rs"
                 rightLabel={lastKeySource === 'keyboard' ? `key: ${currentKey.key}` : 'all bound'}
               />
               <div className="p-5 sm:p-6 space-y-3.5">
@@ -664,16 +648,16 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                 >
                   <div className="flex items-center justify-between text-[12.5px] font-normal gap-3">
                     <span className="text-[#9ec8f8] truncate">{currentKey.handler}</span>
-                    <span className="text-[#9eb0c7] text-[11px] shrink-0">pytest verified</span>
+                    <span className="text-[#9eb0c7] text-[11px] shrink-0">cargo verified</span>
                   </div>
                   <div className="text-[12.5px] font-normal text-[#eef4fa]">{currentKey.output}</div>
                 </div>
                 <div className="space-y-1 text-[11px] text-[#9eb0c7]">
                   <div className="truncate">
-                    <span className="text-[#9ec8f8] mr-1.5">$</span>pytest tests/unit_tests/niki/test_keymap.py
+                    <span className="text-[#9ec8f8] mr-1.5">$</span>cargo test -j 4 -p niki-tui
                   </div>
                   <div className="truncate text-[#c5d6ea]">
-                    <span className="text-[#9ec8f8] mr-1.5">✓</span>every binding matches --help and KEYMAP.md · press 1, a, ctrl+o, ctrl+t
+                    <span className="text-[#9ec8f8] mr-1.5">✓</span>every advertised chord parses back to its action · press y, n, shift+tab, ctrl+shift+p
                   </div>
                 </div>
               </div>

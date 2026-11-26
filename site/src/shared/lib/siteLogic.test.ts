@@ -89,11 +89,13 @@ test('computeActiveChapterIndex maps scroll progress across chapters cleanly', (
   assert.equal(computeActiveChapterIndex(1, 4), 3);
 });
 
-test('buildProviderInstallCommand returns the installer line or a real in-session /install command', () => {
+test('buildProviderInstallCommand returns the installer line or a built-in provider launch', () => {
   assert.ok(buildProviderInstallCommand('install').startsWith('curl -fsSL'));
   assert.equal(buildProviderInstallCommand('anthropic'), 'export ANTHROPIC_API_KEY=... && niki');
   assert.equal(buildProviderInstallCommand('google'), 'export GOOGLE_API_KEY=... && niki');
-  assert.equal(buildProviderInstallCommand('ollama'), '/install ollama');
+  assert.equal(buildProviderInstallCommand('mistral'), 'export MISTRAL_API_KEY=... && niki');
+  assert.equal(buildProviderInstallCommand('ollama'), 'ollama serve && niki');
+  assert.ok(buildProviderInstallCommand('unknown-gateway').startsWith('curl -fsSL'));
 });
 
 test('computeOrbitalScrollState sequences all 6 dial stages smoothly across scroll progress', () => {
