@@ -69,7 +69,7 @@ dropped.
 ## Getting the provider id right
 
 This is where a hand-written file usually goes wrong. Niki resolves the
-LangChain provider name through its own alias table before looking anything up,
+provider name through its own alias table before looking anything up,
 so the id it searches on is not always the string you would expect.
 
 If no provider in your file claims that id, Niki falls back to searching **every**

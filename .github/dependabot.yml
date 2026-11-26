@@ -24,10 +24,6 @@ updates:
       interval: "monthly"
     versioning-strategy: increase
     ignore:
-      - dependency-name: "deepagents"
-      - dependency-name: "deepagents-code"
-      - dependency-name: "deepagents-acp"
-      - dependency-name: "deepagents-talon"
       - dependency-name: "langchain-daytona"
       - dependency-name: "langchain-modal"
       - dependency-name: "langchain-quickjs"
@@ -40,38 +36,6 @@ updates:
       # alone. Dependabot cannot run one dependency on a different cadence
       # within a directory, hence the split (tried and reverted in 6355d1af).
       - dependency-name: "genai-prices"
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types:
-          - "minor"
-          - "patch"
-      major:
-        patterns: ["*"]
-        update-types:
-          - "major"
-
-  # The WhatsApp bridge is a maintained npm package embedded in libs/talon.
-  - package-ecosystem: "npm"
-    directory: "/libs/talon/deepagents_talon/channels/whatsapp_bridge"
-    schedule:
-      interval: "monthly"
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types:
-          - "minor"
-          - "patch"
-      major:
-        patterns: ["*"]
-        update-types:
-          - "major"
-
-  # The Talon example Dockerfile is a maintained runnable topology.
-  - package-ecosystem: "docker"
-    directory: "/examples/talon"
-    schedule:
-      interval: "monthly"
     groups:
       minor-and-patch:
         patterns: ["*"]

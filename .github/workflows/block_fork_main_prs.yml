@@ -1,5 +1,5 @@
 # Block PRs whose head ref is `main` (or `master`) from a fork. This topology
-# (`<fork>:main -> langchain-ai/deepagents:main`) lets contributors click
+# (`<fork>:main -> this repository's main`) lets contributors click
 # "Update branch" on the PR, producing a `Merge branch 'main' into main`
 # commit on the source side that — under admin merge override — can land
 # directly on `main` as a 2-parent merge commit, bypassing the repo's
@@ -52,7 +52,7 @@ jobs:
               '1. Sync your fork\'s `main` first (`git fetch upstream && git switch main && git merge --ff-only upstream/main`)',
               '2. Create a feature branch: `git switch -c feat/my-change`',
               '3. Push it: `git push -u origin feat/my-change`',
-              '4. Open a new PR from `feat/my-change` → `langchain-ai/deepagents:main`',
+              '4. Open a new PR from `feat/my-change` → this repository\'s `main`',
               '',
               '*Maintainers: add the `ci:bypass-fork-main` label to override.*',
             ];

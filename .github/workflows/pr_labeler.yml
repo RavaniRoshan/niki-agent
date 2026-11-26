@@ -94,7 +94,7 @@ jobs:
       # Rename package-component scopes to their canonical PR scopes for
       # non-release PRs. The alias map lives in
       # .github/scripts/labeling/pr-labeler-config.json ("scopeAliases");
-      # release PRs (e.g. `release(deepagents): 1.2.0`) are left untouched
+      # release PRs (e.g. `release(code): 1.2.0`) are left untouched
       # since their titles are canonical version records. Runs before labeling
       # so title-based labels read the corrected title.
       - name: Rename package component scopes
