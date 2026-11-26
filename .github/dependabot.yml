@@ -19,14 +19,12 @@ updates:
   - package-ecosystem: "uv"
     directories:
       - "/libs/code"
-      - "/libs/partners/quickjs"
     schedule:
       interval: "monthly"
     versioning-strategy: increase
     ignore:
       - dependency-name: "langchain-daytona"
       - dependency-name: "langchain-modal"
-      - dependency-name: "langchain-quickjs"
       - dependency-name: "langchain-runloop"
       - dependency-name: "langchain-vercel-sandbox"
       # Bumped daily by `bump_genai_prices.yml` instead. Without this, the

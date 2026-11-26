@@ -29,29 +29,29 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from langgraph.runtime import Runtime
 
-from langchain_quickjs._format import format_outcome
-from langchain_quickjs._prompt import (
+from niki_agent._vendor.quickjs._format import format_outcome
+from niki_agent._vendor.quickjs._prompt import (
     render_eval_tool_code_doc,
     render_eval_tool_description,
     render_repl_system_prompt,
     render_subagent_system_prompt,
 )
-from langchain_quickjs._ptc import (
+from niki_agent._vendor.quickjs._ptc import (
     PTCAuthorizer,
     PTCOption,
     PTCToolGate,
     filter_tools_for_ptc,
     render_ptc_prompt,
 )
-from langchain_quickjs._repl import _Registry
-from langchain_quickjs._snapshot import (
+from niki_agent._vendor.quickjs._repl import _Registry
+from niki_agent._vendor.quickjs._snapshot import (
     encode_snapshot,
     normalize_signing_key,
     replay_snapshot_chain,
     sign_snapshot,
     verify_snapshot,
 )
-from langchain_quickjs._subagent import find_subagent_task_tool
+from niki_agent._vendor.quickjs._subagent import find_subagent_task_tool
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class CodeInterpreterMiddleware(AgentMiddleware[REPLState, ContextT, ResponseT])
     Example:
         ```python
         from niki_agent.sdk import create_deep_agent
-        from langchain_quickjs import CodeInterpreterMiddleware
+        from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 
         agent = create_deep_agent(
             model="claude-sonnet-4-6",

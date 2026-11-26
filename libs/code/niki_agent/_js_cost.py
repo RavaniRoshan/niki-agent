@@ -12,7 +12,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 from langchain_core.tools import StructuredTool
-from langchain_quickjs import CodeInterpreterMiddleware
 from langgraph.checkpoint.base import (
     BaseCheckpointSaver,
     CheckpointMetadata,
@@ -21,6 +20,7 @@ from langgraph.checkpoint.base import (
 from langgraph.config import get_config
 from langgraph.types import Command
 
+from niki_agent._vendor.quickjs import CodeInterpreterMiddleware
 from niki_agent.cost_tracking import (
     _empty_cost_breakdown,
     _merge_cost_breakdowns,

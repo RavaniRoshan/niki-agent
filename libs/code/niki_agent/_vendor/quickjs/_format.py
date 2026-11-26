@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from quickjs_rs import UNDEFINED
 
 if TYPE_CHECKING:
-    from langchain_quickjs._repl import EvalOutcome
+    from niki_agent._vendor.quickjs._repl import EvalOutcome
 
 _TRUNCATE_MARKER = "… [truncated {n} chars]"
 

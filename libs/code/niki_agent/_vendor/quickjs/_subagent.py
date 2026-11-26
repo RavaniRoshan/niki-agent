@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, NotRequired, TypedDict
 from langchain.agents.structured_output import AutoStrategy
 from langgraph.errors import GraphInterrupt
 
-from langchain_quickjs._format import coerce_tool_output_for_ptc
+from niki_agent._vendor.quickjs._format import coerce_tool_output_for_ptc
 
 try:
     from niki_agent.sdk.middleware.subagents import SUBAGENT_RESPONSE_FORMAT_CONFIG_KEY
