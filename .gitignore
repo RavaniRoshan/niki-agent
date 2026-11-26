@@ -15,7 +15,6 @@ downloads/
 eggs/
 .eggs/
 lib/
-!libs/cli/frontend/src/lib/
 lib64/
 parts/
 sdist/
@@ -246,7 +245,6 @@ jobs/
 
 .idea
 TEXTUAL_REFACTOR_PLAN.md
-libs/cli/TEXTUAL_PROGRESS.md
 
 /tmp/
 
@@ -257,10 +255,10 @@ libs/cli/TEXTUAL_PROGRESS.md
 CLAUDE.md
 .worktrees/
 
-# Frontend build artifacts (source tree; package data under libs/cli/deepagents_cli/deploy/frontend_dist/ is tracked)
-libs/cli/frontend/node_modules/
-libs/cli/frontend/dist/
 node_modules/
 
 # Generated at build time by libs/code/hatch_build.py (stamps the release commit)
 libs/code/niki_agent/_build_info.py
+
+# Windows alternate data streams copied into the tree by Explorer
+*:Zone.Identifier
