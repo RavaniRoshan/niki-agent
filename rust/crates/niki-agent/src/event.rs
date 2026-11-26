@@ -23,6 +23,9 @@ pub enum AgentEvent {
     },
     /// Token accounting for one model turn.
     Usage(Usage),
+    /// A message the person should see but that does not end the turn: a hook
+    /// warning, or a hook's `systemMessage`.
+    Notice(String),
     /// The step budget ran out before the model stopped asking for tools.
     StepLimit {
         /// Steps already used.

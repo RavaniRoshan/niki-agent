@@ -354,6 +354,7 @@ impl App {
                 is_error,
             } => self.transcript.push_tool_result(&name, &output, is_error),
             AgentEvent::Usage(usage) => add_usage(&mut self.status.tokens, usage),
+            AgentEvent::Notice(text) => self.transcript.push_notice(text),
             AgentEvent::StepLimit { steps } => self
                 .transcript
                 .push_notice(format!("stopped after {steps} model turns")),

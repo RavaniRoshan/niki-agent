@@ -7,7 +7,9 @@ cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 `[mcp_servers]`, registers discovered tools in the existing registry, and both
 `niki-rs` entry points now connect the configured servers at startup.
-`niki-skills`, `niki-hooks` and `niki-commands` are next.
+`niki-hooks` runs `PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers
+from `hooks.json` in the same two entry points. `niki-skills` and
+`niki-commands` are next.
 
 ## What is implemented
 
@@ -19,6 +21,7 @@ W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 | `niki-policy` | Manual/Auto/YOLO gate, shell allow-list, path boundary |
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
 | `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by both entry points |
+| `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, blocking verdicts; installed by both `niki-rs` entry points |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
 | `niki-render` | transcript view model, deterministic frame, `wrap` |
@@ -42,13 +45,38 @@ shows `warning: mcp server …` as a transcript notice before the first frame an
 the run continues with the remaining servers (headless prints the same warning
 on stderr).
 
+Hooks run beside those extensions. `niki-hooks` reads
+`{workspace}/.niki/hooks.json` and `{config_home}/hooks.json` (the project file
+wins for an event it defines, the user file supplies the rest), parses the
+Python client's `{"hooks": {<event>: [{matcher, hooks: [{type, command,
+timeout}]}]}}` shape, and maps built-in tool names and arguments to the wire
+vocabulary (`shell` → `Bash`, `write_file` → `Write`, `edit_file` → `Edit`, …)
+so an existing `hooks.json` keeps selecting the same tool. Each handler is a
+`/bin/sh -c` child with one JSON payload on stdin (`hook_event_name`, `cwd`,
+`session_id` when the host has one, `tool_name`, `tool_input`, `tool_use_id`;
+`tool_response` and `duration_ms` on `PostToolUse`; `prompt` on
+`UserPromptSubmit`). Exit code 2, JSON `{"decision":"block"}` and
+`permissionDecision: "deny"` block `PreToolUse`; the model receives
+`<tool> blocked by hook: <reason>` as the tool result, exactly the Python
+wording. A blocked `UserPromptSubmit` returns `AgentError::HookBlocked` before
+any model request, and a `PostToolUse` block is feedback appended to the
+result. Handlers run in configuration order with a 600 s default timeout (30 s
+for prompts); a command that cannot start, times out or writes unusable output
+is a warning notice and the turn continues. Both `niki-rs` entry points install
+the runner: headless prints load warnings to stderr, and the full-screen app
+adds one warning row per broken source before the first frame.
+`permissionDecision` `allow`/`ask`/`defer`, `updatedInput`,
+`suppressOriginalPrompt` and `PostToolUseFailure` are not implemented and are
+reported as warnings; project-hook trust prompting is not ported either, so
+loading `.niki/hooks.json` is not gated yet.
+
 ## Gates
 
 ```
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 231 tests, 0 failures
+cargo test -j 2 --workspace        # 259 tests, 0 failures
 ```
 
 `crates/niki/tests/niki_rs.rs` is the W1 exit gate: it binds a mock OpenAI SSE
@@ -137,10 +165,11 @@ startup wiring is covered without a network or a terminal.
 `niki-mcp` is done for stdio, HTTP, config, registration and startup wiring:
 both entry points call `niki_mcp::load(&config.mcp_servers)`, register the
 bridges, and hand the screen's worker the runtime those connections live on.
-What remains in W4 is `niki-skills`, `niki-hooks` and `niki-commands`. Slash
-commands are currently four hard-coded strings in `App::slash`; W4 should move
-them into `niki-commands` and have `niki-tui-live` call it, keeping `/quit`,
-`/help`, `/model` and `/theme` as the built-ins.
+`niki-hooks` is done as well. What remains in W4 is `niki-skills` and
+`niki-commands`. Slash commands are currently four hard-coded strings in
+`App::slash`; W4 should move them into `niki-commands` and have
+`niki-tui-live` call it, keeping `/quit`, `/help`, `/model` and `/theme` as the
+built-ins.
 
 ## Known gaps
 

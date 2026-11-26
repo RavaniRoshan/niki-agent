@@ -5,6 +5,7 @@ members = [
     "crates/niki-agent",
     "crates/niki-config",
     "crates/niki-engine-client",
+    "crates/niki-hooks",
     "crates/niki-mcp",
     "crates/niki-policy",
     "crates/niki-proto",
