@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from textual.content import Content
+    from textual.pilot import Pilot
 
 
 @pytest.fixture(autouse=True)
@@ -59,6 +60,21 @@ def fake_state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return state_dir
 
 
+async def _press_reload(app: _AuthHostApp, pilot: Pilot) -> None:
+    """Press Ctrl+R and wait for the reload to finish before asserting.
+
+    The reload runs on a worker thread. `pilot.pause()` only waits for the
+    message queue, so on a loaded machine it can return while the thread is
+    still running and the post-reload assertions see the old screen. The host
+    app sets `reload_finished` when the reload returns, including when it
+    raises, so the wait is bounded and cannot hang.
+    """
+    app.reload_finished.clear()
+    await pilot.press("ctrl+r")
+    await asyncio.wait_for(app.reload_finished.wait(), timeout=10)
+    await pilot.pause()
+
+
 class _AuthHostApp(App[None]):
     """Minimal host app for pushing the auth screens."""
 
@@ -71,13 +87,17 @@ class _AuthHostApp(App[None]):
         self.credential_deleted_count = 0
         self.last_saved_provider: str | None = None
         self.last_deleted_provider: str | None = None
+        self.reload_finished = asyncio.Event()
 
     async def _reload_settings_from_environment_serialized(self) -> list[str]:
         """Use the production reload core while modeling its app-level lock."""
         from niki_agent.app import DeepAgentsApp
 
-        async with self._environment_mutation_lock:
-            return await DeepAgentsApp._reload_settings_from_environment()
+        try:
+            async with self._environment_mutation_lock:
+                return await DeepAgentsApp._reload_settings_from_environment()
+        finally:
+            self.reload_finished.set()
 
     def compose(self) -> ComposeResult:
         """Render a placeholder root."""
@@ -1315,8 +1335,7 @@ api_key_url = "javascript:alert(1)"
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
             monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-from-env")
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
         assert app.prompt_dismissed is True
         assert app.prompt_result is AuthResult.SAVED
         assert cache_clears >= 1
@@ -1337,8 +1356,7 @@ api_key_url = "javascript:alert(1)"
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
             monkeypatch.setenv("ANTHROPIC_API_KEY", "test-env-key")
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
 
         assert app.prompt_dismissed is True
         assert app.prompt_result is AuthResult.SAVED
@@ -1361,8 +1379,7 @@ api_key_url = "javascript:alert(1)"
             monkeypatch.setattr(app, "notify", _capture_notify)
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             assert app.prompt_dismissed is False
             assert isinstance(app.screen, AuthPromptScreen)
         assert any("No credentials detected" in msg for msg, _ in notices)
@@ -1461,8 +1478,7 @@ api_key_url = "javascript:alert(1)"
             monkeypatch.setattr(app, "notify", capture_notify)
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             assert app.prompt_dismissed is False
             assert isinstance(app.screen, AuthPromptScreen)
 
@@ -1492,8 +1508,7 @@ api_key_url = "javascript:alert(1)"
             monkeypatch.setattr(app, "notify", _capture_notify)
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             assert app.prompt_dismissed is False
             assert isinstance(app.screen, AuthPromptScreen)
         assert any(msg == "Environment reloaded." for msg, _ in notices)
@@ -1509,8 +1524,7 @@ api_key_url = "javascript:alert(1)"
             app.show_prompt("anthropic", "ANTHROPIC_API_KEY")
             await pilot.pause()
             app.screen.query_one("#auth-prompt-input", Input).value = "half-typed"
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             value = app.screen.query_one("#auth-prompt-input", Input).value
         assert value == "half-typed"
 
@@ -1538,8 +1552,7 @@ api_key_url = "javascript:alert(1)"
             monkeypatch.setattr(
                 "niki_agent.config.credentials.reload_from_environment", _boom
             )
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             assert app.prompt_dismissed is False
             assert isinstance(app.screen, AuthPromptScreen)
         # The failure must reach the user as an error toast, not just a log line.
@@ -1575,8 +1588,7 @@ api_key_url = "javascript:alert(1)"
             await pilot.pause()
             assert isinstance(app.screen, AuthPromptScreen)
             # Live reload path: re-parses the bad config after clearing caches.
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             assert app.prompt_dismissed is False
             assert isinstance(app.screen, AuthPromptScreen)
 
@@ -1605,8 +1617,7 @@ api_key_url = "javascript:alert(1)"
                 "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com\n"
             )
             monkeypatch.chdir(tmp_path)
-            await pilot.press("ctrl+r")
-            await pilot.pause()
+            await _press_reload(app, pilot)
             # Still blocking (no key), so the modal recomposed in place — and the
             # notice now reflects the endpoint the reload picked up.
             assert app.screen.query("#auth-prompt-endpoint-env-notice")
