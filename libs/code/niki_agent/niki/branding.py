@@ -20,8 +20,6 @@ PRODUCT_NAME = "Niki Agent"
 VERSION_LINE_SUFFIX = ""
 """Appended to `--version`. Empty: attribution belongs in NOTICE, not chrome."""
 
-SDK_CREDIT = "Niki Agent includes the Deep Agents SDK (MIT)."
-
 
 def product_version() -> str:
     """Return the installed `niki-agent` version, or `unknown` if absent.
@@ -50,7 +48,6 @@ def version_line() -> str:
 
 __all__ = [
     "PRODUCT_NAME",
-    "SDK_CREDIT",
     "VERSION_LINE_SUFFIX",
     "product_version",
     "version_line",
