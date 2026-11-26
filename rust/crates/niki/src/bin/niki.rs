@@ -1,9 +1,9 @@
-//! `niki-rs` — the Rust entry point.
+//! `niki` — the Rust entry point.
 //!
 //! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
 //! Python product reads. With `--acp` it serves an editor over stdin/stdout on
 //! that same agent, provider and workspace. Without either it opens the
-//! full-screen app. Named `niki-rs` until cutover (RULES.md 2).
+//! full-screen app. Named `niki` until cutover (RULES.md 2).
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -25,12 +25,12 @@ use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
 use serde_json::json;
 
 const USAGE: &str = "\
-niki-rs — Niki agent (Rust)
+niki — Niki agent (Rust)
 
 USAGE:
-    niki-rs -n <PROMPT> [options]   run one prompt and exit
-    niki-rs --acp [options]         serve an editor over stdin/stdout
-    niki-rs [options]              open the full-screen app
+    niki -n <PROMPT> [options]   run one prompt and exit
+    niki --acp [options]         serve an editor over stdin/stdout
+    niki [options]              open the full-screen app
 
 OPTIONS:
     -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
@@ -68,7 +68,7 @@ fn main() {
     let code = match run(std::env::args().skip(1).collect()) {
         Ok(code) => code,
         Err(error) => {
-            eprintln!("niki-rs: {error:#}");
+            eprintln!("niki: {error:#}");
             1
         }
     };
@@ -82,7 +82,7 @@ fn run(args: Vec<String>) -> Result<i32> {
             return Ok(0);
         }
         Parsed::Version => {
-            println!("niki-rs {}", env!("CARGO_PKG_VERSION"));
+            println!("niki {}", env!("CARGO_PKG_VERSION"));
             return Ok(0);
         }
         Parsed::Run(options) => *options,
@@ -90,7 +90,7 @@ fn run(args: Vec<String>) -> Result<i32> {
 
     if options.acp && options.prompt.is_some() {
         eprintln!(
-            "niki-rs: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout \
+            "niki: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout \
              and -n runs one prompt"
         );
         return Ok(2);
@@ -113,7 +113,7 @@ fn run(args: Vec<String>) -> Result<i32> {
 }
 
 /// One turn, answering on stdout. This is the W1 entry point and stays as it
-/// was: a script that ran `niki-rs -n …` before still does.
+/// was: a script that ran `niki -n …` before still does.
 fn headless(options: Options, config: &Config, config_path: &Path, prompt: String) -> Result<i32> {
     let spec = model_spec(&options, config, config_path)?;
     let (provider_name, _) = split_spec(&spec)?;
@@ -128,7 +128,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     let skills = skill_catalog(&ctx.root);
     for warning in skills.warnings() {
         // stderr, not stdout: the answer a pipe captures stays the answer.
-        eprintln!("niki-rs: warning: {warning}");
+        eprintln!("niki: warning: {warning}");
     }
 
     let mode = mode(options.mode.as_deref());
@@ -143,7 +143,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
 
     let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
     for error in &mcp_errors {
-        eprintln!("niki-rs: warning: {error}");
+        eprintln!("niki: warning: {error}");
     }
     let hooks = load_hooks(&root, &config_home());
 
@@ -217,7 +217,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
 
         if let (Some(store), Some(session)) = (&store, &session) {
             if let Err(error) = record(store, session, &saved_prompt, &outcome, &rows) {
-                eprintln!("niki-rs: warning: the session was not saved: {error:#}");
+                eprintln!("niki: warning: the session was not saved: {error:#}");
             }
         }
 
@@ -255,7 +255,7 @@ fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
             if options.resume.is_some() || options.continue_session {
                 return Err(error).context("resume needs the session store");
             }
-            eprintln!("niki-rs: warning: sessions are not saved: {error:#}");
+            eprintln!("niki: warning: sessions are not saved: {error:#}");
             return Ok(Resumed {
                 store: None,
                 session: None,
@@ -449,7 +449,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
 
     let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
     for error in &mcp_errors {
-        eprintln!("niki-rs: warning: {error}");
+        eprintln!("niki: warning: {error}");
     }
     let mcp_tools = Arc::new(mcp_tools);
 
@@ -463,7 +463,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             let ctx = ToolContext::new(seed.cwd.as_path()).map_err(|error| error.to_string())?;
             let skills = skill_catalog(&ctx.root);
             for warning in skills.warnings() {
-                eprintln!("niki-rs: warning: {warning}");
+                eprintln!("niki: warning: {warning}");
             }
             let settings = AgentConfig {
                 model: model.to_owned(),
@@ -539,7 +539,7 @@ fn tool_registry(tools: &[ToolBridge]) -> Registry {
 fn load_hooks(root: &Path, config_dir: &Path) -> Arc<dyn HookRunner> {
     let loaded = Hooks::load(root, config_dir);
     for warning in &loaded.warnings {
-        eprintln!("niki-rs: warning: {warning}");
+        eprintln!("niki: warning: {warning}");
     }
     Arc::new(loaded.hooks)
 }
@@ -620,7 +620,7 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             "--help" | "-h" => return Ok(Parsed::Help),
             "--version" | "-V" => return Ok(Parsed::Version),
             other if other.starts_with('-') && other.len() > 1 => {
-                bail!("unknown option {other}; run niki-rs --help")
+                bail!("unknown option {other}; run niki --help")
             }
             positional => bail!("unexpected argument {positional:?}; the prompt is passed with -n"),
         }
@@ -712,7 +712,7 @@ fn mode(raw: Option<&str>) -> Mode {
         Some("yolo") => Mode::Yolo,
         Some("manual" | "") | None => Mode::Manual,
         Some(other) => {
-            eprintln!("niki-rs: unknown mode {other:?}; using manual (manual, auto or yolo)");
+            eprintln!("niki: unknown mode {other:?}; using manual (manual, auto or yolo)");
             Mode::Manual
         }
     }
@@ -722,7 +722,7 @@ fn env_value(name: &str) -> Option<String> {
     std::env::var(name).ok()
 }
 
-/// Print one event. Answer text goes to stdout so `niki-rs -n … > out.txt`
+/// Print one event. Answer text goes to stdout so `niki -n … > out.txt`
 /// captures the answer; tool activity goes to stderr so a pipe stays clean.
 fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
     match event {
@@ -743,14 +743,14 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
             eprintln!("  {mark} {name} {}", one_line(output));
         }
         AgentEvent::StepLimit { steps } if !quiet => {
-            eprintln!("niki-rs: step limit of {steps} reached");
+            eprintln!("niki: step limit of {steps} reached");
         }
         AgentEvent::Notice(text) => {
             let _ = out.flush();
-            eprintln!("niki-rs: {text}");
+            eprintln!("niki: {text}");
         }
         AgentEvent::Cancelled if !quiet => {
-            eprintln!("niki-rs: cancelled");
+            eprintln!("niki: cancelled");
         }
         _ => {}
     }

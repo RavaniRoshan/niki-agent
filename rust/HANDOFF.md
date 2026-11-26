@@ -6,7 +6,7 @@ cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
 [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done.
 W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
 `[mcp_servers]`, registers discovered tools in the existing registry, and the
-`niki-rs` entry points now connect the configured servers at startup.
+`niki` entry points now connect the configured servers at startup.
 `niki-skills` discovers project, user and built-in skills and every entry point
 gives them to the model through the system prompt. `niki-hooks` runs
 `PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers from `hooks.json`,
@@ -24,7 +24,7 @@ completed turn and handles bracketed paste.
 | `niki-agent` | the turn loop, event callback, approval callback, step budget, cancel |
 | `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and HTTP; `Tool` bridges, loaded at startup by every entry point under a per-server startup budget |
 | `niki-skills` | project/user/built-in skill discovery, front-matter parsing, system-prompt injection, `/skills` |
-| `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, blocking verdicts; installed by every `niki-rs` entry point |
+| `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, blocking verdicts; installed by every `niki` entry point |
 | `niki-workspace` | root detection, ignore rules, file index |
 | `niki-session` | SQLite transcript store, resume, checkpoints |
 | `niki-render` | transcript view model, deterministic frame, `wrap` |
@@ -34,9 +34,9 @@ completed turn and handles bracketed paste.
 | `niki-tui-live` | the full-screen app: composer with bracketed paste, transcript, status bar, worker, session persistence |
 | `niki-commands` | slash command grammar (`/clear`, `/compact`, `/resume`, `/tools`, `/version` beside the existing four) |
 | `niki-acp` | a server for the Agent Client Protocol on stdin/stdout: initialize, session/new, session/load, session/prompt, session/cancel, session/set_mode, session/set_config_option, and `session/update` notifications |
-| `niki` | `niki` (engine client) and `niki-rs` (headless, full-screen and `--acp`) |
+| `niki` | `niki` (engine client) and `niki` (headless, full-screen and `--acp`) |
 
-`niki-rs -n "prompt"` is the headless entry point. `niki-rs` with no `-n` opens
+`niki -n "prompt"` is the headless entry point. `niki` with no `-n` opens
 the full-screen app when stdout is a terminal. `niki` still replays a protocol
 fixture and streams from the Python engine; it is unchanged.
 
@@ -80,7 +80,7 @@ wording. A blocked `UserPromptSubmit` returns `AgentError::HookBlocked` before
 any model request, and a `PostToolUse` block is feedback appended to the
 result. Handlers run in configuration order with a 600 s default timeout (30 s
 for prompts); a command that cannot start, times out or writes unusable output
-is a warning notice and the turn continues. Every `niki-rs` entry point installs
+is a warning notice and the turn continues. Every `niki` entry point installs
 the runner: headless and the ACP server print load warnings to stderr (the
 server loads hooks for each session root), and the full-screen app adds one
 warning row per broken source before the first frame. The ACP server shows a
@@ -90,7 +90,7 @@ hook's warning or `systemMessage` as an `agent_message_chunk` update.
 reported as warnings; project-hook trust prompting is not ported either, so
 loading `.niki/hooks.json` is not gated yet.
 
-The shell surface closes the two M3 gaps: an interactive `niki-rs` run
+The shell surface closes the two M3 gaps: an interactive `niki` run
 opens `~/.niki/sessions.db`, creates a session row immediately and appends every
 completed turn as `user`, `assistant`, `tool_call`, `tool_result`, `tool_error`
 or `error` messages, so `/resume` lists and rebuilds sessions on the next
@@ -104,7 +104,7 @@ never be written to the store under another turn's rows. MCP startup is now
 concurrent and abandons a silent server after `NIKI_MCP_STARTUP_TIMEOUT_SECS`
 (default 10s), reporting the same per-server warning.
 
-`niki-rs --acp` serves an editor on stdin/stdout; `--acp` with `-n` is a
+`niki --acp` serves an editor on stdin/stdout; `--acp` with `-n` is a
 usage error and exits 2. The protocol is newline-delimited JSON-RPC 2.0 — one
 compact object per line, no `Content-Length` header — as the reference
 implementation frames it. The server answers `initialize`, `session/new`,
@@ -217,7 +217,7 @@ startup wiring is covered without a network or a terminal.
   plus the aliases in `niki_tui_themes::palette`); `/theme` cycles and
   `/theme <name>` selects. `NIKI_ASCII=1` and `NIKI_REDUCED_MOTION=1` do what
   they say at startup.
-- The binary is `niki-rs` until W6 (RULES.md 2).
+- The binary is `niki` until W6 (RULES.md 2).
 
 ## M4 decisions
 

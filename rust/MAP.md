@@ -22,7 +22,7 @@ cases are the equivalence proof.
 
 W0–W3 are green. The agent has its own model client, tool registry, approval
 policy, workspace, session store and full-screen terminal app. W4 (extensions)
-has started: `niki-mcp` is done for stdio and HTTP and the `niki-rs` entry points
+has started: `niki-mcp` is done for stdio and HTTP and the `niki` entry points
 connect the configured servers at startup. Skills, hooks (`PreToolUse`,
 `PostToolUse`, `UserPromptSubmit`) and slash commands are done, and the screen
 persists every turn.
@@ -50,7 +50,7 @@ A unit is `open`, `in progress`, or `done <gate/replay>`.
 | `niki-tools` | fs read/write/edit/list, shell exec, grep, glob, todo write | done — 14 tests |
 | `niki-policy` | Manual/Auto/YOLO, shell allow-list, path boundary | done — 13 tests |
 
-W1 ends when `niki-rs -n "prompt"` runs a real turn against a mock provider,
+W1 ends when `niki -n "prompt"` runs a real turn against a mock provider,
 writes a file, and exits with the same transcript shape as the Python headless
 mode. That gate is `crates/niki/tests/niki_rs.rs`: a mock OpenAI SSE server
 drives `write_file`, the result goes back over the wire as a `tool` message, and

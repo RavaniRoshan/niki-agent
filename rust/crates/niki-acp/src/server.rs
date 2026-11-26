@@ -418,7 +418,7 @@ impl Server {
             .unwrap_or_else(PoisonError::into_inner)
             .append(id, role, content)
         {
-            eprintln!("niki-rs: warning: the session was not saved: {error}");
+            eprintln!("niki: warning: the session was not saved: {error}");
         }
     }
 

@@ -1,13 +1,12 @@
 # Niki Agent
 
-**One binary. No runtime. A terminal coding agent that starts instantly and
-stays quiet.**
+**One binary. No runtime. A terminal coding agent that starts instantly.**
 
 2.0.0 is a new implementation of Niki Agent in Rust. The shipped product is a
 single self-contained executable: there is no Python interpreter to install, no
-virtual environment to create, and no packages to resolve on first run. The
-same archive runs on Linux, WSL, and Windows; macOS builds from source with one
-command.
+virtual environment to create, and no packages to resolve on first run. Linux
+and WSL share one archive, Windows has its own, and macOS builds from source in
+two commands.
 
 ## Install
 
@@ -71,25 +70,27 @@ application under `~/.local/niki`. Your configuration, sessions, and skills in
 
 ## What makes it different
 
-**It is quiet.** Zero idle redraws. The composer is a single rule, not a box. A
-long transcript is mounted in a bounded window, so hour two of a session
-renders like minute one.
+**It is lean.** The composer is a single rule, not a box, and the whole client
+is one native executable with no package graph behind it. The screen is drawn
+by a key-driven event loop and its layout is exercised in CI against a ratatui
+test backend, so a regression fails the build rather than shipping.
 
 **It does not waste your first minute.** There is no interpreter to boot and no
 import graph to warm. `niki` is a native executable.
 
-**You choose the model.** Anthropic, OpenAI, and Google Gemini work immediately;
-any OpenAI-compatible endpoint is a config block in `~/.niki/config.toml`, and
-MCP servers over stdio or HTTP extend the tool set.
+**You choose the model.** Eleven providers have a built-in block — Anthropic,
+OpenAI, Google Gemini, Ollama, OpenRouter, NVIDIA, Groq, Together, DeepSeek,
+Mistral, and xAI — and any OpenAI-compatible endpoint is a config block in
+`~/.niki/config.toml`. MCP servers over stdio or HTTP extend the tool set.
 
-**It asks before it acts.** Shift+Tab cycles Manual → Auto → YOLO. Auto sends
-anything uncertain to a classifier and still asks when review fails. A shell
-allow-list and a workspace path boundary give you a hard edge when you need one.
+**It asks before it acts.** Shift+Tab cycles Manual → Auto → YOLO. There is no
+classifier in this build: Manual asks for every gated command, Auto runs what
+the allow-list matches and asks for the rest, and YOLO runs everything. A
+workspace path boundary keeps every tool inside the root.
 
 **Accessibility is built in, not bolted on.** Four themes with measured
-contrast — body text at 4.5:1, UI glyphs at 3:1. Reduced motion, an ASCII glyph
-set, a screen-reader mode, and layouts checked at 40, 50, 80, 120, and 160
-columns.
+contrast — body text at 4.5:1, UI glyphs at 3:1, gated in the tests. Reduced
+motion and an ASCII glyph set are one environment variable each.
 
 **Your data stays put.** Sessions, history, skills, and stored keys live in
 `~/.niki`. No account and no cloud sync.

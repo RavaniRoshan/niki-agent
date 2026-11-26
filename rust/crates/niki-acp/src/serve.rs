@@ -108,14 +108,14 @@ pub async fn serve_stdio(factory: AgentFactory, options: ServerOptions) -> Resul
 fn open_store(path: &Path) -> Option<Arc<Mutex<SessionStore>>> {
     if let Some(parent) = path.parent() {
         if let Err(error) = std::fs::create_dir_all(parent) {
-            eprintln!("niki-rs: warning: sessions are not saved: {error}");
+            eprintln!("niki: warning: sessions are not saved: {error}");
             return None;
         }
     }
     match SessionStore::open(path) {
         Ok(store) => Some(Arc::new(Mutex::new(store))),
         Err(error) => {
-            eprintln!("niki-rs: warning: sessions are not saved: {error}");
+            eprintln!("niki: warning: sessions are not saved: {error}");
             None
         }
     }

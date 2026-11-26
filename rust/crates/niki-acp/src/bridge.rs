@@ -135,7 +135,7 @@ impl Emitter {
             if !self.warned {
                 self.warned = true;
                 // stderr, never stdout: the protocol owns stdout.
-                eprintln!("niki-rs: warning: the session was not saved: {error}");
+                eprintln!("niki: warning: the session was not saved: {error}");
             }
         }
     }

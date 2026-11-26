@@ -1,4 +1,4 @@
-//! End-to-end check of the W1 exit criterion: `niki-rs -n "prompt"` runs a
+//! End-to-end check of the W1 exit criterion: `niki -n "prompt"` runs a
 //! real turn against a mock provider, writes a file, and prints the answer.
 
 use std::io::{Read, Write};
@@ -126,7 +126,7 @@ fn one_prompt_writes_a_file_through_the_turn_loop() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, &base_url);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .arg("-n")
         .arg("create hello.txt")
         .arg("--config")
@@ -137,7 +137,7 @@ fn one_prompt_writes_a_file_through_the_turn_loop() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", home.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -179,7 +179,7 @@ fn discovered_skills_reach_the_request_system_prompt() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, &base_url);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .args(["-n", "say hello"])
         .arg("--config")
         .arg(&config)
@@ -188,7 +188,7 @@ fn discovered_skills_reach_the_request_system_prompt() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", home.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -225,13 +225,13 @@ fn a_missing_model_is_a_clear_failure() {
     )
     .expect("config");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .arg("-n")
         .arg("hi")
         .arg("--config")
         .arg(&config)
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -256,7 +256,7 @@ fn a_blocking_hook_stops_the_write_and_the_model_sees_the_reason() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, &base_url);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .arg("-n")
         .arg("create hello.txt")
         .arg("--config")
@@ -267,7 +267,7 @@ fn a_blocking_hook_stops_the_write_and_the_model_sees_the_reason() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", config_dir.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -299,7 +299,7 @@ fn json_output_prints_one_object_with_the_answer_and_usage() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, &base_url);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .args(["-n", "say hello", "--output-format", "json", "--quiet"])
         .arg("--config")
         .arg(&config)
@@ -308,7 +308,7 @@ fn json_output_prints_one_object_with_the_answer_and_usage() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", config_dir.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     assert!(output.status.success(), "exit {:?}", output.status.code());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -328,7 +328,7 @@ fn the_step_budget_exits_124() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, &base_url);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .args(["-n", "loop", "--max-steps", "1", "--quiet"])
         .arg("--config")
         .arg(&config)
@@ -337,7 +337,7 @@ fn the_step_budget_exits_124() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", config_dir.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     assert_eq!(output.status.code(), Some(124));
 }
@@ -351,7 +351,7 @@ fn continue_sends_the_saved_turns_back_to_the_model() {
     write_config(&config, &base_url);
 
     let run = |prompt: &str, resume: bool| {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_niki-rs"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_niki"));
         command
             .args(["-n", prompt, "--quiet"])
             .arg("--config")
@@ -363,7 +363,7 @@ fn continue_sends_the_saved_turns_back_to_the_model() {
         if resume {
             command.arg("--continue");
         }
-        command.output().expect("run niki-rs")
+        command.output().expect("run niki")
     };
 
     let first = run("first prompt", false);
@@ -402,7 +402,7 @@ fn an_unknown_resume_id_is_a_clear_failure() {
     let config = config_dir.path().join("config.toml");
     write_config(&config, "http://127.0.0.1:1");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_niki-rs"))
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .args(["-n", "hi", "--resume", "no-such-session", "--quiet"])
         .arg("--config")
         .arg(&config)
@@ -411,7 +411,7 @@ fn an_unknown_resume_id_is_a_clear_failure() {
         .env("NIKI_TEST_KEY", "test-key")
         .env("NIKI_HOME", config_dir.path())
         .output()
-        .expect("run niki-rs");
+        .expect("run niki");
 
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);

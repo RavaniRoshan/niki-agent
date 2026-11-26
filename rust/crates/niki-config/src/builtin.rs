@@ -3,7 +3,7 @@
 //! The Python product resolves a well-known provider without a `[providers.*]`
 //! entry: the endpoint and the key variable are part of the product. A user's
 //! `config.toml` only names a default model. This table is the same contract for
-//! the Rust client, so a config that works with `niki` works with `niki-rs`
+//! the Rust client, so a config that works with `niki` works with `niki`
 //! without an extra block.
 
 use crate::{Protocol, Provider};
