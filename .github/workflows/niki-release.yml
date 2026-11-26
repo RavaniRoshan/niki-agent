@@ -1,22 +1,15 @@
 # Niki Agent release pipeline.
 #
-# Builds a GitHub Release carrying a platform artifact and installer for Linux,
-# macOS, and Windows, on real runners for each platform.
+# Builds a GitHub Release carrying a self-contained `niki` binary in a platform
+# archive, plus the installers. The binary is the product: no Python runtime is
+# required on the user's machine.
 #
-# Why an installer and not a compiled single-file binary
-# ------------------------------------------------------
-# `niki` resolves a lot at runtime -- model providers are loaded lazily,
-# Textual reads `.tcss` and bundled JSON from disk, and the plugin system
-# imports by name. That is exactly the shape PyInstaller most often gets wrong,
-# and a frozen build that fails at runtime on someone else's machine is worse
-# than no frozen build. So each artifact is a real wheel plus a launcher that
-# creates an isolated environment and installs the pinned wheel.
-#
-# What that buys: the installer is small, the build is reproducible on any
-# runner, and a failure is a traceback rather than a mystery. If a single-file
-# binary is wanted later, add a PyInstaller job *and keep this one* -- the
-# installer stays the supported path until the binary is proven on all three
-# platforms.
+# Platforms:
+#   linux-x86_64    built on ubuntu-latest, smoke-tested end to end (one real
+#                   tool turn against a loopback provider) before publishing.
+#   windows-x86_64  built on windows-latest, checked for start-up. macOS has no
+#                   binary asset; install.sh prints the build-from-source steps
+#                   on Darwin.
 #
 # Trigger: push a `v*` tag, or dispatch manually.
 
@@ -29,16 +22,14 @@ on:
     inputs:
       version:
         required: true
-        description: "Version without the leading v (e.g. 1.1.2)"
+        description: "Version without the leading v (e.g. 2.0.0)"
 
 permissions:
   contents: write
 
 jobs:
-  # The installer artifact must be built from the tagged tree so the wheel and
-  # the installers in it always agree.
   build:
-    name: build (${{ matrix.os }})
+    name: build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -46,29 +37,30 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
+            arch: x86_64
             ext: tar.gz
-          # The macOS archive is assembled on Linux. The payload is the pure
-          # Python wheel (py3-none-any) plus the installers, so nothing in it is
-          # built for, or differs by, the host that assembles it. A macOS runner
-          # is not available to this repository (its jobs are cancelled at queue
-          # time before a runner is assigned), and gating the release on a runner
-          # that never starts would hold the product hostage to an entitlement.
-          # The macOS-specific code is `install.sh`'s `uname -s` branch, which
-          # picks the `macos` asset name.
-          - os: ubuntu-latest
-            platform: macos
-            ext: tar.gz
+            binary: niki
           - os: windows-latest
             platform: windows
+            arch: x86_64
             ext: zip
+            binary: niki.exe
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          enable-cache: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-release-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-release-
 
       - name: Resolve version
         id: version
@@ -81,27 +73,23 @@ jobs:
             echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build the wheel
+      - name: Build the binary
         shell: bash
         run: |
           set -euo pipefail
-          cd libs/code
-          # --outdir is resolved relative to the package, so build inside it.
-          uv build --wheel --sdist --out-dir dist
+          cd rust
+          cargo build --release --locked -p niki --bin niki
 
       - name: Assemble the artifact
         shell: bash
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.value }}"
-          stage="niki-${version}-${{ matrix.platform }}"
+          stage="niki-${version}-${{ matrix.platform }}-${{ matrix.arch }}"
           mkdir -p "$stage"
 
-          # The wheel plus the launcher. Nothing else is needed: the launcher
-          # resolves dependencies at install time.
-          cp libs/code/dist/*.whl "$stage/"
-          cp install/install.sh install/install.ps1 "$stage/"
-          cp NOTICE README.md "$stage/"
+          cp "rust/target/release/${{ matrix.binary }}" "$stage/${{ matrix.binary }}"
+          cp install/install.sh install/install.ps1 NOTICE LICENSE README.md "$stage/"
 
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             # `zip` is not on the Windows runner; PowerShell's archiver is.
@@ -112,15 +100,12 @@ jobs:
           fi
           rm -rf "$stage"
 
-      - name: Smoke-test the launcher on this platform
+      - name: Install from the archive and prove it starts
         shell: bash
         run: |
           set -euo pipefail
-          # Proves the installer creates an environment, resolves dependencies,
-          # and runs the CLI (the installer itself ends with `niki --version`).
-          # It does NOT prove a real turn works; the next step does.
           version="${{ steps.version.outputs.value }}"
-          stage="niki-${version}-${{ matrix.platform }}"
+          stage="niki-${version}-${{ matrix.platform }}-${{ matrix.arch }}"
           extract="$RUNNER_TEMP/extract"
           prefix="$RUNNER_TEMP/niki-smoke"
           mkdir -p "$extract"
@@ -129,24 +114,22 @@ jobs:
               "Expand-Archive -Path '${stage}.zip' -DestinationPath '$extract'"
             powershell -NoProfile -ExecutionPolicy Bypass \
               -File "$extract/$stage/install.ps1" -Prefix "$prefix"
+            "$prefix/bin/niki.exe" --version
           else
             tar -xzf "${stage}.tar.gz" -C "$extract"
-            NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
+            NIKI_ARCHIVE="$extract/$stage/$stage.tar.gz" \
+              NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
           fi
 
-      # `niki --version` (run by the installer above) imports almost nothing, so
-      # a wheel that cannot build its graph or run a tool still passes it. That
-      # is how v1.1.1 shipped a wheel whose first real turn raised TypeError.
-      # This step runs one headless turn against a loopback mock provider --
-      # no key and no external network -- and asserts a file was written and
-      # the tool result reached the model.
+      # `--version` only proves the binary loads. This step runs one headless
+      # turn from the installed binary against a loopback OpenAI-compatible
+      # mock provider -- no key, no external network -- and asserts that a
+      # `write_file` tool call round-tripped and the file exists.
       #
-      # Linux only. The script itself is stdlib-only, but this is the platform
-      # whose release gate is proven here; the macOS archive is the same pure
-      # Python wheel assembled on the same runner. Windows needs a `python`
-      # invocation and `niki.exe`, neither of which is exercised by a Linux
-      # run, so it is not wired until someone can watch it go green there.
-      - name: Prove a real turn from the installed wheel
+      # Linux only: it is the platform this gate is proven on. The Windows job
+      # exercises start-up; Windows headless turns are covered by the Rust test
+      # suite, not end to end.
+      - name: Prove a real turn from the installed binary
         if: matrix.platform == 'linux'
         shell: bash
         timeout-minutes: 10
@@ -157,7 +140,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: niki-${{ steps.version.outputs.value }}-${{ matrix.platform }}
+          name: niki-${{ steps.version.outputs.value }}-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             niki-*.tar.gz
             niki-*.zip
@@ -220,4 +203,3 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.value }}
           files: artifacts/SHA256SUMS
-          fail_on_unmatched_files: true

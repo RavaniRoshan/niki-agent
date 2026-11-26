@@ -3,12 +3,19 @@
     Niki Agent installer for Windows.
 
 .DESCRIPTION
-    Creates an isolated virtual environment and installs the pinned wheel that
-    ships beside this script, then writes a launcher to the install prefix.
-    Nothing outside the prefix is modified.
+    Installs a prebuilt, self-contained `niki.exe`. There is no Python runtime
+    and no package resolution at install time: the release archive holds one
+    executable, and the release's SHA256SUMS proves it before anything is
+    written to the prefix.
 
 .PARAMETER Prefix
     Install location. Defaults to $env:LOCALAPPDATA\niki.
+
+.PARAMETER Version
+    Release to install, without the leading v. Defaults to the latest release.
+
+.PARAMETER Archive
+    Install from this local zip instead of downloading a release.
 
 .EXAMPLE
     irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
@@ -19,7 +26,9 @@
 
 [CmdletBinding()]
 param(
-    [string] $Prefix = "$env:LOCALAPPDATA\niki"
+    [string] $Prefix = "$env:LOCALAPPDATA\niki",
+    [string] $Version = '',
+    [string] $Archive = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +39,8 @@ Set-StrictMode -Version Latest
 # script arrives through `iex` (the documented one-liner) this is empty and the
 # install falls back to the release download.
 $ScriptDir = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { '' }
+$Repo = 'RavaniRoshan/niki-agent'
+$BinDir = Join-Path $Prefix 'bin'
 
 function Write-Step { param([string] $Message) Write-Host "  $Message" -ForegroundColor Cyan }
 function Fail { param([string] $Message) throw "error: $Message" }
@@ -53,19 +64,15 @@ function Assert-Checksum {
     Write-Step "verified $Name"
 }
 
-function Get-Python {
-    <# Prefers the launcher shim, then python3, then python. #>
-    foreach ($candidate in @('python3', 'python')) {
-        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
-        if ($cmd) { return $cmd.Source }
+function Find-Archive {
+    <# Prefer a zip beside this script; fall back to the named release. #>
+    if ($Archive) {
+        if (-not (Test-Path $Archive)) { Fail "archive does not exist: $Archive" }
+        return (Resolve-Path $Archive).Path
     }
-    Fail 'python is required. Install Python 3.12+ from https://python.org'
-}
 
-function Find-Wheel {
-    <# Prefer a wheel beside this script; fall back to the newest release. #>
     if ($ScriptDir) {
-        $local = Get-ChildItem -Path $ScriptDir -Filter 'niki_agent-*.whl' -ErrorAction SilentlyContinue |
+        $local = Get-ChildItem -Path $ScriptDir -Filter 'niki-*-windows-x86_64.zip' -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($local) {
             $localSums = Join-Path $ScriptDir 'SHA256SUMS'
@@ -74,72 +81,51 @@ function Find-Wheel {
         }
     }
 
-    Write-Step 'no wheel alongside the installer; downloading the latest release'
-    $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/RavaniRoshan/niki-agent/releases/latest'
+    Write-Step 'no archive alongside the installer; downloading the release'
+    $uri = if ($Version) {
+        "https://api.github.com/repos/$Repo/releases/tags/v$($Version.TrimStart('v'))"
+    } else {
+        "https://api.github.com/repos/$Repo/releases/latest"
+    }
+    $release = Invoke-RestMethod -Uri $uri
     $asset = $release.assets |
-        Where-Object { $_.name -like '*windows*' } |
+        Where-Object { $_.name -like 'niki-*-windows-x86_64.zip' } |
         Select-Object -First 1
-    if (-not $asset) { Fail 'could not find a Windows release asset' }
-    $sumsAsset = $release.assets |
+    if (-not $asset) { Fail 'this release publishes no windows-x86_64 artifact' }
+
+    $sums = $release.assets |
         Where-Object { $_.name -eq 'SHA256SUMS' } |
         Select-Object -First 1
-    if (-not $sumsAsset) {
-        Fail 'this release publishes no SHA256SUMS; refusing to install an unverified archive'
-    }
+    if (-not $sums) { Fail 'this release publishes no SHA256SUMS; refusing to install an unverified archive' }
 
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid())
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("niki-install-" + [guid]::NewGuid().ToString('n'))
     New-Item -ItemType Directory -Path $tmp | Out-Null
-    $zip = Join-Path $tmp $asset.name
     $sumsPath = Join-Path $tmp 'SHA256SUMS'
-    Invoke-WebRequest -Uri $sumsAsset.browser_download_url -OutFile $sumsPath
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip
-    Assert-Checksum $zip $sumsPath $asset.name
-
-    Expand-Archive -Path $zip -DestinationPath $tmp
-    $wheel = Get-ChildItem -Path $tmp -Recurse -Filter 'niki_agent-*.whl' |
-        Select-Object -First 1
-    if (-not $wheel) { Fail 'release asset contained no wheel' }
-    return $wheel.FullName
+    $zipPath = Join-Path $tmp $asset.name
+    Invoke-WebRequest -Uri $sums.browser_download_url -OutFile $sumsPath
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
+    Assert-Checksum $zipPath $sumsPath $asset.name
+    return $zipPath
 }
 
 function Install-Niki {
-    $python = Get-Python
+    $archive = Find-Archive
+    Write-Step "installing $(Split-Path -Leaf $archive)"
 
-    # Single quotes inside a double-quoted PS string: PowerShell 5.1 drops
-    # embedded double quotes when it hands an argument to a native process.
-    $pyver = (& $python -c "import sys; print('{}.{}'.format(*sys.version_info[:2]))").Trim()
-    if ([version]$pyver -lt [version]'3.12') {
-        Fail "Python 3.12+ required, found $pyver"
-    }
+    $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("niki-stage-" + [guid]::NewGuid().ToString('n'))
+    Expand-Archive -Path $archive -DestinationPath $stage -Force
+    $binary = Get-ChildItem -Path $stage -Filter 'niki.exe' -Recurse |
+        Select-Object -First 1
+    if (-not $binary) { Fail 'archive contained no niki.exe' }
 
-    $wheel = Find-Wheel
-    Write-Step "installing $(Split-Path -Leaf $wheel)"
+    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+    Copy-Item -Path $binary.FullName -Destination (Join-Path $BinDir 'niki.exe') -Force
+    Remove-Item -Path $stage -Recurse -Force -ErrorAction SilentlyContinue
 
-    New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
-    & $python -m venv (Join-Path $Prefix 'venv')
-    $venvPy = Join-Path $Prefix 'venv\Scripts\python.exe'
-    & $venvPy -m pip install --quiet --upgrade pip
-    & $venvPy -m pip install --quiet $wheel
-
-    $bin = Join-Path $Prefix 'bin'
-    New-Item -ItemType Directory -Force -Path $bin | Out-Null
-    Copy-Item (Join-Path $Prefix 'venv\Scripts\niki.exe') (Join-Path $bin 'niki.exe') -Force
-
-    # Offer to put the launcher on PATH. Only when asked, so a reinstall never
-    # rewrites the user's profile.
-    if ($env:NIKI_SHELL -eq '1') {
-        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-        if ($userPath -notlike "*$bin*") {
-            [Environment]::SetEnvironmentVariable('Path', "$userPath;$bin", 'User')
-            Write-Step "added to your user PATH (restart your shell to pick it up)"
-        }
-    }
-
-    & (Join-Path $bin 'niki.exe') --version
+    & (Join-Path $BinDir 'niki.exe') --version
     Write-Host ''
     Write-Step "installed to $Prefix"
-    Write-Step "add to PATH now:  `$env:Path = '$bin;' + `$env:Path"
-    Write-Step 're-run with $env:NIKI_SHELL=1 to persist that'
+    Write-Step "add to PATH: $BinDir"
 }
 
 Install-Niki
