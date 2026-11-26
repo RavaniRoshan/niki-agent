@@ -548,7 +548,8 @@ def _section_files() -> str:
     """
     return r"""# --- Files ---
 FILE_SUMMARY=$(
-  { ls -1 2>/dev/null; [ -e .deepagents ] && echo .deepagents; } |
+  { ls -1 2>/dev/null; [ -e .niki ] && echo .niki; \
+    [ -e .deepagents ] && echo .deepagents; } |
   sort -u |
   awk '
     BEGIN {

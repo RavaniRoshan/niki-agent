@@ -886,7 +886,7 @@ def filter_trusted_project_servers(
 
 MCP_CONFIG_DISCOVERY_PATHS: tuple[tuple[str, str], ...] = (
     (PATHS.display(PATHS.profile.mcp_config_file), "user-level"),
-    ("<project-root>/.deepagents/.mcp.json", "project subdir"),
+    ("<project-root>/.niki/.mcp.json", "project subdir"),
     ("<project-root>/.mcp.json", "project root"),
 )
 """Display strings for the auto-discovered MCP config paths.
@@ -1019,10 +1019,10 @@ def _append_discovered_config(
             # Identity is unknown and the trust scope is the same either way,
             # so keeping both entries changes nothing.
             continue
-        # A configured home can equal a project root or its `.deepagents`
-        # directory. The standard project discovery provenance wins that
-        # collision so relocating the profile never self-trusts the repo's own
-        # MCP file.
+        # A configured home can equal a project root or its `.niki` directory
+        # (legacy: `.deepagents`). The standard project discovery provenance
+        # wins that collision so relocating the profile never self-trusts the
+        # repo's own MCP file.
         if identity is MCPConfigIdentity.SAME:
             # One file: move it to this discovery position so a profile
             # collision cannot give an earlier path higher precedence.

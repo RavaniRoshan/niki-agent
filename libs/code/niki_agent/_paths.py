@@ -45,6 +45,7 @@ __all__ = [
     "DEFAULT_PROFILE_MARKER_ENV",
     "NIKI_HOME_ENV",
     "PATHS",
+    "PROJECT_DIR_NAME",
     "DeepAgentsPathSnapshot",
     "InstallationPaths",
     "NikiHomeError",
@@ -72,7 +73,9 @@ __all__ = [
     "get_user_skills_dir",
     "harden_state_dir",
     "probe_writable",
+    "project_dir_candidates",
     "project_paths",
+    "resolve_project_dir",
     "user_agents_dir",
     "user_niki_dir",
 ]
@@ -97,16 +100,27 @@ directory is used.
 """
 
 DEFAULT_PROFILE_DIR_NAME = ".niki"
+"""Directory name used under the home directory when no profile is configured."""
 
 LEGACY_HOME_ENV = "DEEPAGENTS_HOME"
 """Pre-independence profile variable, read once as a deprecated alias."""
 
 LEGACY_PROFILE_DIR_NAME = ".deepagents"
-"""Pre-independence default profile directory, migrated on first launch."""
+"""Pre-independence default profile directory, migrated on first launch.
+
+Also the pre-rename project-level configuration directory name, which
+`project_dir_candidates` returns as the fallback candidate.
+"""
+
+PROJECT_DIR_NAME = ".niki"
+"""Project-level configuration directory, written by this release.
+
+Matches the profile directory name by convention, but is independent of it: a
+project has no profile, so migrating one never moves the other.
+"""
 
 _MIGRATION_MARKER = ".migrated-from-deepagents"
 """Marks a profile moved from the pre-independence directory."""
-"""Directory name used under the home directory when no profile is configured."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,6 +237,68 @@ class DeepAgentsPathSnapshot:
         return str(Path("~") / DEFAULT_PROFILE_DIR_NAME / relative)
 
 
+_LEGACY_PROJECT_DIRS_LOGGED: set[str] = set()
+"""Legacy project directories already reported at debug level in this process."""
+
+
+def project_dir_candidates(project_root: Path) -> list[Path]:
+    """Return the project configuration directory candidates, preferred first.
+
+    Args:
+        project_root: Absolute project root.
+
+    Returns:
+        `[<root>/.niki, <root>/.deepagents]`. Readers take the first candidate
+        that exists; writers always use the first entry, so nothing new lands
+        in the legacy directory.
+    """
+    return [project_root / PROJECT_DIR_NAME, project_root / LEGACY_PROFILE_DIR_NAME]
+
+
+def resolve_project_dir(project_root: Path) -> Path:
+    """Return the project configuration directory to read from.
+
+    `.niki` wins whenever it exists, so a half-migrated repository reads only
+    its new directory. `.deepagents` is the pre-rename name, still read for one
+    release so an unmigrated checkout keeps its project skills, agents, hooks,
+    and MCP config. When neither exists the preferred path is returned, which
+    is also where a writer creates it.
+
+    Args:
+        project_root: Absolute project root.
+
+    Returns:
+        The existing project configuration directory, or `<root>/.niki` when
+        none exists.
+    """
+    candidates = project_dir_candidates(project_root)
+    for candidate in candidates:
+        if candidate.is_dir():
+            if candidate != candidates[0]:
+                _log_legacy_project_dir(candidate)
+            return candidate
+    return candidates[0]
+
+
+def _log_legacy_project_dir(project_dir: Path) -> None:
+    """Report a legacy project directory once per process.
+
+    Debug level on purpose: an unmigrated repository is not a user error, and
+    the fallback keeps working. The record exists so a support log shows which
+    spelling a project's configuration was read from.
+    """
+    key = str(project_dir)
+    if key in _LEGACY_PROJECT_DIRS_LOGGED:
+        return
+    _LEGACY_PROJECT_DIRS_LOGGED.add(key)
+    logger.debug(
+        "Reading project configuration from the legacy %s; move it to %s to "
+        "use the current name.",
+        project_dir,
+        project_dir.parent / PROJECT_DIR_NAME,
+    )
+
+
 def project_paths(root: Path) -> ProjectPaths:
     """Return project-controlled paths for an explicit repository root.
 
@@ -230,7 +306,9 @@ def project_paths(root: Path) -> ProjectPaths:
         root: Absolute project root.
 
     Returns:
-        Paths rooted at the normalized project directory.
+        Paths rooted at the normalized project directory. The project
+        configuration paths follow `resolve_project_dir`, so they point at
+        `.deepagents` only when `.niki` does not exist.
 
     Note:
         `_normalize_absolute` raises `ValueError` for a relative `root`. That is
@@ -238,11 +316,7 @@ def project_paths(root: Path) -> ProjectPaths:
         deliberately not a `NikiHomeError`.
     """
     normalized = _normalize_absolute(root, what="Project root")
-    config_dir = normalized / ".niki"
-    if not config_dir.exists():
-        legacy = normalized / ".deepagents"
-        if legacy.is_dir():
-            config_dir = legacy
+    config_dir = resolve_project_dir(normalized)
     return ProjectPaths(
         root=normalized,
         config_dir=config_dir,
@@ -338,19 +412,28 @@ def ensure_user_skills_dir(agent_name: str) -> Path:
 
 
 def get_project_skills_dir(project_root: Path | None) -> Path | None:
-    """Return the project-level dcode skills directory, when in a project."""
+    """Return the project-level skills directory, when in a project.
+
+    Prefers `.niki/skills`, falling back to `.deepagents/skills` only while
+    `.niki` does not exist.
+    """
     return None if project_root is None else project_paths(project_root).skills_dir
 
 
 def ensure_project_skills_dir(project_root: Path | None) -> Path | None:
-    """Create the project-level dcode skills directory.
+    """Create the project-level skills directory under `.niki`.
+
+    Writes never target the legacy `.deepagents` directory, even when a project
+    still has one: only reads fall back.
 
     Returns:
         Path to the project skills directory, or `None` outside a project.
     """
-    skills_dir = get_project_skills_dir(project_root)
-    if skills_dir is not None:
-        skills_dir.mkdir(parents=True, exist_ok=True)
+    if project_root is None:
+        return None
+    root = _normalize_absolute(project_root, what="Project root")
+    skills_dir = root / PROJECT_DIR_NAME / "skills"
+    skills_dir.mkdir(parents=True, exist_ok=True)
     return skills_dir
 
 

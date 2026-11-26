@@ -66,7 +66,7 @@ def list_skills(
     1. `plugin_skill_sources`
     2. `user_skills_dir` (`~/.niki/{agent}/skills/`)
     3. `user_agent_skills_dir` (`~/.agents/skills/`)
-    4. `project_skills_dir` (`.deepagents/skills/`)
+    4. `project_skills_dir` (`.niki/skills/`, legacy: `.deepagents/skills/`)
     5. `project_agent_skills_dir` (`.agents/skills/`)
     6. `user_claude_skills_dir` (`~/.claude/skills/`, experimental)
     7. `project_claude_skills_dir` (`.claude/skills/`, experimental)
@@ -77,7 +77,7 @@ def list_skills(
         built_in_skills_dir: Path to built-in skills shipped with the package.
         plugin_skill_sources: Plugin skill source directories with namespaces.
         user_skills_dir: Path to `~/.niki/{agent}/skills/`.
-        project_skills_dir: Path to `.deepagents/skills/`.
+        project_skills_dir: Path to `.niki/skills/`.
         user_agent_skills_dir: Path to `~/.agents/skills/` (alias).
         project_agent_skills_dir: Path to `.agents/skills/` (alias).
         user_claude_skills_dir: Path to `~/.claude/skills/` (experimental).

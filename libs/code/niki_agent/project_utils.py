@@ -9,6 +9,11 @@ from typing import TYPE_CHECKING
 
 from niki_agent._env_vars import SERVER_ENV_PREFIX
 from niki_agent._git import find_git_root
+from niki_agent._paths import (
+    get_project_agents_dir,
+    get_project_skills_dir,
+    resolve_project_dir,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -80,16 +85,16 @@ class ProjectContext:
         return find_project_agent_md(self.project_root)
 
     def project_skills_dir(self) -> Path | None:
-        """Return the project `.deepagents/skills` directory, if any."""
+        """Return the project skills directory (`.niki/skills`), if any."""
         if self.project_root is None:
             return None
-        return self.project_root / ".deepagents" / "skills"
+        return get_project_skills_dir(self.project_root)
 
     def project_agents_dir(self) -> Path | None:
-        """Return the project `.deepagents/agents` directory, if any."""
+        """Return the project subagent directory (`.niki/agents`), if any."""
         if self.project_root is None:
             return None
-        return self.project_root / ".deepagents" / "agents"
+        return get_project_agents_dir(self.project_root)
 
     def project_agent_skills_dir(self) -> Path | None:
         """Return the project `.agents/skills` directory, if any."""
@@ -151,7 +156,8 @@ def find_project_agent_md(project_root: Path) -> list[Path]:
     """Find project-specific AGENTS.md file(s).
 
     Checks two locations and returns ALL that exist:
-    1. project_root/.deepagents/AGENTS.md
+    1. project_root/.niki/AGENTS.md (falling back to .deepagents/AGENTS.md
+       while the project has no `.niki` directory)
     2. project_root/AGENTS.md
 
     Both files will be loaded and combined if both exist.
@@ -185,7 +191,7 @@ def find_project_agent_md(project_root: Path) -> list[Path]:
     # `/var` -> `/private/var`, or a path with symlinked ancestors).
     project_root_resolved = project_root.resolve()
     candidates = [
-        project_root_resolved / ".deepagents" / "AGENTS.md",
+        resolve_project_dir(project_root_resolved) / "AGENTS.md",
         project_root_resolved / "AGENTS.md",
     ]
     paths: list[Path] = []
