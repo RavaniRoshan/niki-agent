@@ -4,7 +4,7 @@ Niki Agent is a terminal coding agent. The product is a single Python package in
 `libs/code`; it vendors its agent SDK and ACP runtime inside that package, so
 nothing imports an external distribution at runtime. `rust/` holds a second
 front end for the same engine, built crate by crate; it does not replace the
-Python client until its parity gates are green.
+Python client until it can do everything the Python client does.
 
 ## Layout
 
@@ -47,8 +47,8 @@ bash tools/m2_session.sh      # M2: live PTY session vs the replay frame
 - Keep user-visible language Niki Agent. Attribution belongs in `NOTICE`,
   `LICENSE`, and the vendored `PROVENANCE.md` files; the version line and help
   screen do not credit another product.
-- `dcode` and `deepagents-code` are deprecated console scripts for two minor
-  versions. Do not add new references to them outside the deprecation path.
+- There is one console script: `niki`. Do not add compatibility aliases under
+  another product's name.
 - Do not edit the vendored trees for style. They are excluded from ruff and ty so
   their diff against `PROVENANCE.md` stays auditable.
 

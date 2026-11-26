@@ -48,13 +48,12 @@ unattended. Restrict deployments to the default branch.
 
 ### Retired environments
 
-`integration-tests`, `release-bot`, and `release` belonged to the upstream
-monorepo's release automation. That automation (`release.yml`,
-`release_please*.yml`, `check_sdk_pin.yml`, `check_release_deps.yml`,
-`release_notes_check.yml`, `integration_tests.yml`) was removed with the
-independence work, and `niki-release.yml` needs nothing beyond `GITHUB_TOKEN`.
-Archive the environments in GitHub if they still exist; nothing here reads
-them.
+`integration-tests`, `release-bot`, and `release` belonged to an earlier
+release pipeline (`release.yml`, `release_please*.yml`, `check_sdk_pin.yml`,
+`check_release_deps.yml`, `release_notes_check.yml`, `integration_tests.yml`)
+that this repository no longer contains. `niki-release.yml` needs nothing beyond
+`GITHUB_TOKEN`. Archive the environments in GitHub if they still exist; nothing
+here reads them.
 
 ## LangSmith permission caveats
 
@@ -78,8 +77,8 @@ issues: write
 pull requests: write
 ```
 
-`actions: write` is no longer required: the `release.yml` job that dispatched
-`bump_code_sdk_pin.yml` left with the upstream release automation.
+`actions: write` is no longer required: the job that dispatched
+`bump_code_sdk_pin.yml` left with that earlier pipeline.
 
 The App's actual installed permissions are external configuration and must be verified separately. Workflow-level `permissions` restrict `GITHUB_TOKEN`; they do not restrict a separately minted GitHub App installation token.
 

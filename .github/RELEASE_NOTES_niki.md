@@ -3,10 +3,9 @@
 **A terminal coding agent that stays quiet, starts fast, and runs on your
 machine.**
 
-This is the release that makes Niki Agent a product you can hand to someone: one
-command to install, a calm interface that does not fight for attention, and the
-whole agent loop in this repository — no account, no telemetry, and no runtime
-dependency on another agent package.
+1.1.2 is the release that makes the installed product complete: the wheel now
+carries everything a turn needs, the project directory is `.niki`, and every
+page a new user reads describes the product rather than how it was built.
 
 ## Install
 
@@ -35,47 +34,54 @@ niki
 
 No key is needed to look around — `niki` boots to a working composer.
 
+## What is fixed in 1.1.2
+
+**The first turn works.** The shipped wheel used to install, answer
+`niki --version`, and then fail when you asked it to do something: the JS
+interpreter it uses for code execution was pulled from a package whose published
+release did not match the interface the agent calls. The interpreter now ships
+inside this wheel, so an installed release does a complete turn — prompt, tool
+call, file written — with no missing pieces. The release pipeline now proves
+that with a real turn before publishing, not with a version print.
+
+**The project directory is `.niki`.** Configuration, sessions, history, skills,
+and stored keys live under `~/.niki`; a repository-level `.niki/` holds
+project-scoped settings. A `.deepagents/` directory is still read when it is the
+only one present, and never written to.
+
+**The documentation is the product's.** The README, the provider guide, the
+architecture note, the independence page, the security policy, and the issue and
+pull-request templates were rewritten for the person using the agent. Two real
+documentation bugs are gone with them: the provider-table example used a TOML
+table the config reader ignores, and the command palette was advertised on a key
+that has no binding.
+
 ## What makes it different
 
-**It is quiet.** Zero idle redraws. The composer is a single rule, not a box.
-A long transcript is mounted in a bounded window, so hour three of a session
+**It is quiet.** Zero idle redraws. The composer is a single rule, not a box. A
+long transcript is mounted in a bounded window, so hour three of a session
 renders like minute one.
 
-**It starts fast and stays small.** ~190 ms to first paint in process, 255 MB
-resident through a long session, no indexer and no background daemon. The Rust
-client in `rust/` already answers `--version` in about 1 ms.
+**It does not waste your first minute.** `niki --version` answers without
+importing the agent runtime, and the TUI paints before model setup finishes.
 
-**You choose the model.** Nine providers ship — Anthropic, OpenAI, Google,
-Ollama, OpenRouter, NVIDIA, Groq, Together, DeepSeek — and any
-OpenAI-compatible endpoint is a four-line block in `~/.niki/config.toml`.
+**You choose the model.** Anthropic, OpenAI, and Google Gemini work immediately;
+eighteen more provider integrations are one `/install` away; any
+OpenAI-compatible endpoint is a config block in `~/.niki/config.toml`.
 
 **It asks before it acts.** Shift+Tab cycles Manual → Auto → YOLO. Auto sends
 anything uncertain to a classifier and still asks when review fails. A shell
 allow-list and sandbox backends give you a hard boundary when you need one.
 
 **Accessibility is built in, not bolted on.** Four themes with measured
-contrast — text at 4.5:1, UI glyphs at 3:1, zero violations against every
-surface. Reduced motion, an ASCII glyph set, a screen-reader mode, and layouts
-checked at 40, 50, 80, 120, and 160 columns.
+contrast — body text at 4.5:1, UI glyphs at 3:1. Reduced motion, an ASCII glyph
+set, a screen-reader mode, and layouts checked at 40, 50, 80, 120, and 160
+columns.
 
-**Your data stays put.** Sessions, memory, and skills live in `~/.niki`. No
-account, no sync, no telemetry.
-
-## In this release
-
-- **One command to install**, on Linux, macOS, Windows, and WSL, with the release
-  checksum verified before anything is installed.
-- **Four contrast-verified themes** — `niki`, `niki-light`, `niki-contrast`, and
-  `niki-dim` — switchable at runtime with `/theme`.
-- **Approval modes** with a one-time YOLO notice per machine and a
-  `[startup].yolo_switcher` setting for people who never want it in the cycle.
-- **Managed policy.** Administrators can pin settings in
-  `/etc/niki/managed_config.toml`; the user configuration cannot override it.
-- **A Rust client in `rust/`** that speaks the engine's HTTP/SSE protocol:
-  deterministic replay, a live session, and a plain-text frame that renders in
-  about 4 ms.
-- **Documentation for users**, not for us: architecture, key bindings, provider
-  setup, approval modes, and a security policy.
+**Your data stays put.** Sessions, history, skills, and stored keys live in
+`~/.niki`. No account and no cloud sync. The only network calls outside a turn
+are the update check, the optional self-update, and the model-pricing refresh,
+and each is described in `SECURITY.md`.
 
 ## Artifacts
 

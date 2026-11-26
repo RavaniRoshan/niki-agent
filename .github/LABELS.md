@@ -64,7 +64,7 @@ Runtime labeling reads the local manifest, so it makes no extra label-list API c
 
 | Label | Meaning |
 | --- | --- |
-| `org:external` | author is not an active `langchain-ai` member |
+| `org:external` | author is not an active organization member |
 | `org:internal` | author is a member, or a Bot |
 | `org:open-swe` | PR from an `open-swe/` branch (`branchRules`) |
 
@@ -90,9 +90,9 @@ Runtime labeling reads the local manifest, so it makes no extra label-list API c
 
 `clear_pending_deletion.yml` drops `auto:pending-deletion` the moment `ci:keep-open` lands. Thresholds (14/30 days) and the release exemption (`RELEASE_LABELS`) live in [`scripts/labeling/close-old-prs.js`](./scripts/labeling/close-old-prs.js).
 
-The upstream release automation (`release-please.yml`, `release.yml`,
+An earlier release pipeline (`release-please.yml`, `release.yml`,
 `check_sdk_pin.yml`, `check_release_deps.yml`, `release_notes_check.yml`,
-`_test.yml`, and their labels) was removed with the independence work; Niki
+`_test.yml`, and their labels) is no longer part of this repository; Niki
 releases through `niki-release.yml`, which has no label gates of its own.
 
 > During migration, release workflows accept legacy `autorelease: pending` and `autorelease: tagged` labels. Before release-please runs, automation adds `auto:release-pending` to open PRs that still use the legacy pending label. Publishing then removes both pending-label variants and applies `auto:release-tagged`. Let workflows running the old code finish before merging.
