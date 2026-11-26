@@ -98,7 +98,17 @@ def test_missing_entry_fails(tmp_path: Path) -> None:
 def test_download_verifies_before_unpacking() -> None:
     """The archive is checked before `tar` sees it, and a missing sums fails closed."""
     text = INSTALLER.read_text(encoding="utf-8")
-    verify_at = text.index('verify_sha256 "$tmp/$archive_name"')
-    unpack_at = text.index('tar -xzf "$tmp/$archive_name"')
+    verify_at = text.index('verify_sha256 "$tmp/$name"')
+    unpack_at = text.index('tar -xzf "$archive"')
     assert verify_at < unpack_at
     assert "refusing to install an unverified archive" in text
+
+
+def test_installer_installs_a_binary_without_python() -> None:
+    """The v2 installer carries the Rust binary, not a wheel or a venv."""
+    text = INSTALLER.read_text(encoding="utf-8")
+    assert "python3" not in text
+    assert "venv" not in text
+    assert "pip" not in text
+    assert 'install -m 0755 "$binary" "$BINDIR/niki"' in text
+    assert "SHA256SUMS" in text

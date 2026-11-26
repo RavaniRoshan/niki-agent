@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "niki-agent"
 version = "1.1.2"
-description = "Niki Agent - an independent terminal coding agent with persistent memory, customizable skills, subagents, and approval controls."
+description = "Niki Agent reference client (deprecated) - the shipped product is the Rust binary."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Niki Agent contributors" }]
@@ -13,7 +13,7 @@ maintainers = [{ name = "Niki Agent contributors" }]
 requires-python = ">=3.12,<4.0"
 keywords = ["agents", "ai", "cli", "terminal", "llm", "coding-agent", "niki"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 7 - Inactive",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -157,9 +157,6 @@ media = ["av>=18.0.0,<19.0.0", "pillow>=13.0.0,<14.0.0"]
 # (quickjs kept for backwards-compatible install commands)
 quickjs = []
 
-
-[project.scripts]
-niki = "niki_agent.niki.entry:niki_main"
 
 [project.urls]
 Homepage = "https://github.com/RavaniRoshan/niki-agent"
