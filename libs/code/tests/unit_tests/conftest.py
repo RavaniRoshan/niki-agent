@@ -178,6 +178,98 @@ def _restore_dotenv_loader_state() -> Generator[None, None, None]:
         config_mod._dotenv_provenance.update(provenance)
 
 
+def _snapshot_bootstrap_state() -> tuple[
+    Path | None,
+    str | None,
+    dict[str, str | None],
+    dict[str, str | None],
+    BaseException | None,
+]:
+    """Return the mutable fields of the lazy-bootstrap state, copied."""
+    import niki_agent.config as config_mod
+
+    state = config_mod._bootstrap_state
+    return (
+        state.start_path,
+        state.original_langsmith_project,
+        dict(state.launch_langsmith_env),
+        dict(state.user_langsmith_env),
+        state.error,
+    )
+
+
+def _restore_bootstrap_state(
+    snapshot: tuple[
+        Path | None,
+        str | None,
+        dict[str, str | None],
+        dict[str, str | None],
+        BaseException | None,
+    ],
+) -> None:
+    """Write a snapshot from `_snapshot_bootstrap_state` back onto the state."""
+    import niki_agent.config as config_mod
+
+    state = config_mod._bootstrap_state
+    (
+        state.start_path,
+        state.original_langsmith_project,
+        launch,
+        user,
+        state.error,
+    ) = snapshot
+    # Replaced rather than updated in place: a test that rebinds the dict with
+    # `monkeypatch.setattr` (whose teardown runs before this one) or assigns a
+    # new mapping itself leaves nothing behind for an in-place update to find.
+    state.launch_langsmith_env = dict(launch)
+    state.user_langsmith_env = dict(user)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_bootstrap_state() -> Generator[None, None, None]:
+    """Snapshot and restore `config._bootstrap_state` around every test.
+
+    `_ensure_bootstrap()` captures the caller's LangSmith launch environment
+    into this process-global state, and `Credentials.reload_from_environment()`
+    re-applies that snapshot to `os.environ` at the start of every reload. A
+    test that forces a second bootstrap for itself — `done = False` plus a
+    `LANGSMITH_API_KEY` in the environment — therefore leaves the key in the
+    snapshot for every later test in the worker, where the next Ctrl+R reload
+    puts it back into `os.environ`. `AuthPromptScreen.action_reload_env()`
+    then resolves a credential, dismisses with `AuthResult.SAVED` before it
+    recomposes, and anything asserting on the modal's re-rendered body reads
+    the host's default screen instead. That is how
+    `test_ctrl_r_reload_refreshes_langsmith_endpoint_notice` failed on CI
+    while passing when it ran alone.
+
+    `done` is deliberately not restored. It is the one-way "bootstrap has run"
+    latch, and clearing it would re-run bootstrap — dotenv loading, project
+    context, stored-credential application — for every test that follows a
+    test which bootstrapped.
+    """
+    snapshot = _snapshot_bootstrap_state()
+    try:
+        yield
+    finally:
+        _restore_bootstrap_state(snapshot)
+
+
+@pytest.fixture
+def restore_bootstrap_snapshot() -> Callable[[], None]:
+    """Return a callable restoring the bootstrap state this test started with.
+
+    The same snapshot-and-restore the autouse `_isolate_bootstrap_state`
+    fixture performs at teardown, exposed so a test can pin that a second
+    bootstrap does not outlive the test that ran it.
+    """
+    snapshot = _snapshot_bootstrap_state()
+
+    def _restore() -> None:
+        _restore_bootstrap_state(snapshot)
+
+    return _restore
+
+
 @pytest.fixture(autouse=True)
 def _restore_runtime_state() -> Generator[None, None, None]:
     """Snapshot and restore the process-wide `RuntimeState` around every test.
