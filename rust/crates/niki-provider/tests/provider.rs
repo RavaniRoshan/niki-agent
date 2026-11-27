@@ -2,8 +2,9 @@
 //! model provider.
 
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{SocketAddr, TcpListener};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use futures_util::StreamExt;
 use niki_provider::error::ProviderError;
@@ -54,24 +55,7 @@ impl MockServer {
                     break;
                 };
                 let mut reader = BufReader::new(stream.try_clone().expect("clone"));
-                let mut head = String::new();
-                let mut length = 0usize;
-                loop {
-                    let mut line = String::new();
-                    if reader.read_line(&mut line).unwrap_or(0) == 0 {
-                        break;
-                    }
-                    if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
-                        length = value.trim().parse().unwrap_or(0);
-                    }
-                    head.push_str(&line);
-                    if line == "\r\n" || line == "\n" {
-                        break;
-                    }
-                }
-                let mut body = vec![0u8; length];
-                let _ = reader.read_exact(&mut body);
-                requests.push(format!("{head}\n{}", String::from_utf8_lossy(&body)));
+                requests.push(read_request(&mut reader));
 
                 let mut stream = stream;
                 let response_head = format!(
@@ -99,6 +83,85 @@ impl MockServer {
     }
 }
 
+fn read_request(reader: &mut BufReader<TcpStream>) -> String {
+    let mut head = String::new();
+    let mut length = 0usize;
+    loop {
+        let mut line = String::new();
+        if reader.read_line(&mut line).unwrap_or(0) == 0 {
+            break;
+        }
+        if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+            length = value.trim().parse().unwrap_or(0);
+        }
+        head.push_str(&line);
+        if line == "\r\n" || line == "\n" {
+            break;
+        }
+    }
+    let mut body = vec![0u8; length];
+    let _ = reader.read_exact(&mut body);
+    format!("{head}\n{}", String::from_utf8_lossy(&body))
+}
+
+/// Serve one SSE response whose body is cut short, then listen for `quiet` for
+/// a retry.
+///
+/// A client that retried after the first event would open a second connection
+/// in that window; the returned count makes the retry visible.
+fn start_truncated_stream(quiet: Duration) -> (SocketAddr, thread::JoinHandle<usize>) {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    let handle = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("first connection");
+        let mut reader = BufReader::new(stream.try_clone().expect("clone"));
+        let _ = read_request(&mut reader);
+
+        let body = "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"partial\"}}]}\n\n";
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len() + 64
+        );
+        stream.write_all(head.as_bytes()).expect("head");
+        stream.write_all(body.as_bytes()).expect("body");
+        stream.flush().expect("flush");
+        // Close before the declared length so the body ends in a transport
+        // error, which is the failure a mid-stream retry would have to handle.
+        drop(stream);
+
+        listener.set_nonblocking(true).expect("nonblocking");
+        let deadline = Instant::now() + quiet;
+        let mut requests = 1;
+        while Instant::now() < deadline {
+            match listener.accept() {
+                Ok((mut extra, _)) => {
+                    requests += 1;
+                    extra.set_nonblocking(false).expect("blocking");
+                    extra
+                        .set_read_timeout(Some(Duration::from_secs(1)))
+                        .expect("read timeout");
+                    let mut reader = BufReader::new(extra.try_clone().expect("clone"));
+                    let _ = read_request(&mut reader);
+                    let body = "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"duplicate\"},\"finish_reason\":\"stop\"}]}\n\n";
+                    let head = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    let _ = extra.write_all(head.as_bytes());
+                    let _ = extra.write_all(body.as_bytes());
+                    let _ = extra.flush();
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(5));
+                }
+                Err(_) => break,
+            }
+        }
+        requests
+    });
+    (addr, handle)
+}
+
 fn reason(status: u16) -> &'static str {
     match status {
         200 => "OK",
@@ -108,9 +171,9 @@ fn reason(status: u16) -> &'static str {
     }
 }
 
-fn fast_retry() -> RetryPolicy {
+fn fast_retry(attempts: u32) -> RetryPolicy {
     RetryPolicy {
-        attempts: 2,
+        attempts,
         base_delay_ms: 1,
     }
 }
@@ -217,7 +280,7 @@ async fn openai_retries_a_429_then_succeeds() {
         MockResponse::status(429, "{\"error\":\"slow down\"}"),
         MockResponse::sse(body),
     ]);
-    let provider = OpenAiProvider::new("mock", server.url(), "k", fast_retry()).expect("provider");
+    let provider = OpenAiProvider::new("mock", server.url(), "k", fast_retry(2)).expect("provider");
 
     let events = collect(provider.stream(request())).await;
     let requests = server.requests();
@@ -228,13 +291,37 @@ async fn openai_retries_a_429_then_succeeds() {
 }
 
 #[tokio::test]
+async fn openai_retries_two_503s_then_streams_once() {
+    let body = "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\n";
+    let server = MockServer::start(vec![
+        MockResponse::status(503, "{\"error\":\"unavailable\"}"),
+        MockResponse::status(503, "{\"error\":\"unavailable\"}"),
+        MockResponse::sse(body),
+    ]);
+    let provider = OpenAiProvider::new("mock", server.url(), "k", fast_retry(3)).expect("provider");
+
+    let events = collect(provider.stream(request())).await;
+    let requests = server.requests();
+
+    assert_eq!(requests.len(), 3, "two retries mean three requests");
+    assert_eq!(
+        events,
+        vec![
+            StreamEvent::TextDelta("ok".to_owned()),
+            StreamEvent::Done(StopReason::EndTurn),
+        ],
+        "the successful attempt is streamed once, with no duplicated text"
+    );
+}
+
+#[tokio::test]
 async fn openai_reports_a_400_with_provider_and_status() {
     let server = MockServer::start(vec![MockResponse::status(400, "{\"error\":\"bad model\"}")]);
     let provider = OpenAiProvider::new("groq", server.url(), "k", RetryPolicy::default_policy())
         .expect("provider");
 
     let events: Vec<_> = provider.stream(request()).collect().await;
-    let _ = server.requests();
+    let requests = server.requests();
 
     match &events[0] {
         Err(ProviderError::Http {
@@ -249,6 +336,7 @@ async fn openai_reports_a_400_with_provider_and_status() {
         other => panic!("expected an HTTP error, got {other:?}"),
     }
     assert_eq!(events.len(), 1, "a permanent failure is not retried");
+    assert_eq!(requests.len(), 1, "a 400 is sent exactly once");
 }
 
 #[tokio::test]
@@ -317,6 +405,31 @@ async fn anthropic_streams_text_tool_use_and_usage() {
     assert_eq!(events.last(), Some(&StreamEvent::Done(StopReason::ToolUse)));
     assert!(requests[0].contains("POST /v1/messages"));
     assert!(requests[0].contains("anthropic-version: 2023-06-01"));
+}
+
+#[tokio::test]
+async fn a_failure_after_the_first_event_is_not_retried() {
+    let (addr, server) = start_truncated_stream(Duration::from_millis(250));
+    let provider = OpenAiProvider::new("mock", format!("http://{addr}"), "k", fast_retry(3))
+        .expect("provider");
+
+    let events: Vec<_> = provider.stream(request()).collect().await;
+
+    assert_eq!(
+        events[0].as_ref().expect("first event"),
+        &StreamEvent::TextDelta("partial".to_owned())
+    );
+    assert!(
+        matches!(events[1], Err(ProviderError::Transport { .. })),
+        "a cut body is a transport failure, got {:?}",
+        events[1]
+    );
+    assert_eq!(events.len(), 2, "no event follows the failure");
+    assert_eq!(
+        server.join().expect("server thread"),
+        1,
+        "a stream that already yielded an event is not retried"
+    );
 }
 
 #[tokio::test]

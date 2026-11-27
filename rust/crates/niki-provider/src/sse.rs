@@ -15,6 +15,7 @@ use reqwest::redirect::Policy;
 use tokio::time::sleep;
 
 use crate::error::ProviderError;
+use crate::retry::{self, Failure};
 use crate::{RetryPolicy, StreamEvent};
 
 /// One `event:`/`data:` pair.
@@ -92,16 +93,17 @@ pub(crate) fn client(provider: &str) -> Result<reqwest::Client, ProviderError> {
         })
 }
 
-/// Send a request, retrying a 429 or a 5xx before the body is consumed.
+/// Send a request, retrying a transient failure before the body is consumed.
 ///
-/// `make` builds the request each attempt because a `RequestBuilder` cannot be
-/// cloned. Retries stop as soon as a success status arrives; a non-retryable
-/// failure returns the status, provider name and a trimmed body.
+/// `make` builds the request again for each attempt because a `RequestBuilder`
+/// cannot be cloned. Only the response status and headers are inspected here;
+/// the body is streamed by [`stream_events`] and never retried, because a
+/// retry after the first event would duplicate text.
 ///
 /// # Errors
 ///
-/// Returns [`ProviderError::Http`] for a final non-success status and
-/// [`ProviderError::Transport`] when the connection fails.
+/// Returns [`ProviderError::Http`] for the last non-success status and
+/// [`ProviderError::Transport`] when every attempt failed to connect.
 pub(crate) async fn send_with_retries<F>(
     provider: &str,
     policy: RetryPolicy,
@@ -110,42 +112,40 @@ pub(crate) async fn send_with_retries<F>(
 where
     F: FnMut() -> Result<reqwest::RequestBuilder, ProviderError>,
 {
-    let attempts = policy.attempts.max(1);
-    let mut attempt = 0;
-    loop {
-        let response = make()?.send().await.map_err(|e| ProviderError::Transport {
-            provider: provider.to_owned(),
-            detail: e.to_string(),
-        })?;
-        let status = response.status().as_u16();
-        if response.status().is_success() {
-            return Ok(response);
-        }
-        let last = attempt + 1 >= attempts;
-        if last || !ProviderError::is_retryable_status(status) {
-            let body = response.text().await.unwrap_or_default();
-            return Err(ProviderError::Http {
-                provider: provider.to_owned(),
-                status,
-                body: body.chars().take(400).collect(),
-            });
-        }
-        let delay = retry_after_ms(&response).unwrap_or_else(|| policy.backoff_ms(attempt));
-        sleep(Duration::from_millis(delay)).await;
-        attempt += 1;
-    }
-}
-
-fn retry_after_ms(response: &Response) -> Option<u64> {
-    let seconds: u64 = response
-        .headers()
-        .get(RETRY_AFTER)?
-        .to_str()
-        .ok()?
-        .trim()
-        .parse()
-        .ok()?;
-    Some((seconds * 1_000).min(RetryPolicy::MAX_DELAY_MS))
+    retry::with_retries(
+        policy,
+        move || {
+            let request = make();
+            async move {
+                let response = request.map_err(Failure::fatal)?.send().await.map_err(|e| {
+                    Failure::fatal(ProviderError::Transport {
+                        provider: provider.to_owned(),
+                        detail: e.to_string(),
+                    })
+                })?;
+                let status = response.status().as_u16();
+                if response.status().is_success() {
+                    return Ok(response);
+                }
+                let retry_after = response
+                    .headers()
+                    .get(RETRY_AFTER)
+                    .and_then(|value| value.to_str().ok())
+                    .and_then(retry::retry_after_ms);
+                let body = response.text().await.unwrap_or_default();
+                Err(Failure::new(
+                    ProviderError::Http {
+                        provider: provider.to_owned(),
+                        status,
+                        body: body.chars().take(400).collect(),
+                    },
+                    retry_after,
+                ))
+            }
+        },
+        sleep,
+    )
+    .await
 }
 
 type Body = Pin<Box<dyn Stream<Item = Result<Vec<u8>, reqwest::Error>> + Send>>;

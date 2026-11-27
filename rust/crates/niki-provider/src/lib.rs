@@ -20,11 +20,13 @@ use serde_json::Value;
 pub mod anthropic;
 pub mod error;
 pub mod openai;
+pub mod retry;
 pub mod sse;
 
 pub use anthropic::AnthropicProvider;
 pub use error::ProviderError;
 pub use openai::OpenAiProvider;
+pub use retry::RetryPolicy;
 
 /// Who produced a message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -237,42 +239,4 @@ pub fn api_key(provider: &niki_config::Provider, name: &str) -> Result<String, P
         });
     }
     Ok(value)
-}
-
-/// Retry behaviour for a provider request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RetryPolicy {
-    /// Total attempts, including the first.
-    pub attempts: u32,
-    /// First backoff, doubled per attempt and capped at [`RetryPolicy::MAX_DELAY_MS`].
-    pub base_delay_ms: u64,
-}
-
-impl RetryPolicy {
-    /// Longest wait between attempts, so a `Retry-After` header cannot park a
-    /// turn for minutes.
-    pub const MAX_DELAY_MS: u64 = 5_000;
-
-    /// The default: three attempts, 200 ms first backoff.
-    #[must_use]
-    pub const fn default_policy() -> Self {
-        Self {
-            attempts: 3,
-            base_delay_ms: 200,
-        }
-    }
-
-    /// Delay before attempt `attempt` (zero-based) when the response carried no
-    /// `Retry-After`.
-    #[must_use]
-    pub fn backoff_ms(self, attempt: u32) -> u64 {
-        let factor = 1u64 << attempt.min(6);
-        (self.base_delay_ms * factor).min(Self::MAX_DELAY_MS)
-    }
-}
-
-impl Default for RetryPolicy {
-    fn default() -> Self {
-        Self::default_policy()
-    }
 }
