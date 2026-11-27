@@ -496,7 +496,7 @@ function ScaleStage() {
     <div ref={rootRef} className="relative w-full h-full">
       <div className="absolute left-5 sm:left-7 -top-4 right-20 sm:right-28 -bottom-4 rounded-[2px] border border-[#282e46] bg-[#0d1018] p-4 sm:p-5 space-y-2.5 font-tech">
         <div className="rounded-[2px] border border-dashed border-[#242a40] bg-[#080a10] px-3.5 py-2 opacity-70 space-y-1">
-          <div className="text-[10px] text-[#8ea0b8]">Older rows folded by /compact</div>
+          <div className="text-[10px] text-[#8ea0b8]">Older turns summarised by /compact</div>
           <div className="text-[10px] text-[#6d7f99] truncate">
             stored: 128 turns in the session db
           </div>
@@ -509,7 +509,7 @@ function ScaleStage() {
           </div>
           <div className="space-y-1 text-[10px] text-[#9eb6d4]">
             <div>resume: /resume 7f3a · by id or index</div>
-            <div>view: older rows folded, store intact</div>
+            <div>view: older turns summarised, store intact</div>
           </div>
           <div className="text-[10px] text-[#b8cde4]">128 turns stored</div>
         </div>
@@ -559,7 +559,7 @@ function ScaleStage() {
 function RouteStage() {
   const routes = [
     { id: 'kimi', name: 'Kimi', mode: 'config.toml', model: 'kimi-k2.7-code', base: 'https://api.moonshot.ai/v1', env: 'MOONSHOT_API_KEY', protocol: 'openai' },
-    { id: 'kilo', name: 'Kilo', mode: 'config.toml', model: 'claude-opus-4.7', base: 'https://api.kilo.ai/api/gateway', env: 'KILO_API_KEY', protocol: 'openai' },
+    { id: 'kilo', name: 'Kilo', mode: 'config.toml', model: 'gpt-5.4-code', base: 'https://api.kilo.ai/api/gateway', env: 'KILO_API_KEY', protocol: 'openai' },
     { id: 'opencode', name: 'OpenCode Zen', mode: 'config.toml', model: 'deepseek-v4-pro', base: 'https://opencode.ai/zen/v1', env: 'OPENCODE_API_KEY', protocol: 'openai' },
   ];
   const [activeRoute, setActiveRoute] = useState(1);

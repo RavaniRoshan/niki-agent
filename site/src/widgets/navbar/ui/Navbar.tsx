@@ -8,6 +8,7 @@ import {
   FileCode2,
   FileText,
   GitBranch,
+  GitCompare,
   KeyRound,
   Layers,
   ListChecks,
@@ -51,7 +52,11 @@ const ALL_ECOSYSTEM_ITEMS: EcosystemLogoItem[] = [
   ...ECOSYSTEM_LOGOS_ROW_2,
 ];
 
-function CapabilityIcon({ icon }: { icon: 'motion' | 'terminal' | 'shield' | 'layers' }) {
+function CapabilityIcon({
+  icon,
+}: {
+  icon: 'motion' | 'terminal' | 'shield' | 'layers' | 'diff';
+}) {
   switch (icon) {
     case 'motion':
       return <Activity className="w-4 h-4" aria-hidden="true" />;
@@ -61,6 +66,8 @@ function CapabilityIcon({ icon }: { icon: 'motion' | 'terminal' | 'shield' | 'la
       return <ShieldCheck className="w-4 h-4" aria-hidden="true" />;
     case 'layers':
       return <Layers className="w-4 h-4" aria-hidden="true" />;
+    case 'diff':
+      return <GitCompare className="w-4 h-4" aria-hidden="true" />;
   }
 }
 
