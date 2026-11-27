@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 10f8f562333544f1e85378769d35af9f8dfcd455e659827d42f28e4ba64f5c0f
+  source-sha256: 5cc6b9f4648b02f5126cedb7d9e9a21f14f0ed38a982b8dca42df547bf646687
 -->
 # Security policy
 
@@ -93,8 +93,6 @@ flag in this build.
 - Loading `.niki/hooks.json` from a repository is not gated by a trust prompt.
 - MCP `permissionDecision` values other than `deny` are not implemented; the
   hook runner reports them as warnings.
-- A post-handshake MCP request uses a fixed one-minute budget; a per-server
-  `timeout` key is not implemented.
 
 ## Hardening checklist
 

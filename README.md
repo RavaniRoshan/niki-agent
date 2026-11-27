@@ -199,7 +199,12 @@ models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
 [mcp_servers.docs]
 command = "npx"
 args = ["-y", "@example/docs-server"]
+timeout = 30
 ```
+
+`${VAR}` in a server's `command`, each `args` element, `env` values, `url` and
+header values is expanded from the environment when the file is read, and
+`timeout` (whole seconds) bounds that server's handshake and every request.
 
 Full setup, the config keys, and gateway examples are in
 [`docs/niki/PROVIDERS.md`](docs/niki/PROVIDERS.md).

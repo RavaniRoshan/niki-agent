@@ -20,6 +20,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use std::{env, fs};
 
 use serde::Deserialize;
@@ -120,10 +121,27 @@ impl fmt::Debug for Provider {
 }
 
 /// One `[mcp_servers.<name>]` entry.
+///
+/// String values are expanded once, when the config is read: `${VAR}` becomes
+/// the value of environment variable `VAR`, and `$$` becomes a literal `$`.
+/// Expansion covers `command`, every element of `args`, every value of `env`,
+/// `url`, and every value of `headers`. An unset or non-UTF-8 variable, an
+/// empty name (`${}`), and a `${` with no closing brace are rejected as
+/// [`ConfigError::McpServer`] naming the server and the variable; a missing
+/// token never becomes an empty URL or header at runtime. A `$` that starts
+/// neither form is literal text.
+///
+/// `timeout`, in seconds, bounds both the startup handshake and every later
+/// request for this server. Unset keeps the client defaults: the global
+/// startup budget (`NIKI_MCP_STARTUP_TIMEOUT_SECS` or ten seconds) for the
+/// handshake and the one-minute request budget. A zero or negative value is
+/// rejected as [`ConfigError::McpServer`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct McpServer {
     /// How the client reaches this server.
     pub transport: McpTransport,
+    /// Per-server budget for the handshake and every later request.
+    pub timeout: Option<Duration>,
 }
 
 /// The transport a `[mcp_servers.<name>]` entry declares.
@@ -365,22 +383,24 @@ struct RawMcpServer {
     cwd: Option<String>,
     url: Option<String>,
     headers: BTreeMap<String, String>,
+    timeout: Option<i64>,
 }
 
 impl RawMcpServer {
     fn into_server(self, name: &str) -> Result<McpServer, ConfigError> {
+        let timeout = self.timeout(name)?;
         let kind = self.kind.as_deref().map(normalize_kind);
         match kind.as_deref() {
-            Some("stdio") => self.stdio(name),
-            Some("http") => self.http(name),
+            Some("stdio") => self.stdio(name, timeout),
+            Some("http") => self.http(name, timeout),
             Some(other) => Err(ConfigError::McpServer {
                 server: name.to_owned(),
                 message: format!(
                     "unsupported transport `{other}`; this build speaks `stdio` and `http`"
                 ),
             }),
-            None if self.url.is_some() => self.http(name),
-            None if self.command.is_some() => self.stdio(name),
+            None if self.url.is_some() => self.http(name, timeout),
+            None if self.command.is_some() => self.stdio(name, timeout),
             None => Err(ConfigError::McpServer {
                 server: name.to_owned(),
                 message: "add `command = \"…\"` for a stdio server or `url = \"…\"` for an \
@@ -390,7 +410,18 @@ impl RawMcpServer {
         }
     }
 
-    fn stdio(self, name: &str) -> Result<McpServer, ConfigError> {
+    fn timeout(&self, name: &str) -> Result<Option<Duration>, ConfigError> {
+        match self.timeout {
+            None => Ok(None),
+            Some(seconds) if seconds > 0 => Ok(Some(Duration::from_secs(seconds as u64))),
+            Some(_) => Err(ConfigError::McpServer {
+                server: name.to_owned(),
+                message: "`timeout` must be a positive number of seconds".to_owned(),
+            }),
+        }
+    }
+
+    fn stdio(self, name: &str, timeout: Option<Duration>) -> Result<McpServer, ConfigError> {
         if self.url.is_some() {
             return Err(ConfigError::McpServer {
                 server: name.to_owned(),
@@ -405,18 +436,26 @@ impl RawMcpServer {
                 message: "a stdio entry needs a `command`".to_owned(),
             });
         };
+        let command = expand(&command, name, "command")?;
+        let args = self
+            .args
+            .iter()
+            .map(|arg| expand(arg, name, "args"))
+            .collect::<Result<Vec<_>, _>>()?;
+        let env = expand_map(self.env, name, "env")?;
         let cwd = self.cwd.filter(|cwd| !cwd.is_empty()).map(PathBuf::from);
         Ok(McpServer {
             transport: McpTransport::Stdio {
                 command,
-                args: self.args,
-                env: self.env,
+                args,
+                env,
                 cwd,
             },
+            timeout,
         })
     }
 
-    fn http(self, name: &str) -> Result<McpServer, ConfigError> {
+    fn http(self, name: &str, timeout: Option<Duration>) -> Result<McpServer, ConfigError> {
         if self.command.is_some() {
             return Err(ConfigError::McpServer {
                 server: name.to_owned(),
@@ -431,13 +470,67 @@ impl RawMcpServer {
                 message: "an HTTP entry needs a `url`".to_owned(),
             });
         };
+        let url = expand(&url, name, "url")?;
+        let headers = expand_map(self.headers, name, "headers")?;
         Ok(McpServer {
-            transport: McpTransport::Http {
-                url,
-                headers: self.headers,
-            },
+            transport: McpTransport::Http { url, headers },
+            timeout,
         })
     }
+}
+
+/// Expand `${VAR}` references and `$$` escapes in one configured string.
+fn expand(input: &str, server: &str, field: &str) -> Result<String, ConfigError> {
+    let mut output = String::with_capacity(input.len());
+    let mut rest = input;
+    while let Some(dollar) = rest.find('$') {
+        output.push_str(&rest[..dollar]);
+        let after = &rest[dollar + 1..];
+        if let Some(literal) = after.strip_prefix('$') {
+            output.push('$');
+            rest = literal;
+        } else if let Some(braced) = after.strip_prefix('{') {
+            let Some(close) = braced.find('}') else {
+                return Err(ConfigError::McpServer {
+                    server: server.to_owned(),
+                    message: format!(
+                        "unterminated `${{` in `{field}`; write `$${{` for a literal `${{`"
+                    ),
+                });
+            };
+            let name = &braced[..close];
+            if name.is_empty() {
+                return Err(ConfigError::McpServer {
+                    server: server.to_owned(),
+                    message: format!("empty variable name `${{}}` in `{field}`"),
+                });
+            }
+            let value = env::var(name).map_err(|_| ConfigError::McpServer {
+                server: server.to_owned(),
+                message: format!(
+                    "environment variable `{name}` in `{field}` is not set or is not valid UTF-8"
+                ),
+            })?;
+            output.push_str(&value);
+            rest = &braced[close + 1..];
+        } else {
+            output.push('$');
+            rest = after;
+        }
+    }
+    output.push_str(rest);
+    Ok(output)
+}
+
+fn expand_map(
+    values: BTreeMap<String, String>,
+    server: &str,
+    field: &str,
+) -> Result<BTreeMap<String, String>, ConfigError> {
+    values
+        .into_iter()
+        .map(|(key, value)| Ok((key, expand(&value, server, field)?)))
+        .collect()
 }
 
 fn normalize_kind(kind: &str) -> String {
@@ -713,6 +806,122 @@ command = "server"
             config.mcp_servers["local"].transport,
             McpTransport::Stdio { .. }
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn mcp_values_expand_environment_variables_in_every_place() -> Result<(), ConfigError> {
+        let path = env::var("PATH").expect("PATH is set for the test process");
+        let config = Config::from_str(
+            r#"
+[mcp_servers.local]
+command = "${PATH}"
+args = ["--root=${PATH}"]
+env = { ROOT = "${PATH}" }
+
+[mcp_servers.remote]
+url = "https://example.com/${PATH}"
+headers = { Authorization = "Bearer ${PATH}" }
+"#,
+        )?;
+        let McpTransport::Stdio {
+            command, args, env, ..
+        } = &config.mcp_servers["local"].transport
+        else {
+            panic!("expected stdio");
+        };
+        assert_eq!(command, &path);
+        let root_arg = format!("--root={path}");
+        assert_eq!(
+            args.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec![root_arg.as_str()]
+        );
+        assert_eq!(env.get("ROOT"), Some(&path));
+
+        let McpTransport::Http { url, headers } = &config.mcp_servers["remote"].transport else {
+            panic!("expected http");
+        };
+        assert_eq!(url, &format!("https://example.com/{path}"));
+        assert_eq!(
+            headers.get("Authorization"),
+            Some(&format!("Bearer {path}"))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn a_double_dollar_is_one_literal_dollar() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[mcp_servers.local]
+command = "server"
+args = ["price=$$5", "literal=$${NOT_A_VARIABLE}", "tail=$$"]
+"#,
+        )?;
+        let McpTransport::Stdio { args, .. } = &config.mcp_servers["local"].transport else {
+            panic!("expected stdio");
+        };
+        assert_eq!(
+            args.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec!["price=$5", "literal=${NOT_A_VARIABLE}", "tail=$"]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn an_unset_variable_is_an_error_naming_the_server_and_variable() {
+        let error = Config::from_str(
+            r#"
+[mcp_servers.tokened]
+url = "https://example.com/${NIKI_CONFIG_TEST_SURELY_UNSET}"
+"#,
+        )
+        .expect_err("an unset variable");
+        assert!(
+            matches!(error, ConfigError::McpServer { ref server, .. } if server == "tokened"),
+            "{error:?}"
+        );
+        let text = error.to_string();
+        assert!(text.contains("tokened"), "{text}");
+        assert!(text.contains("NIKI_CONFIG_TEST_SURELY_UNSET"), "{text}");
+    }
+
+    #[test]
+    fn an_unterminated_reference_is_an_error_naming_the_server() {
+        let error = Config::from_str("[mcp_servers.broken]\ncommand = \"${PATH\"\n")
+            .expect_err("an unterminated reference");
+        assert!(
+            matches!(error, ConfigError::McpServer { ref server, .. } if server == "broken"),
+            "{error:?}"
+        );
+        assert!(error.to_string().contains("unterminated"), "{error}");
+    }
+
+    #[test]
+    fn an_mcp_timeout_must_be_a_positive_number_of_seconds() {
+        for value in ["0", "-1", "-30"] {
+            let error = Config::from_str(&format!(
+                "[mcp_servers.slow]\ncommand = \"server\"\ntimeout = {value}\n"
+            ))
+            .expect_err("a non-positive timeout");
+            assert!(
+                matches!(error, ConfigError::McpServer { ref server, .. } if server == "slow"),
+                "{error:?}"
+            );
+            assert!(error.to_string().contains("timeout"), "{error}");
+        }
+    }
+
+    #[test]
+    fn an_mcp_timeout_is_optional_and_read_in_seconds() -> Result<(), ConfigError> {
+        let config = Config::from_str("[mcp_servers.slow]\ncommand = \"server\"\ntimeout = 30\n")?;
+        assert_eq!(
+            config.mcp_servers["slow"].timeout,
+            Some(Duration::from_secs(30))
+        );
+
+        let absent = Config::from_str("[mcp_servers.slow]\ncommand = \"server\"\n")?;
+        assert_eq!(absent.mcp_servers["slow"].timeout, None);
         Ok(())
     }
 
