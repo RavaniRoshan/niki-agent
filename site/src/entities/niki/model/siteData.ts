@@ -86,7 +86,6 @@ export const INSTALL_COMMAND =
 export const WINDOWS_INSTALL_COMMAND =
   'irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex';
 
-export const SOURCE_BUILD_COMMAND = 'cargo build --release -p niki --bin niki';
 
 export const TEST_COMMAND = 'cargo test -j 4 --workspace';
 
@@ -597,7 +596,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     capabilities: [
       'Linux and WSL: curl -fsSL …/install/install.sh | bash',
       'Windows: irm …/install/install.ps1 | iex in PowerShell',
-      'macOS builds from source: cargo build --release -p niki --bin niki',
+      'macOS arm64 and x86_64: the same one-line installer',
       'Add a provider key from an environment variable when you need it',
     ],
     codePreview: `${INSTALL_COMMAND}\nniki`,
@@ -642,11 +641,11 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     category: 'Architecture',
     tagline: 'No interpreter, no package manager, no virtual environment.',
     description:
-      'The release profile links the whole agent into one executable. The Linux and WSL installer, the Windows installer, and a macOS source build all deliver the same binary shape; the installer verifies SHA256SUMS first.',
+      'The release profile links the whole agent into one executable. The Linux and WSL installer, the macOS installer, and the Windows installer all deliver the same binary shape; the installer verifies SHA256SUMS first.',
     capabilities: [
       'Linux and WSL: curl -fsSL …/install/install.sh | bash',
       'Windows PowerShell: irm …/install/install.ps1 | iex',
-      'macOS from source: cargo build --release -p niki --bin niki',
+      'macOS arm64 and x86_64: curl -fsSL …/install/install.sh | bash',
       'The same binary serves the full-screen app and headless niki -n',
     ],
     codePreview: 'cargo build --release -p niki --bin niki',

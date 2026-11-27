@@ -39,7 +39,7 @@ Linux x86_64 has a prebuilt release archive. Verify it against `SHA256SUMS`,
 then run the installer inside the archive or place the binary yourself:
 
 ```bash
-VERSION=2.0.0
+VERSION=2.1.1
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
@@ -47,13 +47,10 @@ tar -xzf "niki-${VERSION}-linux-x86_64.tar.gz"
 bash "niki-${VERSION}-linux-x86_64/install.sh"
 ```
 
+macOS publishes `niki-<version>-macos-aarch64.tar.gz` and
+`niki-<version>-macos-x86_64.tar.gz`; the installer chooses by `uname -m`.
 Windows has a `.zip` archive that has not been exercised on Windows, so treat it
-as untested. macOS builds from source:
-
-```bash
-cd niki-agent/rust
-cargo build --release -p niki --bin niki
-```
+as untested.
 
 Then name a model in `~/.niki/config.toml` and export its key:
 
@@ -82,7 +79,7 @@ under a dedicated user account when you need a hard boundary, and read
 
 | | |
 | --- | --- |
-| [Install](/getting-started/install) | Linux archive, Windows archive, and a macOS source build. |
+| [Install](/getting-started/install) | Linux, macOS and Windows release archives, plus a source build. |
 | [Your first turn](/getting-started/first-turn) | Flags, exit codes, keys, themes, and headless mode. |
 | [Providers](/providers/) | Eleven built-ins and any OpenAI-compatible endpoint. |
 | [Permissions](/permissions) | Manual, Auto, YOLO, the allow-list, MCP approval, and hooks. |
