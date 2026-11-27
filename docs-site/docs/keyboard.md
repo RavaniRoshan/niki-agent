@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 0212ecacac2400934f57a4ee0dabe3d054bdb497f5d2d8b34b072857aa698c0c
+  source-sha256: 1ed34c8c624f03ce22d63964990dcb2c9d61d34486933b28173bbfe59c0327e5
 -->
 # Niki Agent -- Keymap
 
@@ -82,18 +82,19 @@ composer walks the file backwards, `Down` returns toward the draft.
 
 ## Approval prompt
 
-The prompt appears when the policy asks about a shell command or a gated MCP
-tool.
+The prompt appears when the policy asks about a shell command, a file write,
+or a gated MCP tool. The body names the exact command, or the absolute path a
+write would land on and whether it resolves inside the workspace.
 
 | Key | Answer |
 | --- | --- |
-| `y` | Allow this once. |
-| `a` | Always allow: the exact command or the tool name is recorded for the rest of the session. |
-| `n` | Refuse. |
-| `Enter` | Choose the highlighted option. The first is "Allow this once". |
+| `y` / `a` | Allow this once. |
+| `s` | Allow for this session. A shell rule records the program and the exact line; a later command that chains, redirects or substitutes another command still asks. A write rule covers the tool but re-checks the workspace boundary on every call. `/clear` and a new session drop every session rule. |
+| `d` / `n` | Refuse. |
 | `Esc` | Refuse. There is no way to leave the prompt unanswered. |
 | `Up` / `Left` / `Shift+Tab` | Move the highlight up. |
 | `Down` / `Right` / `Tab` | Move the highlight down. |
+| `Enter` | Take the highlighted choice. The first is "Allow this once". |
 
 Closing the prompt without an answer counts as a refusal, so the turn never
 waits on a question nobody answered.

@@ -632,7 +632,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'A workspace path boundary refuses any path that resolves outside the root',
       'AGENTS.md is read from the workspace root down to the working directory, user-level file first, inside one 32 KiB budget',
       '/init writes an AGENTS.md template when the workspace has none',
-      'y approves the pending call and n rejects it; Shift+Tab cycles the mode',
+      'y or a allows once, s allows for the session, d or n refuses; Shift+Tab cycles the mode',
     ],
   },
   binary: {
@@ -690,7 +690,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     description:
       'crates/niki-tui holds the app-level binding table, and a test parses every advertised chord label back to its action so the help and the handlers cannot drift apart.',
     capabilities: [
-      'y / n — approve or reject the pending tool call',
+      'y / a, s, d / n — allow once, allow for the session, or refuse',
       'Shift+Tab — cycle Manual → Auto → YOLO approval modes',
       'Ctrl+Shift+P — start a slash command in the composer',
       'Ctrl+T — the whole transcript, including rows that scrolled out of view',

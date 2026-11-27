@@ -37,6 +37,13 @@ For one shell call, the policy answers in this order:
    ACP session sends `session/request_permission` to the editor, and a headless
    run has nobody to ask and reports a refusal to the model.
 
+The prompt offers three answers. `y` or `a` runs the call once. `s` allows it
+for the rest of the session: a shell rule records the program and the exact
+line, and a later command that chains, redirects, or substitutes another
+command still asks — approving `git status` must not silently run
+`git status; rm -rf ~`. `d`, `n`, or `Esc` refuses. `/clear` and a new session
+drop every session rule, and nothing is written to `config.toml`.
+
 The model sees an approval outcome as a tool result, not as an agent failure,
 so it can adapt to a refusal.
 
@@ -55,9 +62,9 @@ niki --allow 'git*,cargo test*'      # prefixes
 niki -n "run the tests" --allow 'cargo*'
 ```
 
-When you choose "always allow" on an approval prompt, the exact command or the
-tool name is recorded for the rest of the session. It does not rewrite
-`config.toml`.
+`s` on an approval prompt is the session-scoped answer. It never rewrites
+`config.toml`; a command you want on every run belongs in `--allow` or the
+`[shell]` section.
 
 A command that is refused on the command line is still a valid turn result:
 `niki -n` exits `0`.
@@ -67,12 +74,12 @@ A command that is refused on the command line is still a valid turn result:
 | Tool | Gate |
 | --- | --- |
 | `read_file`, `list_dir`, `grep`, `glob` | No approval prompt. Reads only. |
-| `write_file`, `edit_file` | **No approval prompt in this build.** |
+| `write_file`, `edit_file` | Ask in Manual and Auto. Auto runs one unattended only when the target resolves inside the workspace; a target outside always asks. |
 | `shell` | The mode and the allow-list above. |
 
-The write tools are the honest gap: they can change the workspace without a
-prompt, even in Manual. The path boundary below limits where they can write, and
-your filesystem permissions limit what the process can touch.
+A write prompt names the absolute path it would touch and says whether that path
+resolves inside the workspace, so the answer is made against the real target
+rather than the argument the model typed.
 
 ## The workspace path boundary
 
@@ -99,8 +106,8 @@ requirement comes from the server's tool annotation:
 - A tool whose server declares `readOnlyHint = true` (and not a contradictory
   `destructiveHint`) runs without asking.
 - Every other MCP tool is gated. Manual and Auto both ask; YOLO runs it.
-- "Always" on the prompt records the tool name for the session. It is separate
-  from the shell allow-list.
+- `s` on the prompt records the tool name for the session. It is separate from
+  the shell allow-list.
 - A headless run has no approver, so a gated MCP call is reported to the model as
   a refusal; the full-screen app and an ACP session ask the person or editor.
 
