@@ -52,6 +52,10 @@ pub async fn load(servers: &BTreeMap<String, McpServer>) -> (Vec<ToolBridge>, Ve
 }
 
 /// [`load`] with an explicit startup budget, for a host or a test.
+///
+/// A server that configures `timeout` uses it for both its handshake and every
+/// later request, replacing the startup budget passed here; a server without
+/// one keeps `startup` for the handshake and [`DEFAULT_TIMEOUT`] per request.
 pub async fn load_with(
     servers: &BTreeMap<String, McpServer>,
     startup: Duration,
@@ -59,7 +63,8 @@ pub async fn load_with(
     let connecting = servers.iter().map(|(name, server)| {
         let name = name.clone();
         let transport = Transport::from(&server.transport);
-        async move { Server::connect_startup(&name, transport, startup).await }
+        let (startup, request) = budgets(server, startup);
+        async move { Server::connect_startup_with(&name, transport, startup, request).await }
     });
     let mut tools = Vec::new();
     let mut errors = Vec::new();
@@ -70,6 +75,17 @@ pub async fn load_with(
         }
     }
     (tools, errors)
+}
+
+/// The handshake and per-request budgets for one server.
+///
+/// A configured `timeout` replaces both. Without one the handshake keeps the
+/// global startup budget — `NIKI_MCP_STARTUP_TIMEOUT_SECS` or
+/// [`DEFAULT_STARTUP_TIMEOUT`] — and each request keeps [`DEFAULT_TIMEOUT`].
+fn budgets(server: &McpServer, startup: Duration) -> (Duration, Duration) {
+    server
+        .timeout
+        .map_or((startup, DEFAULT_TIMEOUT), |timeout| (timeout, timeout))
 }
 
 /// The startup budget the environment asks for, or the default.
@@ -91,6 +107,16 @@ fn startup_timeout_from(raw: Option<&str>) -> Duration {
 mod tests {
     use super::*;
 
+    fn server(timeout: Option<Duration>) -> McpServer {
+        McpServer {
+            transport: niki_config::McpTransport::Http {
+                url: "https://example.com/mcp".to_owned(),
+                headers: BTreeMap::new(),
+            },
+            timeout,
+        }
+    }
+
     #[test]
     fn the_startup_budget_is_ten_seconds_unless_the_environment_names_another() {
         assert_eq!(startup_timeout_from(None), Duration::from_secs(10));
@@ -98,5 +124,29 @@ mod tests {
         assert_eq!(startup_timeout_from(Some("soon")), Duration::from_secs(10));
         assert_eq!(startup_timeout_from(Some("0")), Duration::from_secs(10));
         assert_eq!(startup_timeout_from(Some(" 3 ")), Duration::from_secs(3));
+    }
+
+    #[test]
+    fn a_per_server_timeout_replaces_both_budgets() {
+        assert_eq!(
+            budgets(
+                &server(Some(Duration::from_secs(3))),
+                Duration::from_secs(10)
+            ),
+            (Duration::from_secs(3), Duration::from_secs(3))
+        );
+    }
+
+    #[test]
+    fn without_a_per_server_timeout_the_environment_and_request_defaults_apply() {
+        let from_env = startup_timeout_from(Some("7"));
+        assert_eq!(
+            budgets(&server(None), from_env),
+            (Duration::from_secs(7), DEFAULT_TIMEOUT)
+        );
+        assert_eq!(
+            budgets(&server(None), startup_timeout_from(None)).0,
+            DEFAULT_STARTUP_TIMEOUT
+        );
     }
 }

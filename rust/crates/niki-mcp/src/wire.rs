@@ -18,8 +18,8 @@ pub const PROTOCOL_VERSION: &str = "2025-06-18";
 /// How long one request may wait for its response by default.
 ///
 /// This bounds a dead server without rejecting a tool that legitimately takes
-/// a while; a host that needs another budget calls
-/// [`Server::connect_with`](crate::Server::connect_with).
+/// a while; a host that needs another budget sets the per-server `timeout`
+/// key or calls [`Server::connect_with`](crate::Server::connect_with).
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// How long a server may take to answer its handshake by default.
@@ -112,7 +112,26 @@ impl Server {
         transport: Transport,
         startup: Duration,
     ) -> Result<Self, McpError> {
-        match tokio::time::timeout(startup, Self::connect(name, transport)).await {
+        Self::connect_startup_with(name, transport, startup, DEFAULT_TIMEOUT).await
+    }
+
+    /// Connect with one budget for the handshake and another for each request.
+    ///
+    /// A configured per-server `timeout` passes the same value for both, so it
+    /// bounds the startup handshake and every later request. Without one the
+    /// caller keeps the global startup budget and [`DEFAULT_TIMEOUT`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`McpError::Timeout`] naming `initialize` when `startup`
+    /// elapses, and every error [`Server::connect_with`] can return.
+    pub async fn connect_startup_with(
+        name: &str,
+        transport: Transport,
+        startup: Duration,
+        request: Duration,
+    ) -> Result<Self, McpError> {
+        match tokio::time::timeout(startup, Self::connect_with(name, transport, request)).await {
             Ok(result) => result,
             Err(_) => Err(McpError::Timeout {
                 server: name.to_owned(),

@@ -158,6 +158,7 @@ async fn one_silent_server_does_not_block_the_others() {
                     env: BTreeMap::new(),
                     cwd: None,
                 },
+                timeout: None,
             },
         ),
         (
@@ -169,6 +170,7 @@ async fn one_silent_server_does_not_block_the_others() {
                     env: BTreeMap::from([("MCP_FIXTURE_SILENT".to_owned(), "1".to_owned())]),
                     cwd: None,
                 },
+                timeout: None,
             },
         ),
     ]);
@@ -184,6 +186,64 @@ async fn one_silent_server_does_not_block_the_others() {
         started.elapsed() < Duration::from_secs(2),
         "the silent server held the others for {:?}",
         started.elapsed()
+    );
+}
+
+#[tokio::test]
+async fn a_configured_per_server_timeout_bounds_a_later_request() {
+    let command = serde_json::to_string(env!("CARGO_BIN_EXE_mcp-fixture")).expect("quote");
+    let config = niki_config::Config::from_str(&format!(
+        "[mcp_servers.slowpoke]\ncommand = {command}\ntimeout = 1\n"
+    ))
+    .expect("config");
+
+    let (tools, errors) = niki_mcp::load(&config.mcp_servers).await;
+    assert!(errors.is_empty(), "{errors:?}");
+    let mut registry = Registry::new();
+    for tool in tools {
+        registry.register(tool);
+    }
+    let dir = tempfile::tempdir().expect("tempdir");
+    let ctx = ToolContext::new(dir.path()).expect("workspace");
+    let slow = registry.get("mcp__slowpoke__slow").expect("registered");
+
+    let started = Instant::now();
+    let error = slow
+        .run(json!({}), &ctx)
+        .await
+        .expect_err("the one-second budget must expire before the fixture's two-second answer");
+    let elapsed = started.elapsed();
+
+    let text = error.to_string();
+    assert!(text.contains("slowpoke"), "{text}");
+    assert!(text.contains("1s"), "{text}");
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "the fixed one-minute request budget was used instead ({elapsed:?})"
+    );
+}
+
+#[tokio::test]
+async fn a_configured_per_server_timeout_also_bounds_the_startup_handshake() {
+    let command = serde_json::to_string(env!("CARGO_BIN_EXE_mcp-fixture")).expect("quote");
+    let config = niki_config::Config::from_str(&format!(
+        "[mcp_servers.quiet]\ncommand = {command}\n\
+         env = {{ MCP_FIXTURE_SILENT = \"1\" }}\ntimeout = 1\n"
+    ))
+    .expect("config");
+
+    let started = Instant::now();
+    let (tools, errors) = niki_mcp::load_with(&config.mcp_servers, Duration::from_secs(30)).await;
+    let elapsed = started.elapsed();
+
+    assert!(tools.is_empty());
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    let text = errors[0].to_string();
+    assert!(text.contains("quiet"), "{text}");
+    assert!(text.contains("1s"), "{text}");
+    assert!(
+        elapsed < Duration::from_secs(3),
+        "the global startup budget was used instead ({elapsed:?})"
     );
 }
 
