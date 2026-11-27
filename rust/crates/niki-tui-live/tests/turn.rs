@@ -717,3 +717,118 @@ fn a_worker_turn_is_written_to_the_session_store() {
         ]
     );
 }
+
+/// Type a line on the screen, press Enter, and hand a mode command to the
+/// worker the way the event loop does.
+fn send_mode(app: &mut App, worker: &mut WorkerHandle, line: &str) -> Mode {
+    for character in line.chars() {
+        let _ = app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+    }
+    match app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)) {
+        Some(Command::Mode(mode)) => {
+            assert!(worker.set_mode(mode), "the worker is running");
+            mode
+        }
+        other => panic!("expected a mode, got {other:?}"),
+    }
+}
+
+#[test]
+fn every_mode_command_sets_the_mode_the_next_turn_is_built_with() {
+    for (command, expected) in [
+        ("/manual", Mode::Manual),
+        ("/auto", Mode::Auto),
+        ("/yolo", Mode::Yolo),
+    ] {
+        let workspace = tempfile::tempdir().expect("workspace");
+        let turns = Arc::new(Mutex::new(VecDeque::from(vec![text_turn("ok")])));
+        let build_turns = Arc::clone(&turns);
+        let ctx = ToolContext::new(workspace.path()).expect("workspace");
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let record = Arc::clone(&seen);
+
+        let mut worker = WorkerHandle::spawn_with("mock:mock-model", Mode::Manual, move |parts| {
+            record.lock().expect("record").push(parts.mode);
+            Ok(Agent::new(
+                Box::new(Scripted {
+                    turns: Arc::clone(&build_turns),
+                }),
+                ctx.clone(),
+                AgentConfig {
+                    model: "mock-model".to_owned(),
+                    ..AgentConfig::default()
+                },
+            )
+            .with_policy(parts.mode, AllowList::parse(""))
+            .with_cancel(parts.cancel))
+        });
+        let mut app = app(workspace.path());
+
+        assert_eq!(
+            send_mode(&mut app, &mut worker, command),
+            expected,
+            "{command}"
+        );
+        assert_eq!(app.status.mode, expected, "{command}");
+        assert!(
+            app.status_line().contains(expected.label()),
+            "{command}: {}",
+            app.status_line()
+        );
+
+        send(&mut app, &mut worker, "next turn");
+        pump(&mut app, &worker);
+        assert_eq!(
+            *seen.lock().expect("record"),
+            [expected],
+            "{command} must reach SessionParts::mode"
+        );
+    }
+}
+
+#[test]
+fn the_worker_keeps_one_mode_across_rebuilds() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        text_turn("one"),
+        text_turn("two"),
+        text_turn("three"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let record = Arc::clone(&seen);
+
+    let mut worker = WorkerHandle::spawn_with("mock:mock-model", Mode::Manual, move |parts| {
+        record.lock().expect("record").push(parts.mode);
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "first");
+    pump(&mut app, &worker);
+
+    for (command, expected) in [("/yolo", Mode::Yolo), ("/auto", Mode::Auto)] {
+        assert_eq!(send_mode(&mut app, &mut worker, command), expected);
+        assert!(worker.select_model("mock:mock-model"), "force a rebuild");
+        send(&mut app, &mut worker, "again");
+        pump(&mut app, &worker);
+    }
+
+    assert_eq!(
+        *seen.lock().expect("record"),
+        [Mode::Manual, Mode::Yolo, Mode::Auto],
+        "every rebuild takes the mode the worker holds, not the one it started with"
+    );
+}

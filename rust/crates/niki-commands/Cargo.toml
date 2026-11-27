@@ -8,3 +8,4 @@ repository.workspace = true
 description = "Slash command grammar for the Niki agent composer"
 
 [dependencies]
+niki-policy = { path = "../niki-policy" }

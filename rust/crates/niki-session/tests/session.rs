@@ -169,3 +169,38 @@ fn an_unknown_checkpoint_label_is_reported() {
         Err(SessionError::UnknownCheckpoint { .. })
     ));
 }
+
+#[test]
+fn a_summary_previews_the_first_user_prompt() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let session = store.create(temp.path()).unwrap();
+
+    assert_eq!(
+        store.list().unwrap()[0].first_prompt,
+        None,
+        "a session with no messages has no prompt to preview"
+    );
+
+    store.append(&session, "assistant", "Welcome.").unwrap();
+    assert_eq!(
+        store.list().unwrap()[0].first_prompt,
+        None,
+        "an assistant message is not a prompt"
+    );
+
+    store.append(&session, "user", "plan the port").unwrap();
+    store.append(&session, "user", "a later prompt").unwrap();
+    let listed = store.list().unwrap();
+    assert_eq!(listed[0].first_prompt.as_deref(), Some("plan the port"));
+    assert_eq!(listed[0].messages, 3);
+
+    assert_eq!(
+        store.find(session.as_str()).unwrap().unwrap().first_prompt,
+        Some("plan the port".to_owned())
+    );
+    assert_eq!(
+        store.latest_for(temp.path()).unwrap().unwrap().first_prompt,
+        Some("plan the port".to_owned())
+    );
+}

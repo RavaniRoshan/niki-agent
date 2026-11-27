@@ -7,6 +7,7 @@ use ratatui::widgets::{Block, Clear, Paragraph, Wrap};
 use crate::approval::ApprovalModal;
 use crate::help::HelpOverlay;
 use crate::model::ModelPicker;
+use crate::threads::ThreadPicker;
 
 /// Widest the overlay grows, so a line of help stays readable on a wide screen.
 const MAX_WIDTH: u16 = 76;
@@ -93,6 +94,59 @@ pub(crate) fn models(
     )));
     let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
     render(frame, area, "Model", lines, palette, glyphs, height);
+}
+
+pub(crate) fn threads(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &ThreadPicker,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
+    let mut lines = Vec::new();
+    if !modal.filter().is_empty() {
+        lines.push(Line::from(Span::styled(
+            format!("filter: {}", modal.filter()),
+            palette.accent_style(),
+        )));
+    }
+    if modal.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "no sessions are saved yet",
+            palette.muted_style(),
+        )));
+    } else if modal.is_filtered_empty() {
+        lines.push(Line::from(Span::styled(
+            "no session matches that filter",
+            palette.muted_style(),
+        )));
+    }
+    for index in modal.window() {
+        let Some(entry) = modal.row(index) else {
+            continue;
+        };
+        let chosen = index == modal.selected();
+        let lead = if chosen { "> " } else { "  " };
+        let style = if chosen {
+            palette.accent_style()
+        } else {
+            palette.body_style()
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{lead}{}", entry.preview), style),
+            Span::styled(
+                format!("  {}  {}", entry.message_label(), entry.cwd),
+                palette.muted_style(),
+            ),
+        ]));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        "enter open | type to filter | up and down move | escape cancel",
+        palette.muted_style(),
+    )));
+    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
+    render(frame, area, "Sessions", lines, palette, glyphs, height);
 }
 
 pub(crate) fn help(

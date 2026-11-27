@@ -14,10 +14,12 @@ mod approval;
 mod help;
 mod model;
 mod overlay;
+mod threads;
 
 pub use approval::ApprovalModal;
 pub use help::{HelpOverlay, describe};
 pub use model::{ModelChoice, ModelPicker};
+pub use threads::{NO_PROMPT, ThreadEntry, ThreadPicker};
 
 use crossterm::event::KeyEvent;
 use niki_agent::Approval;
@@ -32,6 +34,8 @@ pub enum Modal {
     Approval(ApprovalModal),
     /// The models the configuration offers.
     Models(ModelPicker),
+    /// The saved sessions, filterable, to resume one.
+    Threads(ThreadPicker),
     /// The keymap.
     Help(HelpOverlay),
 }
@@ -47,6 +51,8 @@ pub enum Outcome {
     Answer(Approval),
     /// The person chose a model spec.
     Model(String),
+    /// The person chose a session to resume.
+    Session(String),
 }
 
 impl Modal {
@@ -56,6 +62,7 @@ impl Modal {
         match self {
             Self::Approval(_) => "Approve a command",
             Self::Models(_) => "Model",
+            Self::Threads(_) => "Sessions",
             Self::Help(_) => "Keys",
         }
     }
@@ -65,6 +72,7 @@ impl Modal {
         match self {
             Self::Approval(modal) => modal.handle_key(key),
             Self::Models(modal) => modal.handle_key(key),
+            Self::Threads(modal) => modal.handle_key(key),
             Self::Help(modal) => modal.handle_key(key),
         }
     }
@@ -74,6 +82,7 @@ impl Modal {
         match self {
             Self::Approval(modal) => overlay::approval(frame, area, modal, palette, glyphs),
             Self::Models(modal) => overlay::models(frame, area, modal, palette, glyphs),
+            Self::Threads(modal) => overlay::threads(frame, area, modal, palette, glyphs),
             Self::Help(modal) => overlay::help(frame, area, modal, palette, glyphs),
         }
     }

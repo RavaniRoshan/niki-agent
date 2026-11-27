@@ -69,6 +69,8 @@ pub struct Summary {
     pub id: SessionId,
     /// Message count, so the list can show an empty session for what it is.
     pub messages: i64,
+    /// The first prompt the person typed, when the session has one.
+    pub first_prompt: Option<String>,
     pub title: Option<String>,
     pub cwd: String,
     pub created_at: i64,
@@ -79,6 +81,17 @@ pub struct Summary {
 pub struct SessionStore {
     connection: Connection,
 }
+
+/// The columns every [`Summary`] query reads, in the order its mapper expects.
+///
+/// The first prompt is the oldest stored `user` message; the count includes
+/// every role. Both subqueries read the existing `messages` table, so no
+/// schema change is needed.
+const SUMMARY_COLUMNS: &str = "sessions.id, sessions.title, sessions.cwd, sessions.created_at,
+     (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id),
+     (SELECT content FROM messages
+      WHERE messages.session_id = sessions.id AND messages.role = 'user'
+      ORDER BY messages.id ASC LIMIT 1)";
 
 impl SessionStore {
     /// Open or create the database at `path` and apply the schema.
@@ -122,12 +135,11 @@ impl SessionStore {
     ///
     /// Returns [`SessionError::Sqlite`] when the query fails.
     pub fn list(&self) -> Result<Vec<Summary>, SessionError> {
-        let mut statement = self.connection.prepare(
-            "SELECT sessions.id, sessions.title, sessions.cwd, sessions.created_at,
-                    (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id)
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT {SUMMARY_COLUMNS}
              FROM sessions
              ORDER BY sessions.created_at DESC, sessions.rowid DESC",
-        )?;
+        ))?;
         let rows = statement.query_map([], |row| {
             Ok(Summary {
                 id: SessionId(row.get(0)?),
@@ -135,6 +147,7 @@ impl SessionStore {
                 cwd: row.get(2)?,
                 created_at: row.get(3)?,
                 messages: row.get(4)?,
+                first_prompt: row.get(5)?,
             })
         })?;
         let mut summaries = Vec::new();
@@ -153,9 +166,7 @@ impl SessionStore {
         let summary = self
             .connection
             .query_row(
-                "SELECT sessions.id, sessions.title, sessions.cwd, sessions.created_at,
-                        (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id)
-                 FROM sessions WHERE sessions.id = ?1",
+                &format!("SELECT {SUMMARY_COLUMNS} FROM sessions WHERE sessions.id = ?1"),
                 params![id],
                 |row| {
                     Ok(Summary {
@@ -164,6 +175,7 @@ impl SessionStore {
                         cwd: row.get(2)?,
                         created_at: row.get(3)?,
                         messages: row.get(4)?,
+                        first_prompt: row.get(5)?,
                     })
                 },
             )
@@ -181,11 +193,12 @@ impl SessionStore {
         let summary = self
             .connection
             .query_row(
-                "SELECT sessions.id, sessions.title, sessions.cwd, sessions.created_at,
-                        (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id)
-                 FROM sessions WHERE sessions.cwd = ?1
-                 ORDER BY sessions.created_at DESC, sessions.rowid DESC
-                 LIMIT 1",
+                &format!(
+                    "SELECT {SUMMARY_COLUMNS}
+                     FROM sessions WHERE sessions.cwd = ?1
+                     ORDER BY sessions.created_at DESC, sessions.rowid DESC
+                     LIMIT 1"
+                ),
                 params![cwd],
                 |row| {
                     Ok(Summary {
@@ -194,6 +207,7 @@ impl SessionStore {
                         cwd: row.get(2)?,
                         created_at: row.get(3)?,
                         messages: row.get(4)?,
+                        first_prompt: row.get(5)?,
                     })
                 },
             )
