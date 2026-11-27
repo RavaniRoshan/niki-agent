@@ -19,6 +19,7 @@ These apply when no dialog is open.
 | `Esc` | Close the command list first; then clear a non-empty draft; with an empty draft, stop the running turn. A second `Esc` within two seconds of the first restores the last prompt. |
 | `Ctrl+C` | Close an open dialog and stop the running turn. It does not leave the app. |
 | `Ctrl+D` | Leave the app. |
+| `Ctrl+T` | Open the whole conversation in a scrollable overlay: `Up`/`Down`, `PageUp`/`PageDown`, `Home`/`End`, `Esc` closes. |
 | `Ctrl+Y` | Copy the newest answer to the terminal clipboard (OSC 52). `NIKI_NO_CLIPBOARD=1` turns it off. |
 | `Shift+Tab` | Cycle Manual, Auto and YOLO. |
 | `?` | Open the key list, when the composer is empty. |
@@ -133,12 +134,11 @@ session with no prompt previews as `(no prompt)`.
 
 ## Keys the help overlay lists that do nothing
 
-The overlay is drawn from a registry that still carries five bindings the app
+The overlay is drawn from a registry that still carries four bindings the app
 does not act on. They are not shortcuts in this build:
 
 - `Ctrl+Shift+P` (it would start a slash command)
 - `Ctrl+O` (tool output)
-- `Ctrl+T` (subagent activity)
 - `Ctrl+N` (notifications)
 - `Ctrl+G` (open an editor)
 

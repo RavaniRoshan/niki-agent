@@ -2,7 +2,7 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.1.0 adds the composer and session features below to the 2.0.0 Rust base. The
+2.1.1 adds the transcript overlay and request retries to the 2.1.0 base. The
 shipped product is still a single self-contained executable: there is no Python
 interpreter to install, no virtual environment to create, and no packages to
 resolve on first run. Linux and WSL share one archive, Windows has its own, and
@@ -45,6 +45,20 @@ niki
 No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
+
+## What changed in 2.1.1
+
+**The whole conversation, when you need it.** `Ctrl+T` opens the transcript
+overlay: every prompt, answer, tool call and result, scrollable with
+`Up`/`Down`, `PageUp`/`PageDown` and `Home`/`End`, and closed with `Esc`. The
+composer is untouched while it is open.
+
+**A transient failure no longer ends the turn.** A provider request that is
+rate-limited, returns 500/502/503/504, or loses the connection is retried twice
+(three attempts total) with a short exponential backoff and jitter, honouring a
+small `Retry-After`. Once the first token has arrived the stream is never
+retried, so text cannot be duplicated. Authentication and validation errors are
+not retried.
 
 ## What changed in 2.1.0
 
