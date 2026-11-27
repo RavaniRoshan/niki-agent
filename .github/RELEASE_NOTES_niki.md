@@ -62,8 +62,15 @@ capped at 20 files and 400 lines with the withheld amount reported. Untracked
 files are shown as additions; an empty tree says `no changes`.
 
 **Sessions are inspectable.** `/threads` browses saved sessions with a first-prompt
-preview and a filter, and restores the chosen one. `/context` shows what the
-window is holding and `/compact` actually rewrites the running history.
+preview and a filter, and restores the chosen one. `/rename` titles a session,
+`/export` writes it out as Markdown, `/context` shows what the window is
+holding, and `/compact` actually rewrites the running history.
+
+**A finished turn can call a program.** `[notify] program` in the config runs
+one detached executable per finished turn, with a JSON payload on stdin
+(session, model, cwd, reason, steps, tool calls, and the last answer clipped to
+2000 characters). It never runs through a shell and the turn does not wait for
+it.
 
 **Instructions are files.** `AGENTS.md` and `.niki/AGENTS.md` are read from the
 repository root down to the working directory, with the user-level file first,
