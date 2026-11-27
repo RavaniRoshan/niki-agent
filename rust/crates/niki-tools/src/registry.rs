@@ -11,6 +11,7 @@ trait ErasedTool: Send + Sync {
     fn description(&self) -> &str;
     fn schema(&self) -> Value;
     fn requires_approval(&self) -> bool;
+    fn auto_allows_workspace_write(&self) -> bool;
     fn run<'a>(&'a self, args: Value, ctx: &'a ToolContext) -> ToolFuture<'a>;
 }
 
@@ -29,6 +30,10 @@ impl<T: Tool> ErasedTool for T {
 
     fn requires_approval(&self) -> bool {
         Tool::requires_approval(self)
+    }
+
+    fn auto_allows_workspace_write(&self) -> bool {
+        Tool::auto_allows_workspace_write(self)
     }
 
     fn run<'a>(&'a self, args: Value, ctx: &'a ToolContext) -> ToolFuture<'a> {
@@ -61,6 +66,11 @@ impl ToolHandle<'_> {
     /// See [`Tool::requires_approval`].
     pub fn requires_approval(&self) -> bool {
         self.tool.requires_approval()
+    }
+
+    /// See [`Tool::auto_allows_workspace_write`].
+    pub fn auto_allows_workspace_write(&self) -> bool {
+        self.tool.auto_allows_workspace_write()
     }
 
     /// See [`Tool::run`].
@@ -193,10 +203,11 @@ mod tests {
         let handle = registry.get("mcp__fixture__write").expect("registered");
         assert!(handle.requires_approval());
         assert!(
-            !registry
+            registry
                 .get("write_file")
                 .expect("built-in")
-                .requires_approval()
+                .requires_approval(),
+            "writing a file is gated"
         );
 
         let Value::Array(specs) = registry.specs() else {
@@ -211,5 +222,25 @@ mod tests {
         assert_eq!(names, sorted, "registration keeps the specs sorted");
         assert!(names.contains(&"mcp__fixture__write"));
         assert_eq!(registry.names(), names, "names and specs agree");
+    }
+
+    #[test]
+    fn only_the_built_in_mutators_can_write_unattended() {
+        let registry = Registry::new();
+        for name in ["write_file", "edit_file"] {
+            let handle = registry.get(name).expect("built-in");
+            assert!(handle.requires_approval(), "{name} is gated");
+            assert!(
+                handle.auto_allows_workspace_write(),
+                "{name} may run in Auto"
+            );
+        }
+        for name in ["read_file", "list_dir", "grep", "glob", "shell"] {
+            let handle = registry.get(name).expect("built-in");
+            assert!(
+                !handle.auto_allows_workspace_write(),
+                "{name} never writes unattended"
+            );
+        }
     }
 }

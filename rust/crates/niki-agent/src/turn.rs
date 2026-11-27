@@ -582,13 +582,15 @@ impl Agent {
     /// Gate one call against the live mode.
     ///
     /// `shell` keeps its command-level allow-list. Any other tool that declares
-    /// [`Tool::requires_approval`](niki_tools::Tool::requires_approval) — every
-    /// mutating MCP tool — takes the same callback: `Always` records the tool
-    /// name so a later call of the same tool does not ask again, and Auto asks
-    /// as Manual does because this client has no classifier. A
-    /// [`Decision::Ask`] goes to the installed [`Approver`] and waits for the
-    /// person's answer. A run with no approver — a headless one — reports the
-    /// request to the model as a refusal rather than silently allowing it.
+    /// [`Tool::requires_approval`](niki_tools::Tool::requires_approval) — the
+    /// built-in file mutators and every mutating MCP tool — takes the same
+    /// callback: `Always` records the tool name so a later call of the same tool
+    /// does not ask again. `Auto` asks as `Manual` does, with one exception: a
+    /// built-in file mutator whose target resolves inside the workspace runs
+    /// unattended, which is what the mode promises. A [`Decision::Ask`] goes to
+    /// the installed [`Approver`] and waits for the person's answer. A run with
+    /// no approver — a headless one — reports the request to the model as a
+    /// refusal rather than silently allowing it.
     async fn gate(&mut self, name: &str, args: &Value) -> Result<(), String> {
         if name == "shell" {
             let Some(command) = args.get("command").and_then(Value::as_str) else {
@@ -602,6 +604,9 @@ impl Agent {
             .get(name)
             .is_some_and(|tool| tool.requires_approval());
         if !gated || self.approved.contains(name) || self.mode == Mode::Yolo {
+            return Ok(());
+        }
+        if self.mode == Mode::Auto && self.auto_write_inside(name, args) {
             return Ok(());
         }
 
@@ -622,6 +627,23 @@ impl Agent {
             }
             Some(Approval::Deny) => Err(format!("refused: `{name}` was not approved")),
         }
+    }
+
+    /// Whether `Auto` may run this call unattended: the tool is a built-in file
+    /// mutator and the path it names resolves inside the workspace. A path that
+    /// escapes fails the resolution, so the call falls through to the approver.
+    fn auto_write_inside(&self, name: &str, args: &Value) -> bool {
+        let mutator = self
+            .registry
+            .get(name)
+            .is_some_and(|tool| tool.auto_allows_workspace_write());
+        if !mutator {
+            return false;
+        }
+        ["file_path", "path"]
+            .iter()
+            .find_map(|key| args.get(key).and_then(Value::as_str))
+            .is_some_and(|path| self.ctx.resolve(path).is_ok())
     }
 
     async fn gate_command(&mut self, command: &str) -> Result<(), String> {

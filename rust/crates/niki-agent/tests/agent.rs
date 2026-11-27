@@ -125,7 +125,8 @@ async fn a_tool_call_runs_and_feeds_the_result_back() {
         text_turn("done"),
     ]);
     let observed = provider.clone();
-    let mut agent = agent(provider, dir.path(), config());
+    let mut agent =
+        agent(provider, dir.path(), config()).with_policy(Mode::Auto, AllowList::parse(""));
 
     let outcome = agent.run("write it", &mut |_| {}).await.expect("run");
 
@@ -571,4 +572,106 @@ async fn a_blocking_prompt_hook_stops_the_turn_before_the_model() {
     assert!(observed.requests().is_empty());
     assert_eq!(agent.messages().len(), 1);
     assert_eq!(agent.messages()[0].content, "hello");
+}
+
+#[tokio::test]
+async fn writing_a_file_asks_in_manual_mode() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"file_path":"asked.txt","content":"hello"}"#,
+        ),
+        text_turn("understood"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_policy(Mode::Manual, AllowList::parse(""))
+        .with_approver(approver);
+
+    agent.run("write it", &mut |_| {}).await.expect("run");
+
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 1, "a write asks before it runs");
+    assert!(requests[0].command.starts_with("write_file"));
+    assert!(
+        !dir.path().join("asked.txt").exists(),
+        "a denied write does not touch the disk"
+    );
+}
+
+#[tokio::test]
+async fn auto_mode_writes_inside_the_workspace_without_asking() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"file_path":"auto.txt","content":"hello"}"#,
+        ),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_policy(Mode::Auto, AllowList::parse(""))
+        .with_approver(approver);
+
+    agent.run("write it", &mut |_| {}).await.expect("run");
+
+    assert!(seen.lock().expect("lock").is_empty(), "Auto does not ask");
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("auto.txt")).expect("written"),
+        "hello"
+    );
+}
+
+#[tokio::test]
+async fn auto_mode_still_asks_for_a_path_outside_the_workspace() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"file_path":"../escape.txt","content":"hello"}"#,
+        ),
+        text_turn("understood"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_policy(Mode::Auto, AllowList::parse(""))
+        .with_approver(approver);
+
+    agent.run("write it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(
+        seen.lock().expect("lock").len(),
+        1,
+        "a path that leaves the workspace asks"
+    );
+    assert!(
+        !dir.path()
+            .parent()
+            .expect("parent")
+            .join("escape.txt")
+            .exists()
+    );
+}
+
+#[tokio::test]
+async fn auto_mode_reads_without_asking() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("seen.txt"), "text").expect("fixture");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "read_file", r#"{"file_path":"seen.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Deny);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_policy(Mode::Auto, AllowList::parse(""))
+        .with_approver(approver);
+
+    agent.run("read it", &mut |_| {}).await.expect("run");
+
+    assert!(seen.lock().expect("lock").is_empty(), "reads never ask");
 }

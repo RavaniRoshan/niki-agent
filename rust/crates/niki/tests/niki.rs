@@ -129,6 +129,8 @@ fn one_prompt_writes_a_file_through_the_turn_loop() {
     let output = Command::new(env!("CARGO_BIN_EXE_niki"))
         .arg("-n")
         .arg("create hello.txt")
+        .arg("--mode")
+        .arg("auto")
         .arg("--config")
         .arg(&config)
         .arg("--root")

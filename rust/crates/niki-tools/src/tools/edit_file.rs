@@ -12,6 +12,14 @@ impl Tool for EditFile {
         "edit_file"
     }
 
+    fn requires_approval(&self) -> bool {
+        true
+    }
+
+    fn auto_allows_workspace_write(&self) -> bool {
+        true
+    }
+
     fn description(&self) -> &str {
         "Replace an exact substring in a workspace file. A non-unique `old` needs replace_all."
     }

@@ -14,7 +14,10 @@ How it works:
 2. Writes a throwaway ``NIKI_HOME`` whose ``config.toml`` declares a mock
    provider (``class_path = "langchain_openai:ChatOpenAI"``) pointed at the
    server, and makes it the default model.
-3. Runs ``niki -n "<prompt>"`` in a throwaway workspace, headless.
+3. Runs ``niki -n "<prompt>" --mode auto`` in a throwaway workspace, headless.
+   Auto is the mode the README describes as running a write inside the
+   workspace unattended; Manual would (correctly) refuse, because a headless
+   run has nobody to ask.
 4. Answers the first model request with a ``write_file`` tool call; any request
    that already carries a tool result is answered with a short text message and
    ``finish_reason: "stop"``.
@@ -558,6 +561,10 @@ def main(argv: list[str] | None = None) -> int:
         command = list(niki_argv)
         if args.no_interpreter:
             command.append("--no-interpreter")
+        if args.niki:
+            # A file write is gated in Manual; the release gate exercises the
+            # mode where an in-workspace write runs unattended.
+            command += ["--mode", "auto"]
         command += ["-n", PROMPT]
 
         print("smoke_turn: one real turn from an installed niki")
