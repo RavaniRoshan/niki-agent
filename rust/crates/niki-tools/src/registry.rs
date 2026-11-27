@@ -116,6 +116,13 @@ impl Registry {
         self
     }
 
+    /// Remove a tool by name, so a caller can derive a registry that cannot
+    /// call the tool that delegates to it.
+    pub fn remove(&mut self, name: &str) -> &mut Self {
+        self.tools.retain(|tool| tool.name() != name);
+        self
+    }
+
     /// The registered tool names, in the order [`Registry::specs`] reports them.
     #[must_use]
     pub fn names(&self) -> Vec<&str> {

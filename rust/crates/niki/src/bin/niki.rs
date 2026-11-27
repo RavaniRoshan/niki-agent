@@ -19,6 +19,7 @@ use niki_provider::{
 };
 use niki_session::{SessionId, SessionStore};
 use niki_skills::SkillCatalog;
+use niki_subagents::{SubagentTool, TOOL_NAME};
 use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
@@ -146,6 +147,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     for error in &mcp_errors {
         eprintln!("niki: warning: {error}");
     }
+    let mcp_tools = Arc::new(mcp_tools);
     let hooks = load_hooks(&root, &config_home());
 
     let Resumed {
@@ -155,8 +157,18 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     } = open_session(&options, &root)?;
 
     let cancel = CancelHandle::new();
+    let delegation = Delegation {
+        config: config.clone(),
+        spec: spec.clone(),
+        system: settings.system.clone(),
+        mode,
+        allow: allow.clone(),
+        hooks: Arc::clone(&hooks),
+        cancel: cancel.clone(),
+    };
+    let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
     let mut agent = Agent::new(provider, ctx, settings)
-        .with_registry(tool_registry(&mcp_tools))
+        .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
         .with_policy(mode, allow)
         .with_hooks(hooks)
         .with_cancel(cancel.clone())
@@ -400,12 +412,14 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         .context("start the async runtime")?;
     let mcp_tools = Arc::new(load_mcp(&runtime, &config, &mut app));
     let tool_names = {
-        let registry = tool_registry(&mcp_tools);
-        registry
+        let mut names = tool_registry(mcp_tools.as_slice(), None)
             .names()
             .into_iter()
             .map(str::to_owned)
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        names.push(TOOL_NAME.to_owned());
+        names.sort_unstable();
+        names
     };
     app.set_tools(tool_names);
 
@@ -421,8 +435,18 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
             max_steps,
             ..AgentConfig::default()
         };
+        let delegation = Delegation {
+            config: build_config.clone(),
+            spec: parts.model.clone(),
+            system: system.clone(),
+            mode: parts.mode,
+            allow: allow.clone(),
+            hooks: Arc::clone(&hooks),
+            cancel: parts.cancel.clone(),
+        };
+        let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
         Ok(Agent::new(provider, ctx.clone(), settings)
-            .with_registry(tool_registry(&mcp_tools))
+            .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
             .with_policy(parts.mode, allow.clone())
             .with_hooks(Arc::clone(&hooks))
             .with_cancel(parts.cancel)
@@ -472,15 +496,26 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             for warning in skills.warnings() {
                 eprintln!("niki: warning: {warning}");
             }
+            let system = skills.inject_into(&base_system);
             let settings = AgentConfig {
                 model: model.to_owned(),
-                system: skills.inject_into(&base_system),
+                system: system.clone(),
                 max_steps,
                 ..AgentConfig::default()
             };
             let hooks = load_hooks(&seed.cwd, &config_home());
+            let delegation = Delegation {
+                config: build_config.clone(),
+                spec: spec.clone(),
+                system,
+                mode: seed.mode,
+                allow: allow.clone(),
+                hooks: Arc::clone(&hooks),
+                cancel: seed.cancel.clone(),
+            };
+            let subagent = delegation.tool(&ctx, Arc::clone(&factory_tools));
             Ok(Agent::new(provider, ctx, settings)
-                .with_registry(tool_registry(&factory_tools))
+                .with_registry(tool_registry(factory_tools.as_slice(), Some(subagent)))
                 .with_policy(seed.mode, allow.clone())
                 .with_hooks(hooks)
                 .with_cancel(seed.cancel)
@@ -532,11 +567,60 @@ fn load_mcp(runtime: &tokio::runtime::Runtime, config: &Config, app: &mut App) -
     tools
 }
 
-/// The built-in tools plus every tool discovered from an MCP server.
-fn tool_registry(tools: &[ToolBridge]) -> Registry {
+/// What a `task` child inherits from the session that started it.
+struct Delegation {
+    config: Config,
+    spec: String,
+    system: String,
+    mode: Mode,
+    allow: AllowList,
+    hooks: Arc<dyn HookRunner>,
+    cancel: CancelHandle,
+}
+
+impl Delegation {
+    /// Build the `task` tool. Each call builds a fresh provider, agent and
+    /// registry, so a child never inherits the parent's conversation.
+    fn tool(&self, ctx: &ToolContext, tools: Arc<Vec<ToolBridge>>) -> SubagentTool {
+        let config = self.config.clone();
+        let spec = self.spec.clone();
+        let system = self.system.clone();
+        let mode = self.mode;
+        let allow = self.allow.clone();
+        let hooks = Arc::clone(&self.hooks);
+        let ctx = ctx.clone();
+        SubagentTool::new(
+            move || tool_registry(tools.as_slice(), None),
+            move |registry, steps| {
+                let (provider_name, model) =
+                    split_spec(&spec).map_err(|error| format!("{error:#}"))?;
+                let provider =
+                    build_provider(&config, provider_name).map_err(|error| format!("{error:#}"))?;
+                let settings = AgentConfig {
+                    model: model.to_owned(),
+                    system: system.clone(),
+                    max_steps: steps,
+                    ..AgentConfig::default()
+                };
+                Ok(Agent::new(provider, ctx.clone(), settings)
+                    .with_registry(registry)
+                    .with_policy(mode, allow.clone())
+                    .with_hooks(Arc::clone(&hooks)))
+            },
+        )
+        .with_cancel(self.cancel.clone())
+    }
+}
+
+/// The built-in tools, every tool discovered from an MCP server, and the `task`
+/// tool when the session delegates.
+fn tool_registry(tools: &[ToolBridge], subagent: Option<SubagentTool>) -> Registry {
     let mut registry = Registry::new();
     for tool in tools {
         registry.register(tool.clone());
+    }
+    if let Some(subagent) = subagent {
+        registry.register(subagent);
     }
     registry
 }

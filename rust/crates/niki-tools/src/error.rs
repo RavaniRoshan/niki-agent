@@ -40,4 +40,8 @@ pub enum ToolError {
     /// server reported the tool's own `isError` result.
     #[error("{0}")]
     Mcp(String),
+
+    /// A delegated child agent could not be built or did not finish.
+    #[error("subagent failed: {0}")]
+    Subagent(String),
 }

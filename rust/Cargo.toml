@@ -15,6 +15,7 @@ members = [
     "crates/niki-render",
     "crates/niki-session",
     "crates/niki-skills",
+    "crates/niki-subagents",
     "crates/niki-tools",
     "crates/niki-tui",
     "crates/niki-tui-live",
