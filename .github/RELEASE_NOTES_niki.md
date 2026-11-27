@@ -3,9 +3,10 @@
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
 2.1.2 adds the three-answer approval prompt, `niki doctor`, `/status`, session
-listing from the shell, native macOS archives for Apple silicon and Intel, and
-memory bounds on the tools that read or capture output. The shipped product is
-still a single self-contained executable: there is no Python interpreter to
+listing from the shell, `Ctrl+G` for your own editor, native macOS archives for
+Apple silicon and Intel, and memory bounds on the tools that read or capture
+output. The shipped product is still a single
+self-contained executable: there is no Python interpreter to
 install, no virtual environment to create, and no packages to resolve on first
 run. Linux and WSL share one archive, Windows has its own, and macOS has one for
 Apple silicon and one for Intel.
@@ -81,6 +82,12 @@ and `niki sessions list --json` gives the same rows as an array of `id`,
 `updated_at`, `title`, `messages` and `workspace`. `--root <dir>` narrows the
 list to one workspace. An empty or missing store prints `no saved sessions` and
 exits 0.
+
+**`Ctrl+G` hands the composer to your editor.** The draft goes to a private
+temporary file, the screen steps aside while `$VISUAL`, `$EDITOR` or `vi` edits
+it, and the text comes back into the composer — replaced, with one trailing
+newline trimmed, capped at 1 MiB. A failed launch or a non-zero exit keeps the
+draft you had and reports it; no turn starts on any path.
 
 ## What changed in 2.1.1
 
