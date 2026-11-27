@@ -466,3 +466,61 @@ async fn write_file_reports_the_path_the_model_named() {
 
     assert_eq!(output.text, "Updated file src/notes.txt");
 }
+
+#[tokio::test]
+async fn edit_file_refuses_a_file_larger_than_it_will_load() {
+    let dir = TempDir::new().expect("temp dir");
+    let path = dir.path().join("huge.bin");
+    let file = fs::File::create(&path).expect("create");
+    file.set_len(40 * 1024 * 1024).expect("sparse size");
+    drop(file);
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let error = call(
+        &registry,
+        &ctx,
+        "edit_file",
+        json!({"file_path": "huge.bin", "old_string": "a", "new_string": "b"}),
+    )
+    .await
+    .err()
+    .expect("the edit is refused instead of loading 40 MiB");
+
+    match error {
+        ToolError::InvalidArguments(message) => {
+            assert!(message.contains("huge.bin"), "{message}");
+            assert!(message.contains("the limit is"), "{message}");
+        }
+        other => panic!("expected InvalidArguments, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn grep_skips_a_file_larger_than_it_will_load() {
+    use std::io::Write;
+
+    let dir = TempDir::new().expect("temp dir");
+    let mut contents = vec![b'a'; 40 * 1024 * 1024];
+    contents[..6].copy_from_slice(b"needle");
+    let mut file = fs::File::create(dir.path().join("blob.txt")).expect("create");
+    file.write_all(&contents).expect("write");
+    drop(file);
+    drop(contents);
+    fs::write(dir.path().join("small.txt"), "needle here\n").expect("write small");
+    let ctx = context(&dir);
+    let registry = Registry::new();
+
+    let output = ok(&registry, &ctx, "grep", json!({"pattern": "needle"})).await;
+
+    assert!(
+        output.text.contains("small.txt:1:needle"),
+        "the readable file is searched: {}",
+        output.text
+    );
+    assert!(
+        !output.text.contains("blob.txt"),
+        "the oversized file is not loaded: {}",
+        output.text
+    );
+}

@@ -63,6 +63,14 @@ impl Tool for EditFile {
         }
 
         let resolved = ctx.resolve(path)?;
+        let metadata = fs::metadata(&resolved).map_err(|source| io_error(&resolved, source))?;
+        if metadata.len() > crate::MAX_LOADED_FILE_BYTES {
+            return Err(ToolError::InvalidArguments(format!(
+                "{path} is {} bytes; an edit loads the whole file and the limit is {} bytes",
+                metadata.len(),
+                crate::MAX_LOADED_FILE_BYTES
+            )));
+        }
         let original =
             fs::read_to_string(&resolved).map_err(|source| io_error(&resolved, source))?;
         let relative = ctx.relative(&resolved);
