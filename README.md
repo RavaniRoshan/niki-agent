@@ -65,7 +65,7 @@ time, and the decision of what the agent may do on its own.
 | | |
 | --- | --- |
 | **One binary** | The turn loop, providers, tools, policy, sessions, MCP client, and UI are one native executable. Nothing imports a language runtime. |
-| **A quiet interface** | The composer is a single rule, not a box, and the loop draws on keys, worker events and a moving spinner rather than on a timer that repaints the world. |
+| **A quiet interface** | An idle session draws nothing: the loop wakes on keys, worker events and a moving spinner, never on a timer that repaints the world. The composer is a single rule, not a box. |
 | **A fast start** | Startup is a native process launch — no interpreter to boot and no import graph to warm. |
 | **Your files, your machine** | Sessions, history, skills, and stored credentials live in `~/.niki`. No account and no cloud sync. |
 | **Your model** | Anthropic, OpenAI, Google Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, and local Ollama are built in; any OpenAI-compatible endpoint is a config block. |
