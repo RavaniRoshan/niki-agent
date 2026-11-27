@@ -165,6 +165,26 @@ impl Transcript {
         self.streaming
     }
 
+    /// The index of the newest row the person typed.
+    #[must_use]
+    pub fn last_user(&self) -> Option<usize> {
+        self.rows.iter().rposition(|row| row.kind == RowKind::User)
+    }
+
+    /// Drop every row from `index` on, and return how many left.
+    ///
+    /// The store is not touched: restoring a prompt to the composer is a view
+    /// change, and the saved session keeps what happened.
+    pub fn truncate(&mut self, index: usize) -> usize {
+        if index >= self.rows.len() {
+            return 0;
+        }
+        let dropped = self.rows.len() - index;
+        self.rows.truncate(index);
+        self.streaming = false;
+        dropped
+    }
+
     /// Empty the view for a new session.
     pub fn clear(&mut self) {
         self.rows.clear();
@@ -284,6 +304,25 @@ mod tests {
         let shortened = one_line(&long);
         assert_eq!(shortened.chars().count(), 160);
         assert!(shortened.ends_with("..."));
+    }
+
+    #[test]
+    fn last_user_finds_the_newest_prompt_and_truncate_drops_from_it() {
+        let mut transcript = Transcript::default();
+        transcript.push_user("first");
+        transcript.push_assistant("answer");
+        transcript.push_user("second");
+        transcript.push_assistant("another");
+        assert_eq!(transcript.last_user(), Some(2));
+
+        assert_eq!(transcript.truncate(2), 2);
+        let rows = transcript.rows();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[1].text, "answer");
+        assert_eq!(transcript.truncate(9), 0, "nothing past the end to drop");
+
+        let empty = Transcript::default();
+        assert_eq!(empty.last_user(), None);
     }
 
     #[test]

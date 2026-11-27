@@ -363,3 +363,18 @@ fn copying_with_no_answer_says_so() {
     let last = app.transcript.rows().last().expect("a notice");
     assert_eq!(last.text, "no answer to copy yet");
 }
+
+#[test]
+fn a_bang_line_is_not_a_slash_command() {
+    let mut app = app();
+    type_text(&mut app, "!echo hi");
+    assert!(
+        app.completion().is_none(),
+        "completion must not offer commands for a shell line: {:?}",
+        app.completion()
+    );
+
+    let mut app = self::app();
+    type_text(&mut app, "!");
+    assert!(app.completion().is_none(), "{:?}", app.completion());
+}

@@ -113,6 +113,28 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
             ]));
         }
     }
+    for prompt in app.queued() {
+        if !lines.is_empty() {
+            lines.push(Line::default());
+        }
+        let marker = "queued: ";
+        let indent = " ".repeat(marker.len());
+        let wrap_width = width.saturating_sub(marker.len()).max(1);
+        for (index, chunk) in niki_render::wrap(prompt, wrap_width)
+            .into_iter()
+            .enumerate()
+        {
+            let lead = if index == 0 {
+                marker.to_owned()
+            } else {
+                indent.clone()
+            };
+            lines.push(Line::from(vec![
+                Span::styled(lead, palette.muted_style()),
+                Span::styled(chunk, palette.muted_style()),
+            ]));
+        }
+    }
     lines
 }
 

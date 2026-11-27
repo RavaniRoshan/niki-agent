@@ -15,9 +15,9 @@ use futures_util::stream::BoxStream;
 use futures_util::{Stream, StreamExt};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList};
 use niki_policy::Mode;
-use niki_provider::{ChatRequest, Provider, ProviderError, StopReason, StreamEvent, Usage};
+use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
 use niki_tools::ToolContext;
-use niki_tui_live::{App, Command, SessionInfo, TurnState, WorkerEvent, WorkerHandle};
+use niki_tui_live::{App, Command, RowKind, SessionInfo, TurnState, WorkerEvent, WorkerHandle};
 
 /// A provider that replays one scripted turn per request.
 struct Scripted {
@@ -101,6 +101,42 @@ impl Provider for GatedProvider {
     }
 }
 
+/// A provider that records every request: the first waits for the test, later
+/// ones answer at once. A steer is proved by the second request carrying it.
+struct RecordingGate {
+    gate: Arc<Mutex<Receiver<()>>>,
+    seen: Arc<Mutex<Vec<ChatRequest>>>,
+    calls: Arc<Mutex<usize>>,
+}
+
+impl Provider for RecordingGate {
+    fn name(&self) -> &str {
+        "recording"
+    }
+
+    fn stream(
+        &self,
+        request: ChatRequest,
+    ) -> BoxStream<'static, Result<StreamEvent, ProviderError>> {
+        self.seen.lock().expect("lock").push(request);
+        let call = {
+            let mut calls = self.calls.lock().expect("lock");
+            *calls += 1;
+            *calls
+        };
+        if call == 1 {
+            Box::pin(Gated {
+                prefix: Some(StreamEvent::TextDelta("half an answer".to_owned())),
+                suffix: Some(StreamEvent::Done(StopReason::EndTurn)),
+                gate: Arc::clone(&self.gate),
+                state: 0,
+            })
+        } else {
+            futures_util::stream::iter(text_turn("answer to the steer").into_iter().map(Ok)).boxed()
+        }
+    }
+}
+
 fn text_turn(text: &str) -> Vec<StreamEvent> {
     vec![
         StreamEvent::TextDelta(text.to_owned()),
@@ -137,19 +173,25 @@ fn app_in(root: &std::path::Path, mode: Mode) -> App {
     })
 }
 
-/// Type a prompt into the composer and send it, as the screen does.
-fn send(app: &mut App, worker: &mut WorkerHandle, prompt: &str) {
-    for character in prompt.chars() {
+/// Type text into the composer without sending it.
+fn type_into(app: &mut App, text: &str) {
+    for character in text.chars() {
         let _ = app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
     }
+}
+
+/// Type a prompt into the composer and send it, as the screen does.
+fn send(app: &mut App, worker: &mut WorkerHandle, prompt: &str) {
+    type_into(app, prompt);
     match app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)) {
         Some(Command::Submit(text)) => assert!(worker.submit(text)),
         other => panic!("expected a prompt, got {other:?}"),
     }
 }
 
-/// Read worker messages until the turn finishes, folding them into `app`.
-fn pump(app: &mut App, worker: &WorkerHandle) -> Vec<AgentEvent> {
+/// Read worker messages until the turn finishes, folding them into `app`, and
+/// hand the worker the prompt `finish` says was queued.
+fn pump(app: &mut App, worker: &mut WorkerHandle) -> Vec<AgentEvent> {
     let mut seen = Vec::new();
     loop {
         match worker.recv_timeout(Duration::from_secs(10)) {
@@ -158,7 +200,10 @@ fn pump(app: &mut App, worker: &WorkerHandle) -> Vec<AgentEvent> {
                 app.apply(event);
             }
             Some(WorkerEvent::Finished(result)) => {
-                app.finish(result.map_err(|message| message.to_string()));
+                let next = app.finish(result.map_err(|message| message.to_string()));
+                if let Some(Command::Submit(prompt)) = next {
+                    assert!(worker.submit(prompt), "the worker is running");
+                }
                 return seen;
             }
             Some(WorkerEvent::Context {
@@ -205,7 +250,7 @@ fn a_prompt_runs_on_the_worker_and_reaches_the_screen() {
     let mut app = app(workspace.path());
 
     send(&mut app, &mut worker, "say hello");
-    let events = pump(&mut app, &worker);
+    let events = pump(&mut app, &mut worker);
 
     assert!(events.contains(&AgentEvent::Text("hello from the worker".to_owned())));
     let rows = app.transcript.rows();
@@ -259,9 +304,9 @@ fn compact_summarises_older_turns_through_the_agent() {
     let mut app = app(workspace.path());
 
     send(&mut app, &mut worker, "first");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
     send(&mut app, &mut worker, "second");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
 
     assert!(worker.compact(1));
     loop {
@@ -311,9 +356,9 @@ fn compact_without_a_provider_falls_back_and_says_so() {
     let mut app = app(workspace.path());
 
     send(&mut app, &mut worker, "first");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
     send(&mut app, &mut worker, "second");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
 
     assert!(worker.compact(1));
     loop {
@@ -363,7 +408,7 @@ fn a_tool_call_runs_in_the_workspace_and_the_result_reaches_the_screen() {
     let mut app = app_in(workspace.path(), Mode::Auto);
 
     send(&mut app, &mut worker, "write note.txt");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
 
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("note.txt")).expect("file"),
@@ -438,7 +483,7 @@ fn cancelling_keeps_the_text_the_turn_already_wrote() {
             WorkerEvent::Finished(result) => {
                 let outcome = result.expect("a cancelled turn is not a failure").clone();
                 assert_eq!(outcome.stop, StopReason::Other("cancelled".to_owned()));
-                app.finish(Ok(outcome));
+                assert_eq!(app.finish(Ok(outcome)), None);
                 break;
             }
             WorkerEvent::Context {
@@ -481,7 +526,7 @@ fn a_model_the_provider_cannot_build_is_reported_without_killing_the_screen() {
         .expect("a failure");
     match event {
         WorkerEvent::Finished(Err(message)) => {
-            app.finish(Err(message.clone()));
+            assert_eq!(app.finish(Err(message.clone())), None);
             assert!(message.contains("missing"), "{message}");
         }
         other => panic!("expected a failure, got {other:?}"),
@@ -493,7 +538,7 @@ fn a_model_the_provider_cannot_build_is_reported_without_killing_the_screen() {
 
 /// Drive keys on the screen and pass the answer back over the reply channel,
 /// which is what the event loop does.
-fn pump_answering(app: &mut App, worker: &WorkerHandle, keys: &[KeyCode]) -> Vec<AgentEvent> {
+fn pump_answering(app: &mut App, worker: &mut WorkerHandle, keys: &[KeyCode]) -> Vec<AgentEvent> {
     let mut seen = Vec::new();
     let mut pending_keys: Vec<KeyCode> = keys.iter().rev().copied().collect();
     loop {
@@ -511,7 +556,10 @@ fn pump_answering(app: &mut App, worker: &WorkerHandle, keys: &[KeyCode]) -> Vec
                 }
             }
             Some(WorkerEvent::Finished(result)) => {
-                app.finish(result.map_err(|message| message.to_string()));
+                let next = app.finish(result.map_err(|message| message.to_string()));
+                if let Some(Command::Submit(prompt)) = next {
+                    assert!(worker.submit(prompt), "the worker is running");
+                }
                 return seen;
             }
             Some(WorkerEvent::Context {
@@ -564,7 +612,7 @@ fn an_approval_answer_lets_the_gated_command_run() {
 
     send(&mut app, &mut worker, "echo it");
 
-    let seen = pump_answering(&mut app, &worker, &[KeyCode::Char('y')]);
+    let seen = pump_answering(&mut app, &mut worker, &[KeyCode::Char('y')]);
 
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("approved.txt")).expect("file"),
@@ -620,7 +668,7 @@ fn always_answers_the_next_identical_command_without_asking() {
     send(&mut app, &mut worker, "twice");
 
     // One key only: the second identical command must not ask again.
-    pump_answering(&mut app, &worker, &[KeyCode::Char('a')]);
+    pump_answering(&mut app, &mut worker, &[KeyCode::Char('a')]);
 
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("twice.txt")).expect("file"),
@@ -657,7 +705,7 @@ fn refusing_a_gated_command_reports_it_to_the_model() {
     let mut app = app(workspace.path());
 
     send(&mut app, &mut worker, "touch it");
-    pump_answering(&mut app, &worker, &[KeyCode::Char('n')]);
+    pump_answering(&mut app, &mut worker, &[KeyCode::Char('n')]);
 
     assert!(!workspace.path().join("refused.txt").exists());
     let failed = app
@@ -698,7 +746,7 @@ fn a_worker_turn_is_written_to_the_session_store() {
     });
 
     send(&mut app, &mut worker, "remember this");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
 
     let store = niki_session::SessionStore::open(&path).expect("reopen the store");
     let summaries = store.list().expect("list");
@@ -782,7 +830,7 @@ fn every_mode_command_sets_the_mode_the_next_turn_is_built_with() {
         );
 
         send(&mut app, &mut worker, "next turn");
-        pump(&mut app, &worker);
+        pump(&mut app, &mut worker);
         assert_eq!(
             *seen.lock().expect("record"),
             [expected],
@@ -822,13 +870,13 @@ fn the_worker_keeps_one_mode_across_rebuilds() {
     let mut app = app(workspace.path());
 
     send(&mut app, &mut worker, "first");
-    pump(&mut app, &worker);
+    pump(&mut app, &mut worker);
 
     for (command, expected) in [("/yolo", Mode::Yolo), ("/auto", Mode::Auto)] {
         assert_eq!(send_mode(&mut app, &mut worker, command), expected);
         assert!(worker.select_model("mock:mock-model"), "force a rebuild");
         send(&mut app, &mut worker, "again");
-        pump(&mut app, &worker);
+        pump(&mut app, &mut worker);
     }
 
     assert_eq!(
@@ -836,4 +884,223 @@ fn the_worker_keeps_one_mode_across_rebuilds() {
         [Mode::Manual, Mode::Yolo, Mode::Auto],
         "every rebuild takes the mode the worker holds, not the one it started with"
     );
+}
+
+#[test]
+fn a_queued_prompt_is_submitted_when_the_turn_ends_and_only_then() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let (release, gate) = mpsc::channel();
+    let gate = Arc::new(Mutex::new(gate));
+    let build_gate = Arc::clone(&gate);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(GatedProvider {
+                gate: Arc::clone(&build_gate),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "first");
+    match worker
+        .recv_timeout(Duration::from_secs(10))
+        .expect("the first delta")
+    {
+        WorkerEvent::Agent(event @ AgentEvent::Text(_)) => app.apply(event),
+        other => panic!("expected answer text, got {other:?}"),
+    }
+
+    type_into(&mut app, "second");
+    assert_eq!(
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        None,
+        "the turn is still running, so the prompt is queued"
+    );
+    assert_eq!(app.queued().len(), 1);
+    assert!(
+        worker.try_recv().is_none(),
+        "nothing was sent to the worker"
+    );
+
+    release.send(()).expect("release the first turn");
+    pump(&mut app, &mut worker);
+    assert_eq!(
+        app.status.turn,
+        TurnState::Working,
+        "the queued prompt started when the turn ended"
+    );
+    assert!(app.queued().is_empty());
+
+    release.send(()).expect("release the second turn");
+    pump(&mut app, &mut worker);
+
+    let users: Vec<&str> = app
+        .transcript
+        .rows()
+        .iter()
+        .filter(|row| row.kind == RowKind::User)
+        .map(|row| row.text.as_str())
+        .collect();
+    assert_eq!(users, ["first", "second"]);
+    assert_eq!(app.status.turn, TurnState::Idle);
+}
+
+#[test]
+fn steering_joins_the_turn_that_is_running_without_starting_another() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let (release, gate) = mpsc::channel();
+    let gate = Arc::new(Mutex::new(gate));
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let calls = Arc::new(Mutex::new(0usize));
+    let (build_gate, build_seen, build_calls) =
+        (Arc::clone(&gate), Arc::clone(&seen), Arc::clone(&calls));
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(RecordingGate {
+                gate: Arc::clone(&build_gate),
+                seen: Arc::clone(&build_seen),
+                calls: Arc::clone(&build_calls),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "first");
+    match worker
+        .recv_timeout(Duration::from_secs(10))
+        .expect("the first delta")
+    {
+        WorkerEvent::Agent(event @ AgentEvent::Text(_)) => app.apply(event),
+        other => panic!("expected answer text, got {other:?}"),
+    }
+    assert_eq!(app.status.turn, TurnState::Working);
+
+    type_into(&mut app, "look at the tests");
+    match app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT)) {
+        Some(Command::Steer(text)) => worker.steer(text),
+        other => panic!("expected a steer, got {other:?}"),
+    }
+    assert!(app.queued().is_empty(), "a steer is not a queued prompt");
+
+    release.send(()).expect("release the stream");
+    pump(&mut app, &mut worker);
+
+    let requests = seen.lock().expect("lock").clone();
+    assert_eq!(requests.len(), 2, "one turn asked twice, not two turns");
+    assert!(
+        requests[1]
+            .messages
+            .iter()
+            .any(|message| message.role == Role::User && message.content == "look at the tests"),
+        "{:?}",
+        requests[1].messages
+    );
+    assert_eq!(app.status.turn, TurnState::Idle);
+    assert!(
+        worker.try_recv().is_none(),
+        "no second turn was started behind it"
+    );
+    let users: Vec<&str> = app
+        .transcript
+        .rows()
+        .iter()
+        .filter(|row| row.kind == RowKind::User)
+        .map(|row| row.text.as_str())
+        .collect();
+    assert_eq!(users, ["first", "look at the tests"]);
+}
+
+#[test]
+fn a_bang_line_runs_locally_and_the_model_is_never_asked() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![text_turn(
+        "the model was asked",
+    )])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+    app.status.mode = Mode::Yolo;
+
+    type_into(&mut app, "!printf hi > out.txt; printf oops >&2; exit 3");
+    match app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)) {
+        Some(Command::Shell(command)) => assert!(worker.shell(command, workspace.path())),
+        other => panic!("expected the shell line, got {other:?}"),
+    }
+
+    let event = match worker
+        .recv_timeout(Duration::from_secs(10))
+        .expect("the shell result")
+    {
+        WorkerEvent::Agent(event @ AgentEvent::ToolEnd { .. }) => {
+            app.apply(event.clone());
+            event
+        }
+        other => panic!("the model must not be involved, but got {other:?}"),
+    };
+    let AgentEvent::ToolEnd {
+        name,
+        output,
+        is_error,
+    } = event
+    else {
+        unreachable!("the loop only breaks on a tool end")
+    };
+    assert_eq!(name, "shell");
+    assert!(!is_error, "{output}");
+    assert!(output.contains("exit_code: 3"), "{output}");
+    assert!(output.contains("oops"), "stderr is in the row: {output}");
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("out.txt")).expect("file"),
+        "hi"
+    );
+
+    let rows = app.transcript.rows();
+    assert_eq!(rows.len(), 2, "{rows:?}");
+    assert_eq!(rows[0].kind, RowKind::ToolCall);
+    assert_eq!(rows[0].title.as_deref(), Some("shell"));
+    assert!(rows[0].text.contains("printf hi"), "{}", rows[0].text);
+    assert_eq!(rows[1].kind, RowKind::ToolResult);
+    assert!(rows[1].text.contains("exit_code: 3"), "{}", rows[1].text);
+
+    assert_eq!(
+        turns.lock().expect("lock").len(),
+        1,
+        "the model was never asked"
+    );
+    assert_eq!(app.status.tokens, Usage::default(), "no tokens were spent");
+    assert_eq!(app.status.turn, TurnState::Idle);
+    assert!(worker.try_recv().is_none(), "the worker added nothing else");
 }

@@ -137,7 +137,9 @@ fn event_loop(
                 }
                 WorkerEvent::Finished(result) => {
                     reply = None;
-                    app.finish(result);
+                    if let Some(Command::Submit(prompt)) = app.finish(result) {
+                        worker.submit(prompt);
+                    }
                 }
                 WorkerEvent::Context {
                     report,
@@ -171,6 +173,15 @@ fn event_loop(
             Event::Key(key) if key.kind != KeyEventKind::Release => match app.handle_key(key) {
                 Some(Command::Submit(prompt)) => {
                     worker.submit(prompt);
+                }
+                Some(Command::Steer(text)) => {
+                    worker.steer(text);
+                }
+                Some(Command::Shell(command)) => {
+                    worker.shell(command, app.status.cwd.clone());
+                }
+                Some(Command::Rewind) => {
+                    worker.rewind();
                 }
                 Some(Command::Cancel) => {
                     reply = None;
