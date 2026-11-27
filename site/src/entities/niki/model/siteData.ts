@@ -693,6 +693,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'y / n — approve or reject the pending tool call',
       'Shift+Tab — cycle Manual → Auto → YOLO approval modes',
       'Ctrl+Shift+P — start a slash command in the composer',
+      'Ctrl+T — the whole transcript, including rows that scrolled out of view',
       '? opens the help overlay; PageUp and PageDown move through the transcript',
     ],
   },
