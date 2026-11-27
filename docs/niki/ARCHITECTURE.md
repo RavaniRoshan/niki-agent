@@ -42,15 +42,15 @@ reached, or when the person cancels.
 | `niki-subagents` | The `task` tool: one child agent per call with a fresh history, a shared cancel handle and a bounded step budget. |
 | `niki-policy` | Manual/Auto/YOLO, the shell allow-list, and the workspace path boundary. |
 | `niki-workspace` | Root detection, ignore rules, and the file index. |
-| `niki-session` | The SQLite transcript store: create, append, list, load. |
+| `niki-session` | The SQLite transcript store: create, append, list, load, and the per-session summary. |
 | `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and streamable HTTP; tool bridges. |
 | `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, and blocking verdicts. |
 | `niki-skills` | Skill discovery from the project, the user directory and the built-ins, and the system-prompt section. |
 | `niki-commands` | The slash command grammar the composer and help overlay read, and the roadmap of commands not yet implemented. |
-| `niki-render` | The transcript view model, the deterministic frame, and the Markdown line renderer. |
+| `niki-render` | The transcript view model, the deterministic frame, the Markdown line renderer, and the unified-diff renderer with line numbers. |
 | `niki-tui` | The keymap, reader mode, and view state. |
 | `niki-tui-live` | The full-screen app: composer, transcript, status bar, worker, and session persistence. |
-| `niki-tui-modals` | The approval prompt, model picker, and help overlay. |
+| `niki-tui-modals` | The approval prompt, model picker, session browser, and help overlay. |
 | `niki-tui-themes` | Four palettes, the contrast gate, and glyph and motion modes. |
 | `niki-proto`, `niki-engine-client` | The engine wire vocabulary and client. They are not on the product turn path. |
 
@@ -68,6 +68,13 @@ registered tool is dispatched through the same gate.
 - `Decision::Ask` goes to the approval callback the host installed. A headless
   run installs none, so the request is reported to the model as a refusal
   instead of silently running.
+
+  Three kinds of action reach that callback. `shell` is decided per command
+  against the allow-list. `write_file` and `edit_file` are gated as tools, and
+  `Auto` runs one unattended when its target resolves inside the workspace;
+  `Manual` asks, and a path that leaves the workspace fails resolution and
+  takes the asking path. A mutating MCP tool is always gated, because a server
+  may reach the network whatever it says it touches.
 
 ### Delegation and context
 
