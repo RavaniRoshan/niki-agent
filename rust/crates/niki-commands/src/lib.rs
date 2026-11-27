@@ -24,6 +24,8 @@ pub enum SlashCommand {
     Clear,
     /// Fold older transcript rows out of the view, keeping the session store.
     Compact,
+    /// Show the conversation's size and what the session has spent.
+    Context,
     /// List saved sessions, or resume one by id or one-based index.
     Resume(Option<String>),
     /// List the registered tools.
@@ -54,7 +56,12 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
     CommandInfo {
         name: "/compact",
-        summary: "Fold older rows out of the view; the session store keeps them",
+        summary: "Summarise older turns to keep the conversation within the context window",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/context",
+        summary: "Show the conversation's size and the session's token total",
         aliases: &[],
     },
     CommandInfo {
@@ -123,11 +130,6 @@ pub const ROADMAP: &[CommandInfo] = &[
     CommandInfo {
         name: "/btw",
         summary: "Ask a side question without changing the conversation",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/context",
-        summary: "Show how much of the context window is in use",
         aliases: &[],
     },
     CommandInfo {
@@ -279,6 +281,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/model" => SlashCommand::Model(argument),
         "/clear" => SlashCommand::Clear,
         "/compact" => SlashCommand::Compact,
+        "/context" => SlashCommand::Context,
         "/resume" => SlashCommand::Resume(argument),
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
@@ -301,6 +304,7 @@ mod tests {
         let commands: Vec<(SlashCommand, &str)> = vec![
             (SlashCommand::Clear, "/clear"),
             (SlashCommand::Compact, "/compact"),
+            (SlashCommand::Context, "/context"),
             (SlashCommand::Help, "/help"),
             (SlashCommand::Model(None), "/model"),
             (SlashCommand::Quit, "/quit"),
@@ -318,7 +322,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 10);
+        assert_eq!(listed.len(), 11);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -327,6 +331,18 @@ mod tests {
                 assert_ne!(info.summary, other.summary, "duplicate summary");
             }
         }
+    }
+
+    #[test]
+    fn context_parses_and_the_tables_keep_their_invariants() {
+        assert_eq!(parse("/context"), Ok(SlashCommand::Context));
+        assert!(COMMANDS.iter().any(|info| info.name == "/context"));
+        assert!(!ROADMAP.iter().any(|info| info.name == "/context"));
+
+        let names: Vec<&str> = COMMANDS.iter().map(|info| info.name).collect();
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        assert_eq!(names, sorted, "COMMANDS stays sorted for the help overlay");
     }
 
     #[test]

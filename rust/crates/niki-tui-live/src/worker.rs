@@ -12,10 +12,14 @@ use std::time::Duration;
 
 use futures_util::future::BoxFuture;
 use niki_agent::{
-    Agent, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome,
+    Agent, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, Compaction,
+    ContextReport, Provider, RunOutcome, SessionUsage,
 };
 use niki_policy::Mode;
 use tokio::sync::oneshot;
+
+/// Builds a provider for one model spec, used to summarise history.
+type ProviderBuilder = Box<dyn FnMut(&str) -> Result<Box<dyn Provider>, String> + Send>;
 
 /// Everything a factory needs to build an [`Agent`] for one model.
 pub struct SessionParts {
@@ -42,6 +46,22 @@ pub enum WorkerEvent {
     },
     /// The turn is over. The message is the failure, if it failed.
     Finished(Result<RunOutcome, String>),
+    /// The agent's context report and session usage.
+    Context {
+        /// Estimated conversation size and the last reported usage.
+        report: ContextReport,
+        /// Tokens and steps accumulated over the session.
+        usage: SessionUsage,
+        /// Whether `/context` asked for this and it should be printed.
+        announce: bool,
+    },
+    /// A `/compact` finished, through the provider or without one.
+    Compacted {
+        /// What the agent replaced, or the provider failure.
+        result: Result<Compaction, String>,
+        /// Whether the fallback dropped history without a model.
+        fallback: bool,
+    },
 }
 
 impl std::fmt::Debug for WorkerEvent {
@@ -52,6 +72,24 @@ impl std::fmt::Debug for WorkerEvent {
             Self::Finished(result) => f
                 .debug_tuple("Finished")
                 .field(&result.as_ref().map(|_| "ok").map_err(String::as_str))
+                .finish(),
+            Self::Context {
+                report,
+                usage,
+                announce,
+            } => f
+                .debug_struct("Context")
+                .field("report", report)
+                .field("usage", usage)
+                .field("announce", announce)
+                .finish(),
+            Self::Compacted { result, fallback } => f
+                .debug_struct("Compacted")
+                .field(
+                    "result",
+                    &result.as_ref().map(|_| "ok").map_err(String::as_str),
+                )
+                .field("fallback", fallback)
                 .finish(),
         }
     }
@@ -78,6 +116,8 @@ enum Request {
     Prompt(String),
     Model(String),
     Mode(Mode),
+    Compact(usize),
+    Context,
     Stop,
 }
 
@@ -98,7 +138,20 @@ impl WorkerHandle {
     where
         F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
     {
-        Self::spawn_inner(model, mode, None, build)
+        Self::spawn_inner(model, mode, None, build, None)
+    }
+
+    /// Start the worker with a provider builder for real compaction.
+    ///
+    /// Without one, `/compact` falls back to [`Agent::compact_without_model`]
+    /// and says so, because the provider moved into the agent and cannot be
+    /// borrowed from it.
+    pub fn spawn_with_provider<F, P>(model: &str, mode: Mode, build: F, provider: P) -> Self
+    where
+        F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
+        P: FnMut(&str) -> Result<Box<dyn Provider>, String> + Send + 'static,
+    {
+        Self::spawn_inner(model, mode, None, build, Some(Box::new(provider)))
     }
 
     /// Start the worker on a runtime the host already built and used.
@@ -115,7 +168,23 @@ impl WorkerHandle {
     where
         F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
     {
-        Self::spawn_inner(model, mode, Some(runtime), build)
+        Self::spawn_inner(model, mode, Some(runtime), build, None)
+    }
+
+    /// Start the worker on the host's runtime, with a provider builder for real
+    /// compaction.
+    pub fn spawn_with_runtime_and_provider<F, P>(
+        model: &str,
+        mode: Mode,
+        runtime: tokio::runtime::Runtime,
+        build: F,
+        provider: P,
+    ) -> Self
+    where
+        F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
+        P: FnMut(&str) -> Result<Box<dyn Provider>, String> + Send + 'static,
+    {
+        Self::spawn_inner(model, mode, Some(runtime), build, Some(Box::new(provider)))
     }
 
     fn spawn_inner<F>(
@@ -123,6 +192,7 @@ impl WorkerHandle {
         mode: Mode,
         runtime: Option<tokio::runtime::Runtime>,
         mut build: F,
+        providers: Option<ProviderBuilder>,
     ) -> Self
     where
         F: FnMut(SessionParts) -> Result<Agent, String> + Send + 'static,
@@ -147,6 +217,7 @@ impl WorkerHandle {
                 return;
             };
             let mut agent: Option<Agent> = None;
+            let mut providers = providers;
             let mut mode = mode;
             while let Ok(request) = request_rx.recv() {
                 match request {
@@ -186,9 +257,40 @@ impl WorkerHandle {
                             let _ = event_tx.send(WorkerEvent::Agent(event.clone()));
                         };
                         let result = runtime.block_on(running.run(prompt, &mut forward));
+                        send_context(&event_tx, agent.as_ref());
                         let _ = event_tx.send(WorkerEvent::Finished(
                             result.map_err(|error| error.to_string()),
                         ));
+                    }
+                    Request::Compact(keep_last) => {
+                        let (result, fallback) = match agent.as_mut() {
+                            None => (Ok(Compaction::default()), false),
+                            Some(running) => match providers.as_mut() {
+                                Some(build_provider) => match build_provider(&model) {
+                                    Ok(provider) => (
+                                        runtime
+                                            .block_on(running.compact(provider.as_ref(), keep_last))
+                                            .map_err(|error| error.to_string()),
+                                        false,
+                                    ),
+                                    Err(message) => (Err(message), false),
+                                },
+                                None => (Ok(running.compact_without_model(keep_last)), true),
+                            },
+                        };
+                        send_context(&event_tx, agent.as_ref());
+                        let _ = event_tx.send(WorkerEvent::Compacted { result, fallback });
+                    }
+                    Request::Context => {
+                        let (report, usage) = agent.as_ref().map_or_else(
+                            || (ContextReport::default(), SessionUsage::default()),
+                            |running| (running.context_report(), running.session_usage()),
+                        );
+                        let _ = event_tx.send(WorkerEvent::Context {
+                            report,
+                            usage,
+                            announce: true,
+                        });
                     }
                 }
             }
@@ -226,6 +328,19 @@ impl WorkerHandle {
         self.requests.send(Request::Mode(mode)).is_ok()
     }
 
+    /// Ask the agent to summarise the turns older than `keep_last`.
+    ///
+    /// The worker answers with [`WorkerEvent::Compacted`]; a worker with no
+    /// provider builder falls back to a model-free fold and reports it.
+    pub fn compact(&self, keep_last: usize) -> bool {
+        self.requests.send(Request::Compact(keep_last)).is_ok()
+    }
+
+    /// Ask for the agent's [`ContextReport`] and [`SessionUsage`].
+    pub fn context(&self) -> bool {
+        self.requests.send(Request::Context).is_ok()
+    }
+
     /// Stop the running turn; the transcript it already produced is kept.
     pub fn cancel(&self) {
         self.cancel.cancel();
@@ -246,6 +361,19 @@ impl Drop for WorkerHandle {
     fn drop(&mut self) {
         let _ = self.requests.send(Request::Stop);
     }
+}
+
+/// Report the agent's context and usage without printing it.
+fn send_context(events: &Sender<WorkerEvent>, agent: Option<&Agent>) {
+    let (report, usage) = agent.map_or_else(
+        || (ContextReport::default(), SessionUsage::default()),
+        |agent| (agent.context_report(), agent.session_usage()),
+    );
+    let _ = events.send(WorkerEvent::Context {
+        report,
+        usage,
+        announce: false,
+    });
 }
 
 /// The approver the agent calls: it hands the request to the screen and waits

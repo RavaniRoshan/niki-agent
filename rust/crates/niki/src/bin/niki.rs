@@ -432,34 +432,45 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     app.set_tools(tool_names);
 
     let build_config = config;
-    let mut worker = WorkerHandle::spawn_with_runtime(&spec, mode, runtime, move |parts| {
-        let (provider_name, model) =
-            split_spec(&parts.model).map_err(|error| format!("{error:#}"))?;
-        let provider =
-            build_provider(&build_config, provider_name).map_err(|error| format!("{error:#}"))?;
-        let settings = AgentConfig {
-            model: model.to_owned(),
-            system: system.clone(),
-            max_steps,
-            ..AgentConfig::default()
-        };
-        let delegation = Delegation {
-            config: build_config.clone(),
-            spec: parts.model.clone(),
-            system: system.clone(),
-            mode: parts.mode,
-            allow: allow.clone(),
-            hooks: Arc::clone(&hooks),
-            cancel: parts.cancel.clone(),
-        };
-        let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
-        Ok(Agent::new(provider, ctx.clone(), settings)
-            .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
-            .with_policy(parts.mode, allow.clone())
-            .with_hooks(Arc::clone(&hooks))
-            .with_cancel(parts.cancel)
-            .with_approver(parts.approver))
-    });
+    let compact_config = build_config.clone();
+    let provider_builder = move |spec: &str| -> Result<Box<dyn Provider>, String> {
+        let (provider_name, _model) = split_spec(spec).map_err(|error| format!("{error:#}"))?;
+        build_provider(&compact_config, provider_name).map_err(|error| format!("{error:#}"))
+    };
+    let mut worker = WorkerHandle::spawn_with_runtime_and_provider(
+        &spec,
+        mode,
+        runtime,
+        move |parts| {
+            let (provider_name, model) =
+                split_spec(&parts.model).map_err(|error| format!("{error:#}"))?;
+            let provider = build_provider(&build_config, provider_name)
+                .map_err(|error| format!("{error:#}"))?;
+            let settings = AgentConfig {
+                model: model.to_owned(),
+                system: system.clone(),
+                max_steps,
+                ..AgentConfig::default()
+            };
+            let delegation = Delegation {
+                config: build_config.clone(),
+                spec: parts.model.clone(),
+                system: system.clone(),
+                mode: parts.mode,
+                allow: allow.clone(),
+                hooks: Arc::clone(&hooks),
+                cancel: parts.cancel.clone(),
+            };
+            let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
+            Ok(Agent::new(provider, ctx.clone(), settings)
+                .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
+                .with_policy(parts.mode, allow.clone())
+                .with_hooks(Arc::clone(&hooks))
+                .with_cancel(parts.cancel)
+                .with_approver(parts.approver))
+        },
+        provider_builder,
+    );
 
     run_screen(&mut app, &mut worker).context("run the full-screen app")
 }

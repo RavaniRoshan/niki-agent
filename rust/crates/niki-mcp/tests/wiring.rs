@@ -241,6 +241,18 @@ fn the_worker_registers_a_configured_tool_and_asks_the_screen() {
                 app.finish(result.map_err(|message| message.to_string()));
                 break;
             }
+            Some(WorkerEvent::Context {
+                report,
+                usage,
+                announce,
+            }) => {
+                if announce {
+                    app.show_context(report, usage);
+                } else {
+                    app.set_context(report, usage);
+                }
+            }
+            Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             None => panic!("the worker went quiet before the turn finished"),
         }
     }

@@ -203,7 +203,7 @@ fn the_status_bar_reports_tokens_once_the_provider_does() {
     }));
     let buffer = render(&mut app, 80, 10);
     let status = row(&buffer, 9);
-    assert!(status.contains("40 in / 8 out"), "{status}");
+    assert!(status.contains("48 tok"), "{status}");
 }
 
 #[test]
