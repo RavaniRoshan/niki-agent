@@ -22,6 +22,8 @@ use niki_agent::Approval;
 use tokio::sync::oneshot;
 
 use crate::app::{App, Command};
+use crate::clipboard;
+use crate::history::History;
 use crate::ui;
 use crate::worker::{WorkerEvent, WorkerHandle};
 
@@ -42,6 +44,7 @@ const IDLE_WAIT: Duration = Duration::from_secs(60);
 /// Returns the terminal failure that stopped the screen. The terminal is
 /// restored before the error reaches the caller.
 pub fn run(app: &mut App, worker: &mut WorkerHandle) -> io::Result<i32> {
+    app.attach_history(History::from_env());
     let mut screen = Screen::enter()?;
     let outcome = event_loop(&mut screen.terminal, app, worker);
     screen.leave();
@@ -170,6 +173,10 @@ fn event_loop(
                 Some(Command::SelectModel(spec)) => {
                     app.status.model.clone_from(&spec);
                     worker.select_model(spec);
+                }
+                Some(Command::Copy(text)) => {
+                    let mut out = io::stdout();
+                    let _ = clipboard::copy(&mut out, &text);
                 }
                 Some(Command::Quit) => return Ok(exit_code(app)),
                 None => {}
