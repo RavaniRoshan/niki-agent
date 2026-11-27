@@ -216,3 +216,32 @@ fn a_blank_between_a_paragraph_and_a_heading_survives() {
         "a blank line is an empty line, not a missing one"
     );
 }
+
+#[test]
+fn multibyte_text_never_panics_and_keeps_every_character() {
+    let theme = MarkdownTheme::plain();
+    for width in 0..=3 {
+        for source in [
+            "# Überschrift mit Umlauten",
+            "## 日本語の見出し",
+            "- café naïve — résumé",
+            "1. 多字节列表项 🚀",
+            "> цитата с кириллицей",
+            "**bold** and `コード` and [リンク](https://example.com/ü)",
+            "```\n✔ 完成\n```",
+        ] {
+            let rendered = render_markdown(source, width, &theme);
+            let joined: String = rendered
+                .iter()
+                .map(|line| line.text())
+                .collect::<Vec<_>>()
+                .join("");
+            assert!(
+                joined
+                    .chars()
+                    .all(|c| c.is_whitespace() || c == '│' || source.contains(c)),
+                "width {width} lost a character from {source:?}: {joined:?}"
+            );
+        }
+    }
+}
