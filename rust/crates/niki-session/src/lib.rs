@@ -76,6 +76,11 @@ pub struct Summary {
     pub title: Option<String>,
     pub cwd: String,
     pub created_at: i64,
+    /// The latest stored write to the session, in Unix seconds.
+    ///
+    /// The schema records no separate update column, so this is the newest of
+    /// the session's `created_at` and its messages' `created_at`.
+    pub updated_at: i64,
 }
 
 /// An open session database.
@@ -88,8 +93,13 @@ pub struct SessionStore {
 ///
 /// The first prompt is the oldest stored `user` message; the count includes
 /// every role. Both subqueries read the existing `messages` table, so no
-/// schema change is needed.
+/// schema change is needed. The update time is the newest of the session's
+/// creation and its latest message; `MAX` with two arguments is SQLite's
+/// scalar maximum, not the aggregate.
 const SUMMARY_COLUMNS: &str = "sessions.id, sessions.title, sessions.cwd, sessions.created_at,
+     MAX(sessions.created_at,
+         COALESCE((SELECT MAX(created_at) FROM messages
+                   WHERE messages.session_id = sessions.id), sessions.created_at)),
      (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id),
      (SELECT content FROM messages
       WHERE messages.session_id = sessions.id AND messages.role = 'user'
@@ -190,8 +200,45 @@ impl SessionStore {
                 title: row.get(1)?,
                 cwd: row.get(2)?,
                 created_at: row.get(3)?,
-                messages: row.get(4)?,
-                first_prompt: row.get(5)?,
+                updated_at: row.get(4)?,
+                messages: row.get(5)?,
+                first_prompt: row.get(6)?,
+            })
+        })?;
+        let mut summaries = Vec::new();
+        for summary in rows {
+            summaries.push(summary?);
+        }
+        Ok(summaries)
+    }
+
+    /// Every session rooted at `cwd`, newest first.
+    ///
+    /// The workspace key is the stored `cwd` text, the same equality
+    /// [`SessionStore::latest_for`] resumes by, so a caller must not hash or
+    /// otherwise normalise the path itself.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::NonUtf8Path`] when `cwd` is not UTF-8, and
+    /// [`SessionError::Sqlite`] when the query fails.
+    pub fn list_for(&self, cwd: impl AsRef<Path>) -> Result<Vec<Summary>, SessionError> {
+        let cwd = cwd.as_ref().to_str().ok_or(SessionError::NonUtf8Path)?;
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT {SUMMARY_COLUMNS}
+             FROM sessions
+             WHERE sessions.cwd = ?1
+             ORDER BY sessions.created_at DESC, sessions.rowid DESC",
+        ))?;
+        let rows = statement.query_map(params![cwd], |row| {
+            Ok(Summary {
+                id: SessionId(row.get(0)?),
+                title: row.get(1)?,
+                cwd: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+                messages: row.get(5)?,
+                first_prompt: row.get(6)?,
             })
         })?;
         let mut summaries = Vec::new();
@@ -218,8 +265,9 @@ impl SessionStore {
                         title: row.get(1)?,
                         cwd: row.get(2)?,
                         created_at: row.get(3)?,
-                        messages: row.get(4)?,
-                        first_prompt: row.get(5)?,
+                        updated_at: row.get(4)?,
+                        messages: row.get(5)?,
+                        first_prompt: row.get(6)?,
                     })
                 },
             )
@@ -250,8 +298,9 @@ impl SessionStore {
                         title: row.get(1)?,
                         cwd: row.get(2)?,
                         created_at: row.get(3)?,
-                        messages: row.get(4)?,
-                        first_prompt: row.get(5)?,
+                        updated_at: row.get(4)?,
+                        messages: row.get(5)?,
+                        first_prompt: row.get(6)?,
                     })
                 },
             )
