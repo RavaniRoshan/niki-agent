@@ -7,6 +7,7 @@ the `niki` binary or by the installers.
 | --- | --- |
 | `product-hunt.md` | Listing copy, maker comment, FAQ, timing, the MCP submission flow, and the day-of checklist |
 | `ph-launch.mjs` | Creates the draft, stages assets, and schedules the launch through the Product Hunt MCP server |
+| `ph-token.mjs` | Prints a live bearer token, refreshing the stored one from its refresh token |
 | `PLAN-2.3.0.md` | What the launch side channel ships, in order, and what it leaves out |
 | `READINESS.md` | The 2.2.0 audit: every surface checked, with evidence, and the two open switches |
 | `gallery/01-hero.png` … `04-proof.png` | 1270×760 gallery images, rendered from the 2.2.0 recording |

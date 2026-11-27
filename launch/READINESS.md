@@ -6,15 +6,16 @@ memory. Where a check was not possible, the row says so and names why.
 
 ## Verdict
 
-The product is ready, and so are both deployments. One switch is left, and it
-lives behind a browser login that a terminal cannot complete: **no Product Hunt
-token**. `launch/ph-launch.mjs --check` cannot authenticate, and
-`mcp.producthunt.com` answers unauthenticated calls with a connect prompt. The
-MCP client is written and tested; it needs a token.
+The product is ready, both deployments are ready, and the launch is booked:
+Product Hunt launch `1333841` is `scheduled` for 2026-12-08 at 00:00 Pacific.
 
-Vercel Web Analytics is on for both projects, and both sites now serve
-`/_vercel/insights/script.js` as `200 application/javascript`. That switch is no
-longer a gap; the detail is under "Analytics".
+Vercel Web Analytics is on for both projects, and both sites serve
+`/_vercel/insights/script.js` as `200 application/javascript`. The OAuth
+connection to `https://mcp.producthunt.com/mcp` is in place, and
+`launch/ph-token.mjs` refreshes the stored token so launch-day calls do not need
+a browser.
+
+No switch is left open.
 
 ## Release and artifacts
 
@@ -119,20 +120,25 @@ The marketing site injects the tag at runtime from `site/src/main.tsx`; the docs
 site has it in the page. Both requests reach the platform route, so page views
 are recorded.
 
-## The one human action
+## Product Hunt
 
-Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and export
-`PRODUCT_HUNT_TOKEN`. Then:
+| Check | Result |
+| --- | --- |
+| OAuth against `https://mcp.producthunt.com/mcp` | connected as `roshan_ravani_singh` (`8913310`), scopes `mcp:account launches:read launches:write` |
+| `get_launch_context` for the repository link | eligible, no blockers; date window 2026-11-28 to 2026-12-29 |
+| Draft `U3SR3K6SCALYK3CBK6RG475MQPF7SQ5M7C` | assessment `no_known_blockers` |
+| `submit_launch` | outcome `applied`; launch `1333841`, status `scheduled`, 2026-12-08 00:00 Pacific |
+| Listing content | name, 47-character tagline, description, maker comment, four gallery images, thumbnail, four links, tags and categories |
+
+The listing can still be edited before launch day at
+https://www.producthunt.com/posts/niki-agent/edit.
+
+To drive the server again, mint a token first — the stored one expires after an
+hour and the helper refreshes it from the refresh token:
 
 ```bash
-node launch/ph-launch.mjs --check 2026-12-08
-node launch/ph-launch.mjs --draft
-node launch/ph-launch.mjs --assets <id> \
-  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/01-hero.png \
-  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/02-read-before-write.png \
-  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/03-approval-gate.png \
-  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/04-proof.png
-node launch/ph-launch.mjs --submit <id>
+export PRODUCT_HUNT_TOKEN=$(node launch/ph-token.mjs)
+node launch/ph-launch.mjs --show 1333841
 ```
 
 `launch/product-hunt.md` carries the copy, the timing, and the day-of checklist.
