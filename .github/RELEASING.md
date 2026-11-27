@@ -35,6 +35,9 @@ not part of a release. It is the reference implementation and the fixture source
 
    Or dispatch **Niki Release** with the version (no leading `v`).
 
+   A tag whose version contains a hyphen (`v2.2.0-beta.1`) publishes a GitHub
+   pre-release; `latest` keeps pointing at the newest stable tag.
+
 ## What the workflow does
 
 `Niki Release` builds each platform on its own runner with `cargo build --release
@@ -43,8 +46,8 @@ not part of a release. It is the reference implementation and the fixture source
 The macOS runner labels name an architecture, so each macOS job checks
 `uname -m` before building; a label that moved to another host fails the job
 instead of publishing a mislabelled archive. It stages the binary with
-`install/install.sh`, `install/install.ps1`, `NOTICE`, `LICENSE`, and
-`README.md`, then:
+`install/install.sh`, `install/install.ps1`, `NOTICE`, `LICENSE`, `README.md`,
+and `CHANGELOG.md`, then:
 
 - runs the packaged installer into a scratch prefix and prints `niki --version`;
 - on Linux and macOS arm64, runs `.github/scripts/smoke_turn.py` against the

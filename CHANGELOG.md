@@ -9,6 +9,26 @@ client became that binary; `1.x` was the earlier Python implementation.
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-11-27
+
+### Added
+
+- A changelog, both in the repository and on the documentation site.
+- A beta page and a beta feedback issue form; Discussions is enabled for
+  questions.
+- Pre-release tags: a version containing `-` is published as a GitHub
+  pre-release, so `latest` keeps pointing at the newest stable tag.
+
+### Changed
+
+- The README was rebuilt around install, proof, and the approval gate, and its
+  demo recording was replaced with a session recorded from the shipped binary.
+  The archive now also carries `CHANGELOG.md`.
+- `SECURITY.md` now describes the shipped gate: writes and edits are
+  approval-gated, and Auto differs from Manual. The supported versions are
+  2.1.x, with security fixes for 2.0.x.
+- The binary behaves as it did in 2.1.3; the only change is the version string.
+
 ## [2.1.3] - 2026-11-27
 
 ### Added
@@ -112,7 +132,8 @@ client became that binary; `1.x` was the earlier Python implementation.
 - The Python runtime, virtual environment, and package resolution from the
   install path. Existing `~/.niki` configuration, sessions, and skills are kept.
 
-[Unreleased]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.3...HEAD
+[Unreleased]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.4...HEAD
+[2.1.4]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.0...v2.1.1

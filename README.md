@@ -5,9 +5,9 @@
 **A quiet terminal coding agent, written in Rust.**
 
 One native binary. Eleven providers. Sessions on your disk.
-An approval gate in front of every action.
+An approval gate in front of anything that changes your machine.
 
-[![Release](https://img.shields.io/badge/release-v2.1.3-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![Release](https://img.shields.io/badge/release-v2.1.4-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
@@ -61,6 +61,10 @@ The installer picks the archive for your platform, verifies it against the
 release's `SHA256SUMS`, and places one executable under `~/.local/niki`
 (`%LOCALAPPDATA%\niki` on Windows). It does not touch your shell profile unless
 you pass `NIKI_SHELL=1`. To remove Niki, delete `~/.local/niki` and `~/.niki`.
+
+Linux, WSL, and macOS are exercised by the release workflow. The Windows archive
+is built by CI but has not been executed on Windows; the
+[beta page](https://niki-docs.vercel.app/beta) tracks platform support.
 
 Requires a 64-bit Linux, macOS (Apple silicon or Intel), or Windows machine.
 Building from source needs Rust 1.85 or newer:
@@ -116,8 +120,8 @@ mode.
 
 | Mode | What runs without asking first |
 | --- | --- |
-| Manual | Nothing. Shell commands, writes, edits, and deletes all ask. |
-| Auto | Shell commands on the allow-list and paths inside the workspace run; everything else asks. |
+| Manual | Every gated action asks, except shell commands on the allow-list. |
+| Auto | Allow-listed shell commands and writes inside the workspace run; everything else asks. |
 | YOLO | Everything the policy allows runs unsupervised. |
 
 None of the modes is a sandbox: Niki runs with your user's permissions. The
@@ -166,6 +170,8 @@ Setup details, gateway examples, and the full config key list are in
 Niki is usable today and still moving. Beta builds ship as GitHub
 pre-releases: they pass the same Rust test gate as a stable release but may
 change behaviour between builds.
+
+When one is available, pin it by its version (no leading `v`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \

@@ -74,7 +74,7 @@ export function BottomCtaAndFooter({
         defaultSection={7}
         eyebrow={FOOTER_EYEBROW}
         headline={['One binary, no runtime.', 'One command to start.']}
-        description="A quiet terminal surface in front of an agent that reads your repository, edits files, and runs commands, with an approval gate in front of every action."
+        description="A quiet terminal surface in front of an agent that reads your repository, edits files, and runs commands, with an approval gate in front of every change."
         cta={{ label: 'Install Niki' }}
         onCtaClick={onInstall}
         linkGroups={FOOTER_LINK_GROUPS}

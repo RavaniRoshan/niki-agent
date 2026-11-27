@@ -13,7 +13,7 @@ never claim a feature that is still under "Known gaps".
 **Short description (under 260 chars):**
 
 > A quiet terminal coding agent in one native Rust binary. Eleven providers,
-> sessions on your disk, and an approval gate before every action. No runtime,
+> sessions on your disk, and an approval gate before shell commands and file writes. No runtime,
 > no account, no telemetry.
 
 **Topics:** Developer Tools · Artificial Intelligence · Open Source · Productivity

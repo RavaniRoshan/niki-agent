@@ -119,7 +119,7 @@ def gallery_1():
         "Niki Agent",
         "A quiet coding agent.",
         "One native binary. Eleven providers. Sessions on your disk. An approval gate "
-        "in front of every action.",
+        "in front of anything that changes your machine.",
         width=420,
     )
     shot = terminal_crop(27, (128, 76, 128 + 944, 76 + 648), (700, 480))

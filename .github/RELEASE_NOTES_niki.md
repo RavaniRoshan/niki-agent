@@ -41,6 +41,31 @@ No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
 
+## What changed in 2.1.4
+
+This release changes what the project publishes, not how the agent behaves.
+`niki` runs as it did in 2.1.3; the only binary change is the version string.
+
+**The README is the product's own.** The old recording was replaced with a
+session recorded from the shipped binary against a loopback provider: a read, an
+approval card, a test run, and the answer. The README now leads with what the
+product is, how to install it, and the approval gate.
+
+**A changelog ships with it.** `CHANGELOG.md` covers 2.0.0 through this release
+and is included in every archive. The documentation site has the same history at
+<https://niki-docs.vercel.app/changelog>.
+
+**The security policy matches the gate.** `SECURITY.md` said writes were not
+approval-gated and that Auto asked like Manual; both stopped being true in
+2.1.0. It now describes the shipped gate, and the supported-versions table names
+2.1.x.
+
+**Beta builds have a documented channel.** A tag that contains a hyphen — for
+example `v2.2.0-beta.1` — is published as a GitHub pre-release, so `latest` keeps
+pointing at the newest stable release. The beta page lists supported platforms,
+the known gaps, and how to report a problem:
+<https://niki-docs.vercel.app/beta>.
+
 ## What changed in 2.1.3
 
 **A checkout has to be trusted before its code runs.** A repository can ship

@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 64a543bfe8314726437a83b9880a1b07a399a326754047c1df3144ae1ebe5b5e
+  source-sha256: fb7e156ab0e13b18a5b1aa7d8022af314aa47aa912180bc11c1888e3e5c95f05
 -->
 # Security policy
 
@@ -34,7 +34,8 @@ Reporters are credited in the advisory unless they ask not to be.
 
 | Version | Supported |
 | --- | --- |
-| 2.0.x | Yes |
+| 2.1.x | Yes |
+| 2.0.x | Security fixes only |
 | < 2.0 | No |
 
 ## What the agent can do
@@ -42,13 +43,15 @@ Reporters are credited in the advisory unless they ask not to be.
 Niki runs shell commands and reads and writes files with your user's
 permissions. It is not a sandbox by itself.
 
-- **Manual** asks before each shell command that is not on the allow-list.
-- **Auto** asks the same way. This build has no classifier, so Auto and Manual
-  differ only in the label the status bar shows.
-- **YOLO** runs every shell command the policy does not deny, without asking.
-- **Built-in writes are not gated yet.** `write_file` and `edit_file` run
-  without an approval prompt even in Manual mode. Gate them with your own
-  filesystem permissions, or run Niki in a container or a dedicated account.
+- **Manual** asks before every gated action that is not on the shell
+  allow-list: a shell command, a write, an edit, a delete, or a mutating MCP
+  tool.
+- **Auto** runs shell commands that match the allow-list and writes whose path
+  resolves inside the workspace; everything else asks.
+- **YOLO** runs every action the policy does not refuse, without asking.
+- **Built-in writes are gated.** `write_file` and `edit_file` go through the
+  same approval callback as a shell command; an approved write rule re-checks
+  the workspace boundary on every call.
 - **Mutating MCP tools are gated.** A tool whose server does not declare a
   coherent `readOnlyHint` goes through the same approval callback a shell
   command uses. A tool the server marks read-only is not gated.
@@ -87,9 +90,10 @@ flag in this build.
 
 ## Known gaps in this build
 
-- No sandbox and no sandbox flag.
-- No classifier; Auto asks like Manual.
-- `write_file` and `edit_file` are not approval-gated.
+- No sandbox and no sandbox flag. Approval decides what asks, not what an
+  approved command can do.
+- There is no separate read-only mode: "what may run" and "what may write" are
+  one axis.
 - The workspace trust decision is a command, not a prompt: `niki trust` grants
   it and `niki untrust` withdraws it. The full-screen app shows a warning and
   runs without project content until you grant it; there is no in-app dialog
