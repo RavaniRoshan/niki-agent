@@ -2,11 +2,13 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.1.1 adds the transcript overlay and request retries to the 2.1.0 base. The
-shipped product is still a single self-contained executable: there is no Python
-interpreter to install, no virtual environment to create, and no packages to
-resolve on first run. Linux and WSL share one archive, Windows has its own, and
-macOS has one for Apple silicon and one for Intel.
+2.1.2 adds the three-answer approval prompt, `niki doctor`, native macOS
+archives for Apple silicon and Intel, and memory bounds on the tools that read
+or capture output. The shipped product is still a single self-contained
+executable: there is no Python interpreter to install, no virtual environment to
+create, and no packages to resolve on first run. Linux and WSL share one
+archive, Windows has its own, and macOS has one for Apple silicon and one for
+Intel.
 
 ## Install
 
@@ -37,6 +39,35 @@ niki
 No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
+
+## What changed in 2.1.2
+
+**A prompt now offers three answers.** `y` or `a` allows the call once, `s`
+allows it for the rest of the session, and `d`, `n`, or `Esc` refuses. The body
+names the exact command, or the absolute path a write would touch and whether it
+resolves inside the workspace. A session rule for a shell program never covers a
+command that chains, redirects, or substitutes another command: approving
+`git status` cannot later run `git status; rm -rf ~`. A write rule re-checks the
+workspace boundary on every call. `/clear` and a new session drop every rule, and
+nothing is written to `config.toml`.
+
+**`niki doctor` tells you what is broken.** One command, nine checks: version,
+config file, resolved model, provider credential (set or unset, never the
+value), session store, instruction files, skills, MCP servers and hooks. It
+exits 1 when a turn cannot run and names the environment variable to set.
+
+**Native macOS archives.** `niki-<version>-macos-aarch64.tar.gz` and
+`niki-<version>-macos-x86_64.tar.gz` join the Linux and Windows archives. The
+installer picks one by `uname -m`, the release workflow runs the installer and a
+headless smoke turn on macOS arm64, and `SHA256SUMS` covers all four archives.
+The macOS binaries are not notarized: a file fetched with `curl` carries no
+quarantine attribute, while a browser download may need the Gatekeeper prompt or
+`xattr -d com.apple.quarantine`.
+
+**Output and reads are bounded.** A shell command can no longer exhaust memory:
+each stream keeps its first 64 KiB and the header says the output was truncated.
+`grep` skips files above 32 MiB and `edit_file` refuses them with the size and
+the limit named, instead of loading a database or a core dump into memory.
 
 ## What changed in 2.1.1
 
