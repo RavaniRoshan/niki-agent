@@ -5,8 +5,10 @@
 //! prompt, feed [`AgentEvent`]s and assert exactly what the screen would draw
 //! (RULES.md 8, 4).
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_agent::{
@@ -14,7 +16,7 @@ use niki_agent::{
     StopReason, Usage,
 };
 use niki_commands::SlashCommand;
-use niki_policy::Mode;
+use niki_policy::{AllowList, Decision, Mode, decide};
 use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
@@ -43,6 +45,8 @@ pub const WHEEL_LINES: usize = 3;
 const COMPACT_KEEP_ROWS: usize = 12;
 /// How many sessions `/resume` lists.
 const RESUME_LIMIT: usize = 20;
+/// How long after one Esc a second one restores the last prompt.
+const BACKTRACK_WINDOW: Duration = Duration::from_secs(2);
 
 /// What a session starts with.
 #[derive(Debug, Clone)]
@@ -60,6 +64,12 @@ pub struct SessionInfo {
 pub enum Command {
     /// Run this prompt as a turn.
     Submit(String),
+    /// Hand this line to the turn that is running.
+    Steer(String),
+    /// Run this `!` line locally, without the model.
+    Shell(String),
+    /// Drop the newest prompt and its answer from the agent's history.
+    Rewind,
     /// Stop the running turn; its output stays on screen.
     Cancel,
     /// Leave the application.
@@ -118,6 +128,16 @@ pub struct App {
     tools: Vec<String>,
     /// Prompts the arrows walk back through.
     history: History,
+    /// Prompts typed while a turn was running, oldest first.
+    queued: VecDeque<String>,
+    /// Shell allow-list the live mode consults for a `!` line.
+    allow: AllowList,
+    /// Whether the host can put a `!` command's question to the person.
+    approver: bool,
+    /// A `!` command waiting for its approval answer.
+    local_shell: Option<String>,
+    /// When Esc was last pressed with an empty composer.
+    last_escape: Option<Instant>,
     /// The command list under the composer, when the draft matches one.
     completion: Option<Completion>,
     /// The draft whose command list Esc closed, until the draft changes.
@@ -150,6 +170,11 @@ impl App {
             turn_start: None,
             tools: Vec::new(),
             history: History::default(),
+            queued: VecDeque::new(),
+            allow: AllowList::default(),
+            approver: false,
+            local_shell: None,
+            last_escape: None,
             completion: None,
             completion_closed: None,
             clipboard: !clipboard_disabled(),
@@ -220,6 +245,25 @@ impl App {
         self.clipboard = enabled;
     }
 
+    /// Give `!` lines the shell allow-list the agent was built with.
+    pub fn set_allow_list(&mut self, allow: AllowList) {
+        self.allow = allow;
+    }
+
+    /// Say whether the host can put a `!` command's question to the person.
+    ///
+    /// Without an approver such a command is refused, as a headless shell call
+    /// is, rather than waiting for an answer nobody can give.
+    pub fn set_approver(&mut self, available: bool) {
+        self.approver = available;
+    }
+
+    /// The prompts waiting for the turn in flight to end, oldest first.
+    #[must_use]
+    pub fn queued(&self) -> &VecDeque<String> {
+        &self.queued
+    }
+
     /// The command list under the composer, when one is open.
     #[must_use]
     pub fn completion(&self) -> Option<&Completion> {
@@ -267,10 +311,15 @@ impl App {
         }
     }
 
-    /// The status bar as one line.
+    /// The status bar as one line, with the queue depth when one is waiting.
     #[must_use]
     pub fn status_line(&self) -> String {
-        self.status.line(self.separator(), self.spinner())
+        let line = self.status.line(self.separator(), self.spinner());
+        if self.queued.is_empty() {
+            line
+        } else {
+            format!("{line}{}queued {}", self.separator(), self.queued.len())
+        }
     }
 
     /// The spinner frame, if one may animate.
@@ -325,23 +374,17 @@ impl App {
                 self.cancel();
                 return Some(Command::Cancel);
             }
-            KeyCode::Char('d') if control => return Some(Command::Quit),
+            KeyCode::Char('d') if control => {
+                self.queued.clear();
+                return Some(Command::Quit);
+            }
             _ => {}
         }
         if self.modal.is_some() {
             return self.modal_key(key);
         }
         let command = match key.code {
-            KeyCode::Enter
-                if key
-                    .modifiers
-                    .intersects(KeyModifiers::ALT | KeyModifiers::SHIFT) =>
-            {
-                self.composer.newline();
-                self.history.reset();
-                None
-            }
-            KeyCode::Enter => self.submit(),
+            KeyCode::Enter => self.enter(key.modifiers),
             KeyCode::Esc => self.escape(),
             KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => self.complete(),
             KeyCode::Backspace => {
@@ -517,11 +560,15 @@ impl App {
             Outcome::Close => {
                 self.modal = None;
                 self.pending = None;
+                self.local_shell = None;
                 None
             }
             Outcome::Answer(answer) => {
                 self.modal = None;
                 self.pending = None;
+                if let Some(command) = self.local_shell.take() {
+                    return self.local_answer(command, answer);
+                }
                 self.status.turn = TurnState::Working;
                 Some(Command::Answer(answer))
             }
@@ -537,10 +584,13 @@ impl App {
         }
     }
 
-    /// Drop the overlay and any answer it was waiting for.
+    /// Drop the overlay and any answer it was waiting for, and the queue with
+    /// it: a stopped turn is not going to be followed by what waited on it.
     fn cancel(&mut self) {
         self.modal = None;
         self.pending = None;
+        self.local_shell = None;
+        self.queued.clear();
         if self.status.turn == TurnState::Waiting {
             self.status.turn = TurnState::Working;
         }
@@ -583,8 +633,14 @@ impl App {
         self.status.turn = TurnState::Waiting;
     }
 
-    /// Fold the end of a turn into the screen.
-    pub fn finish(&mut self, result: Result<RunOutcome, String>) {
+    /// Fold the end of a turn into the screen, then start the first queued
+    /// prompt.
+    ///
+    /// Returns the prompt the host must hand to the worker, when one was
+    /// queued and the turn ended normally. A cancelled turn discards its queue
+    /// before it gets here, and a failed one leaves the queue on screen for the
+    /// person to decide about.
+    pub fn finish(&mut self, result: Result<RunOutcome, String>) -> Option<Command> {
         self.pending = None;
         self.transcript.end_stream();
         match result {
@@ -602,8 +658,38 @@ impl App {
             }
         }
         self.persist_turn();
+        if self.status.turn == TurnState::Idle {
+            if let Some(prompt) = self.queued.pop_front() {
+                return Some(self.begin_turn(prompt));
+            }
+        }
+        None
     }
 
+    /// Enter and its modifiers: send, queue, add a line, or steer.
+    ///
+    /// A turn in flight changes what the keys mean: Enter queues the draft for
+    /// when the turn ends, and Alt+Enter or Ctrl+Enter hands it to the turn that
+    /// is running. With nothing running they keep their composer meanings.
+    fn enter(&mut self, modifiers: KeyModifiers) -> Option<Command> {
+        if modifiers.intersects(KeyModifiers::ALT | KeyModifiers::CONTROL) {
+            if self.status.turn.is_busy() {
+                return self.steer();
+            }
+            self.composer.newline();
+            self.history.reset();
+            return None;
+        }
+        if modifiers.contains(KeyModifiers::SHIFT) {
+            self.composer.newline();
+            self.history.reset();
+            return None;
+        }
+        self.submit()
+    }
+
+    /// Esc, Esc: the first keeps its meaning, the second restores the prompt
+    /// the composer sent last.
     fn escape(&mut self) -> Option<Command> {
         if self.completion.is_some() {
             self.completion_closed = Some(self.composer.text().to_owned());
@@ -613,12 +699,44 @@ impl App {
         if !self.composer.is_empty() {
             self.composer.clear();
             self.history.reset();
+            self.last_escape = None;
             return None;
         }
+        let now = Instant::now();
         if self.status.turn == TurnState::Working {
+            self.queued.clear();
+            self.last_escape = Some(now);
             return Some(Command::Cancel);
         }
+        if self
+            .last_escape
+            .is_some_and(|first| now.duration_since(first) < BACKTRACK_WINDOW)
+        {
+            self.last_escape = None;
+            return self.backtrack();
+        }
+        self.last_escape = Some(now);
         None
+    }
+
+    /// Put the newest prompt back in the composer and drop what answered it.
+    ///
+    /// The view and the agent's history lose the prompt; the session store is
+    /// left alone, because a turn that was already saved is still a turn that
+    /// happened.
+    fn backtrack(&mut self) -> Option<Command> {
+        let Some(index) = self.transcript.last_user() else {
+            self.transcript
+                .push_notice("there is no earlier prompt to restore");
+            return None;
+        };
+        let prompt = self.transcript.rows()[index].text.clone();
+        self.transcript.truncate(index);
+        self.turn_start = None;
+        self.set_draft(&prompt);
+        self.history.reset();
+        self.scroll.reset();
+        Some(Command::Rewind)
     }
 
     fn submit(&mut self) -> Option<Command> {
@@ -626,23 +744,123 @@ impl App {
         if text.is_empty() {
             return None;
         }
+        if let Some(command) = text.strip_prefix('!') {
+            return self.passthrough(command.trim().to_owned());
+        }
         if text.starts_with('/') {
             self.history.reset();
             return self.slash(&text);
         }
         if self.status.turn.is_busy() {
-            self.transcript
-                .push_notice("wait for the running turn to finish; press ctrl+c to stop it");
-            return None;
+            return self.queue(text);
         }
         self.history.record(&text);
+        Some(self.begin_turn(text))
+    }
+
+    /// Hold a prompt until the turn in flight ends.
+    fn queue(&mut self, text: String) -> Option<Command> {
         self.composer.clear();
+        self.history.record(&text);
+        self.queued.push_back(text);
+        self.scroll.reset();
+        None
+    }
+
+    /// Hand the draft to the running turn, without starting another one.
+    fn steer(&mut self) -> Option<Command> {
+        let text = self.composer.text().trim().to_owned();
+        if text.is_empty() {
+            return None;
+        }
+        self.composer.clear();
+        self.history.reset();
+        self.transcript.push_user(text.clone());
+        self.scroll.reset();
+        Some(Command::Steer(text))
+    }
+
+    /// Run a `!` line locally under the same policy a shell call obeys.
+    fn passthrough(&mut self, command: String) -> Option<Command> {
+        if self.status.turn.is_busy() {
+            self.transcript
+                .push_notice("! waits until the turn finishes; press ctrl+c to stop it");
+            return None;
+        }
+        self.composer.clear();
+        self.history.reset();
+        if command.is_empty() {
+            return None;
+        }
+        match decide(self.status.mode, &self.allow, &command) {
+            Decision::Allow => Some(self.start_shell(command)),
+            Decision::Ask if self.approver => {
+                self.local_shell = Some(command.clone());
+                self.modal = Some(Modal::Approval(ApprovalModal::new(ApprovalRequest {
+                    command,
+                    mode: self.status.mode,
+                })));
+                None
+            }
+            Decision::Ask => {
+                let message = format!(
+                    "refused: `{command}` needs approval and this run has nobody to ask \
+                     (mode: {}). Set the mode to auto, add the command to the allow-list, \
+                     or run it yourself.",
+                    self.status.mode.label()
+                );
+                self.refuse_shell(&command, &message);
+                None
+            }
+            Decision::Deny => {
+                self.refuse_shell(&command, &format!("refused by policy: `{command}`"));
+                None
+            }
+        }
+    }
+
+    /// Record a shell line a person asked for, in the shape the model's calls
+    /// leave, and ask the host to run it.
+    fn start_shell(&mut self, command: String) -> Command {
+        let arguments = shell_arguments(&command);
+        self.transcript.push_tool_call("shell", &arguments);
+        self.scroll.reset();
+        Command::Shell(command)
+    }
+
+    /// Record a `!` line that never ran, the way a refused tool call reads.
+    fn refuse_shell(&mut self, command: &str, message: &str) {
+        let arguments = shell_arguments(command);
+        self.transcript.push_tool_call("shell", &arguments);
+        self.transcript.push_tool_result("shell", message, true);
+        self.scroll.reset();
+    }
+
+    /// Answer a `!` command's own approval question.
+    fn local_answer(&mut self, command: String, answer: Approval) -> Option<Command> {
+        match answer {
+            Approval::Once => Some(self.start_shell(command)),
+            Approval::Always => {
+                self.allow.add(&command);
+                Some(self.start_shell(command))
+            }
+            Approval::Deny => {
+                self.refuse_shell(&command, &format!("refused: `{command}` was not approved"));
+                None
+            }
+        }
+    }
+
+    /// Record a prompt as the turn in flight and hand it to the host.
+    fn begin_turn(&mut self, text: String) -> Command {
+        self.composer.clear();
+        self.last_escape = None;
         self.turn_start = Some(self.transcript.rows().len());
         self.transcript.push_user(text.clone());
         self.scroll.reset();
         self.status.turn = TurnState::Working;
         self.spinner = 0;
-        Some(Command::Submit(text))
+        Command::Submit(text)
     }
 
     /// Tab: put the highlighted command in the draft, ready for its argument.
@@ -764,7 +982,10 @@ impl App {
                     .push_notice(format!("approval mode: {}", mode.label()));
                 Some(Command::Mode(mode))
             }
-            SlashCommand::Quit => Some(Command::Quit),
+            SlashCommand::Quit => {
+                self.queued.clear();
+                Some(Command::Quit)
+            }
             SlashCommand::Help => {
                 self.open_help();
                 None
@@ -845,6 +1066,7 @@ impl App {
         self.transcript.clear();
         self.scroll.reset();
         self.turn_start = None;
+        self.queued.clear();
         self.new_session();
         self.transcript.push_notice("started a fresh session");
     }
@@ -1173,6 +1395,11 @@ fn thread_entry(summary: &Summary) -> ThreadEntry {
     )
 }
 
+/// The argument string a shell call shows in its transcript row.
+fn shell_arguments(command: &str) -> String {
+    serde_json::json!({ "command": command }).to_string()
+}
+
 fn plural(count: usize, noun: &str) -> String {
     if count == 1 {
         format!("{count} {noun}")
@@ -1468,11 +1695,11 @@ mod tests {
             stop: StopReason::Other("cancelled".to_owned()),
             usage: Usage::default(),
         };
-        app.finish(Ok(outcome.clone()));
+        assert_eq!(app.finish(Ok(outcome.clone())), None);
         assert_eq!(app.status.turn, TurnState::Cancelled);
 
         outcome.stop = StopReason::EndTurn;
-        app.finish(Ok(outcome));
+        assert_eq!(app.finish(Ok(outcome)), None);
         assert_eq!(app.status.turn, TurnState::Idle);
     }
 
@@ -1480,7 +1707,10 @@ mod tests {
     fn a_failed_turn_says_so_in_the_transcript() {
         let mut app = app();
         app.status.turn = TurnState::Working;
-        app.finish(Err("provider mock failed: 503".to_owned()));
+        assert_eq!(
+            app.finish(Err("provider mock failed: 503".to_owned())),
+            None
+        );
         assert_eq!(app.status.turn, TurnState::Failed);
         let last = app.transcript.rows().last().expect("an error");
         assert_eq!(last.kind, RowKind::Error);
@@ -1997,7 +2227,7 @@ mod tests {
             Some(Command::Submit("hello".to_owned()))
         );
         earlier.apply(AgentEvent::Text("hi there".to_owned()));
-        earlier.finish(Ok(outcome()));
+        assert_eq!(earlier.finish(Ok(outcome())), None);
 
         type_text(&mut earlier, "/resume");
         assert_eq!(press(&mut earlier, KeyCode::Enter), None);
@@ -2067,7 +2297,7 @@ mod tests {
             Some(Command::Submit("deploy the site".to_owned()))
         );
         earlier.apply(AgentEvent::Text("done".to_owned()));
-        earlier.finish(Ok(outcome()));
+        assert_eq!(earlier.finish(Ok(outcome())), None);
 
         type_text(&mut earlier, "/clear");
         assert_eq!(press(&mut earlier, KeyCode::Enter), None);
@@ -2078,7 +2308,7 @@ mod tests {
             Some(Command::Submit("fix the parser".to_owned()))
         );
         earlier.apply(AgentEvent::Text("patched".to_owned()));
-        earlier.finish(Ok(outcome()));
+        assert_eq!(earlier.finish(Ok(outcome())), None);
 
         let mut next = app();
         next.attach_sessions(store(&temp));
@@ -2194,7 +2424,7 @@ mod tests {
             output: "a.txt".to_owned(),
             is_error: false,
         });
-        app.finish(Ok(outcome()));
+        assert_eq!(app.finish(Ok(outcome())), None);
 
         let messages = app
             .sessions
@@ -2251,20 +2481,285 @@ mod tests {
     }
 
     #[test]
-    fn a_second_prompt_waits_for_the_running_turn() {
+    fn enter_queues_while_a_turn_runs_and_the_turn_end_starts_the_first_one() {
         let mut app = app();
         app.status.turn = TurnState::Working;
-        type_text(&mut app, "second prompt");
+        type_text(&mut app, "first queued");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(
+            app.composer.is_empty(),
+            "the queued prompt leaves the draft"
+        );
+        type_text(&mut app, "second queued");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+
+        assert_eq!(app.queued().len(), 2);
+        assert!(
+            app.status_line().contains("queued 2"),
+            "{}",
+            app.status_line()
+        );
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .all(|row| row.kind != RowKind::User),
+            "a queued prompt is not a sent message: {:?}",
+            app.transcript.rows()
+        );
+        assert_eq!(app.status.turn, TurnState::Working, "nothing was started");
+
+        assert_eq!(
+            app.finish(Ok(outcome())),
+            Some(Command::Submit("first queued".to_owned())),
+            "the turn ended, so the first queued prompt starts"
+        );
+        assert_eq!(app.queued().len(), 1);
+        assert_eq!(app.status.turn, TurnState::Working);
+        assert_eq!(
+            app.transcript.rows().last().map(|row| row.text.as_str()),
+            Some("first queued")
+        );
+        assert!(
+            app.status_line().contains("queued 1"),
+            "{}",
+            app.status_line()
+        );
+    }
+
+    #[test]
+    fn a_cancelled_turn_discards_the_queue() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "waiting");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.queued().len(), 1);
+
+        assert_eq!(press(&mut app, KeyCode::Esc), Some(Command::Cancel));
+        assert!(app.queued().is_empty(), "a stopped turn discards its queue");
+        assert!(
+            !app.status_line().contains("queued"),
+            "{}",
+            app.status_line()
+        );
+    }
+
+    #[test]
+    fn clear_and_quit_discard_the_queue() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "waiting");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        type_text(&mut app, "/quit");
+        assert_eq!(press(&mut app, KeyCode::Enter), Some(Command::Quit));
+        assert!(app.queued().is_empty());
+
+        let mut app = self::app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "waiting");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.finish(Err("boom".to_owned())), None);
+        assert_eq!(app.status.turn, TurnState::Failed);
+        assert_eq!(app.queued().len(), 1, "a failed turn keeps the queue");
+
+        type_text(&mut app, "/clear");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(app.queued().is_empty());
+    }
+
+    #[test]
+    fn alt_enter_steers_a_running_turn_without_starting_a_second_one() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        app.apply(AgentEvent::Text("half an answer".to_owned()));
+
+        type_text(&mut app, "also check the tests");
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT);
+        assert_eq!(
+            app.handle_key(key),
+            Some(Command::Steer("also check the tests".to_owned()))
+        );
+        assert!(app.composer.is_empty());
+        assert_eq!(app.status.turn, TurnState::Working, "no second turn starts");
+        assert!(app.queued().is_empty(), "a steer is not queued");
+        let rows = app.transcript.rows();
+        assert_eq!(rows[1].kind, RowKind::User);
+        assert_eq!(rows[1].text, "also check the tests");
+
+        let control = KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL);
+        type_text(&mut app, "and the docs");
+        assert_eq!(
+            app.handle_key(control),
+            Some(Command::Steer("and the docs".to_owned())),
+            "ctrl+enter steers when the terminal reports it"
+        );
+    }
+
+    #[test]
+    fn a_second_escape_restores_the_last_prompt_and_drops_its_rows() {
+        let mut app = app();
+        type_text(&mut app, "fix the parser");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("fix the parser".to_owned()))
+        );
+        app.apply(AgentEvent::Text("patched".to_owned()));
+        assert_eq!(app.finish(Ok(outcome())), None);
+        assert_eq!(app.transcript.rows().len(), 2);
+
+        assert_eq!(press(&mut app, KeyCode::Esc), None, "the first one arms it");
+        assert!(app.composer.is_empty());
+        assert_eq!(app.transcript.rows().len(), 2, "one press changes nothing");
+
+        assert_eq!(press(&mut app, KeyCode::Esc), Some(Command::Rewind));
+        assert_eq!(app.composer.text(), "fix the parser");
+        assert_eq!(app.composer.row_col(), (0, 14), "the cursor ends after it");
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .all(|row| row.kind != RowKind::User),
+            "{:?}",
+            app.transcript.rows()
+        );
+        assert_eq!(app.transcript.rows().len(), 0, "the answer goes with it");
+        assert_eq!(app.status.turn, TurnState::Idle);
+    }
+
+    #[test]
+    fn a_single_escape_does_not_backtrack() {
+        let mut app = app();
+        type_text(&mut app, "keep me");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("keep me".to_owned()))
+        );
+        assert_eq!(app.finish(Ok(outcome())), None);
+
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert!(app.composer.is_empty(), "the draft stays empty");
+        assert_eq!(
+            app.transcript.rows().len(),
+            1,
+            "the row is still there: {:?}",
+            app.transcript.rows()
+        );
+    }
+
+    #[test]
+    fn a_second_escape_after_the_window_only_arms_the_backtrack_again() {
+        let mut app = app();
+        type_text(&mut app, "too late");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("too late".to_owned()))
+        );
+        app.status.turn = TurnState::Idle;
+        app.last_escape = Some(Instant::now() - BACKTRACK_WINDOW - Duration::from_millis(1));
+
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert_eq!(app.transcript.rows().len(), 1);
+        assert!(app.composer.is_empty());
+    }
+
+    #[test]
+    fn a_bang_line_runs_under_the_policy_without_the_model() {
+        let mut app = app();
+        app.status.mode = Mode::Yolo;
+        type_text(&mut app, "!printf hello");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Shell("printf hello".to_owned()))
+        );
+        assert!(app.composer.is_empty());
+        assert_eq!(
+            app.status.turn,
+            TurnState::Idle,
+            "a shell line is not a turn"
+        );
+        let rows = app.transcript.rows();
+        assert_eq!(rows.len(), 1, "the call row; the result is the host's");
+        assert_eq!(rows[0].kind, RowKind::ToolCall);
+        assert_eq!(rows[0].title.as_deref(), Some("shell"));
+        assert_eq!(rows[0].text, r#"{"command":"printf hello"}"#);
+
+        app.apply(AgentEvent::ToolEnd {
+            name: "shell".to_owned(),
+            output: "exit_code: 0\n--- stdout ---\nhello\n".to_owned(),
+            is_error: false,
+        });
+        assert_eq!(app.transcript.rows().len(), 2);
+        assert_eq!(app.transcript.rows()[1].kind, RowKind::ToolResult);
+    }
+
+    #[test]
+    fn a_bang_line_in_auto_runs_only_when_the_allow_list_permits_it() {
+        let mut app = app();
+        app.status.mode = Mode::Auto;
+        type_text(&mut app, "!printf hi");
         assert_eq!(press(&mut app, KeyCode::Enter), None);
         assert_eq!(
-            app.composer.text(),
-            "second prompt",
-            "a refused send keeps the draft"
+            app.transcript.rows().last().map(|row| row.kind),
+            Some(RowKind::Error),
+            "auto asks for a command it cannot permit, and nobody can answer"
         );
-        assert_eq!(app.status.turn, TurnState::Working);
-        assert_eq!(app.transcript.rows().len(), 1, "only the notice");
-        let last = app.transcript.rows().last().expect("notice");
-        assert!(last.text.contains("running turn"), "{}", last.text);
+
+        let mut permitted = self::app();
+        permitted.status.mode = Mode::Auto;
+        permitted.set_allow_list(AllowList::parse("printf *"));
+        type_text(&mut permitted, "!printf hi");
+        assert_eq!(
+            press(&mut permitted, KeyCode::Enter),
+            Some(Command::Shell("printf hi".to_owned()))
+        );
+    }
+
+    #[test]
+    fn a_bang_line_in_manual_asks_when_someone_can_answer() {
+        let mut app = app();
+        app.set_approver(true);
+        type_text(&mut app, "!cargo publish");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(matches!(app.modal, Some(Modal::Approval(_))));
+        assert_eq!(app.status.turn, TurnState::Idle, "no turn is waiting");
+        assert!(
+            app.transcript.is_empty(),
+            "the call is shown only once it may run: {:?}",
+            app.transcript.rows()
+        );
+
+        assert_eq!(
+            press(&mut app, KeyCode::Char('y')),
+            Some(Command::Shell("cargo publish".to_owned()))
+        );
+        assert!(app.modal.is_none());
+        let rows = app.transcript.rows();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, RowKind::ToolCall);
+    }
+
+    #[test]
+    fn a_bang_line_in_manual_with_no_approver_is_refused() {
+        let mut app = app();
+        type_text(&mut app, "!touch refused.txt");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(app.modal.is_none(), "nobody could answer a prompt");
+        let rows = app.transcript.rows();
+        assert_eq!(rows.len(), 2, "the call and the refusal: {rows:?}");
+        assert_eq!(rows[0].kind, RowKind::ToolCall);
+        assert_eq!(rows[1].kind, RowKind::Error);
+        assert!(rows[1].text.contains("nobody to ask"), "{}", rows[1].text);
+        assert_eq!(app.status.turn, TurnState::Idle);
+    }
+
+    #[test]
+    fn a_bang_with_only_whitespace_does_nothing() {
+        let mut app = app();
+        type_text(&mut app, "!   ");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(app.transcript.is_empty());
+        assert!(app.modal.is_none());
+        assert_eq!(app.status.turn, TurnState::Idle);
     }
 
     #[test]

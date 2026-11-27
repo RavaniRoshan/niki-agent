@@ -461,6 +461,8 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         mode,
         cwd: root,
     });
+    app.set_allow_list(allow.clone());
+    app.set_approver(true);
     app.set_skills(skills);
     app.set_palette(palette_or_default(config.theme.as_deref()));
     app.set_models(ModelPicker::from_config(&config));

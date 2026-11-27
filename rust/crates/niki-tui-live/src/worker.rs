@@ -6,6 +6,7 @@
 //! over `std::sync::mpsc` channels. Nothing here needs a terminal, so the whole
 //! path is testable with a scripted provider (RULES.md 8).
 
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
@@ -13,9 +14,11 @@ use std::time::Duration;
 use futures_util::future::BoxFuture;
 use niki_agent::{
     Agent, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, Compaction,
-    ContextReport, Provider, RunOutcome, SessionUsage,
+    ContextReport, Provider, RunOutcome, SessionUsage, Steering,
 };
 use niki_policy::Mode;
+use niki_tools::{Shell, Tool, ToolContext};
+use serde_json::json;
 use tokio::sync::oneshot;
 
 /// Builds a provider for one model spec, used to summarise history.
@@ -100,6 +103,10 @@ pub struct WorkerHandle {
     requests: Sender<Request>,
     events: Receiver<WorkerEvent>,
     cancel: CancelHandle,
+    /// Lines the screen steers into the turn that is running. The worker is
+    /// inside `run` while a turn is in flight, so this is shared rather than
+    /// sent down the request channel.
+    steering: Steering,
     model: String,
 }
 
@@ -114,6 +121,8 @@ impl std::fmt::Debug for WorkerHandle {
 
 enum Request {
     Prompt(String),
+    Rewind,
+    Shell { command: String, cwd: PathBuf },
     Model(String),
     Mode(Mode),
     Compact(usize),
@@ -204,6 +213,8 @@ impl WorkerHandle {
         let thread_cancel = cancel.clone();
         let model_label = model.to_owned();
         let mut model = model.to_owned();
+        let steering = Steering::new();
+        let thread_steering = steering.clone();
 
         thread::spawn(move || {
             let Some(runtime) = runtime.or_else(|| {
@@ -229,6 +240,19 @@ impl WorkerHandle {
                             agent.set_mode(next);
                         }
                     }
+                    Request::Rewind => {
+                        if let Some(agent) = agent.as_mut() {
+                            agent.rewind_last_prompt();
+                        }
+                    }
+                    Request::Shell { command, cwd } => {
+                        let (output, is_error) = run_shell(&runtime, &cwd, &command);
+                        let _ = event_tx.send(WorkerEvent::Agent(AgentEvent::ToolEnd {
+                            name: "shell".to_owned(),
+                            output,
+                            is_error,
+                        }));
+                    }
                     Request::Model(spec) => {
                         model = spec;
                         // Rebuilt on the next prompt, so a model the provider
@@ -248,7 +272,9 @@ impl WorkerHandle {
                                 approver: approver_for(&event_tx),
                                 cancel: thread_cancel.clone(),
                             }) {
-                                Ok(built) => agent = Some(built),
+                                Ok(built) => {
+                                    agent = Some(built.with_steering(thread_steering.clone()));
+                                }
                                 Err(message) => {
                                     let _ = event_tx.send(WorkerEvent::Finished(Err(message)));
                                     continue;
@@ -306,6 +332,7 @@ impl WorkerHandle {
             requests: request_tx,
             events: event_rx,
             cancel,
+            steering,
             model: model_label,
         }
     }
@@ -319,6 +346,36 @@ impl WorkerHandle {
     /// Ask for a turn. Returns false when the worker is gone.
     pub fn submit(&mut self, prompt: impl Into<String>) -> bool {
         self.requests.send(Request::Prompt(prompt.into())).is_ok()
+    }
+
+    /// Hand a line to the turn that is running.
+    ///
+    /// The turn loop appends it to the conversation before its next request, so
+    /// the model reads it without a second turn starting. A line handed in while
+    /// no turn runs waits for the next one.
+    pub fn steer(&self, text: impl Into<String>) {
+        self.steering.push(text);
+    }
+
+    /// Drop the newest prompt and its answer from the agent's history.
+    ///
+    /// The view removes the same rows, so leaving the history alone would send
+    /// the model an answer with no question.
+    pub fn rewind(&self) -> bool {
+        self.requests.send(Request::Rewind).is_ok()
+    }
+
+    /// Run one `!` line through the shell tool, without involving the model.
+    ///
+    /// The answer arrives as [`WorkerEvent::Agent`] with a
+    /// [`AgentEvent::ToolEnd`], which is the row an ordinary shell call leaves.
+    pub fn shell(&self, command: impl Into<String>, cwd: impl Into<PathBuf>) -> bool {
+        self.requests
+            .send(Request::Shell {
+                command: command.into(),
+                cwd: cwd.into(),
+            })
+            .is_ok()
     }
 
     /// Switch model; the next turn is built for it.
@@ -375,6 +432,19 @@ impl WorkerHandle {
 impl Drop for WorkerHandle {
     fn drop(&mut self) {
         let _ = self.requests.send(Request::Stop);
+    }
+}
+
+/// Run one `!` line the way the `shell` tool runs a model's call: same
+/// command runner, same 120 s budget, same workspace root.
+fn run_shell(runtime: &tokio::runtime::Runtime, cwd: &Path, command: &str) -> (String, bool) {
+    let context = match ToolContext::new(cwd) {
+        Ok(context) => context,
+        Err(error) => return (format!("error: {error}"), true),
+    };
+    match runtime.block_on(Shell::new().run(json!({ "command": command }), &context)) {
+        Ok(output) => (output.text, false),
+        Err(error) => (format!("error: {error}"), true),
     }
 }
 

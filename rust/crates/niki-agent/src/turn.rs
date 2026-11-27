@@ -19,7 +19,7 @@ use crate::context::{
     estimate_tokens, keep_from,
 };
 use crate::{
-    AgentError, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome,
+    AgentError, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome, Steering,
 };
 
 /// System prompt handed to the model when the caller sets none.
@@ -73,6 +73,7 @@ pub struct Agent {
     hooks: Option<Arc<dyn HookRunner>>,
     session_id: Option<String>,
     cancel: CancelHandle,
+    steering: Steering,
     messages: Vec<Message>,
     session: SessionUsage,
     last_usage: Usage,
@@ -96,6 +97,7 @@ impl Agent {
             hooks: None,
             session_id: None,
             cancel: CancelHandle::new(),
+            steering: Steering::new(),
             messages: Vec::new(),
             session: SessionUsage::default(),
             last_usage: Usage::default(),
@@ -127,6 +129,17 @@ impl Agent {
     #[must_use]
     pub fn with_approver(mut self, approver: Approver) -> Self {
         self.approver = Some(approver);
+        self
+    }
+
+    /// Take steered lines from a screen while a turn is running.
+    ///
+    /// Whatever arrived is appended to the conversation before the next request
+    /// the loop builds, so a person can add a thought without waiting for the
+    /// turn to end or starting a second one.
+    #[must_use]
+    pub fn with_steering(mut self, steering: Steering) -> Self {
+        self.steering = steering;
         self
     }
 
@@ -189,6 +202,23 @@ impl Agent {
         &self.messages
     }
 
+    /// Remove the newest user prompt and everything the turn produced after it.
+    ///
+    /// This is the history half of restoring a prompt to the composer: the view
+    /// drops the row, this drops the messages, and leaving it at that would
+    /// leave an answer with no question. Returns whether a prompt was removed.
+    pub fn rewind_last_prompt(&mut self) -> bool {
+        let Some(index) = self
+            .messages
+            .iter()
+            .rposition(|message| message.role == Role::User)
+        else {
+            return false;
+        };
+        self.messages.truncate(index);
+        true
+    }
+
     /// Token usage accumulated over every run of this agent.
     #[must_use]
     pub fn usage(&self) -> Usage {
@@ -241,6 +271,10 @@ impl Agent {
     /// result, and hook context is appended to the result (or to the prompt).
     /// A hook that cannot run is a [`AgentEvent::Notice`], never an error.
     ///
+    /// Lines handed in through [`Agent::with_steering`] while the run is in
+    /// flight join the conversation before the next request, and a line that
+    /// arrives just as the model stops keeps the turn going for one more step.
+    ///
     /// # Errors
     ///
     /// Returns [`AgentError::Provider`] when the model request or its stream
@@ -255,6 +289,7 @@ impl Agent {
         F: FnMut(&AgentEvent),
     {
         let prompt = prompt.into();
+        let _ = self.drain_steering();
         let prompt_outcome = self.run_prompt_hooks(&prompt, on_event);
         self.messages.push(Message::user(prompt_with_context(
             prompt,
@@ -282,6 +317,7 @@ impl Agent {
                 break 'outer;
             }
             steps += 1;
+            let _ = self.drain_steering();
 
             let request = ChatRequest {
                 model: self.config.model.clone(),
@@ -342,6 +378,9 @@ impl Agent {
             last_text = turn_text;
 
             if calls.is_empty() {
+                if self.drain_steering() {
+                    continue 'outer;
+                }
                 stop = stop_reason;
                 break 'outer;
             }
@@ -370,6 +409,9 @@ impl Agent {
             }
         }
 
+        // A line steered in as the model stopped has no request to join; keep
+        // it in the history so the next turn reads it in the order it was typed.
+        let _ = self.drain_steering();
         self.session.steps += steps;
         Ok(RunOutcome {
             text: last_text,
@@ -477,6 +519,16 @@ impl Agent {
         messages.push(Message::assistant(content));
         messages.extend_from_slice(&self.messages[split..]);
         self.messages = messages;
+    }
+
+    /// Append the lines steered since the last step and say whether any came.
+    fn drain_steering(&mut self) -> bool {
+        let pending = self.steering.take();
+        let came = !pending.is_empty();
+        for text in pending {
+            self.messages.push(Message::user(text));
+        }
+        came
     }
 
     /// Run `UserPromptSubmit` and report what it asked for.

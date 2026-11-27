@@ -675,3 +675,97 @@ async fn auto_mode_reads_without_asking() {
 
     assert!(seen.lock().expect("lock").is_empty(), "reads never ask");
 }
+
+/// A provider that steers the running turn while its first answer streams.
+struct SteeringProvider {
+    steering: niki_agent::Steering,
+    turns: Arc<Mutex<VecDeque<Vec<StreamEvent>>>>,
+    seen: Arc<Mutex<Vec<ChatRequest>>>,
+}
+
+impl Provider for SteeringProvider {
+    fn name(&self) -> &str {
+        "steering"
+    }
+
+    fn stream(
+        &self,
+        request: ChatRequest,
+    ) -> BoxStream<'static, Result<StreamEvent, ProviderError>> {
+        let first = self.seen.lock().expect("lock").is_empty();
+        self.seen.lock().expect("lock").push(request);
+        if first {
+            self.steering.push("also mention the tests");
+        }
+        let events = self
+            .turns
+            .lock()
+            .expect("lock")
+            .pop_front()
+            .unwrap_or_default();
+        futures_util::stream::iter(events.into_iter().map(Ok)).boxed()
+    }
+}
+
+#[tokio::test]
+async fn a_steer_joins_the_running_turn_without_a_second_run() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let steering = niki_agent::Steering::new();
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let provider = SteeringProvider {
+        steering: steering.clone(),
+        turns: Arc::new(Mutex::new(VecDeque::from(vec![
+            text_turn("first answer"),
+            text_turn("second answer"),
+        ]))),
+        seen: Arc::clone(&seen),
+    };
+    let mut agent = Agent::new(
+        Box::new(provider),
+        ToolContext::new(dir.path()).expect("workspace"),
+        config(),
+    )
+    .with_steering(steering);
+
+    let mut events = Vec::new();
+    let outcome = agent
+        .run("start", &mut |event| events.push(event.clone()))
+        .await
+        .expect("run");
+
+    let requests = seen.lock().expect("lock").clone();
+    assert_eq!(requests.len(), 2, "one run asked twice");
+    assert!(
+        requests[1].messages.iter().any(
+            |message| message.role == Role::User && message.content == "also mention the tests"
+        ),
+        "{:?}",
+        requests[1].messages
+    );
+    assert!(
+        events.contains(&AgentEvent::Text("second answer".to_owned())),
+        "the model answered the steer inside the same run"
+    );
+    assert_eq!(outcome.steps, 2);
+    assert_eq!(agent.messages().len(), 4, "prompt, answer, steer, answer");
+}
+
+#[tokio::test]
+async fn rewinding_drops_the_last_prompt_and_its_answer() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![text_turn("first answer"), text_turn("second answer")]);
+    let mut agent = agent(provider, dir.path(), config());
+
+    agent.run("first", &mut |_| {}).await.expect("run");
+    agent.run("second", &mut |_| {}).await.expect("run");
+    assert_eq!(agent.messages().len(), 4);
+
+    assert!(agent.rewind_last_prompt());
+    assert_eq!(agent.messages().len(), 2);
+    assert_eq!(agent.messages()[0].content, "first");
+    assert_eq!(agent.messages()[1].content, "first answer");
+
+    assert!(agent.rewind_last_prompt());
+    assert!(agent.messages().is_empty());
+    assert!(!agent.rewind_last_prompt(), "there is nothing left to undo");
+}

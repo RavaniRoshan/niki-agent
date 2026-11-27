@@ -374,3 +374,29 @@ fn the_theme_command_repaints_with_the_new_palette() {
     let status = row(&buffer, 9);
     assert!(!status.is_empty());
 }
+
+#[test]
+fn a_queued_prompt_is_drawn_dim_under_the_transcript_and_counted_in_the_bar() {
+    let mut app = app();
+    app.status.turn = TurnState::Working;
+    type_text(&mut app, "second prompt");
+    stroke(&mut app, KeyCode::Enter);
+
+    let buffer = render(&mut app, 60, 14);
+    let screen = text(&buffer);
+    assert!(screen.contains("queued: second prompt"), "{screen}");
+    assert!(
+        row(&buffer, 13).contains("queued 1"),
+        "the status bar counts the queue: {}",
+        row(&buffer, 13)
+    );
+    let cell = buffer.cell((0, 0)).expect("the queued marker");
+    assert_eq!(cell.fg, app.palette.muted.color(), "it is drawn muted");
+    assert!(
+        screen
+            .lines()
+            .next()
+            .is_some_and(|line| line.starts_with("queued: ")),
+        "the row sits under an empty transcript: {screen}"
+    );
+}

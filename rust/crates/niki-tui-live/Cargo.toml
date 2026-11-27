@@ -17,6 +17,7 @@ niki-policy = { path = "../niki-policy" }
 niki-render = { path = "../niki-render" }
 niki-session = { path = "../niki-session" }
 niki-skills = { path = "../niki-skills" }
+niki-tools = { path = "../niki-tools" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-modals = { path = "../niki-tui-modals" }
 niki-tui-themes = { path = "../niki-tui-themes" }
@@ -26,5 +27,4 @@ tokio.workspace = true
 
 [dev-dependencies]
 niki-provider = { path = "../niki-provider" }
-niki-tools = { path = "../niki-tools" }
 tempfile.workspace = true

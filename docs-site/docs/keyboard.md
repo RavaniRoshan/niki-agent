@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 16fb977fa0d7272ec14737d775e7818fd58d893db0b846344ed4b5217b186f7a
+  source-sha256: c05c9c23d8c989e09d7988004659f356f0cb41b244b23a26b49b0584f3978641
 -->
 # Niki Agent -- Keymap
 
@@ -16,10 +16,12 @@ These apply when no dialog is open.
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Send the prompt. |
-| `Alt+Enter` or `Shift+Enter` | Insert a newline instead of sending. |
+| `Enter` | Send the prompt. While a turn runs, queue it for when that turn ends. |
+| `Alt+Enter` | Insert a newline. While a turn runs, steer that turn with the draft instead. |
+| `Ctrl+Enter` | Steer the running turn, when the terminal reports the chord. |
+| `Shift+Enter` | Insert a newline instead of sending. |
 | `Tab` | Put the highlighted slash command in the draft, when the command list is open. |
-| `Esc` | Close the command list first; then clear a non-empty draft; with an empty draft, stop the running turn. |
+| `Esc` | Close the command list first; then clear a non-empty draft; with an empty draft, stop the running turn. A second `Esc` within two seconds of the first restores the last prompt. |
 | `Ctrl+C` | Close an open dialog and stop the running turn. It does not leave the app. |
 | `Ctrl+D` | Leave the app. |
 | `Ctrl+Y` | Copy the newest answer to the terminal clipboard (OSC 52). `NIKI_NO_CLIPBOARD=1` turns it off. |
@@ -39,18 +41,38 @@ app).
 
 | Key | What it does |
 | --- | --- |
-| `Enter` | Send the prompt. |
-| `Alt+Enter`, `Shift+Enter` | Insert a newline. |
+| `Enter` | Send the prompt. While a turn runs, queue it for when that turn ends. |
+| `Alt+Enter` | Insert a newline. While a turn runs, steer that turn with the draft instead. |
+| `Ctrl+Enter` | Steer the running turn, when the terminal reports the chord. |
+| `Shift+Enter` | Insert a newline. |
 | `Left` / `Right` | Move the cursor one character. |
 | `Up` / `Down` | Move the cursor between lines, or recall an earlier prompt when the composer is empty. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
 | `Backspace` / `Delete` | Delete before or after the cursor. |
-| `Esc` | Close the command list if it is open; otherwise clear the draft first; a further press stops the running turn. |
+| `Esc` | Close the command list if it is open; otherwise clear the draft first; a further press stops the running turn. A second `Esc` within two seconds of the first, with an empty composer, restores the last prompt. |
 | `Ctrl+Y` | Copy the newest answer. |
 
 Bracketed paste is enabled, so a multi-line paste arrives as one paste and is
 inserted literally. A paste never sends the prompt. A line that starts with `/`
 is a slash command; it is submitted with `Enter` like any other line.
+
+While a turn runs, `Enter` does not send: it queues the prompt. Each queued
+prompt is drawn under the transcript in a dim `queued:` row, the status bar
+counts them (`queued 2`), and the first one is sent when the turn ends. A
+cancelled turn (`Esc`, `Ctrl+C`) and `/clear` or `/quit` discard the queue.
+
+`Alt+Enter` while a turn runs hands the draft to that turn instead of queueing
+it: the model reads it on its next request, inside the same turn, so no second
+turn starts. The line is shown in the transcript as a prompt.
+
+`Esc` `Esc` on an empty composer restores the last prompt to the composer and
+drops it, with the answer it got, from the view and from the model's history.
+The saved session is left alone, so `/resume` still shows that turn.
+
+A line that starts with `!` runs locally and never reaches the model. The
+command goes through the same policy a `shell` tool call does: YOLO runs it,
+Auto runs it when the shell allow-list permits, and Manual asks first. A line
+with nothing after the `!` does nothing.
 
 Accepted prompts are appended to `$NIKI_HOME/history.jsonl` (falling back to
 `$HOME/.niki`), one JSON string per line; slash commands and blank prompts are

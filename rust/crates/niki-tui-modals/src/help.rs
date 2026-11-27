@@ -74,6 +74,18 @@ impl HelpOverlay {
                 "up, down",
                 "Move the command list, or recall an earlier prompt in an empty composer",
             ),
+            (
+                "enter",
+                "Send the prompt; while a turn runs, queue it for when the turn ends",
+            ),
+            (
+                "alt+enter, ctrl+enter",
+                "Add a line; while a turn runs, steer the turn with the text",
+            ),
+            (
+                "escape escape",
+                "Clear the draft; on an empty composer, restore the last prompt",
+            ),
             ("ctrl+y", "Copy the newest answer to the terminal clipboard"),
         ];
         ENTRIES
@@ -151,6 +163,12 @@ mod tests {
         }
         assert!(entries.iter().any(|(chord, _)| *chord == "ctrl+y"));
         assert!(entries.iter().any(|(chord, _)| *chord == "tab"));
+        for chord in ["enter", "alt+enter, ctrl+enter", "escape escape"] {
+            assert!(
+                entries.iter().any(|(entry, _)| *entry == chord),
+                "{chord} is not listed"
+            );
+        }
     }
 
     #[test]
