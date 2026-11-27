@@ -18,7 +18,26 @@ export const CHANGELOG: ChangelogRelease[] = [
     "version": "Unreleased",
     "date": null,
     "unreleased": true,
-    "sections": []
+    "sections": [
+      {
+        "title": "Added",
+        "items": [
+          "A second footer line: key hints before the first turn, then context and token accounting once a turn has started. The state line no longer carries counts, so a long session cannot push the working directory off the screen.",
+          "A terminal window title, `project — state`, with a marker that blinks while a turn waits for an answer. It is cleared when the app leaves.",
+          "`[ui].motion` and the named switches `[ui].welcome`, `.progress`, `.shimmer` and `.title`, so animation is a setting rather than a mood.",
+          "[`docs/niki/UI.md`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/UI.md), the interface contract: regions, glyphs, the motion schedule, and the settings."
+        ]
+      },
+      {
+        "title": "Changed",
+        "items": [
+          "A notice no longer hides the welcome block. A trust warning is drawn beneath the first screen instead of replacing it.",
+          "The composer is one hairline rule with a `›` glyph, not a four-row frame.",
+          "The spinner runs at 100 ms per frame instead of 80 ms, and reduced motion shows a static `◌` instead of nothing.",
+          "A tool call that is still running carries a `•`/`◦` activity marker, so a long step reads as alive."
+        ]
+      }
+    ]
   },
   {
     "version": "2.2.0",
