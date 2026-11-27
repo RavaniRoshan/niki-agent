@@ -2,8 +2,9 @@
 //!
 //! The table names are `[providers.<name>]` for user providers (also accepted
 //! under `[models.providers.<name>]`), `[models].default` for the default
-//! model, `[ui].theme` for the theme, `[mcp_servers.<name>]` for MCP servers,
-//! and `[notify]` for the program run when a turn ends. Unknown keys are
+//! model, `[ui]` for the theme, the motion preference and the per-effect
+//! switches, `[mcp_servers.<name>]` for MCP servers, and `[notify]` for the
+//! program run when a turn ends. Unknown keys are
 //! ignored, so a file written for a newer release still loads. This crate only
 //! reads `config.toml`; the binary does not write it. [`instructions`] is the
 //! one part that writes a file, and only when `/init` asks it to.
@@ -191,10 +192,27 @@ pub struct Config {
     pub default_model: Option<String>,
     /// `[ui].theme`.
     pub theme: Option<String>,
+    /// `[ui].motion`: `full` or `reduced`.
+    pub motion: Option<String>,
+    /// `[ui].welcome`, `.progress`, `.shimmer` and `.title`.
+    pub effects: Effects,
     /// MCP servers, keyed by the table name after `mcp_servers.`.
     pub mcp_servers: BTreeMap<String, McpServer>,
     /// `[notify]`, the turn-end program.
     pub notify: Notify,
+}
+
+/// The per-effect switches under `[ui]`, each absent meaning on.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Effects {
+    /// Draw the welcome block on the first screen.
+    pub welcome: Option<bool>,
+    /// Draw the spinner beside the turn state.
+    pub progress: Option<bool>,
+    /// Animate the activity marker on a running tool call.
+    pub shimmer: Option<bool>,
+    /// Set the terminal window title.
+    pub title: Option<bool>,
 }
 
 impl Config {
@@ -362,6 +380,11 @@ struct RawModels {
 #[serde(default)]
 struct RawUi {
     theme: Option<String>,
+    motion: Option<String>,
+    welcome: Option<bool>,
+    progress: Option<bool>,
+    shimmer: Option<bool>,
+    title: Option<bool>,
 }
 
 /// One `[mcp_servers.<name>]` table, before validation.
@@ -564,6 +587,13 @@ impl RawConfig {
             providers,
             default_model: self.models.default,
             theme: self.ui.theme,
+            motion: self.ui.motion,
+            effects: Effects {
+                welcome: self.ui.welcome,
+                progress: self.ui.progress,
+                shimmer: self.ui.shimmer,
+                title: self.ui.title,
+            },
             mcp_servers,
             notify: self.notify,
         })
@@ -655,6 +685,27 @@ anything = "goes"
         );
         assert_eq!(config.default_model.as_deref(), Some("kimi:kimi-k3"));
         assert_eq!(config.theme.as_deref(), Some("niki"));
+        Ok(())
+    }
+
+    #[test]
+    fn the_ui_block_carries_motion_and_effect_switches() -> Result<(), ConfigError> {
+        let config =
+            Config::from_str("[ui]\nmotion = \"reduced\"\nwelcome = false\nshimmer = false\n")?;
+        assert_eq!(config.motion.as_deref(), Some("reduced"));
+        assert_eq!(
+            config.effects,
+            Effects {
+                welcome: Some(false),
+                progress: None,
+                shimmer: Some(false),
+                title: None,
+            }
+        );
+
+        let plain = Config::from_str("[ui]\ntheme = \"mono\"\n")?;
+        assert_eq!(plain.motion, None);
+        assert_eq!(plain.effects, Effects::default());
         Ok(())
     }
 

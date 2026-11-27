@@ -31,7 +31,7 @@ use niki_skills::SkillCatalog;
 use niki_subagents::{SubagentTool, TOOL_NAME};
 use niki_tools::{Registry, ToolContext};
 use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, diff_source, run as run_screen};
-use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
+use niki_tui_themes::{Effects, GlyphMode, Motion, palette_or_default};
 use serde_json::json;
 
 const USAGE: &str = "\
@@ -87,7 +87,7 @@ OPTIONS:
 
 ENVIRONMENT:
     NIKI_ASCII=1          Draw the app with ASCII characters only
-    NIKI_REDUCED_MOTION=1 Do not animate the spinner
+    NIKI_REDUCED_MOTION=1 Draw a static marker instead of an animated one
 
 EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
@@ -865,8 +865,15 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     app.set_palette(palette_or_default(config.theme.as_deref()));
     app.set_models(ModelPicker::from_config(&config));
     app.set_glyphs(GlyphMode::from_value(env_value("NIKI_ASCII").as_deref()));
-    app.set_motion(Motion::from_value(
+    app.set_motion(Motion::resolve(
+        config.motion.as_deref(),
         env_value("NIKI_REDUCED_MOTION").as_deref(),
+    ));
+    app.set_effects(Effects::from_values(
+        config.effects.welcome,
+        config.effects.progress,
+        config.effects.shimmer,
+        config.effects.title,
     ));
     attach_sessions(&mut app);
     let session_id = app.session_id().map(str::to_owned);

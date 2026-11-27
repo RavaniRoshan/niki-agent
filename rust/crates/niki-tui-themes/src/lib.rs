@@ -381,10 +381,80 @@ impl Motion {
         }
     }
 
+    /// Resolve the setting from configuration and the environment.
+    ///
+    /// The environment wins so a recording or a CI run is deterministic even
+    /// when the checked-in config asks for full motion. An unrecognised value
+    /// in either place falls through to the other, and then to [`Self::Full`].
+    #[must_use]
+    pub fn resolve(config: Option<&str>, environment: Option<&str>) -> Self {
+        let reduced = |value: &str| match value.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" | "reduce" | "reduced" => Some(true),
+            "0" | "false" | "no" | "off" | "full" => Some(false),
+            _ => None,
+        };
+        match environment
+            .and_then(reduced)
+            .or_else(|| config.and_then(reduced))
+        {
+            Some(true) => Self::Reduced,
+            Some(false) | None => Self::Full,
+        }
+    }
+
     /// Whether a spinner may advance.
     #[must_use]
     pub fn allows_spinner(self) -> bool {
         self == Self::Full
+    }
+}
+
+/// The named effects that may be switched off one at a time.
+///
+/// One master [`Motion`] flag decides whether anything moves; these decide
+/// whether a feature is drawn at all. Turning one off removes the animation,
+/// never the information behind it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Effects {
+    /// The welcome block on the first screen.
+    pub welcome: bool,
+    /// The spinner beside the turn state.
+    pub progress: bool,
+    /// The activity marker on a tool call that is still running.
+    pub shimmer: bool,
+    /// The terminal window title.
+    pub title: bool,
+}
+
+impl Effects {
+    /// Every effect on, the default.
+    pub const ALL: Self = Self {
+        welcome: true,
+        progress: true,
+        shimmer: true,
+        title: true,
+    };
+
+    /// Resolve each effect from its setting, absent meaning on.
+    #[must_use]
+    pub fn from_values(
+        welcome: Option<bool>,
+        progress: Option<bool>,
+        shimmer: Option<bool>,
+        title: Option<bool>,
+    ) -> Self {
+        Self {
+            welcome: welcome.unwrap_or(true),
+            progress: progress.unwrap_or(true),
+            shimmer: shimmer.unwrap_or(true),
+            title: title.unwrap_or(true),
+        }
+    }
+}
+
+impl Default for Effects {
+    fn default() -> Self {
+        Self::ALL
     }
 }
 
@@ -501,5 +571,34 @@ mod tests {
         assert_eq!(Motion::from_value(None), Motion::Full);
         assert!(Motion::Full.allows_spinner());
         assert!(!Motion::Reduced.allows_spinner());
+    }
+
+    #[test]
+    fn motion_resolution_lets_the_environment_win() {
+        assert_eq!(Motion::resolve(None, None), Motion::Full);
+        assert_eq!(Motion::resolve(Some("reduced"), None), Motion::Reduced);
+        assert_eq!(Motion::resolve(Some("full"), Some("1")), Motion::Reduced);
+        assert_eq!(Motion::resolve(Some("reduced"), Some("0")), Motion::Full);
+        assert_eq!(
+            Motion::resolve(Some("nonsense"), None),
+            Motion::Full,
+            "an unreadable value falls through to the default"
+        );
+        assert_eq!(Motion::resolve(None, Some("nonsense")), Motion::Full);
+    }
+
+    #[test]
+    fn a_missing_effect_setting_means_on() {
+        assert_eq!(Effects::default(), Effects::ALL);
+        assert_eq!(Effects::from_values(None, None, None, None), Effects::ALL);
+        assert_eq!(
+            Effects::from_values(Some(false), None, Some(false), None),
+            Effects {
+                welcome: false,
+                progress: true,
+                shimmer: false,
+                title: true,
+            }
+        );
     }
 }
