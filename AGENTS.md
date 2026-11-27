@@ -27,10 +27,14 @@ and [`rust/MAP.md`](rust/MAP.md) for the port plan and its status.
   unpack a release archive and place the binary; they do not build anything.
 - `docs/niki` — architecture, independence, keymap, and provider guides.
 - `site/` — the marketing site (Vite + React + Tailwind, Bun toolchain).
+- `launch/` — Product Hunt copy and gallery images, regenerated from `intro.gif`
+  by `launch/render_gallery.py`. Nothing here ships in the binary.
 - `docs-site/` — the VitePress documentation site, deployed as its own Vercel
   project. It mirrors five repository documents; `npm run sync` refreshes the
   mirrors and `npm run check:brand` gates branding.
 - `SECURITY.md` — reporting, supported versions, and trust boundaries.
+- `CHANGELOG.md` — the release history readers see; the docs site has its own
+  page at `docs-site/docs/changelog.md`.
 
 ## Commands
 
