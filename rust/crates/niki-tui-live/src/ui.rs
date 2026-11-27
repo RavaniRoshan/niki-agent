@@ -74,9 +74,19 @@ fn draw_transcript_if_any(frame: &mut Frame, app: &mut App, area: Rect) {
 
 /// The first screen in a fresh session: what this is, which model and mode are
 /// in force, where it is rooted, and the four commands worth knowing first.
+///
+/// Notices — a trust warning, say — are drawn beneath the welcome instead of
+/// replacing it. With the `welcome` effect off the notices stand alone; the
+/// footer still carries the model, mode and directory.
 fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
     let palette = app.palette;
     let width = usize::from(area.width);
+    let height = usize::from(area.height);
+    if !app.effects.welcome {
+        let lines = notice_lines(app, width);
+        frame.render_widget(Paragraph::new(lines).style(palette.canvas()), area);
+        return;
+    }
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     lines.push(Line::default());
@@ -136,32 +146,36 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
 
     // A notice is the app talking, not the person, so it sits under the welcome
     // rather than replacing it: a trust warning must not be the first screen.
-    let notices: Vec<&str> = app
-        .transcript
-        .rows()
-        .iter()
-        .filter(|row| row.kind == RowKind::Notice)
-        .map(|row| row.text.as_str())
-        .collect();
+    let notices = notice_lines(app, width);
     if !notices.is_empty() {
         lines.push(Line::default());
-        for text in notices {
-            for (index, chunk) in niki_render::wrap(text, width.saturating_sub(2).max(1))
-                .into_iter()
-                .enumerate()
-            {
-                let lead = if index == 0 { "- " } else { "  " };
-                lines.push(Line::from(vec![
-                    Span::styled(lead.to_owned(), palette.muted_style()),
-                    Span::styled(chunk, palette.muted_style()),
-                ]));
-            }
-        }
+        lines.extend(notices);
     }
 
-    let height = usize::from(area.height);
     lines.truncate(height);
     frame.render_widget(Paragraph::new(lines).style(palette.canvas()), area);
+}
+
+/// The `- ` notice rows, wrapped to `width`.
+fn notice_lines(app: &App, width: usize) -> Vec<Line<'static>> {
+    let palette = app.palette;
+    let mut lines = Vec::new();
+    for row in app.transcript.rows() {
+        if row.kind != RowKind::Notice {
+            continue;
+        }
+        for (index, chunk) in niki_render::wrap(&row.text, width.saturating_sub(2).max(1))
+            .into_iter()
+            .enumerate()
+        {
+            let lead = if index == 0 { "- " } else { "  " };
+            lines.push(Line::from(vec![
+                Span::styled(lead.to_owned(), palette.muted_style()),
+                Span::styled(chunk, palette.muted_style()),
+            ]));
+        }
+    }
+    lines
 }
 
 fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -183,8 +197,10 @@ fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect) {
 fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
     let palette = app.palette;
     let marks = app.marks();
+    let rows = app.transcript.rows();
+    let last = rows.len().saturating_sub(1);
     let mut lines: Vec<Line<'static>> = Vec::new();
-    for row in app.transcript.rows() {
+    for (index, row) in rows.iter().enumerate() {
         if row.kind == RowKind::Diff {
             if !lines.is_empty() {
                 lines.push(Line::default());
@@ -202,7 +218,17 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
         let (marker, style) = match row.kind {
             RowKind::User => (format!("{} ", marks.user), palette.accent_style()),
             RowKind::Assistant => (format!("{} ", marks.assistant), palette.body_style()),
-            RowKind::ToolCall => (format!("{} ", marks.tool), palette.muted_style()),
+            RowKind::ToolCall => {
+                // A call that is still running carries the activity marker, so
+                // a long step reads as alive rather than frozen.
+                let running = index == last && app.status.turn == crate::status::TurnState::Working;
+                let glyph = if running {
+                    app.activity_glyph().to_string()
+                } else {
+                    marks.tool.to_owned()
+                };
+                (format!("{glyph} "), palette.muted_style())
+            }
             RowKind::ToolResult => (format!("{} ", marks.tool), palette.muted_style()),
             RowKind::Error => ("! ".to_owned(), palette.error_style()),
             RowKind::Notice => ("- ".to_owned(), palette.muted_style()),

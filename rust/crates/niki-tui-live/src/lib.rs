@@ -17,6 +17,7 @@ mod composer;
 pub mod diff_source;
 mod editor;
 mod history;
+mod motion;
 mod run;
 mod scroll;
 mod status;

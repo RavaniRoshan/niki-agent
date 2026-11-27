@@ -25,21 +25,18 @@ use niki_tui_modals::{
     ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, QuestionModal, QuestionReply,
     StatusCard, StatusField, ThreadEntry, ThreadPicker,
 };
-use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
+use niki_tui_themes::{Effects, GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
 use crate::completion::Completion;
 use crate::composer::Composer;
 use crate::diff_source::{self, DiffSection};
 use crate::history::History;
+use crate::motion;
 use crate::scroll::Scroll;
 use crate::status::{Status, TurnState, context_percentage, describe_context, format_tokens};
 use crate::transcript::{Row, RowKind, Transcript};
 use crate::transcript_overlay::TranscriptOverlay;
 
-/// Spinner frames for a terminal that draws Unicode.
-const UNICODE_SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-/// Spinner frames for a terminal that does not.
-const ASCII_SPINNER: [char; 4] = ['|', '/', '-', '\\'];
 /// Lines the composer grows to before it scrolls its own text.
 const MAX_COMPOSER_LINES: u16 = 5;
 /// Lines one wheel notch moves the transcript.
@@ -115,6 +112,8 @@ pub struct App {
     pub glyphs: GlyphMode,
     /// Whether the spinner may animate.
     pub motion: Motion,
+    /// Which named effects are drawn at all.
+    pub effects: Effects,
     /// The command waiting for the person's answer, if one is.
     pub pending: Option<ApprovalRequest>,
     /// The structured question waiting for the person's answer, if one is.
@@ -179,6 +178,7 @@ impl App {
             palette: &NIKI,
             glyphs: GlyphMode::default(),
             motion: Motion::default(),
+            effects: Effects::default(),
             pending: None,
             question: None,
             modal: None,
@@ -327,6 +327,11 @@ impl App {
         self.motion = motion;
     }
 
+    /// Switch the named effects on or off.
+    pub fn set_effects(&mut self, effects: Effects) {
+        self.effects = effects;
+    }
+
     /// The markers to draw with.
     #[must_use]
     pub fn marks(&self) -> Glyphs {
@@ -407,17 +412,45 @@ impl App {
     }
 
     /// The spinner frame, if one may animate.
+    ///
+    /// Reduced motion answers a static `◌` rather than nothing: the turn is
+    /// still visibly working. With the `progress` effect off there is no
+    /// glyph at all, and the state word alone carries the information.
     #[must_use]
     pub fn spinner(&self) -> Option<char> {
-        if !self.status.turn.is_busy() || !self.motion.allows_spinner() {
+        if !self.status.turn.is_busy() || !self.effects.progress {
             return None;
         }
+        if !self.motion.allows_spinner() {
+            return Some(if self.glyphs.is_ascii() {
+                motion::RESTING_ASCII
+            } else {
+                motion::RESTING_UNICODE
+            });
+        }
         let frames: &[char] = if self.glyphs.is_ascii() {
-            &ASCII_SPINNER
+            &motion::ASCII_LOADING
         } else {
-            &UNICODE_SPINNER
+            &motion::UNICODE_LOADING
         };
         frames.get(self.spinner % frames.len()).copied()
+    }
+
+    /// The marker on a tool call that is still running.
+    ///
+    /// Without motion or without the `shimmer` effect it stays on the first
+    /// frame, so a long step is still marked as alive rather than frozen.
+    #[must_use]
+    pub fn activity_glyph(&self) -> char {
+        let frames = if self.glyphs.is_ascii() {
+            motion::ACTIVITY_ASCII
+        } else {
+            motion::ACTIVITY_UNICODE
+        };
+        if !self.effects.shimmer || !self.motion.allows_spinner() {
+            return frames[0];
+        }
+        frames[(self.spinner / motion::ACTIVITY_TICKS) % frames.len()]
     }
 
     /// Advance the spinner; the screen calls this on every idle tick.
@@ -2445,13 +2478,62 @@ mod tests {
         assert_ne!(first, second);
 
         app.set_motion(Motion::Reduced);
-        assert_eq!(app.spinner(), None);
+        assert_eq!(
+            app.spinner(),
+            Some('◌'),
+            "reduced motion keeps a static marker"
+        );
+        assert!(app.status_line().contains('◌'));
         assert!(!app.status_line().contains('⠋'));
 
         app.set_motion(Motion::Full);
         app.set_glyphs(GlyphMode::Ascii);
         let frame = app.spinner().expect("a frame while working");
         assert!(frame.is_ascii(), "{frame}");
+        app.set_motion(Motion::Reduced);
+        assert_eq!(app.spinner(), Some('o'), "the ASCII resting glyph");
+    }
+
+    #[test]
+    fn the_progress_effect_can_switch_the_spinner_off() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        app.set_effects(Effects {
+            progress: false,
+            ..Effects::ALL
+        });
+        assert_eq!(app.spinner(), None);
+        assert!(app.status_line().contains("working"), "the state remains");
+    }
+
+    #[test]
+    fn the_activity_marker_blinks_and_holds_still_without_motion() {
+        let mut app = app();
+        let first = app.activity_glyph();
+        assert_eq!(first, '•');
+        for _ in 0..motion::ACTIVITY_TICKS {
+            app.tick();
+        }
+        assert_eq!(app.activity_glyph(), '◦', "the bullet dims after 600 ms");
+
+        app.set_motion(Motion::Reduced);
+        assert_eq!(app.activity_glyph(), '•', "reduced motion holds it lit");
+
+        app.set_motion(Motion::Full);
+        app.set_effects(Effects {
+            shimmer: false,
+            ..Effects::ALL
+        });
+        assert_eq!(
+            app.activity_glyph(),
+            '•',
+            "the effect off is still a marker"
+        );
+
+        app.set_effects(Effects::ALL);
+        app.set_glyphs(GlyphMode::Ascii);
+        app.spinner = 0;
+        assert_eq!(app.activity_glyph(), '*');
     }
 
     #[test]
