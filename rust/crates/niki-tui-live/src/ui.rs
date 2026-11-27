@@ -1,9 +1,9 @@
 //! Drawing the screen.
 //!
-//! One layout, three regions: the transcript viewport, the composer block and
-//! the status bar. Nothing here reads a terminal or an event; [`draw`] takes the
-//! same [`App`] a test can build, which is what lets the whole view be checked
-//! against a `TestBackend` buffer.
+//! One layout, four regions: the transcript viewport, the composer rule and its
+//! text, the command list, and the two-line footer. Nothing here reads a
+//! terminal or an event; [`draw`] takes the same [`App`] a test can build, which
+//! is what lets the whole view be checked against a `TestBackend` buffer.
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
@@ -28,15 +28,15 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Constraint::Min(1),
         Constraint::Length(app.composer_height()),
         Constraint::Length(app.completion_height()),
-        Constraint::Length(1),
+        Constraint::Length(2),
     ])
     .split(area);
-    let [body, composer, completion, status] = [areas[0], areas[1], areas[2], areas[3]];
+    let [body, composer, completion, footer] = [areas[0], areas[1], areas[2], areas[3]];
 
     draw_transcript_if_any(frame, app, body);
     let cursor = draw_composer(frame, app, composer);
     draw_completion(frame, app, completion);
-    draw_status(frame, app, status);
+    draw_footer(frame, app, footer);
     if let Some(overlay) = app.transcript_overlay.as_mut() {
         crate::transcript_overlay::draw(
             frame,
@@ -65,7 +65,7 @@ fn draw_transcript_if_any(frame: &mut Frame, app: &mut App, area: Rect) {
     }
     let height = usize::from(area.height);
     app.page = height;
-    if app.transcript.rows().is_empty() && app.status.turn == crate::status::TurnState::Idle {
+    if !app.transcript.has_conversation() && app.status.turn == crate::status::TurnState::Idle {
         draw_welcome(frame, app, area);
         return;
     }
@@ -133,6 +133,31 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
         clip("Type a prompt to begin. Ctrl+D quits.", width).0,
         palette.muted_style(),
     )));
+
+    // A notice is the app talking, not the person, so it sits under the welcome
+    // rather than replacing it: a trust warning must not be the first screen.
+    let notices: Vec<&str> = app
+        .transcript
+        .rows()
+        .iter()
+        .filter(|row| row.kind == RowKind::Notice)
+        .map(|row| row.text.as_str())
+        .collect();
+    if !notices.is_empty() {
+        lines.push(Line::default());
+        for text in notices {
+            for (index, chunk) in niki_render::wrap(text, width.saturating_sub(2).max(1))
+                .into_iter()
+                .enumerate()
+            {
+                let lead = if index == 0 { "- " } else { "  " };
+                lines.push(Line::from(vec![
+                    Span::styled(lead.to_owned(), palette.muted_style()),
+                    Span::styled(chunk, palette.muted_style()),
+                ]));
+            }
+        }
+    }
 
     let height = usize::from(area.height);
     lines.truncate(height);
@@ -284,29 +309,58 @@ fn clip(text: &str, width: usize) -> (String, usize) {
     (clipped, used)
 }
 
+/// The composer: one hairline rule, then the draft with a `›` where input
+/// begins.
+///
+/// A frame would spend four rows and a border colour on one line of text. The
+/// rule marks the input region with less ink, and the glyph survives the ASCII
+/// mode as `>`.
 fn draw_composer(frame: &mut Frame, app: &mut App, area: Rect) -> Option<Position> {
     if area.is_empty() {
         return None;
     }
     let palette = app.palette;
-    let block = Block::bordered()
-        .border_set(app.glyphs.border())
-        .border_style(palette.border_style())
-        .style(palette.panel_style());
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-    if inner.is_empty() {
+    let rule = app.glyphs.border().horizontal_top;
+    let rule_row = Rect { height: 1, ..area };
+    let rule_line = Line::from(Span::styled(
+        rule.repeat(usize::from(area.width)),
+        palette.border_style(),
+    ));
+    frame.render_widget(Paragraph::new(rule_line), rule_row);
+    if area.height < 2 {
         return None;
     }
+    let inner = Rect {
+        y: area.y + 1,
+        height: area.height - 1,
+        ..area
+    };
 
+    let mark = app.marks().user;
+    let prefix = niki_render::display_width(mark) + 1;
+    let indent = " ".repeat(prefix);
     let rows = usize::from(inner.height);
     let (visible, offset) = app.composer.window(rows);
     let lines: Vec<Line<'static>> = if app.composer.is_empty() {
-        vec![Line::from(Span::styled(PLACEHOLDER, palette.muted_style()))]
+        vec![Line::from(vec![
+            Span::styled(format!("{mark} "), palette.accent_style()),
+            Span::styled(PLACEHOLDER, palette.muted_style()),
+        ])]
     } else {
         visible
             .into_iter()
-            .map(|text| Line::from(Span::styled(text.to_owned(), palette.body_style())))
+            .enumerate()
+            .map(|(index, text)| {
+                let lead = if index == 0 {
+                    format!("{mark} ")
+                } else {
+                    indent.clone()
+                };
+                Line::from(vec![
+                    Span::styled(lead, palette.accent_style()),
+                    Span::styled(text.to_owned(), palette.body_style()),
+                ])
+            })
             .collect()
     };
     frame.render_widget(Paragraph::new(lines), inner);
@@ -316,6 +370,7 @@ fn draw_composer(frame: &mut Frame, app: &mut App, area: Rect) -> Option<Positio
     let last_column = inner.width.saturating_sub(1);
     let x = inner
         .x
+        .saturating_add(u16::try_from(prefix).unwrap_or(last_column))
         .saturating_add(u16::try_from(column).unwrap_or(last_column))
         .min(inner.x.saturating_add(last_column));
     let y = inner
@@ -359,11 +414,29 @@ fn draw_completion(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
+/// The footer: the state line, then whichever second line the session has
+/// earned.
+///
+/// Before anything happens the second line teaches keys; once a turn has
+/// started it yields to the context and token accounting. Both rows share the
+/// panel colour so the footer reads as one band.
+fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     if area.is_empty() {
         return;
     }
     frame.render_widget(Block::default().style(app.palette.panel_style()), area);
-    let line = Line::from(Span::styled(app.status_line(), app.palette.panel_style()));
-    frame.render_widget(Paragraph::new(line), area);
+    let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
+
+    let state = Line::from(Span::styled(app.status_line(), app.palette.panel_style()));
+    frame.render_widget(Paragraph::new(state), rows[0]);
+
+    let second = if app.started() {
+        app.accounting_line().unwrap_or_default()
+    } else {
+        app.hints(usize::from(area.width))
+    };
+    if !second.is_empty() {
+        let line = Line::from(Span::styled(second, app.palette.muted_style()));
+        frame.render_widget(Paragraph::new(line), rows[1]);
+    }
 }
