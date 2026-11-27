@@ -6,19 +6,15 @@ memory. Where a check was not possible, the row says so and names why.
 
 ## Verdict
 
-The product is ready. Two switches are not, and both live in a dashboard that
-cannot be driven from a terminal:
+The product is ready, and so are both deployments. One switch is left, and it
+lives behind a browser login that a terminal cannot complete: **no Product Hunt
+token**. `launch/ph-launch.mjs --check` cannot authenticate, and
+`mcp.producthunt.com` answers unauthenticated calls with a connect prompt. The
+MCP client is written and tested; it needs a token.
 
-1. **Vercel Web Analytics is off on both projects.** The projects carry a
-   `webAnalytics.id` but no `enabledAt`, so `/_vercel/insights/script.js`
-   returns `404`. The REST API rejects the field (`PATCH /v9/projects/{id}`
-   answers `should NOT have additional property 'webAnalytics'`). This is a
-   dashboard toggle.
-2. **No Product Hunt token.** `launch/ph-launch.mjs --check` cannot authenticate,
-   and `mcp.producthunt.com` answers unauthenticated calls with a connect
-   prompt. The MCP client is written and tested; it needs a token.
-
-Nothing else is outstanding. Both are one click each, listed at the end.
+Vercel Web Analytics is on for both projects, and both sites now serve
+`/_vercel/insights/script.js` as `200 application/javascript`. That switch is no
+longer a gap; the detail is under "Analytics".
 
 ## Release and artifacts
 
@@ -109,24 +105,34 @@ descriptions are a future improvement, not a launch blocker.
   not shipped.
 - The docs site uses one shared meta description for every page.
 
-## The two human actions
+## Analytics
 
-1. Open each Vercel project → **Analytics** → **Enable**. Then
-   `curl -sI https://niki-site.vercel.app/_vercel/insights/script.js` should
-   answer `200 application/javascript`, and the same for
-   `https://niki-docs.vercel.app`.
-2. Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and
-   export `PRODUCT_HUNT_TOKEN`. Then:
+| Check | Result |
+| --- | --- |
+| `vercel project web-analytics enable niki-site` | enabled, then redeployed |
+| `vercel project web-analytics enable niki-docs` | enabled, then redeployed |
+| `curl -I /_vercel/insights/script.js` on both hosts | `200 application/javascript` |
+| Script tag in the rendered marketing page | injected by `@vercel/analytics`; a headless Chromium run shows `src="/_vercel/insights/script.js"` in the DOM |
+| Script tag in the docs HTML | present in the served markup |
 
-   ```bash
-   node launch/ph-launch.mjs --check 2026-12-08
-   node launch/ph-launch.mjs --draft
-   node launch/ph-launch.mjs --assets <id> \
-     https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/01-hero.png \
-     https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/02-read-before-write.png \
-     https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/03-approval-gate.png \
-     https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/04-proof.png
-   node launch/ph-launch.mjs --submit <id>
-   ```
+The marketing site injects the tag at runtime from `site/src/main.tsx`; the docs
+site has it in the page. Both requests reach the platform route, so page views
+are recorded.
+
+## The one human action
+
+Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and export
+`PRODUCT_HUNT_TOKEN`. Then:
+
+```bash
+node launch/ph-launch.mjs --check 2026-12-08
+node launch/ph-launch.mjs --draft
+node launch/ph-launch.mjs --assets <id> \
+  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/01-hero.png \
+  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/02-read-before-write.png \
+  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/03-approval-gate.png \
+  https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/launch/gallery/04-proof.png
+node launch/ph-launch.mjs --submit <id>
+```
 
 `launch/product-hunt.md` carries the copy, the timing, and the day-of checklist.

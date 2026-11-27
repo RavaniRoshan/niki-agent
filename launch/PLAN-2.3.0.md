@@ -28,9 +28,10 @@ gate that closes it.
 - **Beta onboarding.** The beta page, the feedback form, and the issue template
   agree on one version line and one label, so a report arriving from the listing
   lands in the same place as one from the docs.
-- **Analytics readback.** Vercel Analytics records page views once the dashboard
-  toggle is on; the first week's numbers go into the launch retrospective, not
-  into the site.
+- **Analytics readback.** Vercel Analytics records page views. The toggle is on
+  for both projects (`vercel project web-analytics enable <project>`, then
+  redeploy so the platform serves `/_vercel/insights/script.js`); the first
+  week's numbers go into the launch retrospective, not into the site.
 - **The download page carries every platform**, including the install one-liners
   and the checksum file, with the Windows path stated plainly rather than left
   to the reader.
