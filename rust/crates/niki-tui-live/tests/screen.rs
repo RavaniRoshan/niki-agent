@@ -6,6 +6,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_agent::{AgentEvent, Usage};
 use niki_policy::Mode;
+use niki_tools::{AskOption, AskRequest};
 use niki_tui_live::{App, Command, PLACEHOLDER, SessionInfo, TurnState, draw};
 use niki_tui_themes::{GlyphMode, MONO, Palette};
 use ratatui::Terminal;
@@ -44,6 +45,23 @@ fn text(buffer: &Buffer) -> String {
 
 fn stroke(app: &mut App, code: KeyCode) {
     let _ = app.handle_key(KeyEvent::new(code, KeyModifiers::NONE));
+}
+
+fn question(allow_freeform: bool) -> AskRequest {
+    AskRequest {
+        question: "Which store should the new service use?".to_owned(),
+        options: vec![
+            AskOption {
+                label: "SQLite".to_owned(),
+                description: Some("one file, no server".to_owned()),
+            },
+            AskOption {
+                label: "JSON".to_owned(),
+                description: Some("a file per record".to_owned()),
+            },
+        ],
+        allow_freeform,
+    }
 }
 
 fn type_text(app: &mut App, text: &str) {
@@ -259,6 +277,55 @@ fn an_approval_write_body_names_the_absolute_path_and_boundary() {
         "{screen}"
     );
     assert!(screen.contains("Allow for this session"), "{screen}");
+}
+
+#[test]
+fn a_question_prompt_shows_the_question_the_count_and_the_options() {
+    let mut app = app();
+    app.request_question(question(true));
+    let buffer = render(&mut app, 80, 20);
+    let screen = text(&buffer);
+    assert!(screen.contains("Question"), "{screen}");
+    assert!(
+        screen.contains("Which store should the new service use?"),
+        "{screen}"
+    );
+    assert!(screen.contains("2 options · single answer"), "{screen}");
+    assert!(screen.contains("> SQLite"), "{screen}");
+    assert!(screen.contains("one file, no server"), "{screen}");
+    assert!(screen.contains("JSON"), "{screen}");
+    assert!(screen.contains("type your own answer"), "{screen}");
+    assert!(screen.contains("waiting for you"), "{screen}");
+}
+
+#[test]
+fn a_question_highlight_follows_the_arrow_keys() {
+    let mut app = app();
+    app.request_question(question(false));
+    stroke(&mut app, KeyCode::Down);
+    let screen = text(&render(&mut app, 80, 20));
+    assert!(screen.contains("> JSON"), "{screen}");
+    assert!(!screen.contains("> SQLite"), "{screen}");
+}
+
+#[test]
+fn a_long_question_on_a_twenty_by_six_terminal_draws_without_panicking() {
+    let mut app = app();
+    let mut request = question(true);
+    request.question = "Why should this service use a new database at all? ".repeat(40);
+    app.request_question(request);
+    let buffer = render(&mut app, 20, 6);
+    assert_eq!(buffer.area.width, 20);
+    assert_eq!(buffer.area.height, 6);
+    let screen = text(&buffer);
+    assert!(!screen.trim().is_empty(), "the prompt still draws");
+    assert!(screen.contains("Why"), "the question gets a row: {screen}");
+    for line in screen.lines() {
+        assert!(
+            niki_render::display_width(line) <= 20,
+            "line wider than the terminal: {line:?}"
+        );
+    }
 }
 
 #[test]

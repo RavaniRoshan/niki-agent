@@ -253,6 +253,7 @@ fn the_worker_registers_a_configured_tool_and_asks_the_screen() {
                 }
             }
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
+            Some(WorkerEvent::Question { .. }) => panic!("this turn asks no question"),
             None => panic!("the worker went quiet before the turn finished"),
         }
     }

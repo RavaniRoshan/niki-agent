@@ -19,6 +19,8 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
 use niki_agent::Approval;
+use niki_tools::{AskAnswer, AskError};
+use niki_tui_modals::QuestionReply;
 use tokio::sync::oneshot;
 
 use crate::app::{App, Command};
@@ -156,6 +158,10 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
     // without an answer makes the turn read a refusal, which is the safe way to
     // leave a question nobody answered.
     let mut reply: Option<oneshot::Sender<Approval>> = None;
+    // The channel a blocked `request_user_input` waits on. Dropping it without
+    // an answer makes the tool report a dismissal, which is the safe way to
+    // leave a question nobody answered.
+    let mut question_reply: Option<std::sync::mpsc::Sender<Result<AskAnswer, AskError>>> = None;
     screen.terminal.draw(|frame| ui::draw(frame, app))?;
     loop {
         let mut changed = false;
@@ -169,8 +175,16 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                     reply = Some(answer);
                     app.request_approval(request);
                 }
+                WorkerEvent::Question {
+                    request,
+                    reply: answer,
+                } => {
+                    question_reply = Some(answer);
+                    app.request_question(request);
+                }
                 WorkerEvent::Finished(result) => {
                     reply = None;
+                    question_reply = None;
                     if let Some(Command::Submit(prompt)) = app.finish(result) {
                         worker.submit(prompt);
                     }
@@ -219,6 +233,7 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                 }
                 Some(Command::Cancel) => {
                     reply = None;
+                    question_reply = None;
                     worker.cancel();
                 }
                 Some(Command::Mode(mode)) => {
@@ -227,6 +242,19 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                 Some(Command::Answer(answer)) => {
                     if let Some(answer_to) = reply.take() {
                         let _ = answer_to.send(answer);
+                    }
+                }
+                Some(Command::AnswerQuestion(answer)) => {
+                    if let Some(answer_to) = question_reply.take() {
+                        let result = match answer {
+                            QuestionReply::Choice(label) => Ok(AskAnswer::Choice(label)),
+                            QuestionReply::Freeform(text) => Ok(AskAnswer::Freeform(text)),
+                            QuestionReply::Cancelled => Err(AskError::Failed(
+                                "the question was cancelled; ask again or continue without it"
+                                    .to_owned(),
+                            )),
+                        };
+                        let _ = answer_to.send(result);
                     }
                 }
                 Some(Command::SelectModel(spec)) => {

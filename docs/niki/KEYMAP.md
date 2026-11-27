@@ -95,6 +95,22 @@ write would land on and whether it resolves inside the workspace.
 Closing the prompt without an answer counts as a refusal, so the turn never
 waits on a question nobody answered.
 
+## Question prompt
+
+The model opens this with `request_user_input`. The body shows the question,
+how many choices there are and that one answer is expected. The tool's schema
+offers one answer, so there is no multi-select. A question whose arguments set
+`allow_freeform` adds a row you can type into.
+
+| Key | What it does |
+| --- | --- |
+| `Up` / `Down` | Move the highlight through the options and the free-text row. `Left`/`Right` and `Tab`/`Shift+Tab` work too. |
+| `Enter` | Return the highlighted option, or the text typed on the free-text row. |
+| Printable characters | Type an answer on the free-text row, when the question allows one. `q` is text, never a close key. |
+| `Backspace` | Delete a typed character. |
+| `PageUp` / `PageDown` | Scroll a long question; the options stay on screen. |
+| `Esc` | Cancel. The model is told the question was cancelled and the turn continues. |
+
 ## Help overlay
 
 Opened with `?` on an empty composer, or with `/help`.
