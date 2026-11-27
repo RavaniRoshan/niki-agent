@@ -128,8 +128,10 @@ impl SkillCatalog {
     /// Discover the skills under `trust`.
     ///
     /// The user directory and the built-ins are always loaded. When the
-    /// workspace is untrusted, `.niki/skills` is not listed at all,
-    /// [`Self::project_suppressed`] is set and a warning explains why.
+    /// workspace is untrusted, `.niki/skills` is not listed at all and
+    /// [`Self::project_suppressed`] is set; a warning explains why when the
+    /// directory exists, because skipping a directory that is not there
+    /// suppresses nothing.
     #[must_use]
     pub fn discover_with(workspace_root: &Path, user_skills: &Path, trust: ProjectTrust) -> Self {
         let mut catalog = Self::default();
@@ -144,7 +146,9 @@ impl SkillCatalog {
             catalog.load_dir(&project_skills, Origin::Project, boundary.as_deref());
         } else {
             catalog.project_suppressed = true;
-            catalog.warn(&project_skills, PROJECT_SUPPRESSED);
+            if project_skills.try_exists().unwrap_or(false) {
+                catalog.warn(&project_skills, PROJECT_SUPPRESSED);
+            }
         }
         catalog.load_dir(user_skills, Origin::User, None);
         catalog.load_built_ins();

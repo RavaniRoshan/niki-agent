@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 5cc6b9f4648b02f5126cedb7d9e9a21f14f0ed38a982b8dca42df547bf646687
+  source-sha256: 64a543bfe8314726437a83b9880a1b07a399a326754047c1df3144ae1ebe5b5e
 -->
 # Security policy
 
@@ -70,7 +70,7 @@ flag in this build.
 | --- | --- |
 | Model provider | Your prompt, the context Niki assembles, and tool results. |
 | MCP servers you configure | They run as you, with your filesystem and network access. |
-| Hooks | `hooks.json` commands are shell code and run as you. Read a project hook before you trust the repository. |
+| Hooks | `hooks.json` commands are shell code and run as you. A project file is read only after `niki trust` records the workspace; review it before granting that. |
 | Skills | Instruction files the model reads. A skill cannot execute code by itself, but it can direct the model to call a tool, and those calls meet the same policy gate. |
 | Release artifacts | `SHA256SUMS` covers every archive; the installer verifies it before installing. |
 | Configuration and keys | Niki reads `config.toml` and reads provider keys from the environment variables it names. It does not write the configuration and does not store keys. |
@@ -90,7 +90,10 @@ flag in this build.
 - No sandbox and no sandbox flag.
 - No classifier; Auto asks like Manual.
 - `write_file` and `edit_file` are not approval-gated.
-- Loading `.niki/hooks.json` from a repository is not gated by a trust prompt.
+- The workspace trust decision is a command, not a prompt: `niki trust` grants
+  it and `niki untrust` withdraws it. The full-screen app shows a warning and
+  runs without project content until you grant it; there is no in-app dialog
+  yet. The decision is per directory and does not inherit to subdirectories.
 - MCP `permissionDecision` values other than `deny` are not implemented; the
   hook runner reports them as warnings.
 
@@ -104,7 +107,9 @@ niki --allow 'git*,cargo*'           # a narrow shell allow-list
 
 - Do not set the shell allow-list to `all` outside a throwaway container.
 - Review `.niki/hooks.json` and every `.niki/skills/` directory in a repository
-  before you run Niki there.
+  before you run `niki trust` there. Project hooks, project skills and project
+  instruction files are not loaded until that grant exists; `niki trust --list`
+  shows what you have allowed and `niki untrust` withdraws it.
 - Keep provider keys in the environment, not in a file Niki reads.
 - Run Niki as a user that cannot write outside the project when you need a hard
   boundary.

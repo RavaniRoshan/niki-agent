@@ -19,6 +19,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
 use niki_config::instructions::Instructions;
+use niki_config::trust::{ProjectTrust, TrustStore};
 use niki_config::{Config, Protocol, config_home};
 use niki_hooks::{Event, HookRunner, Hooks, Loaded, Notify};
 use niki_mcp::ToolBridge;
@@ -44,6 +45,8 @@ USAGE:
     niki sessions list [options]  list saved sessions
     niki sessions fork <ID>       copy a session under a new id
     niki sessions archive <ID>    hide a session from the default list
+    niki trust [options]          allow this workspace's hooks, skills and files
+    niki untrust [options]        withdraw that permission
     niki [options]                open the full-screen app
 
 COMMANDS:
@@ -51,6 +54,8 @@ COMMANDS:
     sessions list         List saved sessions, newest first; --json prints an array
     sessions fork <ID>    Copy a session's messages into a new one; prints its id
     sessions archive <ID> Mark a session archived; --undo restores it
+    trust                 Allow this workspace's hooks, skills and instruction files
+    untrust               Withdraw the grant this workspace holds
 
 OPTIONS:
     -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
@@ -75,6 +80,9 @@ OPTIONS:
     --json                sessions: list as an array; fork as one object
     --all                 sessions list: include archived sessions
     --undo                sessions archive: restore the session instead
+    --list                trust: print every trusted workspace
+    --root <PATH>         trust/untrust: the workspace (default: the current
+                          directory)
     --version             Print the version line
     --help                Print this text
 
@@ -116,6 +124,9 @@ fn run(args: Vec<String>) -> Result<i32> {
 
     if options.sessions {
         return run_sessions(&options);
+    }
+    if options.trust || options.untrust {
+        return run_trust(&options);
     }
 
     if options.json {
@@ -204,7 +215,7 @@ fn run_doctor(options: Options) -> Result<i32> {
     let root = workspace_root(&options).unwrap_or_else(|_| PathBuf::from("."));
     let instructions = instructions_for(&root);
     let skills = skill_catalog(&root);
-    let loaded = Hooks::load(&root, &home);
+    let loaded = Hooks::load_with(&root, &home, workspace_trust(&root));
     let hook_events = Event::ALL
         .iter()
         .filter(|event| loaded.hooks.has_handlers(**event))
@@ -259,6 +270,59 @@ fn run_sessions(options: &Options) -> Result<i32> {
         SessionsVerb::Fork => fork_session(options),
         SessionsVerb::Archive => archive_session(options),
     }
+}
+
+/// `niki trust` and `niki untrust`: the workspace-level grant that decides
+/// whether project hooks, skills and instruction files are loaded.
+///
+/// The path is `--root`, or the current directory. It is canonicalised before
+/// it reaches the store, so a grant made through one spelling covers the same
+/// directory reached another way — and covers nothing else.
+fn run_trust(options: &Options) -> Result<i32> {
+    if options.acp || options.prompt.is_some() || options.doctor || options.sessions {
+        eprintln!("niki: trust does not combine with --acp, -n, doctor or sessions");
+        return Ok(2);
+    }
+    if options.untrust && options.trust_list {
+        eprintln!("niki: --list is only for `niki trust`");
+        return Ok(2);
+    }
+    if options.trust_list {
+        let trusted = TrustStore::load().list_trusted();
+        if trusted.is_empty() {
+            println!("no trusted workspaces");
+        } else {
+            for path in trusted {
+                println!("{}", path.display());
+            }
+        }
+        return Ok(0);
+    }
+
+    let root = match &options.root {
+        Some(path) => path.clone(),
+        None => std::env::current_dir().context("read the current directory")?,
+    };
+    let workspace = root
+        .canonicalize()
+        .with_context(|| format!("resolve {}", root.display()))?;
+    let mut store = TrustStore::load();
+    if options.untrust {
+        let removed = store
+            .untrust(&workspace)
+            .with_context(|| format!("update the trust store for {}", workspace.display()))?;
+        if removed {
+            println!("no longer trusted: {}", workspace.display());
+        } else {
+            println!("not trusted: {}", workspace.display());
+        }
+        return Ok(0);
+    }
+    store
+        .trust(&workspace)
+        .with_context(|| format!("update the trust store for {}", workspace.display()))?;
+    println!("trusted: {}", workspace.display());
+    Ok(0)
 }
 
 /// `niki sessions list`: print the saved sessions without opening the app.
@@ -431,6 +495,9 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
             instructions.len(),
             instructions.bytes(),
         );
+    }
+    if !workspace_trust(&ctx.root).is_trusted() {
+        eprintln!("niki: {}", sanitize_terminal(&untrusted_notice(&ctx.root)));
     }
 
     let mode = mode(options.mode.as_deref());
@@ -803,7 +870,14 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     ));
     attach_sessions(&mut app);
     let session_id = app.session_id().map(str::to_owned);
-    let hooks = install_hooks(Hooks::load(&ctx.root, &config_home()), &mut app);
+    if !workspace_trust(&ctx.root).is_trusted() {
+        app.transcript
+            .push_notice(format!("warning: {}", untrusted_notice(&ctx.root)));
+    }
+    let hooks = install_hooks(
+        Hooks::load_with(&ctx.root, &config_home(), workspace_trust(&ctx.root)),
+        &mut app,
+    );
     {
         let compose = Arc::clone(&compose);
         app.set_system_refresh(move || compose());
@@ -922,6 +996,9 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             }
             let instructions = instructions_for(&ctx.root);
             let system = skills.inject_into(&instructions.inject_into(&base_system));
+            if !workspace_trust(&ctx.root).is_trusted() {
+                eprintln!("niki: {}", sanitize_terminal(&untrusted_notice(&ctx.root)));
+            }
             let settings = AgentConfig {
                 model: model.to_owned(),
                 system: system.clone(),
@@ -1087,7 +1164,7 @@ fn notifier(config: &Config) -> Option<Arc<Notify>> {
 /// Load hooks from the workspace and the user configuration directory for the
 /// headless run, where a problem is one warning line on stderr.
 fn load_hooks(root: &Path, config_dir: &Path) -> Arc<dyn HookRunner> {
-    let loaded = Hooks::load(root, config_dir);
+    let loaded = Hooks::load_with(root, config_dir, workspace_trust(root));
     for warning in &loaded.warnings {
         eprintln!("niki: warning: {}", sanitize_terminal(warning));
     }
@@ -1113,6 +1190,9 @@ struct Options {
     sessions_id: Option<String>,
     sessions_all: bool,
     sessions_undo: bool,
+    trust: bool,
+    untrust: bool,
+    trust_list: bool,
     json: bool,
     model: Option<String>,
     config: Option<PathBuf>,
@@ -1192,6 +1272,9 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             "--json" => options.json = true,
             "doctor" if !options.doctor => options.doctor = true,
             "sessions" if !options.sessions => options.sessions = true,
+            "trust" if !options.trust && !options.untrust => options.trust = true,
+            "untrust" if !options.untrust && !options.trust => options.untrust = true,
+            "--list" if options.trust || options.untrust => options.trust_list = true,
             "list" if options.sessions && options.sessions_verb.is_none() => {
                 options.sessions_verb = Some(SessionsVerb::List);
             }
@@ -1277,7 +1360,7 @@ fn workspace_root(options: &Options) -> Result<PathBuf> {
 /// The user directory follows `NIKI_HOME`, so a profile selected for this run is
 /// the profile whose skills are used.
 fn skill_catalog(root: &Path) -> SkillCatalog {
-    SkillCatalog::discover(root, &config_home().join("skills"))
+    SkillCatalog::discover_with(root, &config_home().join("skills"), workspace_trust(root))
 }
 
 fn agent_config(
@@ -1299,7 +1382,23 @@ fn agent_config(
 /// from.
 fn instructions_for(root: &Path) -> Instructions {
     let cwd = std::env::current_dir().unwrap_or_else(|_| root.to_path_buf());
-    Instructions::discover(root, &cwd, &config_home())
+    Instructions::discover_with(root, &cwd, &config_home(), workspace_trust(root))
+}
+
+/// The trust decision for a workspace, read from the trusted-workspace store.
+///
+/// A store that cannot be read trusts nothing, so a corrupt or unreadable file
+/// suppresses project content rather than admitting it.
+fn workspace_trust(root: &Path) -> ProjectTrust {
+    TrustStore::load().decision(root)
+}
+
+/// The one line a run prints when project content is not loaded.
+fn untrusted_notice(root: &Path) -> String {
+    format!(
+        "project hooks, skills and instruction files are not loaded: {} is not trusted; run niki trust to allow them",
+        root.display()
+    )
 }
 
 /// The system prompt one turn is sent with: the base text, the project

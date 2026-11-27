@@ -140,17 +140,20 @@ impl Hooks {
     /// Load two explicit files under `trust`.
     ///
     /// An untrusted workspace does not read the project path; the user path
-    /// still loads unless it is the same file.
+    /// still loads unless it is the same file. The warning is recorded only
+    /// when the project file exists, because a missing file suppresses nothing.
     #[must_use]
     pub fn load_from_with(project: &Path, user: &Path, trust: ProjectTrust) -> Loaded {
         let mut warnings = Vec::new();
         let project_document = if trust.is_trusted() {
             read_document(project, &mut warnings)
         } else {
-            warnings.push(format!(
-                "project hooks at {} are not loaded because this workspace is not trusted",
-                project.display()
-            ));
+            if project.try_exists().unwrap_or(false) {
+                warnings.push(format!(
+                    "project hooks at {} are not loaded because this workspace is not trusted",
+                    project.display()
+                ));
+            }
             BTreeMap::new()
         };
         let user_document = if same_file(project, user) {

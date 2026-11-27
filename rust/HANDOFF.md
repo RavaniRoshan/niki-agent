@@ -83,8 +83,11 @@ warning row per broken source before the first frame. The ACP server shows a
 hook's warning or `systemMessage` as an `agent_message_chunk` update.
 `permissionDecision` `allow`/`ask`/`defer`, `updatedInput`,
 `suppressOriginalPrompt` and `PostToolUseFailure` are not implemented and are
-reported as warnings; project-hook trust prompting is not ported either, so
-loading `.niki/hooks.json` is not gated yet.
+reported as warnings. Project hooks, project skills and project instruction
+files are gated by the workspace trust store: every entry point loads them only
+after `niki trust` records the canonical workspace path in
+`trusted_workspaces.toml`, and prints one line naming `niki trust` when it does
+not. There is no interactive prompt inside the app yet.
 
 The shell surface closes the two M3 gaps: an interactive `niki` run
 opens `~/.niki/sessions.db`, creates a session row immediately and appends every

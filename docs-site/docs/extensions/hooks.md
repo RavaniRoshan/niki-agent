@@ -7,8 +7,8 @@ the event.
 ::: danger
 Hook commands run on your machine with your user privileges. Treat every
 `hooks.json` entry as code you trust — especially a project file checked into a
-repository. Loading `.niki/hooks.json` is not behind a trust prompt in this
-build.
+repository. A project file is read only after `niki trust` records the
+workspace; until then Niki runs without it.
 :::
 
 ## Locations and precedence
