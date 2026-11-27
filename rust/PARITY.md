@@ -13,14 +13,14 @@ upstream project; the behaviour is the specification, not the source.
 
 | Surface | Python reference | Rust today |
 | --- | --- | --- |
-| Slash commands | 47 public, plus aliases | 15, plus aliases; 21 on `ROADMAP` (`niki-commands`) |
+| Slash commands | 47 public, plus aliases | 17, plus aliases; 21 on `ROADMAP` (`niki-commands`) |
 | Tools | file, edit, shell, search, web, todo, subagent, memory | 8: `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, `task`; plus MCP |
 | Agent loop | multi-turn, compaction, subagents | multi-turn, hooks, skills, policy, cancel, delegation |
 | Sessions | SQLite, thread browser, resume | SQLite, `--resume` / `--continue`, `/resume` by index or id, `/threads` browser |
 | Context | token accounting, offload/summarize | `context_report`, `context_audit`, `/compact` through the provider, occupancy in the status line |
 | Editor protocol | ACP | ACP |
 | Headless | `-n`, JSON, exit codes | `-n`, JSON (usage, session totals, context audit), exit codes 0/1/2/124/130 |
-| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~4k lines: transcript, composer with completion and history, copy, approval dialog, model picker, session browser, help, status line |
+| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~4k lines: transcript, working-tree diffs, composer with completion and history, copy, approval dialog, model picker, session browser, help, status line |
 
 `ROADMAP` in `rust/crates/niki-commands` is the machine-readable half of the
 command table: a command leaves it the day `parse` answers it, and a test fails
@@ -52,7 +52,7 @@ Everything a person touches every minute. All four slices are in.
 
 | Work | Detail |
 | --- | --- |
-| Transcript | the Markdown renderer exists in `niki-render` with tests; the full-screen transcript does not call it yet. Per-tool cards with collapsed output and unified diffs with line numbers are still open. |
+| Transcript | the Markdown renderer exists in `niki-render` with tests; the full-screen transcript does not call it yet. `/diff` draws the working tree's unified diffs with line numbers; per-tool cards with collapsed output are still open. |
 | Status bar | model, mode, context percentage, token counts; never a redraw when idle |
 | Pickers | one fuzzy picker for models, sessions, prompts and themes; `Ctrl+K` palette |
 | Approvals | per-command preview, "always allow this command", a path-boundary warning |

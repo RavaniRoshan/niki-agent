@@ -15,7 +15,7 @@ use niki_agent::{
 };
 use niki_commands::SlashCommand;
 use niki_policy::Mode;
-use niki_render::Glyphs;
+use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
 use niki_tui_modals::{
@@ -25,6 +25,7 @@ use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, 
 
 use crate::completion::Completion;
 use crate::composer::Composer;
+use crate::diff_source::{self, DiffSection};
 use crate::history::History;
 use crate::scroll::Scroll;
 use crate::status::{Status, TurnState, describe_context};
@@ -813,6 +814,10 @@ impl App {
                 self.status.turn = TurnState::Working;
                 Some(Command::Context)
             }
+            SlashCommand::Diff(argument) => {
+                self.show_diff(argument.as_deref());
+                None
+            }
             SlashCommand::Resume(target) => {
                 self.resume(target.as_deref());
                 None
@@ -968,6 +973,66 @@ impl App {
         }
     }
 
+    /// `/diff`: the working tree's staged, unstaged and untracked changes.
+    ///
+    /// One row per file under its section heading, then what the cap kept back
+    /// and the section summary. A clean tree is one row.
+    fn show_diff(&mut self, argument: Option<&str>) {
+        if self.refuse_while_busy("/diff") {
+            return;
+        }
+        let sections = match argument {
+            Some(argument) => match DiffSection::from_argument(argument) {
+                Some(section) => vec![section],
+                None => {
+                    self.transcript.push_notice(format!(
+                        "there is no {argument} section; try staged, unstaged, untracked"
+                    ));
+                    return;
+                }
+            },
+            None => DiffSection::ALL.to_vec(),
+        };
+        let root = PathBuf::from(&self.status.cwd);
+        let theme = diff_theme(self.palette);
+        let views = match diff_source::collect(&root, &sections, diff_source::RENDER_WIDTH, &theme)
+        {
+            Ok(views) => views,
+            Err(error) => {
+                self.transcript.push_notice(error.to_string());
+                return;
+            }
+        };
+        if views.iter().all(|view| view.files.is_empty()) {
+            self.transcript.push_notice("no changes");
+            return;
+        }
+        for view in views {
+            if view.files.is_empty() {
+                continue;
+            }
+            self.transcript.push_notice(view.section.name());
+            for file in view.files {
+                match file.note {
+                    Some(note) => self
+                        .transcript
+                        .push_notice(format!("{}: {note}", file.path)),
+                    None => self.transcript.push_diff(&file.path, file.rendered),
+                }
+            }
+            if let Some(withheld) =
+                diff_source::withheld_line(view.withheld_files, view.withheld_lines)
+            {
+                self.transcript.push_notice(withheld);
+            }
+            self.transcript.push_notice(diff_source::summary_line(
+                view.file_count,
+                view.additions,
+                view.deletions,
+            ));
+        }
+    }
+
     /// `/tools`: every registered tool, MCP ones included, one row each.
     fn list_tools(&mut self) {
         if self.tools.is_empty() {
@@ -1082,7 +1147,7 @@ fn persisted(row: &Row) -> Option<(&'static str, String)> {
         RowKind::ToolResult => ("tool_result", titled(row)),
         RowKind::Error if row.title.is_some() => ("tool_error", titled(row)),
         RowKind::Error => ("error", row.text.clone()),
-        RowKind::Notice => return None,
+        RowKind::Notice | RowKind::Diff => return None,
     };
     Some(record)
 }
@@ -1127,6 +1192,17 @@ fn is_cancelled(stop: &StopReason) -> bool {
 
 fn clipboard_disabled() -> bool {
     matches!(std::env::var("NIKI_NO_CLIPBOARD").as_deref(), Ok("1"))
+}
+
+/// The diff colours the current palette paints with.
+fn diff_theme(palette: &Palette) -> DiffTheme {
+    let rgb = |color: niki_tui_themes::Rgb| niki_render::Rgb::new(color.r, color.g, color.b);
+    DiffTheme::new(
+        rgb(palette.ok),
+        rgb(palette.error),
+        rgb(palette.accent),
+        rgb(palette.muted),
+    )
 }
 
 #[cfg(test)]

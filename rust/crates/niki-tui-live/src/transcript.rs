@@ -1,4 +1,4 @@
-use niki_render::display_width;
+use niki_render::{RenderedLine, display_width};
 
 /// What one row of the transcript represents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub enum RowKind {
     Error,
     /// A note from the app itself: a step limit, a cancellation.
     Notice,
+    /// A file's diff, drawn line for line instead of wrapped.
+    Diff,
 }
 
 /// One entry in the transcript.
@@ -22,10 +24,12 @@ pub enum RowKind {
 pub struct Row {
     /// What the row represents, which decides how it is painted.
     pub kind: RowKind,
-    /// Tool name or other short label shown before the text.
+    /// Tool name, file path, or other short label shown before the text.
     pub title: Option<String>,
-    /// The text itself, already shortened for display.
+    /// The text itself, already shortened for display; empty for a diff row.
     pub text: String,
+    /// Pre-rendered lines for a row that must not be wrapped.
+    pub rendered: Option<Vec<RenderedLine>>,
 }
 
 /// The conversation as the screen shows it.
@@ -66,6 +70,7 @@ impl Transcript {
             kind: RowKind::User,
             title: None,
             text: text.into(),
+            rendered: None,
         });
     }
 
@@ -86,6 +91,7 @@ impl Transcript {
             kind: RowKind::Assistant,
             title: None,
             text: delta.to_owned(),
+            rendered: None,
         });
     }
 
@@ -96,6 +102,7 @@ impl Transcript {
             kind: RowKind::ToolCall,
             title: Some(name.to_owned()),
             text: one_line(arguments),
+            rendered: None,
         });
     }
 
@@ -110,6 +117,7 @@ impl Transcript {
             },
             title: Some(name.to_owned()),
             text: shorten(output),
+            rendered: None,
         });
     }
 
@@ -120,6 +128,18 @@ impl Transcript {
             kind: RowKind::Notice,
             title: None,
             text: text.into(),
+            rendered: None,
+        });
+    }
+
+    /// Record a file's diff under its path, drawn without wrapping.
+    pub fn push_diff(&mut self, path: &str, rendered: Vec<RenderedLine>) {
+        self.streaming = false;
+        self.rows.push(Row {
+            kind: RowKind::Diff,
+            title: Some(path.to_owned()),
+            text: String::new(),
+            rendered: Some(rendered),
         });
     }
 
@@ -130,6 +150,7 @@ impl Transcript {
             kind: RowKind::Error,
             title: None,
             text: text.into(),
+            rendered: None,
         });
     }
 
