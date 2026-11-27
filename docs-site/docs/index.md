@@ -40,7 +40,7 @@ release archives. Verify one against `SHA256SUMS`, then run the installer inside
 the archive or place the binary yourself:
 
 ```bash
-VERSION=2.1.3
+VERSION=2.1.4
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -

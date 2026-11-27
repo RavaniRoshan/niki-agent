@@ -52,9 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/
 ```
 
 A downgrade keeps `~/.niki`, so a session written by a newer build remains on
-disk. If a beta changes the session schema, the older build will say so rather
-than corrupt it; keep a copy of `~/.niki` if you need to move between builds
-often.
+disk. Keep a copy of `~/.niki` if you move between builds often.
 
 ## What to try
 

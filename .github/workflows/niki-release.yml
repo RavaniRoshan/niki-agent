@@ -128,7 +128,7 @@ jobs:
           mkdir -p "$stage"
 
           cp "rust/target/release/${{ matrix.binary }}" "$stage/${{ matrix.binary }}"
-          cp install/install.sh install/install.ps1 NOTICE LICENSE README.md "$stage/"
+          cp install/install.sh install/install.ps1 NOTICE LICENSE README.md CHANGELOG.md "$stage/"
 
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             # `zip` is not on the Windows runner; PowerShell's archiver is.

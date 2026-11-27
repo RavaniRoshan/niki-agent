@@ -11,6 +11,20 @@ in the repository, and each entry links to its release.
 The product is a single Rust binary. `2.0.0` is the release where the shipped
 client became that binary; `1.x` was the earlier Python implementation.
 
+## 2.1.4 — 2026-11-27
+
+**The published surface catches up with the product.**
+
+- The README is rebuilt around install, proof, and the approval gate, with a
+  recording made from the shipped binary.
+- A changelog, a beta page, and a beta feedback form; Discussions is enabled for
+  questions. Release archives now carry `CHANGELOG.md`.
+- A hyphenated tag such as `v2.2.0-beta.1` publishes a GitHub pre-release, so
+  `latest` stays on the newest stable release.
+- The binary behaves as it did in 2.1.3; the only change is the version string.
+
+[Release notes](https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.4)
+
 ## 2.1.3 — 2026-11-27
 
 **Workspace trust, session lifecycle, and questions in the app.**

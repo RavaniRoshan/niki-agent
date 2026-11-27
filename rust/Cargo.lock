@@ -837,7 +837,7 @@ dependencies = [
 
 [[package]]
 name = "niki"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "anyhow",
  "crossterm 0.29.0",
@@ -865,7 +865,7 @@ dependencies = [
 
 [[package]]
 name = "niki-acp"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-agent",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "niki-agent"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-hooks",
@@ -897,14 +897,14 @@ dependencies = [
 
 [[package]]
 name = "niki-commands"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "niki-policy",
 ]
 
 [[package]]
 name = "niki-config"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "serde",
  "tempfile",
@@ -914,7 +914,7 @@ dependencies = [
 
 [[package]]
 name = "niki-engine-client"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-proto",
@@ -927,7 +927,7 @@ dependencies = [
 
 [[package]]
 name = "niki-hooks"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "niki-config",
  "regex",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "niki-mcp"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-agent",
@@ -956,14 +956,14 @@ dependencies = [
 
 [[package]]
 name = "niki-policy"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "niki-proto"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "serde",
  "serde_json",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "niki-provider"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-config",
@@ -985,7 +985,7 @@ dependencies = [
 
 [[package]]
 name = "niki-render"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "niki-proto",
  "serde_json",
@@ -994,7 +994,7 @@ dependencies = [
 
 [[package]]
 name = "niki-session"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "rusqlite",
  "tempfile",
@@ -1003,7 +1003,7 @@ dependencies = [
 
 [[package]]
 name = "niki-skills"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "niki-config",
  "tempfile",
@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "niki-subagents"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "futures-util",
  "niki-agent",
@@ -1025,7 +1025,7 @@ dependencies = [
 
 [[package]]
 name = "niki-tools"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "globset",
  "regex",
@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "niki-tui"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "crossterm 0.29.0",
  "niki-proto",
@@ -1046,7 +1046,7 @@ dependencies = [
 
 [[package]]
 name = "niki-tui-live"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "crossterm 0.29.0",
  "futures-util",
@@ -1070,7 +1070,7 @@ dependencies = [
 
 [[package]]
 name = "niki-tui-modals"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "crossterm 0.29.0",
  "niki-agent",
@@ -1085,14 +1085,14 @@ dependencies = [
 
 [[package]]
 name = "niki-tui-themes"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "ratatui",
 ]
 
 [[package]]
 name = "niki-workspace"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "globset",
  "regex",
