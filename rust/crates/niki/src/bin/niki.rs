@@ -877,7 +877,10 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
 fn attach_sessions(app: &mut App) {
     let home = config_home();
     match open_store(&home) {
-        Ok(store) => app.attach_sessions(store),
+        Ok(store) => {
+            app.set_session_file(home.join("sessions.db"));
+            app.attach_sessions(store);
+        }
         Err(error) => app
             .transcript
             .push_notice(format!("warning: sessions are not saved: {error:#}")),
