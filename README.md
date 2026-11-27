@@ -5,7 +5,7 @@
 **A quiet terminal coding agent, written in Rust.**
 
 One native binary. Eleven providers. Sessions on your disk.
-An approval gate in front of every action.
+An approval gate in front of anything that changes your machine.
 
 [![Release](https://img.shields.io/badge/release-v2.1.4-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
