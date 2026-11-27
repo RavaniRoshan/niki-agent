@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     created_at INTEGER NOT NULL,
     title TEXT,
-    cwd TEXT NOT NULL
+    cwd TEXT NOT NULL,
+    archived_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,6 +76,8 @@ pub struct Summary {
     pub first_prompt: Option<String>,
     pub title: Option<String>,
     pub cwd: String,
+    /// Whether the session was archived, which hides it from the default list.
+    pub archived: bool,
     pub created_at: i64,
     /// The latest stored write to the session, in Unix seconds.
     ///
@@ -95,7 +98,8 @@ pub struct SessionStore {
 /// every role. Both subqueries read the existing `messages` table, so no
 /// schema change is needed. The update time is the newest of the session's
 /// creation and its latest message; `MAX` with two arguments is SQLite's
-/// scalar maximum, not the aggregate.
+/// scalar maximum, not the aggregate. The archived flag is set when the
+/// session carries an archival stamp.
 const SUMMARY_COLUMNS: &str = "sessions.id, sessions.title, sessions.cwd, sessions.created_at,
      MAX(sessions.created_at,
          COALESCE((SELECT MAX(created_at) FROM messages
@@ -103,7 +107,8 @@ const SUMMARY_COLUMNS: &str = "sessions.id, sessions.title, sessions.cwd, sessio
      (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id),
      (SELECT content FROM messages
       WHERE messages.session_id = sessions.id AND messages.role = 'user'
-      ORDER BY messages.id ASC LIMIT 1)";
+      ORDER BY messages.id ASC LIMIT 1),
+     (sessions.archived_at IS NOT NULL)";
 
 impl SessionStore {
     /// Open or create the database at `path` and apply the schema.
@@ -123,6 +128,7 @@ impl SessionStore {
         connection.pragma_update(None, "foreign_keys", true)?;
         connection.execute_batch(SCHEMA)?;
         add_missing_title(&connection)?;
+        add_missing_archived(&connection)?;
         Ok(Self { connection })
     }
 
@@ -183,6 +189,66 @@ impl SessionStore {
         Ok(title)
     }
 
+    /// Mark a session archived, or restore it, without touching its transcript.
+    ///
+    /// An archived session keeps its messages and stays readable; the flag is
+    /// only what the default list filters on. Archiving an archived session
+    /// refreshes the stamp, and restoring a live one is a no-op.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::UnknownSession`] for an id this store did not
+    /// create, and [`SessionError::Sqlite`] when the write fails.
+    pub fn set_archived(&self, session: &SessionId, archived: bool) -> Result<(), SessionError> {
+        self.ensure_session(session)?;
+        let stamp = if archived { Some(now()?) } else { None };
+        self.connection.execute(
+            "UPDATE sessions SET archived_at = ?2 WHERE id = ?1",
+            params![session.as_str(), stamp],
+        )?;
+        Ok(())
+    }
+
+    /// Copy a session's messages into a new session and return the new id.
+    ///
+    /// The copy keeps the source's workspace, message order, roles, bodies and
+    /// write times, so the transcript replays exactly as it was written. The
+    /// fork is titled after the source with ` (fork)` appended, and an
+    /// untitled source stays untitled. The source is not modified.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::UnknownSession`] for an id this store did not
+    /// create, and [`SessionError::Sqlite`] when the copy fails.
+    pub fn fork(&self, session: &SessionId) -> Result<SessionId, SessionError> {
+        self.ensure_session(session)?;
+        let id = SessionId(self.next_id()?);
+        let title: Option<String> = self.connection.query_row(
+            "SELECT title FROM sessions WHERE id = ?1",
+            params![session.as_str()],
+            |row| row.get(0),
+        )?;
+        let title = title
+            .map(|title| title.trim().to_owned())
+            .filter(|title| !title.is_empty())
+            .map(|title| format!("{title} (fork)"));
+        let transaction = self.connection.unchecked_transaction()?;
+        transaction.execute(
+            "INSERT INTO sessions (id, created_at, title, cwd)
+             SELECT ?1, ?2, ?3, cwd FROM sessions WHERE id = ?4",
+            params![id.as_str(), now()?, title, session.as_str()],
+        )?;
+        transaction.execute(
+            "INSERT INTO messages (session_id, role, content, created_at)
+             SELECT ?1, role, content, created_at FROM messages
+             WHERE session_id = ?2
+             ORDER BY id ASC",
+            params![id.as_str(), session.as_str()],
+        )?;
+        transaction.commit()?;
+        Ok(id)
+    }
+
     /// Every session, newest first.
     ///
     /// # Errors
@@ -203,6 +269,7 @@ impl SessionStore {
                 updated_at: row.get(4)?,
                 messages: row.get(5)?,
                 first_prompt: row.get(6)?,
+                archived: row.get(7)?,
             })
         })?;
         let mut summaries = Vec::new();
@@ -239,6 +306,7 @@ impl SessionStore {
                 updated_at: row.get(4)?,
                 messages: row.get(5)?,
                 first_prompt: row.get(6)?,
+                archived: row.get(7)?,
             })
         })?;
         let mut summaries = Vec::new();
@@ -268,6 +336,7 @@ impl SessionStore {
                         updated_at: row.get(4)?,
                         messages: row.get(5)?,
                         first_prompt: row.get(6)?,
+                        archived: row.get(7)?,
                     })
                 },
             )
@@ -301,6 +370,7 @@ impl SessionStore {
                         updated_at: row.get(4)?,
                         messages: row.get(5)?,
                         first_prompt: row.get(6)?,
+                        archived: row.get(7)?,
                     })
                 },
             )
@@ -477,6 +547,25 @@ fn add_missing_title(connection: &Connection) -> Result<(), SessionError> {
     Ok(())
 }
 
+/// Add the `archived_at` column to a database created before it was declared.
+///
+/// The store shipped through 2.1.x without the column, so `CREATE TABLE IF NOT
+/// EXISTS` leaves those files alone; the `ALTER` adds it in place and keeps
+/// every row. It is re-runnable, because a store is opened on every command.
+fn add_missing_archived(connection: &Connection) -> Result<(), SessionError> {
+    let present: bool = connection.query_row(
+        "SELECT EXISTS (
+             SELECT 1 FROM pragma_table_info('sessions') WHERE name = 'archived_at'
+         )",
+        [],
+        |row| row.get(0),
+    )?;
+    if !present {
+        connection.execute("ALTER TABLE sessions ADD COLUMN archived_at INTEGER", [])?;
+    }
+    Ok(())
+}
+
 #[cfg(unix)]
 fn restrict_permissions(path: &Path) -> Result<(), SessionError> {
     use std::os::unix::fs::PermissionsExt;
@@ -525,4 +614,237 @@ pub enum SessionError {
     Clock,
     #[error("could not allocate a unique session id")]
     IdCollision,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use rusqlite::Connection;
+    use tempfile::TempDir;
+
+    use super::{SessionError, SessionStore};
+
+    fn open(temp: &TempDir) -> SessionStore {
+        SessionStore::open(temp.path().join("sessions.db")).expect("store")
+    }
+
+    fn contents(store: &SessionStore, session: &super::SessionId) -> Vec<(String, String, i64)> {
+        store
+            .load(session)
+            .expect("load")
+            .into_iter()
+            .map(|message| (message.role, message.content, message.created_at))
+            .collect()
+    }
+
+    #[test]
+    fn fork_copies_the_transcript_and_leaves_the_source_untouched() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+        let cwd = temp.path().join("project");
+        let source = store.create(&cwd).expect("create");
+        store
+            .set_title(&source, Some("port the parser"))
+            .expect("title");
+        store
+            .append(&source, "user", "read lib.rs")
+            .expect("append");
+        store
+            .append(&source, "assistant", "read it")
+            .expect("append");
+        store.append(&source, "tool", "3 lines").expect("append");
+        let before = store.load(&source).expect("load");
+
+        let forked = store.fork(&source).expect("fork");
+
+        assert_ne!(forked, source, "the copy gets its own id");
+        assert_eq!(
+            store.load(&source).expect("load"),
+            before,
+            "the source transcript is not rewritten"
+        );
+        let copied = store.load(&forked).expect("load");
+        assert_eq!(
+            copied
+                .iter()
+                .map(|message| (message.role.as_str(), message.content.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                ("user", "read lib.rs"),
+                ("assistant", "read it"),
+                ("tool", "3 lines")
+            ],
+            "order, roles and bodies are kept"
+        );
+        assert!(
+            copied.windows(2).all(|pair| pair[0].id < pair[1].id),
+            "the copy keeps the write order"
+        );
+        assert_ne!(copied[0].id, before[0].id, "the copy has new message rows");
+        assert!(copied.iter().all(|message| message.session_id == forked));
+        assert_eq!(
+            copied
+                .iter()
+                .map(|message| message.created_at)
+                .collect::<Vec<_>>(),
+            before
+                .iter()
+                .map(|message| message.created_at)
+                .collect::<Vec<_>>(),
+            "a copy keeps the recorded write times"
+        );
+
+        let summary = store.find(forked.as_str()).expect("find").expect("found");
+        assert_eq!(summary.title.as_deref(), Some("port the parser (fork)"));
+        assert_eq!(summary.cwd, cwd.to_string_lossy());
+        assert_eq!(summary.messages, 3);
+        assert!(!summary.archived);
+        assert_eq!(store.list().expect("list").len(), 2);
+    }
+
+    #[test]
+    fn a_fork_of_an_untitled_session_is_untitled() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+        let source = store.create(temp.path()).expect("create");
+
+        let forked = store.fork(&source).expect("fork");
+
+        assert_eq!(
+            store.find(forked.as_str()).expect("find").unwrap().title,
+            None
+        );
+        assert_eq!(store.list().expect("list").len(), 2);
+    }
+
+    #[test]
+    fn a_whitespace_title_does_not_become_a_fork_title() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+        let source = store.create(temp.path()).expect("create");
+        store.set_title(&source, Some("  ")).expect("title");
+
+        let forked = store.fork(&source).expect("fork");
+
+        assert_eq!(store.title(&forked).expect("title"), None);
+    }
+
+    #[test]
+    fn a_fork_of_an_unknown_session_is_unknown() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+
+        assert!(matches!(
+            store.fork(&super::SessionId("absent".to_owned())),
+            Err(SessionError::UnknownSession { .. })
+        ));
+        assert!(
+            store.list().expect("list").is_empty(),
+            "nothing was written"
+        );
+    }
+
+    #[test]
+    fn archiving_sets_the_summary_flag_and_restoring_clears_it() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+        let session = store.create(temp.path()).expect("create");
+        store.append(&session, "user", "keep me").expect("append");
+
+        store.set_archived(&session, true).expect("archive");
+        let summary = store.find(session.as_str()).expect("find").unwrap();
+        assert!(summary.archived);
+        assert_eq!(summary.messages, 1, "the transcript is untouched");
+        assert_eq!(store.load(&session).expect("load").len(), 1);
+
+        store.set_archived(&session, false).expect("restore");
+        assert!(
+            !store
+                .find(session.as_str())
+                .expect("find")
+                .unwrap()
+                .archived
+        );
+    }
+
+    #[test]
+    fn archiving_an_unknown_session_is_unknown() {
+        let temp = TempDir::new().expect("temp");
+        let store = open(&temp);
+
+        assert!(matches!(
+            store.set_archived(&super::SessionId("absent".to_owned()), true),
+            Err(SessionError::UnknownSession { .. })
+        ));
+    }
+
+    #[test]
+    fn a_database_from_the_released_schema_gains_archived_at_without_losing_rows() {
+        let temp = TempDir::new().expect("temp");
+        let path: PathBuf = temp.path().join("sessions.db");
+        // The schema the released 2.1.x binary wrote, before `archived_at`.
+        {
+            let connection = Connection::open(&path).expect("create the old store");
+            connection
+                .execute_batch(
+                    "CREATE TABLE sessions (
+                         id TEXT PRIMARY KEY,
+                         created_at INTEGER NOT NULL,
+                         title TEXT,
+                         cwd TEXT NOT NULL
+                     );
+                     CREATE TABLE messages (
+                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         session_id TEXT NOT NULL REFERENCES sessions(id),
+                         role TEXT NOT NULL,
+                         content TEXT NOT NULL,
+                         created_at INTEGER NOT NULL
+                     );
+                     CREATE INDEX messages_session ON messages(session_id, id);
+                     CREATE TABLE checkpoints (
+                         session_id TEXT NOT NULL REFERENCES sessions(id),
+                         label TEXT NOT NULL,
+                         message_id INTEGER NOT NULL,
+                         created_at INTEGER NOT NULL,
+                         PRIMARY KEY (session_id, label)
+                     );
+                     INSERT INTO sessions (id, created_at, title, cwd)
+                     VALUES ('2.1-session', 100, 'released', '/work');
+                     INSERT INTO messages (session_id, role, content, created_at)
+                     VALUES ('2.1-session', 'user', 'hello', 200),
+                            ('2.1-session', 'assistant', 'hi', 300);",
+                )
+                .expect("seed the old store");
+        }
+
+        let store = SessionStore::open(&path).expect("migrate in place");
+        let listed = store.list().expect("list");
+        assert_eq!(listed.len(), 1, "no rows were lost");
+        assert_eq!(listed[0].id.as_str(), "2.1-session");
+        assert_eq!(listed[0].title.as_deref(), Some("released"));
+        assert_eq!(listed[0].messages, 2);
+        assert!(!listed[0].archived, "an old row starts live");
+        assert_eq!(
+            contents(&store, &listed[0].id),
+            [
+                ("user".to_owned(), "hello".to_owned(), 200),
+                ("assistant".to_owned(), "hi".to_owned(), 300),
+            ]
+        );
+
+        store.set_archived(&listed[0].id, true).expect("archive");
+        drop(store);
+
+        // Opening again runs the migration against a column that is there.
+        let reopened = SessionStore::open(&path).expect("reopen");
+        assert!(
+            reopened
+                .find("2.1-session")
+                .expect("find")
+                .unwrap()
+                .archived
+        );
+        assert_eq!(contents(&reopened, &listed[0].id).len(), 2);
+    }
 }

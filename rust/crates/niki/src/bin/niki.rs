@@ -3,9 +3,9 @@
 //! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
 //! Python product reads. With `--acp` it serves an editor over stdin/stdout on
 //! that same agent, provider and workspace. `doctor` prints a read-only
-//! diagnosis of the install, and `sessions list` prints the saved sessions so a
-//! headless user can find an id for `--resume`. Without any of them it opens the
-//! full-screen app. Named `niki` until cutover (RULES.md 2).
+//! diagnosis of the install, and `sessions` finds, copies and archives saved
+//! sessions so a headless user can work without the app. Without any of them it
+//! opens the full-screen app. Named `niki` until cutover (RULES.md 2).
 
 #[path = "../doctor.rs"]
 mod doctor;
@@ -42,11 +42,15 @@ USAGE:
     niki --acp [options]         serve an editor over stdin/stdout
     niki doctor [options]         diagnose the install
     niki sessions list [options]  list saved sessions
+    niki sessions fork <ID>       copy a session under a new id
+    niki sessions archive <ID>    hide a session from the default list
     niki [options]                open the full-screen app
 
 COMMANDS:
     doctor                Read-only self-diagnosis; exit 0 when the install is usable
     sessions list         List saved sessions, newest first; --json prints an array
+    sessions fork <ID>    Copy a session's messages into a new one; prints its id
+    sessions archive <ID> Mark a session archived; --undo restores it
 
 OPTIONS:
     -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
@@ -68,6 +72,9 @@ OPTIONS:
     --output <FORMAT>     Alias for --output-format
     --resume <ID|last>    Continue a saved session by id, or the newest one
     --continue            Continue the newest session for this workspace
+    --json                sessions: list as an array; fork as one object
+    --all                 sessions list: include archived sessions
+    --undo                sessions archive: restore the session instead
     --version             Print the version line
     --help                Print this text
 
@@ -108,19 +115,11 @@ fn run(args: Vec<String>) -> Result<i32> {
     };
 
     if options.sessions {
-        if !options.sessions_list {
-            eprintln!("niki: sessions needs `list`; run niki sessions list");
-            return Ok(2);
-        }
-        if options.acp || options.prompt.is_some() || options.doctor {
-            eprintln!("niki: sessions list does not combine with --acp, -n or doctor");
-            return Ok(2);
-        }
-        return list_sessions(&options);
+        return run_sessions(&options);
     }
 
     if options.json {
-        eprintln!("niki: --json is only for `niki sessions list`");
+        eprintln!("niki: --json is only for `niki sessions`");
         return Ok(2);
     }
 
@@ -234,11 +233,40 @@ fn run_doctor(options: Options) -> Result<i32> {
     Ok(report.exit_code())
 }
 
+/// Dispatch `niki sessions <verb>` after the flags are checked.
+///
+/// A missing or contradictory verb is a usage error, which exits 2. An id that
+/// names no saved session is a command failure, which exits 1.
+fn run_sessions(options: &Options) -> Result<i32> {
+    if options.acp || options.prompt.is_some() || options.doctor {
+        eprintln!("niki: sessions does not combine with --acp, -n or doctor");
+        return Ok(2);
+    }
+    let Some(verb) = options.sessions_verb else {
+        eprintln!("niki: sessions needs a verb; run niki sessions list, fork <id> or archive <id>");
+        return Ok(2);
+    };
+    if options.sessions_all && verb != SessionsVerb::List {
+        eprintln!("niki: --all is only for `niki sessions list`");
+        return Ok(2);
+    }
+    if options.sessions_undo && verb != SessionsVerb::Archive {
+        eprintln!("niki: --undo is only for `niki sessions archive`");
+        return Ok(2);
+    }
+    match verb {
+        SessionsVerb::List => list_sessions(options),
+        SessionsVerb::Fork => fork_session(options),
+        SessionsVerb::Archive => archive_session(options),
+    }
+}
+
 /// `niki sessions list`: print the saved sessions without opening the app.
 ///
 /// A database that is not there lists as empty and is not created. `--root`
 /// filters by the workspace key the store itself compares, the stored `cwd`
-/// text, and the most recently written session comes first.
+/// text, and the most recently written session comes first. Archived sessions
+/// are left out unless `--all` asks for them.
 fn list_sessions(options: &Options) -> Result<i32> {
     let home = config_home();
     let database = home.join("sessions.db");
@@ -255,6 +283,9 @@ fn list_sessions(options: &Options) -> Result<i32> {
             // later, so the command's "newest" is the last stored write. The
             // sort is stable, keeping the store's order for a tie.
             summaries.sort_by_key(|summary| std::cmp::Reverse(summary.updated_at));
+            if !options.sessions_all {
+                summaries.retain(|summary| !summary.archived);
+            }
             summaries
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
@@ -268,6 +299,68 @@ fn list_sessions(options: &Options) -> Result<i32> {
         print!("{}", sessions::text(&summaries));
     }
     Ok(0)
+}
+
+/// `niki sessions fork <id>`: copy a session under a new id and print it.
+fn fork_session(options: &Options) -> Result<i32> {
+    let Some(id) = options.sessions_id.as_deref() else {
+        eprintln!("niki: sessions fork needs a session id; run niki sessions list");
+        return Ok(2);
+    };
+    let Some((store, session)) = open_named_session(id)? else {
+        return Ok(unknown_session(id));
+    };
+    let forked = store
+        .fork(&session)
+        .with_context(|| format!("fork session {id}"))?;
+    if options.json {
+        println!("{}", sessions::fork_json(forked.as_str(), id));
+    } else {
+        println!("{forked}");
+    }
+    Ok(0)
+}
+
+/// `niki sessions archive <id>`: hide a session from the default list, or
+/// restore it with `--undo`. It prints nothing on success.
+fn archive_session(options: &Options) -> Result<i32> {
+    let Some(id) = options.sessions_id.as_deref() else {
+        eprintln!("niki: sessions archive needs a session id; run niki sessions list");
+        return Ok(2);
+    };
+    let Some((store, session)) = open_named_session(id)? else {
+        return Ok(unknown_session(id));
+    };
+    store
+        .set_archived(&session, !options.sessions_undo)
+        .with_context(|| format!("update session {id}"))?;
+    Ok(0)
+}
+
+/// The named session in the store under `NIKI_HOME`, when both exist.
+///
+/// A missing database is an empty store, not an error that creates one.
+fn open_named_session(id: &str) -> Result<Option<(SessionStore, SessionId)>> {
+    let home = config_home();
+    let database = home.join("sessions.db");
+    match std::fs::metadata(&database) {
+        Ok(_) => {
+            let store = SessionStore::open(&database)
+                .with_context(|| format!("open the session store in {}", home.display()))?;
+            let summary = store
+                .find(id)
+                .with_context(|| format!("look up session {id}"))?;
+            Ok(summary.map(|summary| (store, summary.id)))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error).with_context(|| format!("read {}", database.display())),
+    }
+}
+
+/// Report an id the store does not know, the way a missing `--resume` does.
+fn unknown_session(id: &str) -> i32 {
+    eprintln!("niki: no saved session {id:?}; run niki sessions list");
+    1
 }
 
 /// The model a `doctor` run checks, resolved the way a turn resolves it, with
@@ -1013,7 +1106,10 @@ struct Options {
     acp: bool,
     doctor: bool,
     sessions: bool,
-    sessions_list: bool,
+    sessions_verb: Option<SessionsVerb>,
+    sessions_id: Option<String>,
+    sessions_all: bool,
+    sessions_undo: bool,
     json: bool,
     model: Option<String>,
     config: Option<PathBuf>,
@@ -1026,6 +1122,14 @@ struct Options {
     output: OutputFormat,
     resume: Option<String>,
     continue_session: bool,
+}
+
+/// The verb of the `sessions` family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SessionsVerb {
+    List,
+    Fork,
+    Archive,
 }
 
 /// What the headless run writes to stdout.
@@ -1085,7 +1189,26 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             "--json" => options.json = true,
             "doctor" if !options.doctor => options.doctor = true,
             "sessions" if !options.sessions => options.sessions = true,
-            "list" if options.sessions && !options.sessions_list => options.sessions_list = true,
+            "list" if options.sessions && options.sessions_verb.is_none() => {
+                options.sessions_verb = Some(SessionsVerb::List);
+            }
+            "fork" if options.sessions && options.sessions_verb.is_none() => {
+                options.sessions_verb = Some(SessionsVerb::Fork);
+            }
+            "archive" if options.sessions && options.sessions_verb.is_none() => {
+                options.sessions_verb = Some(SessionsVerb::Archive);
+            }
+            "--all" if options.sessions => options.sessions_all = true,
+            "--undo" if options.sessions => options.sessions_undo = true,
+            id if options.sessions
+                && options.sessions_id.is_none()
+                && matches!(
+                    options.sessions_verb,
+                    Some(SessionsVerb::Fork | SessionsVerb::Archive)
+                ) =>
+            {
+                options.sessions_id = Some(id.to_owned());
+            }
             other if other.starts_with('-') && other.len() > 1 => {
                 bail!("unknown option {other}; run niki --help")
             }
