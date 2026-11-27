@@ -197,6 +197,7 @@ what is shipped and what is next. Every release is written up on the
 | --- | --- |
 | [Documentation site](https://niki-docs.vercel.app) | Install, first turn, providers, keymap, permissions, security. |
 | [`docs/niki/KEYMAP.md`](docs/niki/KEYMAP.md) | Every key binding. |
+| [`docs/niki/UI.md`](docs/niki/UI.md) | The screen, the glyphs, the motion schedule, and the `[ui]` settings. |
 | [`docs/niki/ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md) | How the agent, the UI, and the tools fit together. |
 | [`docs/niki/INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) | Package, state, and environment guarantees. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability, and what is in scope. |

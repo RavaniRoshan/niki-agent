@@ -97,6 +97,7 @@ export default defineConfig({
       {
         text: 'Understanding Niki',
         items: [
+          { text: 'Interface', link: '/ui' },
           { text: 'Architecture', link: '/architecture' },
           { text: 'Independence', link: '/independence' },
           { text: 'Security', link: '/security' },
