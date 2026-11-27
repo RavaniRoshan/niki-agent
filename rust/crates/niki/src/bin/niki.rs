@@ -3,11 +3,14 @@
 //! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
 //! Python product reads. With `--acp` it serves an editor over stdin/stdout on
 //! that same agent, provider and workspace. `doctor` prints a read-only
-//! diagnosis of the install. Without any of them it opens the full-screen app.
-//! Named `niki` until cutover (RULES.md 2).
+//! diagnosis of the install, and `sessions list` prints the saved sessions so a
+//! headless user can find an id for `--resume`. Without any of them it opens the
+//! full-screen app. Named `niki` until cutover (RULES.md 2).
 
 #[path = "../doctor.rs"]
 mod doctor;
+#[path = "../sessions.rs"]
+mod sessions;
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -38,10 +41,12 @@ USAGE:
     niki -n <PROMPT> [options]   run one prompt and exit
     niki --acp [options]         serve an editor over stdin/stdout
     niki doctor [options]         diagnose the install
+    niki sessions list [options]  list saved sessions
     niki [options]                open the full-screen app
 
 COMMANDS:
     doctor                Read-only self-diagnosis; exit 0 when the install is usable
+    sessions list         List saved sessions, newest first; --json prints an array
 
 OPTIONS:
     -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
@@ -73,7 +78,7 @@ ENVIRONMENT:
 EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
     1   configuration, provider or workspace failure
-    2   usage error: --acp, -n and doctor cannot be combined
+    2   usage error: incompatible commands or arguments
     124 the step budget ran out before the model stopped calling tools
     130 cancelled with Ctrl-C
 ";
@@ -101,6 +106,23 @@ fn run(args: Vec<String>) -> Result<i32> {
         }
         Parsed::Run(options) => *options,
     };
+
+    if options.sessions {
+        if !options.sessions_list {
+            eprintln!("niki: sessions needs `list`; run niki sessions list");
+            return Ok(2);
+        }
+        if options.acp || options.prompt.is_some() || options.doctor {
+            eprintln!("niki: sessions list does not combine with --acp, -n or doctor");
+            return Ok(2);
+        }
+        return list_sessions(&options);
+    }
+
+    if options.json {
+        eprintln!("niki: --json is only for `niki sessions list`");
+        return Ok(2);
+    }
 
     if options.doctor {
         if options.acp || options.prompt.is_some() {
@@ -210,6 +232,42 @@ fn run_doctor(options: Options) -> Result<i32> {
     let report = doctor::report(&inputs);
     print!("{}", report.render());
     Ok(report.exit_code())
+}
+
+/// `niki sessions list`: print the saved sessions without opening the app.
+///
+/// A database that is not there lists as empty and is not created. `--root`
+/// filters by the workspace key the store itself compares, the stored `cwd`
+/// text, and the most recently written session comes first.
+fn list_sessions(options: &Options) -> Result<i32> {
+    let home = config_home();
+    let database = home.join("sessions.db");
+    let summaries = match std::fs::metadata(&database) {
+        Ok(_) => {
+            let store = SessionStore::open(&database)
+                .with_context(|| format!("open the session store in {}", home.display()))?;
+            let mut summaries = match options.root.as_deref() {
+                Some(root) => store.list_for(root),
+                None => store.list(),
+            }
+            .with_context(|| format!("list the sessions in {}", database.display()))?;
+            // `list` orders by creation; a resumed session can be written
+            // later, so the command's "newest" is the last stored write. The
+            // sort is stable, keeping the store's order for a tie.
+            summaries.sort_by_key(|summary| std::cmp::Reverse(summary.updated_at));
+            summaries
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(error) => {
+            return Err(error).with_context(|| format!("read {}", database.display()));
+        }
+    };
+    if options.json {
+        println!("{}", sessions::json(&summaries));
+    } else {
+        print!("{}", sessions::text(&summaries));
+    }
+    Ok(0)
 }
 
 /// The model a `doctor` run checks, resolved the way a turn resolves it, with
@@ -954,6 +1012,9 @@ struct Options {
     prompt: Option<String>,
     acp: bool,
     doctor: bool,
+    sessions: bool,
+    sessions_list: bool,
+    json: bool,
     model: Option<String>,
     config: Option<PathBuf>,
     root: Option<PathBuf>,
@@ -1021,7 +1082,10 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             "--quiet" | "-q" => options.quiet = true,
             "--help" | "-h" => return Ok(Parsed::Help),
             "--version" | "-V" => return Ok(Parsed::Version),
+            "--json" => options.json = true,
             "doctor" if !options.doctor => options.doctor = true,
+            "sessions" if !options.sessions => options.sessions = true,
+            "list" if options.sessions && !options.sessions_list => options.sessions_list = true,
             other if other.starts_with('-') && other.len() > 1 => {
                 bail!("unknown option {other}; run niki --help")
             }
