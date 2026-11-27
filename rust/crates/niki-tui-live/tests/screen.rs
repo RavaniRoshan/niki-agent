@@ -8,7 +8,7 @@ use niki_agent::{AgentEvent, Usage};
 use niki_policy::Mode;
 use niki_tools::{AskOption, AskRequest};
 use niki_tui_live::{App, Command, PLACEHOLDER, SessionInfo, TurnState, draw};
-use niki_tui_themes::{GlyphMode, MONO, Palette};
+use niki_tui_themes::{Effects, GlyphMode, MONO, Palette};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
@@ -500,6 +500,39 @@ fn the_footer_yields_its_second_line_to_accounting_once_a_turn_starts() {
     let accounting = row(&buffer, 11);
     assert!(accounting.contains("6 tok"), "{accounting:?}");
     assert!(!accounting.contains("commands"), "{accounting:?}");
+}
+
+#[test]
+fn a_running_tool_call_carries_the_activity_marker() {
+    let mut app = app();
+    app.status.turn = TurnState::Working;
+    app.apply(AgentEvent::ToolStart {
+        name: "shell".to_owned(),
+        arguments: "{\"command\":\"ls\"}".to_owned(),
+    });
+    let screen = text(&render(&mut app, 60, 12));
+    assert!(screen.contains("• shell"), "{screen}");
+
+    for _ in 0..7 {
+        app.tick();
+    }
+    let dim = text(&render(&mut app, 60, 12));
+    assert!(dim.contains("◦ shell"), "the marker dims: {dim}");
+}
+
+#[test]
+fn the_welcome_effect_can_be_switched_off_without_losing_the_state() {
+    let mut app = app();
+    app.set_effects(Effects {
+        welcome: false,
+        ..Effects::ALL
+    });
+    let screen = text(&render(&mut app, 80, 24));
+    assert!(!screen.contains("NIKI AGENT"), "{screen}");
+    assert!(
+        screen.contains("mock:mock-model"),
+        "the footer still carries the state: {screen}"
+    );
 }
 
 #[test]

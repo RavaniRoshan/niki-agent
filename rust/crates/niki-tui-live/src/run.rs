@@ -27,11 +27,10 @@ use crate::app::{App, Command};
 use crate::clipboard;
 use crate::editor::{self, TempPrompt};
 use crate::history::History;
+use crate::motion;
 use crate::ui;
 use crate::worker::{WorkerEvent, WorkerHandle};
 
-/// Redraw interval while a turn is running, so the spinner moves.
-const BUSY_TICK: Duration = Duration::from_millis(80);
 /// How long an idle loop waits for input before looking at the worker again.
 /// A timeout redraws nothing: an idle session paints only when something
 /// changed.
@@ -214,7 +213,11 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
             screen.terminal.draw(|frame| ui::draw(frame, app))?;
         }
 
-        if !event::poll(if busy { BUSY_TICK } else { IDLE_WAIT })? {
+        if !event::poll(if busy {
+            motion::LOADING_INTERVAL
+        } else {
+            IDLE_WAIT
+        })? {
             continue;
         }
         match event::read()? {
