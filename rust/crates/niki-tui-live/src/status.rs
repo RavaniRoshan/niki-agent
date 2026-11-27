@@ -98,10 +98,13 @@ impl Status {
         Some(format!("{} tok", format_tokens(total)))
     }
 
-    /// The whole line, with `separator` between the fields and the spinner
-    /// glyph when one is running.
+    /// The state line: what the session is, without counts.
+    ///
+    /// Model, approval mode, what the turn is doing and the directory the tools
+    /// are rooted at. Token and context accounting lives on its own line, so a
+    /// long session never pushes the directory off the screen.
     #[must_use]
-    pub fn line(&self, separator: &str, spinner: Option<char>) -> String {
+    pub fn state_line(&self, separator: &str, spinner: Option<char>) -> String {
         let mut fields = vec![self.model.clone(), self.mode.label().to_owned()];
         let mut state = self.turn.label().to_owned();
         if let Some(spinner) = spinner {
@@ -109,14 +112,25 @@ impl Status {
             state.push(spinner);
         }
         fields.push(state);
+        fields.push(self.cwd.clone());
+        fields.join(separator)
+    }
+
+    /// The context and token accounting, once there is anything to report.
+    #[must_use]
+    pub fn accounting(&self, separator: &str) -> Option<String> {
+        let mut fields = Vec::new();
         if let Some(context) = self.context_label() {
             fields.push(context);
         }
         if let Some(tokens) = self.total_label() {
             fields.push(tokens);
         }
-        fields.push(self.cwd.clone());
-        fields.join(separator)
+        if fields.is_empty() {
+            None
+        } else {
+            Some(fields.join(separator))
+        }
     }
 }
 
@@ -183,25 +197,28 @@ mod tests {
     }
 
     #[test]
-    fn the_line_names_every_field_in_a_fixed_order() {
+    fn the_state_line_names_every_field_in_a_fixed_order() {
         let status = status();
         assert_eq!(
-            status.line(" | ", None),
+            status.state_line(" | ", None),
             "mock:mock-model | manual | idle | /work"
         );
+        assert_eq!(status.accounting(" | "), None);
     }
 
     #[test]
-    fn tokens_appear_once_the_provider_reports_them() {
+    fn tokens_move_to_the_accounting_line_once_the_provider_reports_them() {
         let mut status = status();
         status.tokens = Usage {
             input_tokens: 12,
             output_tokens: 5,
         };
         assert_eq!(
-            status.line(" | ", None),
-            "mock:mock-model | manual | idle | 17 tok | /work"
+            status.state_line(" | ", None),
+            "mock:mock-model | manual | idle | /work",
+            "the state line never carries counts"
         );
+        assert_eq!(status.accounting(" | ").as_deref(), Some("17 tok"));
         assert_eq!(status.total_label().as_deref(), Some("17 tok"));
     }
 
@@ -227,8 +244,8 @@ mod tests {
             },
         );
         assert_eq!(
-            status.line(" | ", None),
-            "mock:mock-model | manual | idle | ctx 1,234 tok | 1,234 tok | /work"
+            status.accounting(" | ").as_deref(),
+            Some("ctx 1,234 tok | 1,234 tok")
         );
     }
 
@@ -245,9 +262,10 @@ mod tests {
             SessionUsage::default(),
         );
         assert_eq!(status.context_label().as_deref(), Some("ctx 13%"));
+        assert_eq!(status.accounting(" | ").as_deref(), Some("ctx 13% | 0 tok"));
         assert_eq!(
-            status.line(" | ", None),
-            "mock:mock-model | manual | idle | ctx 13% | 0 tok | /work"
+            status.state_line(" | ", None),
+            "mock:mock-model | manual | idle | /work"
         );
     }
 
@@ -305,11 +323,11 @@ mod tests {
         let mut status = status();
         status.turn = TurnState::Working;
         assert_eq!(
-            status.line(" | ", Some('*')),
+            status.state_line(" | ", Some('*')),
             "mock:mock-model | manual | working * | /work"
         );
         assert_eq!(
-            status.line(" | ", None),
+            status.state_line(" | ", None),
             "mock:mock-model | manual | working | /work"
         );
     }

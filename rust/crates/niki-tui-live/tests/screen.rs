@@ -71,17 +71,22 @@ fn type_text(app: &mut App, text: &str) {
 }
 
 #[test]
-fn the_composer_sits_above_the_status_bar() {
+fn the_composer_rule_sits_above_the_two_line_footer() {
     let mut app = app();
     let buffer = render(&mut app, 60, 12);
-    // Twelve rows: nine of transcript, two of composer frame plus one of text,
-    // and the status bar. A fresh session fills the body with the welcome block.
+    // Twelve rows: eight of transcript, the rule and one line of composer, then
+    // the two-line footer. A fresh session fills the body with the welcome.
     let screen = text(&buffer);
     assert!(screen.contains("NIKI AGENT"), "{screen}");
-    assert!(row(&buffer, 8).starts_with('╭'), "{}", row(&buffer, 8));
+    assert!(row(&buffer, 8).starts_with('─'), "{}", row(&buffer, 8));
+    assert!(row(&buffer, 9).contains('›'), "{}", row(&buffer, 9));
     assert!(row(&buffer, 9).contains(PLACEHOLDER), "{}", row(&buffer, 9));
-    assert!(row(&buffer, 10).starts_with('╰'), "{}", row(&buffer, 10));
-    let status = row(&buffer, 11);
+    assert!(
+        row(&buffer, 11).contains("commands"),
+        "{}",
+        row(&buffer, 11)
+    );
+    let status = row(&buffer, 10);
     for field in ["mock:mock-model", "manual", "idle", "/work"] {
         assert!(status.contains(field), "{field} missing from {status:?}");
     }
@@ -171,9 +176,9 @@ fn the_cursor_rests_after_the_typed_text() {
     let backend = TestBackend::new(60, 12);
     let mut terminal = Terminal::new(backend).expect("terminal");
     terminal.draw(|frame| draw(frame, &mut app)).expect("draw");
-    // The composer frame starts at row 8, so its text starts at row 9 and the
-    // border occupies column 0.
-    terminal.backend_mut().assert_cursor_position((4, 9));
+    // The rule is row 8, the draft is row 9, and the `› ` prefix spends the
+    // first two columns before the three typed characters.
+    terminal.backend_mut().assert_cursor_position((5, 9));
 }
 
 #[test]
@@ -213,14 +218,15 @@ fn an_ascii_terminal_is_drawn_with_no_unicode_at_all() {
 }
 
 #[test]
-fn the_composer_border_can_be_drawn_in_ascii() {
+fn the_composer_rule_can_be_drawn_in_ascii() {
     let mut app = app();
     app.set_glyphs(GlyphMode::Ascii);
     let buffer = render(&mut app, 40, 8);
-    // Eight rows: four of transcript, the three-row composer frame and the bar.
-    let frame = row(&buffer, 4);
-    assert!(frame.starts_with('+'), "{frame}");
-    assert!(frame.is_ascii(), "{frame}");
+    // Eight rows: four of transcript, the rule and draft, then the footer.
+    let rule = row(&buffer, 4);
+    assert!(rule.starts_with('-'), "{rule}");
+    assert!(rule.is_ascii(), "{rule}");
+    assert!(row(&buffer, 5).starts_with('>'), "{}", row(&buffer, 5));
 }
 
 #[test]
@@ -267,7 +273,7 @@ fn a_narrow_terminal_truncates_without_panicking() {
     let buffer = render(&mut app, 12, 6);
     assert_eq!(buffer.area.width, 12);
     assert_eq!(buffer.area.height, 6);
-    assert!(!row(&buffer, 5).is_empty(), "the status bar keeps its row");
+    assert!(!row(&buffer, 4).is_empty(), "the state line keeps its row");
 }
 
 #[test]
@@ -439,6 +445,64 @@ fn an_ascii_terminal_draws_the_overlay_without_box_drawing() {
 }
 
 #[test]
+fn a_notice_sits_under_the_welcome_instead_of_hiding_it() {
+    let mut app = app();
+    app.apply(AgentEvent::Notice(
+        "warning: this project is not trusted; run niki trust".to_owned(),
+    ));
+    let buffer = render(&mut app, 80, 30);
+    let screen = text(&buffer);
+    assert!(
+        screen.contains("NIKI AGENT"),
+        "the welcome survives a warning:\n{screen}"
+    );
+    assert!(
+        screen.contains("- warning: this project is not trusted"),
+        "the warning still shows:\n{screen}"
+    );
+    assert!(!app.started(), "a warning is not the start of a session");
+}
+
+#[test]
+fn the_footer_hints_degrade_one_key_at_a_time() {
+    let mut app = app();
+    let wide = render(&mut app, 80, 16);
+    let wide_row = row(&wide, 15);
+    for hint in ["/ commands", "? keys", "ctrl+t transcript", "ctrl+d quit"] {
+        assert!(wide_row.contains(hint), "{hint} missing from {wide_row:?}");
+    }
+
+    let narrow = render(&mut app, 40, 16);
+    let narrow_row = row(&narrow, 15);
+    assert!(
+        niki_render::display_width(&narrow_row) <= 40,
+        "{narrow_row:?}"
+    );
+    assert!(narrow_row.contains("/ commands"), "{narrow_row:?}");
+    assert!(!narrow_row.contains("ctrl+d"), "{narrow_row:?}");
+}
+
+#[test]
+fn the_footer_yields_its_second_line_to_accounting_once_a_turn_starts() {
+    let mut app = app();
+    type_text(&mut app, "hi");
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.apply(AgentEvent::Usage(Usage {
+        input_tokens: 4,
+        output_tokens: 2,
+    }));
+    let buffer = render(&mut app, 80, 12);
+    assert!(
+        row(&buffer, 10).contains("working"),
+        "the state line: {:?}",
+        row(&buffer, 10)
+    );
+    let accounting = row(&buffer, 11);
+    assert!(accounting.contains("6 tok"), "{accounting:?}");
+    assert!(!accounting.contains("commands"), "{accounting:?}");
+}
+
+#[test]
 fn the_command_list_is_drawn_under_the_composer() {
     let mut app = app();
     type_text(&mut app, "/t");
@@ -455,8 +519,8 @@ fn the_command_list_is_drawn_under_the_composer() {
     let lines: Vec<&str> = screen.lines().collect();
     let composer_top = lines
         .iter()
-        .position(|line| line.starts_with('╭'))
-        .expect("the composer frame");
+        .position(|line| line.starts_with('─'))
+        .expect("the composer rule");
     let first_match = lines
         .iter()
         .position(|line| line.contains("/theme"))
@@ -493,7 +557,7 @@ fn the_theme_command_repaints_with_the_new_palette() {
         buffer.cell((2, 0)).expect("answer text").fg,
         niki_tui_themes::MONO.body.color()
     );
-    let status = row(&buffer, 9);
+    let status = row(&buffer, 8);
     assert!(!status.is_empty());
 }
 
@@ -508,9 +572,9 @@ fn a_queued_prompt_is_drawn_dim_under_the_transcript_and_counted_in_the_bar() {
     let screen = text(&buffer);
     assert!(screen.contains("queued: second prompt"), "{screen}");
     assert!(
-        row(&buffer, 13).contains("queued 1"),
-        "the status bar counts the queue: {}",
-        row(&buffer, 13)
+        row(&buffer, 12).contains("queued 1"),
+        "the state line counts the queue: {}",
+        row(&buffer, 12)
     );
     let cell = buffer.cell((0, 0)).expect("the queued marker");
     assert_eq!(cell.fg, app.palette.muted.color(), "it is drawn muted");

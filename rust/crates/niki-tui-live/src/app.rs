@@ -344,15 +344,66 @@ impl App {
         }
     }
 
-    /// The status bar as one line, with the queue depth when one is waiting.
+    /// The status bar's state line: what the session is, with the queue depth
+    /// when one is waiting.
+    ///
+    /// Counts live on [`Self::accounting_line`] instead, so the directory never
+    /// scrolls off a long session.
     #[must_use]
     pub fn status_line(&self) -> String {
-        let line = self.status.line(self.separator(), self.spinner());
+        let line = self.status.state_line(self.separator(), self.spinner());
         if self.queued.is_empty() {
             line
         } else {
             format!("{line}{}queued {}", self.separator(), self.queued.len())
         }
+    }
+
+    /// The context and token accounting, once the agent has reported any.
+    #[must_use]
+    pub fn accounting_line(&self) -> Option<String> {
+        self.status.accounting(self.separator())
+    }
+
+    /// Whether anything real has happened: a prompt, a turn, or a token count.
+    ///
+    /// Until then the footer teaches keys; after it, the second line yields to
+    /// the accounting. A notice — a trust warning, a theme change — is not a
+    /// start.
+    #[must_use]
+    pub fn started(&self) -> bool {
+        self.transcript.has_conversation()
+            || self.status.turn != TurnState::Idle
+            || self.status.tokens != Usage::default()
+    }
+
+    /// The key hints for the footer's second line, shortened to fit `width`.
+    ///
+    /// The list runs most useful first, so a narrow terminal keeps `/` and `?`
+    /// and drops the rest rather than clipping one in half.
+    #[must_use]
+    pub fn hints(&self, width: usize) -> String {
+        const HINTS: [(&str, &str); 4] = [
+            ("/", "commands"),
+            ("?", "keys"),
+            ("ctrl+t", "transcript"),
+            ("ctrl+d", "quit"),
+        ];
+        let separator = self.separator();
+        let mut line = String::new();
+        for (index, (key, action)) in HINTS.iter().enumerate() {
+            let hint = format!("{key} {action}");
+            let candidate = if index == 0 {
+                hint
+            } else {
+                format!("{line}{separator}{hint}")
+            };
+            if niki_render::display_width(&candidate) > width {
+                break;
+            }
+            line = candidate;
+        }
+        line
     }
 
     /// The spinner frame, if one may animate.
@@ -374,11 +425,11 @@ impl App {
         self.spinner = self.spinner.wrapping_add(1);
     }
 
-    /// Rows the composer block needs: its text plus the frame around it.
+    /// Rows the composer block needs: its text plus the rule above it.
     #[must_use]
     pub fn composer_height(&self) -> u16 {
         let lines = u16::try_from(self.composer.line_count()).unwrap_or(u16::MAX);
-        lines.clamp(1, MAX_COMPOSER_LINES) + 2
+        lines.clamp(1, MAX_COMPOSER_LINES) + 1
     }
 
     /// Rows the command list needs under the composer: one per match and one
@@ -1795,7 +1846,7 @@ mod tests {
         assert_eq!(app.handle_key(key), None);
         type_text(&mut app, "second");
         assert_eq!(app.composer.line_count(), 2);
-        assert_eq!(app.composer_height(), 4);
+        assert_eq!(app.composer_height(), 3);
         assert_eq!(
             app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
             Some(Command::Submit("first\nsecond".to_owned()))
@@ -1957,7 +2008,12 @@ mod tests {
         }));
         assert_eq!(app.status.tokens.input_tokens, 15);
         assert_eq!(app.status.tokens.output_tokens, 6);
-        assert!(app.status_line().contains("21 tok"));
+        assert!(
+            app.accounting_line()
+                .is_some_and(|line| line.contains("21 tok")),
+            "{:?}",
+            app.accounting_line()
+        );
 
         app.apply(AgentEvent::StepLimit { steps: 40 });
         let last = app.transcript.rows().last().expect("a notice");
@@ -2409,16 +2465,60 @@ mod tests {
     }
 
     #[test]
+    fn the_hints_drop_whole_keys_to_fit_the_width() {
+        let mut app = app();
+        let wide = app.hints(120);
+        for hint in ["/ commands", "? keys", "ctrl+t transcript", "ctrl+d quit"] {
+            assert!(wide.contains(hint), "{hint}: {wide}");
+        }
+        let narrow = app.hints(12);
+        assert!(
+            niki_render::display_width(&narrow) <= 12,
+            "{narrow:?} is wider than the terminal"
+        );
+        assert!(narrow.contains('/'), "{narrow:?}");
+        assert!(!narrow.contains("ctrl+d"), "{narrow:?}");
+        assert_eq!(app.hints(0), "");
+
+        app.set_glyphs(GlyphMode::Ascii);
+        assert!(app.hints(120).is_ascii());
+    }
+
+    #[test]
+    fn the_footer_starts_with_keys_then_shows_the_accounting() {
+        let mut app = app();
+        assert!(!app.started());
+        assert!(app.accounting_line().is_none());
+
+        type_text(&mut app, "hi");
+        press(&mut app, KeyCode::Enter);
+        assert!(app.started(), "sending a prompt begins the session");
+
+        app.apply(AgentEvent::Usage(Usage {
+            input_tokens: 4,
+            output_tokens: 2,
+        }));
+        assert_eq!(app.accounting_line().as_deref(), Some("6 tok"));
+    }
+
+    #[test]
+    fn a_notice_does_not_start_the_session() {
+        let mut app = app();
+        app.apply(AgentEvent::Notice("warning: not trusted".to_owned()));
+        assert!(!app.started());
+    }
+
+    #[test]
     fn the_composer_grows_with_its_text_up_to_a_limit() {
         let mut app = app();
-        assert_eq!(app.composer_height(), 3);
+        assert_eq!(app.composer_height(), 2);
         for line in 0..10 {
             if line > 0 {
                 let _ = app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT));
             }
             type_text(&mut app, "x");
         }
-        assert_eq!(app.composer_height(), MAX_COMPOSER_LINES + 2);
+        assert_eq!(app.composer_height(), MAX_COMPOSER_LINES + 1);
     }
 
     #[test]
@@ -2609,8 +2709,9 @@ mod tests {
         ] {
             assert!(last.text.contains(expected), "{expected}: {}", last.text);
         }
-        assert!(app.status_line().contains("ctx 1,234 tok"));
-        assert!(app.status_line().contains("1,234 tok"));
+        let accounting = app.accounting_line().expect("accounting after /context");
+        assert!(accounting.contains("ctx 1,234 tok"), "{accounting}");
+        assert!(accounting.contains("1,234 tok"), "{accounting}");
     }
 
     #[test]

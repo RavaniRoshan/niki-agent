@@ -63,6 +63,16 @@ impl Transcript {
         self.rows.is_empty()
     }
 
+    /// Whether anyone has actually spoken yet.
+    ///
+    /// Notices are the app talking to itself — a trust warning, a theme
+    /// change — so they do not count. The first screen stays a welcome until a
+    /// real row arrives, and a warning never takes it away.
+    #[must_use]
+    pub fn has_conversation(&self) -> bool {
+        self.rows.iter().any(|row| row.kind != RowKind::Notice)
+    }
+
     /// Add something the person typed.
     pub fn push_user(&mut self, text: impl Into<String>) {
         self.streaming = false;
@@ -323,6 +333,19 @@ mod tests {
 
         let empty = Transcript::default();
         assert_eq!(empty.last_user(), None);
+    }
+
+    #[test]
+    fn notices_alone_are_not_a_conversation() {
+        let mut transcript = Transcript::default();
+        assert!(!transcript.has_conversation());
+        transcript.push_notice("warning: this project is not trusted");
+        assert!(
+            !transcript.has_conversation(),
+            "a warning is the app talking, not the person"
+        );
+        transcript.push_user("hi");
+        assert!(transcript.has_conversation());
     }
 
     #[test]
