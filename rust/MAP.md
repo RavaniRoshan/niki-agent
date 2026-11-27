@@ -11,21 +11,22 @@ Read this file, then `DECISIONS.md`, `GLOSSARY.md`, `RULES.md`, and
 | | |
 | --- | --- |
 | Source | `libs/code` — 377 files, ~250k lines, 41 analyzable units |
-| Rust today | `rust/crates/` — 15,153 lines across 16 crates |
-| Fallback rate | 0% for a headless or interactive turn; the `niki` engine client is unchanged |
-| Cutover | not started; Python stays the product until W6 |
+| Rust today | `rust/crates/` — 39,738 lines across 21 crates |
+| Fallback rate | 0% for a headless or interactive turn; the `niki` engine client is unchanged and is not packaged |
+| Cutover | done — v2.0.0 shipped the Rust binary for four platforms; Python is reference-only |
 
 The analysis (`rust-anything analyze libs/code`) reports 9 ready, 28 caution and
 4 blocked units. The central fact of the port holds: it is a rewrite against the
 same external contracts, not a function-by-function translation. Recorded app
 cases are the equivalence proof.
 
-W0–W3 are green. The agent has its own model client, tool registry, approval
-policy, workspace, session store and full-screen terminal app. W4 (extensions)
-has started: `niki-mcp` is done for stdio and HTTP and the `niki` entry points
-connect the configured servers at startup. Skills, hooks (`PreToolUse`,
-`PostToolUse`, `UserPromptSubmit`) and slash commands are done, and the screen
-persists every turn.
+W0–W6 are green: the agent has its own model client, tool registry, approval
+policy, workspace, session store and full-screen terminal app; `niki-mcp`
+(stdio and HTTP), skills, hooks (`PreToolUse`, `PostToolUse`,
+`UserPromptSubmit`), slash commands, the ACP server and the headless surfaces
+are all in the binary, and the screen persists every turn.
+
+The waves below are kept as the record of how the port was sequenced.
 
 ## Waves
 
@@ -87,20 +88,26 @@ the answer reaches stdout.
 | `niki-acp` | editor protocol over stdio: initialize, sessions, prompt, cancel, modes, config, streaming updates | done — 27 tests |
 | `niki-headless` | `-n`, `--output-format json`, `--continue`/`--resume`, exit 0/1/2/124/130 | done |
 
-### W6 — cutover
+### W6 — cutover (done)
 
-Every remaining surface reaches the same behaviour as the Python client, then
-packaging for Linux/WSL (then macOS/Windows), the `niki` binary renamed, Python
-retired to reference. Out of scope until W1–W5 are green.
+Done: the release archive installs `niki` from `rust/` on Linux x86_64, macOS
+arm64, macOS x86_64 and Windows x86_64, with `SHA256SUMS` and an installer that
+picks by platform; the installed binary runs a turn with no language runtime on
+the machine. `libs/code` stays in the tree as the reference implementation, and
+its wheel no longer declares a `niki` console script.
+
+What remains against the reference is tracked one row per surface in
+[`PARITY.md`](./PARITY.md) rather than as a wave.
 
 ## Blocked and kept
 
 - **Blocked:** the vendored JS interpreter (`niki_agent/_vendor/quickjs`, C++
   runtime, no Rust crate that keeps the PTC API); `niki_agent/sdk/backends/`
   (filesystem and composite backends depend on the vendored graph runtime).
-- **Kept in Python (for now):** the syntax-highlighting grammar set and the
-  `tiktoken` token-counting path. Rust replacements are chosen in W1 and recorded
-  in `DECISIONS.md`.
+  Neither is reachable from the Rust binary, so both stay Python-only.
+- **Kept in Python:** the syntax-highlighting grammar set. Token counting is
+  provider-reported usage (`Agent::session_usage`), with `context_audit` for the
+  next request; there is no local BPE counter and none is planned.
 
 ## Out of scope
 
@@ -108,9 +115,8 @@ retired to reference. Out of scope until W1–W5 are green.
 - Byte-identical help text (ADR-007).
 - The deprecated console-script aliases.
 
-## Open questions
+## Settled while porting
 
-1. Token counting without `tiktoken`: a Rust BPE crate, or provider-reported
-   usage only? Blocks cost display in W1, not the loop.
-2. Do skills ship as embedded assets or as files under `~/.niki/skills`? Affects
-   packaging in W6.
+1. Token counting is provider-reported usage, not a local BPE crate.
+2. Skills are files: `<root>/.niki/skills` and `~/.niki/skills`, with `commit`
+   and `review` compiled into `niki-skills`. No skills ship as archives.

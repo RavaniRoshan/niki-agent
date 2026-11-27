@@ -8,7 +8,7 @@ cannot repeat the mistake.
 ## Product
 
 1. The public surface never names another agent product or its runtime; attribution lives only in `NOTICE`, `LICENSE`, and vendored provenance files.
-2. The Rust binary is `niki` until cutover; never claim the port is the product before W6.
+2. The shipped binary is `niki`; it was cut over from the reference client at v2.0.0, and there are no aliases for the pre-rename names.
 3. A user-visible string is written for the person running the command, not for the person who wrote the code.
 
 ## Behavior
