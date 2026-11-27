@@ -75,6 +75,19 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
         .position(|window| window == needle)
 }
 
+/// Record `workspace` as trusted in `home`, the grant `niki trust` writes.
+fn trust_workspace(home: &Path, workspace: &Path) {
+    let key = workspace.canonicalize().expect("canonical workspace");
+    std::fs::write(
+        home.join("trusted_workspaces.toml"),
+        format!(
+            "version = 1\n\n[projects.\"{}\"]\ntrusted_at = 0\n",
+            key.display()
+        ),
+    )
+    .expect("trust store");
+}
+
 fn sse(frames: &[Value]) -> String {
     let mut body = String::new();
     for frame in frames {
@@ -197,6 +210,7 @@ fn discovered_skills_reach_the_request_system_prompt() {
     let workspace = tempfile::tempdir().expect("workspace");
     let config_dir = tempfile::tempdir().expect("config");
     let home = tempfile::tempdir().expect("home");
+    trust_workspace(home.path(), workspace.path());
     let skill = workspace.path().join(".niki/skills/deploy");
     std::fs::create_dir_all(&skill).expect("skill directory");
     std::fs::write(
@@ -253,6 +267,7 @@ fn project_instructions_reach_the_request_system_prompt() {
     let workspace = tempfile::tempdir().expect("workspace");
     let config_dir = tempfile::tempdir().expect("config");
     let home = tempfile::tempdir().expect("home");
+    trust_workspace(home.path(), workspace.path());
     std::fs::write(workspace.path().join("AGENTS.md"), "ROOT-RULE-ALPHA\n").expect("root file");
     let nested = workspace.path().join("sub");
     std::fs::create_dir_all(&nested).expect("nested");
@@ -330,6 +345,7 @@ fn a_missing_model_is_a_clear_failure() {
 fn a_blocking_hook_stops_the_write_and_the_model_sees_the_reason() {
     let workspace = tempfile::tempdir().expect("workspace");
     let config_dir = tempfile::tempdir().expect("config");
+    trust_workspace(config_dir.path(), workspace.path());
     let hooks_dir = workspace.path().join(".niki");
     std::fs::create_dir_all(&hooks_dir).expect("hooks dir");
     std::fs::write(

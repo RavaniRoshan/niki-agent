@@ -165,8 +165,10 @@ a warning, and the turn continues.
 - An unsupported event name, a `permissionDecision` other than `deny`, or
   `async: true` produces a warning; see [Hooks](/extensions/hooks).
 
-`.niki/hooks.json` from a repository is loaded without a trust prompt in this
-build, so review it before you run Niki in an unfamiliar repository.
+`.niki/hooks.json` from a repository is read only after `niki trust` records
+the workspace. Until then Niki prints
+`project hooks, skills and instruction files are not loaded: <path> is not trusted; run niki trust to allow them`
+and runs without them; review the file before you grant it.
 
 ## `--acp` and `-n` cannot be combined
 

@@ -119,5 +119,6 @@ covers one call, not the server's behaviour after it. See
 | Hooks | `.niki/hooks.json` | Yes; each handler is a shell command. |
 | MCP servers | `config.toml` (user configuration) | Yes; the server process or HTTP endpoint runs as you. |
 
-Read a hook or an MCP server configuration before you trust it. Project hooks
-are not behind a trust prompt in this build.
+Read a hook or an MCP server configuration before you trust it. Project skills,
+project hooks and project instruction files are not loaded until `niki trust`
+records the workspace; user-level and built-in content is never gated.

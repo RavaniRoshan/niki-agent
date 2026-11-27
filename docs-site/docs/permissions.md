@@ -127,8 +127,29 @@ Hooks run around the prompt and around a tool call, in every mode:
   because the tool has already run.
 
 Hooks are shell commands, so a hook can do anything your user can do. Read a
-project's `.niki/hooks.json` before trusting the repository. See
-[Hooks](/extensions/hooks).
+project's `.niki/hooks.json` before you trust the repository: the file is read
+only after `niki trust` records the workspace, and `niki untrust` withdraws
+that. See [Hooks](/extensions/hooks).
+
+## Workspace trust
+
+Project content — `.niki/hooks.json`, `.niki/skills/` and project instruction
+files — is loaded only for a workspace that `niki trust` recorded:
+
+```bash
+niki trust                 # allow this directory's hooks, skills and instructions
+niki trust --root ../app   # the same for another directory
+niki trust --list          # every workspace you have allowed
+niki untrust               # withdraw the grant for this directory
+```
+
+The decision lives in `trusted_workspaces.toml` beside `config.toml`, keyed by
+the canonical directory path. Matching is exact: a subdirectory does not
+inherit a parent's grant, and a symlink to a trusted directory counts as that
+directory. An untrusted workspace still runs, without project content: the
+headless run and the ACP server print one line to stderr, and the full-screen
+app adds it to the transcript before the first frame. User-level and built-in
+skills, hooks and instructions are never gated.
 
 ## Hard boundaries
 
