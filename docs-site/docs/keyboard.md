@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: c05c9c23d8c989e09d7988004659f356f0cb41b244b23a26b49b0584f3978641
+  source-sha256: d99a720852731b3e1bcd578aad780d829d063b177bad968e6f45366088149a64
 -->
 # Niki Agent -- Keymap
 
@@ -159,10 +159,14 @@ Type these in the composer. `/help` lists the same set.
 | `/clear` | Start a fresh session and empty the view. |
 | `/compact` | Fold older rows out of the view; the session store keeps them. |
 | `/context` | Show the conversation's size and the session's token total. |
+| `/diff` | Show the working tree's staged, unstaged and untracked changes; `/diff staged`, `/diff unstaged`, `/diff untracked` narrow it. |
+| `/export` | Write the session to `niki-<id>.md` in the workspace, or to a path you give. |
 | `/help` | This list. `/keys` is an alias. |
+| `/init` | Write a starter `AGENTS.md` when the workspace has none. |
 | `/manual` | Switch to Manual approval mode without restarting. |
 | `/model` | Choose a model, or name one with `/model provider:model`. |
 | `/quit` | Leave the app. `/exit` is an alias. |
+| `/rename` | Name the current session; with no argument, report the current name. |
 | `/resume` | List saved sessions, or resume one by id or one-based index. |
 | `/skills` | List the skills discovery found. |
 | `/theme` | Choose a palette, or cycle to the next one. |
@@ -171,8 +175,9 @@ Type these in the composer. `/help` lists the same set.
 | `/version` | Show the version. |
 | `/yolo` | Switch to YOLO approval mode without restarting. |
 
-`/compact` does not summarise: this build has no summarising model, so it only
-hides older rows. The session store keeps the full transcript.
+`/compact` asks the model to fold older turns into a summary, then keeps the
+newest rows in the view. The session store keeps the original rows, so a
+`/resume` shows the uncompressed record.
 
 `/resume` redraws the selected session on screen. This build does not replay
 the resumed session into the model's context.

@@ -98,7 +98,7 @@ restores the transcript as it was written, not as it was compacted.
 | Surface | Owns |
 | --- | --- |
 | Full-screen (`niki`) | Input, approvals, the transcript, and presentation. |
-| Headless (`niki -n`) | One prompt and exit; the answer goes to stdout, tool activity to stderr. |
+| Headless (`niki -n`) | One prompt and exit; the answer goes to stdout, tool activity to stderr. `--output-format json` prints one document; `--output-format jsonl` streams one event per line (`start`, `text`, `tool_call`, `tool_result`, `usage`, `end`). |
 | Editor (`niki --acp`) | The Agent Client Protocol on stdin/stdout; the editor answers permission requests. |
 
 All three entry points build the same agent from the same configuration. The
@@ -121,8 +121,14 @@ Three surfaces extend a session without changing the binary:
 - **Skills** from `.niki/skills/<name>/SKILL.md`, `~/.niki/skills/<name>/SKILL.md`
   and two built-ins. Their names and descriptions are injected into the system
   prompt; the model reads the body only when a skill applies. A project skill is
-  inside the workspace and readable; a user skill is outside the root, and
-  opening it is a known gap in this build.
+  read only while it resolves inside the workspace; the user skills directory is
+  the user's own and is read as given.
+
+Instruction files are the fourth: `AGENTS.md` and `.niki/AGENTS.md` from the
+repository root down to the working directory, with `$NIKI_HOME/AGENTS.md` (or
+the platform config home) first. Each file is truncated on a line boundary
+under a 32 KiB budget shared by the chain, and a link that resolves outside the
+workspace is skipped.
 
 ## State
 
