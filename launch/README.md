@@ -5,7 +5,9 @@ the `niki` binary or by the installers.
 
 | Path | What it is |
 | --- | --- |
-| `product-hunt.md` | Listing copy, maker comment, FAQ, and the day-of checklist |
+| `product-hunt.md` | Listing copy, maker comment, FAQ, timing, the MCP submission flow, and the day-of checklist |
+| `ph-launch.mjs` | Creates the draft, stages assets, and schedules the launch through the Product Hunt MCP server |
+| `PLAN-2.3.0.md` | What the launch side channel ships, in order, and what it leaves out |
 | `gallery/01-hero.png` … `05-long-sessions.png` | 1270×760 gallery images |
 | `gallery/thumbnail-240.png` | 240×240 listing thumbnail |
 
