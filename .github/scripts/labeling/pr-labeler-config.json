@@ -63,6 +63,7 @@
   "labelDescriptions": {
     "type:feature": "A request, idea, or new user-facing functionality or behavior.",
     "type:bug": "An unexpected problem or incorrect behavior.",
+    "type:beta": "Feedback from a beta build.",
     "type:docs": "Documentation additions, improvements, or fixes.",
     "type:hotfix": "An urgent fix using the manual release path.",
     "type:style": "Formatting or style changes without behavior changes.",

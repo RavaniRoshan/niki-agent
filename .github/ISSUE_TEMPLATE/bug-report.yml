@@ -9,7 +9,7 @@ body:
 
         Thank you for taking the time to file a bug report.
 
-        For usage questions, please open a discussion or ask in an existing issue.
+        For usage questions, open a discussion or ask in an existing issue.
 
         Check these before submitting to see if your issue has already been reported or fixed:
 
@@ -47,7 +47,6 @@ body:
         - label: Providers and authentication
         - label: MCP
         - label: Skills / plugins / subagents
-        - label: Sandboxes
         - label: Rust client (`rust/`)
         - label: Installer / release artifacts
         - label: Documentation
@@ -108,11 +107,11 @@ body:
     id: system-info
     attributes:
       label: Environment / System Info
-      description: Provide OS, Python version, the version printed by `niki --version`, and any relevant env vars.
+      description: Provide the OS, the terminal, the version printed by `niki --version`, and any relevant env vars.
       placeholder: |
         OS:
-        Python: 3.x.x
-        niki: 1.x.y
+        Terminal:
+        niki:
   - type: markdown
     attributes:
       value: |

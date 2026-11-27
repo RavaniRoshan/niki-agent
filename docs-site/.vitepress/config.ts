@@ -67,6 +67,13 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Project',
+        items: [
+          { text: 'Beta builds', link: '/beta' },
+          { text: 'Changelog', link: '/changelog' },
+        ],
+      },
+      {
         text: 'Help',
         items: [{ text: 'Troubleshooting', link: '/troubleshooting' }],
       },

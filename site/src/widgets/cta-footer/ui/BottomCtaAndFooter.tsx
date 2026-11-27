@@ -49,6 +49,8 @@ const FOOTER_EYEBROW = [
 const FOOTER_LEGAL: StubLink[] = [
   { label: 'MIT Licensed' },
   { label: 'Documentation', href: 'https://niki-docs.vercel.app' },
+  { label: 'Beta builds', href: 'https://niki-docs.vercel.app/beta' },
+  { label: 'Changelog', href: 'https://niki-docs.vercel.app/changelog' },
   { label: 'GitHub', href: 'https://github.com/RavaniRoshan/niki-agent' },
   {
     label: 'NOTICE',

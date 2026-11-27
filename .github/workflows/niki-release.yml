@@ -235,6 +235,10 @@ jobs:
           # development bookkeeping, so it stays off.
           generate_release_notes: false
           body_path: .github/RELEASE_NOTES_niki.md
+          # A hyphenated version is a beta: it is published as a pre-release,
+          # so `latest` keeps pointing at the newest stable tag and the
+          # installer's unpinned path never lands on one by accident.
+          prerelease: ${{ contains(steps.version.outputs.value, '-') }}
           # Named one by one: with fail_on_unmatched_files, a platform whose
           # archive went missing fails the publish instead of shipping a
           # release that silently lacks it.

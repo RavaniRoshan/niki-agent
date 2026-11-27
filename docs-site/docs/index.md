@@ -35,11 +35,12 @@ features:
 
 ## Install
 
-Linux x86_64 has a prebuilt release archive. Verify it against `SHA256SUMS`,
-then run the installer inside the archive or place the binary yourself:
+Linux x86_64, macOS (Apple silicon and Intel), and Windows x86_64 have prebuilt
+release archives. Verify one against `SHA256SUMS`, then run the installer inside
+the archive or place the binary yourself:
 
 ```bash
-VERSION=2.1.1
+VERSION=2.1.3
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
@@ -49,8 +50,8 @@ bash "niki-${VERSION}-linux-x86_64/install.sh"
 
 macOS publishes `niki-<version>-macos-aarch64.tar.gz` and
 `niki-<version>-macos-x86_64.tar.gz`; the installer chooses by `uname -m`.
-Windows has a `.zip` archive that has not been exercised on Windows, so treat it
-as untested.
+Windows has a `.zip` archive; CI builds it, but it has not been executed on
+Windows, so treat that platform as beta.
 
 Then name a model in `~/.niki/config.toml` and export its key:
 
@@ -66,14 +67,17 @@ niki
 
 [Install in detail](/getting-started/install) ·
 [Your first turn](/getting-started/first-turn) ·
-[Every key binding](/keyboard) · [Provider setup](/providers/)
+[Every key binding](/keyboard) · [Provider setup](/providers/) ·
+[Beta builds](/beta) · [Changelog](/changelog)
 
 ## Honest gaps
 
-There is no sandbox and no classifier in this build: Auto asks like Manual, and
-built-in file writes run without an approval prompt. Run Niki in a container or
-under a dedicated user account when you need a hard boundary, and read
-[Permissions](/permissions) and [Security](/security) for the exact gate.
+There is no sandbox and no classifier in this build. Approval modes decide what
+asks: Manual asks for every gated command, Auto runs what the allow-list matches
+and asks for the rest, and YOLO runs everything the policy allows. Run Niki in a
+container or under a dedicated user account when you need a hard boundary.
+[Permissions](/permissions) and [Security](/security) describe the exact gate,
+and [Beta builds](/beta) lists the known gaps.
 
 ## Documentation
 
