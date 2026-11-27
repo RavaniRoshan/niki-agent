@@ -7,6 +7,7 @@
 //! path is testable with a scripted provider (RULES.md 8).
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
@@ -17,7 +18,7 @@ use niki_agent::{
     ContextReport, Provider, RunOutcome, SessionUsage, Steering,
 };
 use niki_policy::Mode;
-use niki_tools::{Shell, Tool, ToolContext};
+use niki_tools::{AskAnswer, AskError, AskRequest, Asker, Shell, Tool, ToolContext};
 use serde_json::json;
 use tokio::sync::oneshot;
 
@@ -47,6 +48,13 @@ pub enum WorkerEvent {
         /// Where the answer goes.
         reply: oneshot::Sender<Approval>,
     },
+    /// `request_user_input` asked the person a structured question.
+    Question {
+        /// The question and its choices.
+        request: AskRequest,
+        /// Where the answer goes. Dropping it cancels the question.
+        reply: mpsc::Sender<Result<AskAnswer, AskError>>,
+    },
     /// The turn is over. The message is the failure, if it failed.
     Finished(Result<RunOutcome, String>),
     /// The agent's context report and session usage.
@@ -72,6 +80,7 @@ impl std::fmt::Debug for WorkerEvent {
         match self {
             Self::Agent(event) => f.debug_tuple("Agent").field(event).finish(),
             Self::Approval { request, .. } => f.debug_tuple("Approval").field(request).finish(),
+            Self::Question { request, .. } => f.debug_tuple("Question").field(request).finish(),
             Self::Finished(result) => f
                 .debug_tuple("Finished")
                 .field(&result.as_ref().map(|_| "ok").map_err(String::as_str))
@@ -218,6 +227,9 @@ impl WorkerHandle {
         let thread_steering = steering.clone();
 
         thread::spawn(move || {
+            let asker: Arc<dyn Asker + Send + Sync> = Arc::new(ScreenAsker {
+                events: event_tx.clone(),
+            });
             let Some(runtime) = runtime.or_else(|| {
                 tokio::runtime::Builder::new_current_thread()
                     .enable_all()
@@ -279,7 +291,11 @@ impl WorkerHandle {
                                 cancel: thread_cancel.clone(),
                             }) {
                                 Ok(built) => {
-                                    agent = Some(built.with_steering(thread_steering.clone()));
+                                    agent = Some(
+                                        built
+                                            .with_asker(Arc::clone(&asker))
+                                            .with_steering(thread_steering.clone()),
+                                    );
                                 }
                                 Err(message) => {
                                     let _ = event_tx.send(WorkerEvent::Finished(Err(message)));
@@ -493,4 +509,29 @@ fn approver_for(events: &Sender<WorkerEvent>) -> Approver {
 
 fn denied() -> BoxFuture<'static, Approval> {
     Box::pin(async { Approval::Deny })
+}
+
+/// The asker `request_user_input` calls: it hands the question to the screen
+/// and blocks until the screen answers or drops the reply channel.
+///
+/// The tool calls this synchronously inside the turn, so the block is on the
+/// worker thread only; the screen's event loop keeps drawing.
+struct ScreenAsker {
+    events: Sender<WorkerEvent>,
+}
+
+impl Asker for ScreenAsker {
+    fn ask(&self, request: AskRequest) -> Result<AskAnswer, AskError> {
+        let (reply, answer) = mpsc::channel();
+        self.events
+            .send(WorkerEvent::Question { request, reply })
+            .map_err(|_| {
+                AskError::Failed("the screen has gone away; ask in prose instead".to_owned())
+            })?;
+        answer.recv().unwrap_or_else(|_| {
+            Err(AskError::Failed(
+                "the question was dismissed; ask in prose instead".to_owned(),
+            ))
+        })
+    }
 }

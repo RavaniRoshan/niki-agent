@@ -7,6 +7,7 @@ use ratatui::widgets::{Block, Clear, Paragraph, Wrap};
 use crate::approval::{ApprovalModal, ellipsize};
 use crate::help::HelpOverlay;
 use crate::model::ModelPicker;
+use crate::question::{QuestionModal, QuestionRow};
 use crate::status::StatusCard;
 use crate::threads::ThreadPicker;
 
@@ -73,6 +74,151 @@ pub(crate) fn approval(
         glyphs,
         height,
     );
+}
+
+pub(crate) fn question(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &QuestionModal,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
+    let width = usize::from(area.width.min(MAX_WIDTH).saturating_sub(2));
+    let rows = modal.rows(width);
+    let question_lines: Vec<&str> = rows
+        .iter()
+        .filter_map(|row| match row {
+            QuestionRow::Question(line) => Some(line.as_str()),
+            _ => None,
+        })
+        .collect();
+    let rest: Vec<&QuestionRow> = rows
+        .iter()
+        .filter(|row| !matches!(row, QuestionRow::Question(_)))
+        .collect();
+
+    let natural = u16::try_from(rows.len())
+        .unwrap_or(u16::MAX)
+        .saturating_add(2);
+    let rect = centered(area, natural);
+    if rect.is_empty() {
+        return;
+    }
+    frame.render_widget(Clear, rect);
+    let block = Block::bordered()
+        .border_set(glyphs.border())
+        .border_style(palette.accent_style())
+        .style(palette.panel_style())
+        .title(Line::from(Span::styled("Question", palette.accent_style())));
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+    if inner.is_empty() {
+        return;
+    }
+
+    // The choices keep the bottom rows; the question takes whatever is left and
+    // scrolls there, so a long question never pushes the options out of reach.
+    let visible = usize::from(inner.height);
+    // Keep one row for the question when the frame has room for it, so a long
+    // question can be read by scrolling instead of being pushed out entirely.
+    let reserve = usize::from(visible > 2 && !question_lines.is_empty());
+    let pinned = rest.len().min(visible.saturating_sub(reserve));
+    let question_height = visible - pinned;
+    let question_offset = modal.question_offset(width, question_height);
+    let rest_offset = modal.interactive_offset(pinned);
+
+    draw_question_lines(
+        frame,
+        inner,
+        question_height,
+        question_lines.iter().copied().skip(question_offset),
+        palette,
+    );
+    draw_question_rest(
+        frame,
+        inner,
+        question_height,
+        pinned,
+        rest.iter().copied().skip(rest_offset),
+        modal,
+        palette,
+    );
+}
+
+fn draw_question_lines<'a>(
+    frame: &mut Frame,
+    inner: Rect,
+    height: usize,
+    lines: impl Iterator<Item = &'a str>,
+    palette: &Palette,
+) {
+    if height == 0 {
+        return;
+    }
+    let area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: u16::try_from(height).unwrap_or(u16::MAX),
+    };
+    let lines: Vec<Line> = lines
+        .map(|line| Line::from(Span::styled(line.to_owned(), palette.accent_style())))
+        .collect();
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+fn draw_question_rest<'a>(
+    frame: &mut Frame,
+    inner: Rect,
+    question_height: usize,
+    height: usize,
+    rows: impl Iterator<Item = &'a QuestionRow>,
+    modal: &QuestionModal,
+    palette: &Palette,
+) {
+    if height == 0 {
+        return;
+    }
+    let area = Rect {
+        x: inner.x,
+        y: inner
+            .y
+            .saturating_add(u16::try_from(question_height).unwrap_or(u16::MAX)),
+        width: inner.width,
+        height: u16::try_from(height).unwrap_or(u16::MAX),
+    };
+    let lines: Vec<Line> = rows
+        .map(|row| match row {
+            QuestionRow::Count(text) => {
+                Line::from(Span::styled(text.clone(), palette.muted_style()))
+            }
+            QuestionRow::Option { index, text } => {
+                let chosen = *index == modal.selected();
+                let marker = if chosen { "> " } else { "  " };
+                let style = if chosen {
+                    palette.accent_style()
+                } else {
+                    palette.body_style()
+                };
+                Line::from(Span::styled(format!("{marker}{text}"), style))
+            }
+            QuestionRow::Freeform { text } => {
+                let focused = modal.is_freeform_selected();
+                let marker = if focused { "> " } else { "  " };
+                let style = if focused {
+                    palette.accent_style()
+                } else {
+                    palette.muted_style()
+                };
+                Line::from(Span::styled(format!("{marker}{text}"), style))
+            }
+            QuestionRow::Hint(text) => {
+                Line::from(Span::styled(text.clone(), palette.muted_style()))
+            }
+            QuestionRow::Question(_) => Line::default(),
+        })
+        .collect();
+    frame.render_widget(Paragraph::new(lines), area);
 }
 
 pub(crate) fn models(
@@ -256,7 +402,17 @@ fn render(
     glyphs: GlyphMode,
     height: u16,
 ) {
-    let rect = centered(area, height);
+    render_in(frame, centered(area, height), title, lines, palette, glyphs);
+}
+
+fn render_in(
+    frame: &mut Frame,
+    rect: Rect,
+    title: &str,
+    lines: Vec<Line<'static>>,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
     if rect.is_empty() {
         return;
     }

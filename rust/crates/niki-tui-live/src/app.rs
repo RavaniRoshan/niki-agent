@@ -20,9 +20,10 @@ use niki_policy::{AllowList, Decision, Mode, ProgramAllow, decide};
 use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
+use niki_tools::AskRequest;
 use niki_tui_modals::{
-    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, StatusCard, StatusField, ThreadEntry,
-    ThreadPicker,
+    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, QuestionModal, QuestionReply,
+    StatusCard, StatusField, ThreadEntry, ThreadPicker,
 };
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -80,6 +81,8 @@ pub enum Command {
     Mode(Mode),
     /// The person answered the approval prompt.
     Answer(Approval),
+    /// The person answered, or dismissed, a structured question.
+    AnswerQuestion(QuestionReply),
     /// Start a new session: drop the in-memory "for this session" rules.
     ClearApprovals,
     /// The person chose a model spec.
@@ -114,6 +117,8 @@ pub struct App {
     pub motion: Motion,
     /// The command waiting for the person's answer, if one is.
     pub pending: Option<ApprovalRequest>,
+    /// The structured question waiting for the person's answer, if one is.
+    pub question: Option<AskRequest>,
     /// The overlay on top of the screen, if one is open.
     pub modal: Option<Modal>,
     /// The whole conversation on one screen, opened by `Ctrl+T`.
@@ -175,6 +180,7 @@ impl App {
             glyphs: GlyphMode::default(),
             motion: Motion::default(),
             pending: None,
+            question: None,
             modal: None,
             transcript_overlay: None,
             models: ModelPicker::default(),
@@ -695,17 +701,25 @@ impl App {
             Outcome::Close => {
                 self.modal = None;
                 self.pending = None;
+                self.question = None;
                 self.local_shell = None;
                 None
             }
             Outcome::Answer(answer) => {
                 self.modal = None;
                 self.pending = None;
+                self.question = None;
                 if let Some(command) = self.local_shell.take() {
                     return self.local_answer(command, answer);
                 }
                 self.status.turn = TurnState::Working;
                 Some(Command::Answer(answer))
+            }
+            Outcome::Question(reply) => {
+                self.modal = None;
+                self.question = None;
+                self.status.turn = TurnState::Working;
+                Some(Command::AnswerQuestion(reply))
             }
             Outcome::Model(spec) => {
                 self.modal = None;
@@ -724,6 +738,7 @@ impl App {
     fn cancel(&mut self) {
         self.modal = None;
         self.pending = None;
+        self.question = None;
         self.local_shell = None;
         self.queued.clear();
         if self.status.turn == TurnState::Waiting {
@@ -768,6 +783,14 @@ impl App {
         self.status.turn = TurnState::Waiting;
     }
 
+    /// Show a structured question from `request_user_input` and wait for one
+    /// answer.
+    pub fn request_question(&mut self, request: AskRequest) {
+        self.modal = Some(Modal::Question(QuestionModal::new(request.clone())));
+        self.question = Some(request);
+        self.status.turn = TurnState::Waiting;
+    }
+
     /// Fold the end of a turn into the screen, then start the first queued
     /// prompt.
     ///
@@ -777,6 +800,7 @@ impl App {
     /// person to decide about.
     pub fn finish(&mut self, result: Result<RunOutcome, String>) -> Option<Command> {
         self.pending = None;
+        self.question = None;
         self.transcript.end_stream();
         match result {
             Ok(outcome) => {
@@ -1647,6 +1671,7 @@ fn diff_theme(palette: &Palette) -> DiffTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use niki_tools::{AskOption, AskRequest};
 
     fn app() -> App {
         App::new(SessionInfo {
@@ -2043,6 +2068,91 @@ mod tests {
         assert_eq!(
             press(&mut app, KeyCode::Enter),
             Some(Command::Answer(Approval::Always))
+        );
+    }
+
+    fn question(allow_freeform: bool) -> AskRequest {
+        AskRequest {
+            question: "Which store?".to_owned(),
+            options: vec![
+                AskOption {
+                    label: "SQLite".to_owned(),
+                    description: None,
+                },
+                AskOption {
+                    label: "JSON".to_owned(),
+                    description: None,
+                },
+            ],
+            allow_freeform,
+        }
+    }
+
+    #[test]
+    fn a_question_opens_a_prompt_and_down_enter_answers_the_second_option() {
+        let mut app = app();
+        app.request_question(question(false));
+        assert!(matches!(app.modal, Some(Modal::Question(_))));
+        assert_eq!(app.status.turn, TurnState::Waiting);
+        assert!(app.status_line().contains("waiting for you"));
+
+        assert_eq!(press(&mut app, KeyCode::Down), None);
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::AnswerQuestion(QuestionReply::Choice(
+                "JSON".to_owned()
+            )))
+        );
+        assert!(app.modal.is_none());
+        assert!(app.question.is_none());
+        assert_eq!(app.status.turn, TurnState::Working);
+    }
+
+    #[test]
+    fn escape_cancels_a_question() {
+        let mut app = app();
+        app.request_question(question(false));
+        assert_eq!(
+            press(&mut app, KeyCode::Esc),
+            Some(Command::AnswerQuestion(QuestionReply::Cancelled))
+        );
+        assert!(app.modal.is_none());
+        assert!(app.question.is_none());
+    }
+
+    #[test]
+    fn q_is_typed_into_the_free_text_row_instead_of_closing_it() {
+        let mut app = app();
+        app.request_question(question(true));
+        assert_eq!(press(&mut app, KeyCode::Char('q')), None);
+        assert!(
+            matches!(app.modal, Some(Modal::Question(_))),
+            "q must not close the prompt"
+        );
+        let Some(Modal::Question(modal)) = &app.modal else {
+            unreachable!("the prompt is open")
+        };
+        assert_eq!(modal.freeform(), "q");
+        assert!(modal.is_freeform_selected());
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::AnswerQuestion(QuestionReply::Freeform(
+                "q".to_owned()
+            )))
+        );
+    }
+
+    #[test]
+    fn q_is_ignored_when_the_question_refuses_free_text() {
+        let mut app = app();
+        app.request_question(question(false));
+        assert_eq!(press(&mut app, KeyCode::Char('q')), None);
+        assert!(matches!(app.modal, Some(Modal::Question(_))));
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::AnswerQuestion(QuestionReply::Choice(
+                "SQLite".to_owned()
+            )))
         );
     }
 

@@ -16,8 +16,10 @@ use futures_util::{Stream, StreamExt};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList};
 use niki_policy::Mode;
 use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
-use niki_tools::ToolContext;
-use niki_tui_live::{App, Command, RowKind, SessionInfo, TurnState, WorkerEvent, WorkerHandle};
+use niki_tools::{AskAnswer, AskError, ToolContext};
+use niki_tui_live::{
+    App, Command, Modal, QuestionReply, RowKind, SessionInfo, TurnState, WorkerEvent, WorkerHandle,
+};
 
 /// A provider that replays one scripted turn per request.
 struct Scripted {
@@ -219,6 +221,7 @@ fn pump(app: &mut App, worker: &mut WorkerHandle) -> Vec<AgentEvent> {
             }
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             Some(WorkerEvent::Approval { .. }) => panic!("this worker installs no approver"),
+            Some(WorkerEvent::Question { .. }) => panic!("this worker installs no asker"),
             None => panic!("the worker went quiet before the turn finished"),
         }
     }
@@ -499,6 +502,7 @@ fn cancelling_keeps_the_text_the_turn_already_wrote() {
             }
             WorkerEvent::Compacted { result, fallback } => app.compacted(result, fallback),
             WorkerEvent::Approval { .. } => panic!("this worker installs no approver"),
+            WorkerEvent::Question { .. } => panic!("this worker installs no asker"),
         }
     }
 
@@ -574,9 +578,253 @@ fn pump_answering(app: &mut App, worker: &mut WorkerHandle, keys: &[KeyCode]) ->
                 }
             }
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
+            Some(WorkerEvent::Question { .. }) => panic!("no question in this test"),
             None => panic!("the worker went quiet before the turn finished"),
         }
     }
+}
+
+/// Drive keys on the screen and pass a structured question's answer back over
+/// the reply channel, which is what the event loop does.
+fn pump_question(app: &mut App, worker: &mut WorkerHandle, keys: &[KeyCode]) -> Vec<AgentEvent> {
+    let mut seen = Vec::new();
+    let mut pending_keys: VecDeque<KeyCode> = keys.iter().copied().collect();
+    let mut asked = false;
+    loop {
+        match worker.recv_timeout(Duration::from_secs(10)) {
+            Some(WorkerEvent::Agent(event)) => {
+                seen.push(event.clone());
+                app.apply(event);
+            }
+            Some(WorkerEvent::Question { request, reply }) => {
+                asked = true;
+                app.request_question(request);
+                assert!(
+                    matches!(app.modal, Some(Modal::Question(_))),
+                    "the question prompt is open"
+                );
+                assert_eq!(app.status.turn, TurnState::Waiting);
+                let mut answered = false;
+                while !answered {
+                    let key = pending_keys.pop_front().expect("a key for the question");
+                    match app.handle_key(KeyEvent::new(key, KeyModifiers::NONE)) {
+                        Some(Command::AnswerQuestion(answer)) => {
+                            let result = match answer {
+                                QuestionReply::Choice(label) => Ok(AskAnswer::Choice(label)),
+                                QuestionReply::Freeform(text) => Ok(AskAnswer::Freeform(text)),
+                                QuestionReply::Cancelled => Err(AskError::Failed(
+                                    "the question was cancelled; ask again or continue without it"
+                                        .to_owned(),
+                                )),
+                            };
+                            reply.send(result).expect("answer");
+                            answered = true;
+                        }
+                        Some(other) => panic!("unexpected command from the question: {other:?}"),
+                        None => {}
+                    }
+                }
+            }
+            Some(WorkerEvent::Finished(result)) => {
+                assert!(asked, "the model asked and the screen answered");
+                let next = app.finish(result.map_err(|message| message.to_string()));
+                if let Some(Command::Submit(prompt)) = next {
+                    assert!(worker.submit(prompt), "the worker is running");
+                }
+                return seen;
+            }
+            Some(WorkerEvent::Context {
+                report,
+                usage,
+                announce,
+            }) => {
+                if announce {
+                    app.show_context(report, usage);
+                } else {
+                    app.set_context(report, usage);
+                }
+            }
+            Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
+            Some(WorkerEvent::Approval { .. }) => panic!("no approval in this test"),
+            None => panic!("the worker went quiet before the turn finished"),
+        }
+    }
+}
+
+#[test]
+fn a_question_answer_continues_the_turn_with_the_chosen_option() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn(
+            "call-1",
+            "request_user_input",
+            r#"{"question":"Which store?","options":[{"label":"SQLite","description":"one file, no server"},{"label":"JSON"}]}"#,
+        ),
+        text_turn("storing in JSON"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "ask me");
+    let seen = pump_question(&mut app, &mut worker, &[KeyCode::Down, KeyCode::Enter]);
+
+    let tool_end = seen
+        .iter()
+        .find_map(|event| match event {
+            AgentEvent::ToolEnd {
+                name,
+                output,
+                is_error,
+            } => Some((name.as_str(), output.as_str(), *is_error)),
+            _ => None,
+        })
+        .expect("a tool result");
+    assert_eq!(tool_end.0, "request_user_input");
+    assert_eq!(tool_end.1, "JSON", "the second option is the answer");
+    assert!(!tool_end.2);
+    assert!(app.modal.is_none(), "the prompt closed");
+    assert!(app.question.is_none());
+    assert_eq!(app.status.turn, TurnState::Idle);
+    assert!(
+        app.transcript
+            .rows()
+            .iter()
+            .any(|row| row.kind == RowKind::Assistant && row.text.contains("storing in JSON")),
+        "the turn continued: {:?}",
+        app.transcript.rows()
+    );
+}
+
+#[test]
+fn escaping_a_question_reports_a_dismissal_and_the_turn_continues() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn(
+            "call-1",
+            "request_user_input",
+            r#"{"question":"Which store?","options":[{"label":"SQLite"},{"label":"JSON"}]}"#,
+        ),
+        text_turn("I will pick one and say why"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "ask me");
+    let seen = pump_question(&mut app, &mut worker, &[KeyCode::Esc]);
+
+    let tool_end = seen
+        .iter()
+        .find_map(|event| match event {
+            AgentEvent::ToolEnd {
+                output, is_error, ..
+            } => Some((output.as_str(), *is_error)),
+            _ => None,
+        })
+        .expect("a tool result");
+    assert!(tool_end.1, "the cancellation is a tool error");
+    assert!(
+        tool_end.0.contains("the question was cancelled"),
+        "{}",
+        tool_end.0
+    );
+    assert!(
+        seen.iter().any(
+            |event| matches!(event, AgentEvent::Text(text) if text == "I will pick one and say why")
+        ),
+        "the turn continued after the cancellation: {seen:?}"
+    );
+    assert_eq!(app.status.turn, TurnState::Idle);
+    assert!(app.modal.is_none());
+}
+
+#[test]
+fn a_free_text_question_returns_the_typed_answer_with_its_leading_q() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn(
+            "call-1",
+            "request_user_input",
+            r#"{"question":"Which store?","options":[{"label":"SQLite"},{"label":"JSON"}],"allow_freeform":true}"#,
+        ),
+        text_turn("understood"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "ask me");
+    let seen = pump_question(
+        &mut app,
+        &mut worker,
+        &[
+            KeyCode::Char('q'),
+            KeyCode::Char(' '),
+            KeyCode::Char('W'),
+            KeyCode::Char('A'),
+            KeyCode::Char('L'),
+            KeyCode::Enter,
+        ],
+    );
+
+    let tool_end = seen
+        .iter()
+        .find_map(|event| match event {
+            AgentEvent::ToolEnd {
+                output, is_error, ..
+            } => Some((output.as_str(), *is_error)),
+            _ => None,
+        })
+        .expect("a tool result");
+    assert_eq!(tool_end.0, "q WAL", "q is text, not a close key");
+    assert!(!tool_end.1);
+    assert_eq!(app.status.turn, TurnState::Idle);
 }
 
 #[test]

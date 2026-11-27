@@ -29,7 +29,9 @@ pub use app::{App, Command, SessionInfo, WHEEL_LINES};
 pub use completion::{Completion, MAX_COMPLETIONS};
 pub use composer::Composer;
 pub use history::History;
-pub use niki_tui_modals::{Modal, ModelPicker, Outcome, ThreadEntry, ThreadPicker};
+pub use niki_tui_modals::{
+    Modal, ModelPicker, Outcome, QuestionModal, QuestionReply, ThreadEntry, ThreadPicker,
+};
 pub use run::run;
 pub use scroll::Scroll;
 pub use status::{Status, TurnState};
