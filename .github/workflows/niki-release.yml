@@ -1,0 +1,258 @@
+# Niki Agent release pipeline.
+#
+# Builds a GitHub Release carrying a self-contained `niki` binary in a platform
+# archive, plus the installers. The binary is the product: no language runtime is
+# required on the user's machine.
+#
+# Platforms:
+#   linux-x86_64    built on ubuntu-latest, smoke-tested end to end (one real
+#                   tool turn against a loopback provider) before publishing.
+#   macos-aarch64   built on macos-26 (arm64), smoke-tested the same way: it is
+#                   the archive most macOS users download.
+#   macos-x86_64    built on macos-26-intel (x86_64), checked for start-up.
+#   windows-x86_64  built on windows-latest, checked for start-up.
+#
+# Trigger: push a `v*` tag, or dispatch manually.
+
+name: "Niki Release"
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        description: "Version without the leading v (e.g. 2.0.0)"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            ext: tar.gz
+            binary: niki
+          # The macOS labels name an architecture: `macos-26` is arm64 and
+          # `macos-26-intel` is x86_64. `macos-13` and `macos-14` are retired
+          # from GitHub Actions; a job queued on a retired label is cancelled
+          # before a runner is assigned, and a cancelled matrix leg skips the
+          # release job. The architecture check below catches a label that
+          # moves to another host.
+          - os: macos-26
+            platform: macos
+            arch: aarch64
+            ext: tar.gz
+            binary: niki
+          - os: macos-26-intel
+            platform: macos
+            arch: x86_64
+            ext: tar.gz
+            binary: niki
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            ext: zip
+            binary: niki.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          # The two macOS legs are different architectures. One `rust/target`
+          # cache shared between them would offer one host the other's objects.
+          key: ${{ runner.os }}-${{ matrix.arch }}-release-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.arch }}-release-
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The macOS labels name an architecture, and a label that quietly moved to
+      # another host would publish a correctly named archive holding the wrong
+      # binary. Check the host before spending a release build on it.
+      - name: Confirm the runner architecture
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.arch }}" in
+            aarch64) expected=arm64 ;;
+            x86_64) expected=x86_64 ;;
+            *) echo "::error::unknown arch ${{ matrix.arch }}"; exit 1 ;;
+          esac
+          actual="$(uname -m)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::runner is $actual but the archive is named ${{ matrix.arch }}"
+            exit 1
+          fi
+          echo "runner is $actual"
+
+      - name: Build the binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd rust
+          cargo build --release --locked -p niki --bin niki
+
+      - name: Assemble the artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.value }}"
+          stage="niki-${version}-${{ matrix.platform }}-${{ matrix.arch }}"
+          mkdir -p "$stage"
+
+          cp "rust/target/release/${{ matrix.binary }}" "$stage/${{ matrix.binary }}"
+          cp install/install.sh install/install.ps1 NOTICE LICENSE README.md CHANGELOG.md "$stage/"
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            # `zip` is not on the Windows runner; PowerShell's archiver is.
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path '$stage' -DestinationPath '${stage}.zip'"
+          else
+            tar -czf "${stage}.${{ matrix.ext }}" "$stage"
+          fi
+          rm -rf "$stage"
+
+      - name: Install from the archive and prove it starts
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.value }}"
+          stage="niki-${version}-${{ matrix.platform }}-${{ matrix.arch }}"
+          extract="$RUNNER_TEMP/extract"
+          prefix="$RUNNER_TEMP/niki-smoke"
+          mkdir -p "$extract"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            powershell -NoProfile -Command \
+              "Expand-Archive -Path '${stage}.zip' -DestinationPath '$extract'"
+            powershell -NoProfile -ExecutionPolicy Bypass \
+              -File "$extract/$stage/install.ps1" -Prefix "$prefix"
+            "$prefix/bin/niki.exe" --version
+          else
+            tar -xzf "${stage}.tar.gz" -C "$extract"
+            # The installer finds the extracted sibling binary and installs it.
+            NIKI_PREFIX="$prefix" bash "$extract/$stage/install.sh"
+          fi
+
+      # `--version` only proves the binary loads. This step runs one headless
+      # turn from the installed binary against a loopback OpenAI-compatible
+      # mock provider -- no key, no external network -- and asserts that a
+      # `write_file` tool call round-tripped and the file exists.
+      #
+      # Linux and macOS arm64: the arm64 archive is the one most macOS users
+      # download, so it gets the same end-to-end gate. The macOS x86_64 and
+      # Windows jobs exercise start-up only; their headless turns are covered by
+      # the Rust test suite, and smoke-testing the Intel archive would add a
+      # whole macOS runner to every release for the same code at a different
+      # word size.
+      - name: Prove a real turn from the installed binary
+        if: matrix.platform == 'linux' || (matrix.platform == 'macos' && matrix.arch == 'aarch64')
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/niki-smoke"
+          cd rust
+          cargo build -q -p niki-smoke
+          ./target/debug/niki-smoke --niki "$prefix/bin/niki" --timeout 300
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: niki-${{ steps.version.outputs.value }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            niki-*.tar.gz
+            niki-*.zip
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Checksum every artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts
+          # `download-artifact` nests each artifact in its own directory, but the
+          # release publishes the files flat. Record basenames only, so
+          # `sha256sum -c SHA256SUMS` works beside the downloaded assets.
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 \
+            | sort -z | xargs -0 sha256sum \
+            | while read -r hash path; do printf '%s  %s\n' "$hash" "$(basename "$path")"; done \
+            > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Niki Agent v${{ steps.version.outputs.value }}
+          # The release body is written for the person installing it. GitHub's
+          # generated notes are a list of merged pull-request titles, which is
+          # development bookkeeping, so it stays off.
+          generate_release_notes: false
+          body_path: .github/RELEASE_NOTES_niki.md
+          # A hyphenated version is a beta: it is published as a pre-release,
+          # so `latest` keeps pointing at the newest stable tag and the
+          # installer's unpinned path never lands on one by accident.
+          prerelease: ${{ contains(steps.version.outputs.value, '-') }}
+          # Named one by one: with fail_on_unmatched_files, a platform whose
+          # archive went missing fails the publish instead of shipping a
+          # release that silently lacks it.
+          files: |
+            artifacts/**/niki-*-linux-x86_64.tar.gz
+            artifacts/**/niki-*-macos-aarch64.tar.gz
+            artifacts/**/niki-*-macos-x86_64.tar.gz
+            artifacts/**/niki-*-windows-x86_64.zip
+          fail_on_unmatched_files: true
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          files: artifacts/SHA256SUMS

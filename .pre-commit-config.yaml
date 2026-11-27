@@ -1,0 +1,67 @@
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
+# 3.2.0 is the first release that accepts the git-hook-named stages
+# (`pre-commit`/`pre-push`/`pre-merge-commit`); before it the spelling was
+# `push`, and an older pre-commit rejects this whole file on schema validation —
+# taking every other hook down with it, not just `branch-name`. It also covers
+# `PRE_COMMIT_REMOTE_BRANCH` (2.10.0) and `PRE_COMMIT_LOCAL_BRANCH` (2.14.0),
+# both of which pre-commit only exports together and which the `branch-name`
+# hook needs to know which branch is being pushed.
+minimum_pre_commit_version: '3.2.0'
+
+repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        # Types mirror `.github/workflows/pr_lint.yml`. Scopes are validated in
+        # CI on the PR title, not here — keeps the local hook lean and avoids
+        # drift on the partner-scope list.
+        args:
+          - feat
+          - fix
+          - docs
+          - style
+          - refactor
+          - perf
+          - test
+          - build
+          - ci
+          - chore
+          - revert
+          - release
+          - hotfix
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: no-commit-to-branch # prevent direct commits to protected branches
+        args: ["--branch", "niki-agent"]
+      - id: check-yaml # validate YAML syntax
+        args: ["--unsafe"] # allow custom tags
+      - id: check-toml # validate TOML syntax
+      - id: end-of-file-fixer # ensure files end with a newline
+      - id: trailing-whitespace # remove trailing whitespace from lines
+
+  - repo: https://github.com/sirosen/texthooks
+    rev: 0.6.8
+    hooks:
+      - id: fix-smartquotes
+      - id: fix-spaces
+
+  - repo: local
+    hooks:
+      - id: branch-scopes-sync
+        name: check branch-name rules match across hook, CI and pr_lint
+        language: system
+        entry: node .github/scripts/checks/check-branch-scopes-sync.mjs
+        files: (^\.githooks/pre-push|^\.github/workflows/(branch_name_check|pr_lint)\.yml)$
+        pass_filenames: false
+      - id: branch-name
+        name: check pushed branch name follows the naming convention
+        language: system
+        entry: bash .githooks/pre-push
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,17 @@
+[package]
+name = "niki-hooks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Lifecycle hooks for the Niki agent: PreToolUse, PostToolUse and UserPromptSubmit"
+
+[dependencies]
+niki-config = { path = "../niki-config" }
+regex.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,81 @@
+# C extensions
+*.so
+
+# Build outputs
+build/
+dist/
+var/
+target/
+
+# Logs
+*.log
+
+# Environments
+.env
+.env.*
+.envrc
+env.local
+*.env.local
+
+# Local credentials and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+credentials.json
+token.json
+Cookies
+Cookies.db
+cookies.sqlite
+cookies.txt
+# OpenSSH private keys (no extension, so *.key never matches);
+# .pub counterparts are not secrets and stay committable.
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+
+# Visual Studio Code
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
+#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
+#  you could uncomment the following to ignore the entire vscode folder
+# .vscode/
+
+# Cursor
+#  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
+#  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
+#  refer to https://docs.cursor.com/context/ignore-files
+.cursorignore
+.cursorindexingignore
+
+#claude
+.claude
+
+jobs/
+
+.idea
+
+/tmp/
+
+# macOS
+.DS_Store
+*/tmp/.DS_Store
+
+CLAUDE.md
+.worktrees/
+
+node_modules/
+
+# Windows alternate data streams copied into the tree by Explorer
+*:Zone.Identifier
+
+# Local scratch: evaluation harnesses and one-off tools, never tracked
+/libs/
+.vercel

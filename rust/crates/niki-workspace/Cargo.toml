@@ -1,0 +1,16 @@
+[package]
+name = "niki-workspace"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Workspace root, ignore rules, and the file index for grep and glob"
+
+[dependencies]
+globset.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

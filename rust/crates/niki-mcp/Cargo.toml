@@ -1,0 +1,27 @@
+[package]
+name = "niki-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "MCP clients over stdio and HTTP, and tool bridging, for the Niki agent"
+
+[dependencies]
+niki-config = { path = "../niki-config" }
+niki-tools = { path = "../niki-tools" }
+futures-util.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["io-util", "process", "sync", "time"] }
+
+[dev-dependencies]
+futures-util.workspace = true
+niki-agent = { path = "../niki-agent" }
+niki-policy = { path = "../niki-policy" }
+niki-provider = { path = "../niki-provider" }
+niki-tui-live = { path = "../niki-tui-live" }
+tempfile.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }

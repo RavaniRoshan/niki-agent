@@ -1,0 +1,15 @@
+[package]
+name = "niki-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Keymap, reader mode, and view state for the Niki terminal UI"
+
+[dependencies]
+crossterm.workspace = true
+niki-render = { path = "../niki-render" }
+
+[dev-dependencies]
+niki-proto = { path = "../niki-proto" }

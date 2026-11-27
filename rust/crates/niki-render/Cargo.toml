@@ -1,0 +1,13 @@
+[package]
+name = "niki-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Transcript view model and deterministic frame renderer for Niki"
+
+[dependencies]
+niki-proto = { path = "../niki-proto" }
+serde_json.workspace = true
+unicode-width.workspace = true

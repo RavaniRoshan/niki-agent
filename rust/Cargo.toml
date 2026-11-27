@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/niki",
+    "crates/niki-acp",
+    "crates/niki-agent",
+    "crates/niki-commands",
+    "crates/niki-config",
+    "crates/niki-engine-client",
+    "crates/niki-hooks",
+    "crates/niki-mcp",
+    "crates/niki-policy",
+    "crates/niki-proto",
+    "crates/niki-provider",
+    "crates/niki-render",
+    "crates/niki-session",
+    "crates/niki-skills",
+    "crates/niki-smoke",
+    "crates/niki-subagents",
+    "crates/niki-tools",
+    "crates/niki-tui",
+    "crates/niki-tui-live",
+    "crates/niki-tui-modals",
+    "crates/niki-tui-themes",
+    "crates/niki-workspace",
+]
+
+[workspace.package]
+version = "2.2.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.85"
+repository = "https://github.com/RavaniRoshan/niki-agent"
+
+[workspace.dependencies]
+anyhow = "1"
+crossterm = "0.29"
+futures-util = "0.3"
+globset = "0.4"
+ratatui = "0.29"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+toml = "0.9"
+unicode-width = "0.2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }

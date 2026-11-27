@@ -1,0 +1,88 @@
+name: "Beta feedback"
+description: Report something broken, confusing, or missing in a beta build.
+labels: ["type:beta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **All contributions must be in English.**
+
+        Thanks for testing a beta. This form is for a build whose version line
+        contains `-beta`; use the bug report form for a stable release.
+
+        Read [Beta builds](https://niki-docs.vercel.app/beta) first — it lists
+        the supported platforms and the known gaps. For a security problem, use
+        the [private advisory form](https://github.com/RavaniRoshan/niki-agent/security/advisories/new)
+        instead.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I am running a beta build (`niki --version` contains `-beta`).
+          required: true
+        - label: I read the beta page and this is not one of the known gaps.
+          required: true
+        - label: I searched existing issues.
+          required: true
+        - label: This is not a security report.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Beta version and platform
+      description: Paste the whole `niki --version` line, then name the OS and terminal.
+      placeholder: "niki 2.2.0-beta.1 · Ubuntu 24.04 · WSL · Windows Terminal"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the product does this relate to?
+      multiple: true
+      options:
+        - TUI / composer / keymap
+        - Headless mode (`-n`)
+        - Sessions and state (`~/.niki`)
+        - Providers and authentication
+        - MCP
+        - Skills / hooks / subagents
+        - Approval gate / trust
+        - Installer / release artifact
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you were doing, what you expected, and what happened instead.
+      placeholder: |
+        I ran `niki`, asked it to ... and expected ... Instead, ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that shows the problem. Include the approval mode and the exact prompt or command.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output, logs, or a screen recording
+      description: Paste text rather than screenshots where possible. Redact keys and anything private.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: contact
+    attributes:
+      label: Follow-up
+      options:
+        - label: I am willing to test a candidate fix.
+          required: false

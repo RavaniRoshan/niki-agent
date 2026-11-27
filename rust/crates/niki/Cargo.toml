@@ -1,0 +1,46 @@
+[package]
+name = "niki"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Niki Agent terminal client"
+
+# The shipped product binary. `cargo build --release -p niki --bin niki` is
+# what the release workflow packages.
+[[bin]]
+name = "niki"
+path = "src/bin/niki.rs"
+
+# The older engine client, kept as a reference front end for the HTTP/SSE
+# engine. Not shipped.
+[[bin]]
+name = "niki-engine"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+crossterm.workspace = true
+niki-acp = { path = "../niki-acp" }
+niki-agent = { path = "../niki-agent" }
+niki-config = { path = "../niki-config" }
+niki-engine-client = { path = "../niki-engine-client" }
+niki-hooks = { path = "../niki-hooks" }
+niki-mcp = { path = "../niki-mcp" }
+niki-policy = { path = "../niki-policy" }
+niki-proto = { path = "../niki-proto" }
+niki-provider = { path = "../niki-provider" }
+niki-render = { path = "../niki-render" }
+niki-session = { path = "../niki-session" }
+niki-skills = { path = "../niki-skills" }
+niki-subagents = { path = "../niki-subagents" }
+niki-tools = { path = "../niki-tools" }
+niki-tui = { path = "../niki-tui" }
+niki-tui-live = { path = "../niki-tui-live" }
+niki-tui-themes = { path = "../niki-tui-themes" }
+serde_json.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

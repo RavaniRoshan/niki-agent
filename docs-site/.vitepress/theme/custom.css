@@ -1,0 +1,42 @@
+/* Local styling only: no webfonts, no images, no requests off-origin.
+   The base family is the system stack so a page renders the same way offline. */
+
+:root {
+  --vp-font-family-base: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --vp-font-family-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
+  --vp-c-brand-1: #4b5bd6;
+  --vp-c-brand-2: #3f4ec2;
+  --vp-c-brand-3: #3644ad;
+  --vp-c-brand-soft: rgba(75, 91, 214, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #9aa4ff;
+  --vp-c-brand-2: #7f8bfa;
+  --vp-c-brand-3: #6a77f0;
+  --vp-c-brand-soft: rgba(154, 164, 255, 0.16);
+}
+
+/* The mark is a half-filled circle; keep it optically aligned with the title. */
+.VPNavBarTitle .logo {
+  height: 22px;
+  width: 22px;
+}
+
+.VPHero .name,
+.VPHero .text {
+  letter-spacing: -0.02em;
+}
+
+/* Tables in the reference pages get dense: keep the header readable. */
+.vp-doc table th {
+  white-space: nowrap;
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}

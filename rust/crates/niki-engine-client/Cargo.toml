@@ -1,0 +1,17 @@
+[package]
+name = "niki-engine-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "HTTP/SSE engine client for the Niki terminal client"
+
+[dependencies]
+futures-util.workspace = true
+niki-proto = { path = "../niki-proto" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

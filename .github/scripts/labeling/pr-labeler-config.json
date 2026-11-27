@@ -1,0 +1,129 @@
+{
+  "trustedThreshold": 5,
+  "labelColor": "b76e79",
+  "labelColors": {
+    "type:": "a8c8e8",
+    "package:": "b5d6b2",
+    "topic:": "cbbfe6",
+    "integration:": "a9d3d8",
+    "org:": "ddc9b4",
+    "priority:": "eba58b",
+    "size: ": "dedbd5",
+    "triage:": "f0d79a",
+    "auto:": "d9dce0",
+    "ci:": "e3c3cc"
+  },
+  "sizeThresholds": [
+    {
+      "label": "size: XS",
+      "max": 50
+    },
+    {
+      "label": "size: S",
+      "max": 200
+    },
+    {
+      "label": "size: M",
+      "max": 500
+    },
+    {
+      "label": "size: L",
+      "max": 1000
+    },
+    {
+      "label": "size: XL"
+    }
+  ],
+  "excludedFiles": [],
+  "excludedPaths": [
+    "docs/"
+  ],
+  "releaseLabel": "auto:release-pr",
+  "tierLabels": {
+    "new": "auto:new-contributor",
+    "trusted": "auto:trusted-contributor"
+  },
+  "typeToLabel": {
+    "feat": "type:feature",
+    "fix": "type:bug",
+    "docs": "type:docs",
+    "hotfix": "type:hotfix",
+    "style": "type:style",
+    "refactor": "type:refactor",
+    "perf": "type:performance",
+    "test": "type:test",
+    "build": "type:build",
+    "ci": "type:ci",
+    "chore": "type:chore",
+    "revert": "type:revert"
+  },
+  "breakingLabel": "type:breaking",
+  "labelDescriptions": {
+    "type:feature": "A request, idea, or new user-facing functionality or behavior.",
+    "type:bug": "An unexpected problem or incorrect behavior.",
+    "type:beta": "Feedback from a beta build.",
+    "type:docs": "Documentation additions, improvements, or fixes.",
+    "type:hotfix": "An urgent fix using the manual release path.",
+    "type:style": "Formatting or style changes without behavior changes.",
+    "type:refactor": "Code restructuring with no behavioral changes, feature additions, or bug fixes.",
+    "type:performance": "Performance problems or improvements.",
+    "type:test": "New or updated tests.",
+    "type:build": "Changes to the build system or external dependencies.",
+    "type:ci": "Changes to continuous integration workflows.",
+    "type:chore": "Concrete maintenance or operational work that is not a bug, feature, documentation change, or spike.",
+    "type:revert": "Reverts a previous change.",
+    "type:breaking": "The PR title declares a breaking change with !.",
+    "auto:release-pr": "Pull request created or managed as a package release.",
+    "auto:new-contributor": "Author is a first-time contributor to this repository.",
+    "auto:trusted-contributor": "Author satisfies the repository's trusted-contributor criteria.",
+    "org:external": "Issue or pull request created by someone outside the repository owner's organization.",
+    "org:internal": "Issue or pull request created by the repository owner or a member of their organization.",
+    "org:open-swe": "Pull request created from an `open-swe/` branch.",
+    "priority:triage": "New issue awaiting maintainer review and priority assignment.",
+    "size: XS": "Pull request with an extra-small diff.",
+    "size: S": "Pull request with a small diff.",
+    "size: M": "Pull request with a medium diff.",
+    "size: L": "Pull request with a large diff.",
+    "size: XL": "Pull request with an extra-large diff.",
+    "package:rust": "Changes to the Rust client in `rust/`.",
+    "package:infra": "Changes to installers and repository automation.",
+    "package:docs": "Changes to user documentation.",
+    "package:ci": "Changes to GitHub Actions workflows and gates."
+  },
+  "scopeToLabel": {
+    "ci": "package:ci",
+    "docs": "package:docs",
+    "infra": "package:infra",
+    "rust": "package:rust"
+  },
+  "scopeAliases": {},
+  "branchRules": [
+    {
+      "label": "org:open-swe",
+      "prefix": "open-swe/"
+    }
+  ],
+  "fileRules": [
+    {
+      "label": "package:ci",
+      "prefix": ".github/",
+      "skipExcludedFiles": true
+    },
+    {
+      "label": "package:docs",
+      "prefix": "docs/",
+      "skipExcludedFiles": true
+    },
+    {
+      "label": "package:infra",
+      "prefix": "install/",
+      "skipExcludedFiles": true
+    },
+    {
+      "label": "package:rust",
+      "prefix": "rust/",
+      "skipExcludedFiles": true
+    }
+  ],
+  "topicFileRules": []
+}

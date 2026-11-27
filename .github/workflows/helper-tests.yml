@@ -1,0 +1,45 @@
+# Tests for the helper scripts under .github/scripts.
+#
+# Those scripts decide PR labeling, the scope and Markdown gates, stale-PR
+# cleanup, and the workflow guards around them. The Rust gate in `ci.yml` does
+# not reach this tree, so without a dedicated job a broken helper ships until a
+# maintainer notices by hand.
+#
+# The suite is `node --test` only. There is no package.json and no `npm
+# install`: everything runs on the Node version already present in the runner
+# image.
+
+name: "🧪 Helper tests"
+
+on:
+  push:
+    branches: [niki-agent]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  helpers:
+    name: "🧪 helper scripts"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "📋 Checkout Code"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "🟢 Node helper tests"
+        # `node --test` exits non-zero on any failure, so the step fails the job.
+        run: |
+          node --version
+          node --test \
+            .github/scripts/tests/checks/*.test.js \
+            .github/scripts/tests/labeling/*.test.js \
+            .github/scripts/tests/labeling/*.test.mjs \
+            .github/scripts/tests/workflows/*.test.js

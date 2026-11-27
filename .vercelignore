@@ -1,0 +1,7 @@
+.git
+rust/target
+libs
+**/node_modules
+site/dist
+docs-site/.vitepress/dist
+docs-site/.vitepress/cache

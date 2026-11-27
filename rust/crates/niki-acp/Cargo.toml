@@ -1,0 +1,26 @@
+[package]
+name = "niki-acp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Agent Client Protocol server over stdio for the Niki agent"
+
+[dependencies]
+futures-util.workspace = true
+niki-agent = { path = "../niki-agent" }
+niki-policy = { path = "../niki-policy" }
+niki-session = { path = "../niki-session" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["io-std", "io-util"] }
+
+[dev-dependencies]
+futures-util.workspace = true
+niki-provider = { path = "../niki-provider" }
+niki-tools = { path = "../niki-tools" }
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

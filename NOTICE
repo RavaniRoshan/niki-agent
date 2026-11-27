@@ -1,0 +1,8 @@
+Niki Agent
+==========
+
+Niki Agent is an independent terminal coding agent. The agent loop, the
+terminal UI, and the ACP integration live in this repository; nothing imports an
+upstream agent distribution at runtime.
+
+The MIT license at the repository root applies to Niki Agent.
