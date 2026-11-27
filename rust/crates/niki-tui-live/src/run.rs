@@ -27,8 +27,10 @@ use crate::worker::{WorkerEvent, WorkerHandle};
 
 /// Redraw interval while a turn is running, so the spinner moves.
 const BUSY_TICK: Duration = Duration::from_millis(80);
-/// Redraw interval while nothing is happening.
-const IDLE_TICK: Duration = Duration::from_millis(250);
+/// How long an idle loop waits for input before looking at the worker again.
+/// A timeout redraws nothing: an idle session paints only when something
+/// changed.
+const IDLE_WAIT: Duration = Duration::from_secs(60);
 
 /// Run the application until the person leaves it.
 ///
@@ -115,7 +117,9 @@ fn event_loop(
     // without an answer makes the turn read a refusal, which is the safe way to
     // leave a question nobody answered.
     let mut reply: Option<oneshot::Sender<Approval>> = None;
+    terminal.draw(|frame| ui::draw(frame, app))?;
     loop {
+        let mut changed = false;
         while let Some(message) = worker.try_recv() {
             match message {
                 WorkerEvent::Agent(event) => app.apply(event),
@@ -131,14 +135,19 @@ fn event_loop(
                     app.finish(result);
                 }
             }
+            changed = true;
         }
 
-        terminal.draw(|frame| ui::draw(frame, app))?;
         let busy = app.status.turn.is_busy();
         if busy {
             app.tick();
+            changed = true;
         }
-        if !event::poll(if busy { BUSY_TICK } else { IDLE_TICK })? {
+        if changed {
+            terminal.draw(|frame| ui::draw(frame, app))?;
+        }
+
+        if !event::poll(if busy { BUSY_TICK } else { IDLE_WAIT })? {
             continue;
         }
         match event::read()? {
@@ -173,6 +182,7 @@ fn event_loop(
             Event::Paste(text) => app.handle_paste(&text),
             _ => {}
         }
+        terminal.draw(|frame| ui::draw(frame, app))?;
     }
 }
 
