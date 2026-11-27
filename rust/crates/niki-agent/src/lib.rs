@@ -23,17 +23,26 @@
 //! The loop has no opinion about transport: any [`Provider`] streams the events
 //! it already normalises, and any [`Registry`] tool is dispatched through the
 //! same gate. That keeps the crate testable without a network (RULES.md 8).
+//!
+//! [`Agent::context_report`] reports the conversation's estimated size and the
+//! usage the provider last reported; [`Agent::session_usage`] reports the
+//! tokens and steps accumulated over every run. [`Agent::compact`] folds the
+//! turns older than the last `keep_last` into one summary through a provider,
+//! and [`Agent::compact_without_model`] drops them behind a deterministic
+//! header when no provider is available.
 
 #![forbid(unsafe_code)]
 
 mod approval;
 mod cancel;
+mod context;
 mod error;
 mod event;
 mod turn;
 
 pub use approval::{Approval, ApprovalRequest, Approver};
 pub use cancel::CancelHandle;
+pub use context::{Compaction, ContextReport, SessionUsage, estimate_tokens};
 pub use error::AgentError;
 pub use event::{AgentEvent, RunOutcome};
 pub use niki_policy::{AllowList, Decision, Mode};
