@@ -62,6 +62,10 @@ release's `SHA256SUMS`, and places one executable under `~/.local/niki`
 (`%LOCALAPPDATA%\niki` on Windows). It does not touch your shell profile unless
 you pass `NIKI_SHELL=1`. To remove Niki, delete `~/.local/niki` and `~/.niki`.
 
+Linux, WSL, and macOS are exercised by the release workflow. The Windows archive
+is built by CI but has not been executed on Windows; the
+[beta page](https://niki-docs.vercel.app/beta) tracks platform support.
+
 Requires a 64-bit Linux, macOS (Apple silicon or Intel), or Windows machine.
 Building from source needs Rust 1.85 or newer:
 
@@ -166,6 +170,8 @@ Setup details, gateway examples, and the full config key list are in
 Niki is usable today and still moving. Beta builds ship as GitHub
 pre-releases: they pass the same Rust test gate as a stable release but may
 change behaviour between builds.
+
+When one is available, pin it by its version (no leading `v`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \

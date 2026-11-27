@@ -55,6 +55,11 @@ product is, how to install it, and the approval gate.
 and is included in every archive. The documentation site has the same history at
 <https://niki-docs.vercel.app/changelog>.
 
+**The security policy matches the gate.** `SECURITY.md` said writes were not
+approval-gated and that Auto asked like Manual; both stopped being true in
+2.1.0. It now describes the shipped gate, and the supported-versions table names
+2.1.x.
+
 **Beta builds have a documented channel.** A tag that contains a hyphen — for
 example `v2.2.0-beta.1` — is published as a GitHub pre-release, so `latest` keeps
 pointing at the newest stable release. The beta page lists supported platforms,
