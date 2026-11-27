@@ -318,6 +318,26 @@ fn json_output_prints_one_object_with_the_answer_and_usage() {
     assert_eq!(value["stop"], "end_turn");
     assert_eq!(value["usage"]["input_tokens"], 12);
     assert!(value["session"].is_string(), "{stdout}");
+
+    let audit = &value["context_audit"];
+    let part = |name: &str| {
+        audit[name]
+            .as_u64()
+            .unwrap_or_else(|| panic!("context_audit.{name} is not a number: {stdout}"))
+    };
+    assert!(part("system") > 0, "{stdout}");
+    assert!(part("tool_schemas") > 0, "{stdout}");
+    assert!(part("messages") > 0, "{stdout}");
+    assert_eq!(
+        part("tools"),
+        8,
+        "the seven built-in tools and the task tool"
+    );
+    assert_eq!(
+        part("total"),
+        part("system") + part("tool_schemas") + part("messages"),
+        "{stdout}"
+    );
 }
 
 #[test]

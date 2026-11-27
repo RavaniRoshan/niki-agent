@@ -25,7 +25,9 @@
 //! same gate. That keeps the crate testable without a network (RULES.md 8).
 //!
 //! [`Agent::context_report`] reports the conversation's estimated size and the
-//! usage the provider last reported; [`Agent::session_usage`] reports the
+//! usage the provider last reported; [`Agent::context_audit`] splits the next
+//! request's estimate into the system prompt, the tool schemas and the
+//! conversation; [`Agent::session_usage`] reports the
 //! tokens and steps accumulated over every run. [`Agent::compact`] folds the
 //! turns older than the last `keep_last` into one summary through a provider,
 //! and [`Agent::compact_without_model`] drops them behind a deterministic
@@ -42,7 +44,9 @@ mod turn;
 
 pub use approval::{Approval, ApprovalRequest, Approver};
 pub use cancel::CancelHandle;
-pub use context::{Compaction, ContextReport, SessionUsage, estimate_tokens};
+pub use context::{
+    Compaction, ContextAudit, ContextReport, SessionUsage, audit_context, estimate_tokens,
+};
 pub use error::AgentError;
 pub use event::{AgentEvent, RunOutcome};
 pub use niki_policy::{AllowList, Decision, Mode};

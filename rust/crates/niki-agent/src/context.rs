@@ -7,6 +7,8 @@
 //! says so.
 
 use niki_provider::{Message, Role};
+use niki_tools::Registry;
+use serde_json::Value;
 
 /// Characters attributed to one token by [`estimate_tokens`].
 const CHARS_PER_TOKEN: usize = 4;
@@ -44,6 +46,69 @@ pub struct ContextReport {
     pub last_output_tokens: u64,
     /// Model turns taken over every run of this agent.
     pub steps: u32,
+}
+
+/// What one request would inject, and what it is estimated to cost.
+///
+/// A provider adds the system prompt and the tool array to every request;
+/// [`ContextReport`] accounts only for the conversation. An audit splits the
+/// three parts so a session can show where its prompt budget goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ContextAudit {
+    /// Estimated tokens in the system prompt.
+    pub system_tokens: usize,
+    /// Estimated tokens in the tool array: each tool's name, description and
+    /// serialised parameter schema.
+    pub tool_schema_tokens: usize,
+    /// Estimated tokens in the conversation.
+    pub message_tokens: usize,
+    /// Tools the request would declare.
+    pub tool_count: usize,
+}
+
+impl ContextAudit {
+    /// System prompt, tool array and conversation together.
+    #[must_use]
+    pub fn total_tokens(self) -> usize {
+        self.system_tokens + self.tool_schema_tokens + self.message_tokens
+    }
+}
+
+/// Audit what a request carrying `system`, `messages` and `tools` would inject.
+///
+/// The figures use the same character budget as [`estimate_tokens`]. Each tool
+/// is charged for its name, its description and its parameter schema
+/// serialised as JSON, laid end to end.
+#[must_use]
+pub fn audit_context(system: &str, messages: &[Message], tools: &Registry) -> ContextAudit {
+    let (tool_schema_tokens, tool_count) = match tools.specs() {
+        Value::Array(items) => {
+            let tokens = items
+                .iter()
+                .map(|item| {
+                    let name = item.get("name").and_then(Value::as_str).unwrap_or_default();
+                    let description = item
+                        .get("description")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    let parameters = item
+                        .get("parameters")
+                        .map(|schema| serde_json::to_string(schema).unwrap_or_default())
+                        .unwrap_or_default();
+                    estimate_text_tokens(&format!("{name}{description}{parameters}"))
+                })
+                .sum();
+            (tokens, items.len())
+        }
+        _ => (0, 0),
+    };
+
+    ContextAudit {
+        system_tokens: estimate_text_tokens(system),
+        tool_schema_tokens,
+        message_tokens: estimate_tokens(messages),
+        tool_count,
+    }
 }
 
 /// What one compaction did.

@@ -15,7 +15,8 @@ use niki_tools::{Registry, ToolContext};
 use serde_json::{Map, Value};
 
 use crate::context::{
-    Compaction, ContextReport, SessionUsage, estimate_text_tokens, estimate_tokens, keep_from,
+    Compaction, ContextAudit, ContextReport, SessionUsage, audit_context, estimate_text_tokens,
+    estimate_tokens, keep_from,
 };
 use crate::{
     AgentError, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome,
@@ -205,6 +206,16 @@ impl Agent {
             last_output_tokens: self.last_usage.output_tokens,
             steps: self.session.steps,
         }
+    }
+
+    /// Audit what the next request would inject: the system prompt, the
+    /// registry's tool schemas and the conversation, each estimated in tokens.
+    ///
+    /// The registry audited is the one this agent dispatches through, so the
+    /// figures describe the request the turn loop would actually build.
+    #[must_use]
+    pub fn context_audit(&self) -> ContextAudit {
+        audit_context(&self.config.system, &self.messages, &self.registry)
     }
 
     /// Run one prompt to completion.
