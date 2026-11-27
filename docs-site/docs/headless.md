@@ -149,15 +149,13 @@ newest session for the workspace. [Sessions](/sessions) covers what each writes.
 ## Editor integration with `--acp`
 
 `niki --acp` serves the editor protocol on stdin/stdout instead of opening the
-app. The editor starts it as a child process and names the workspace in
-`session/new`; `--model`, `--config`, `--mode`, `--allow`, `--max-steps` and
-`--system` apply as they do to a headless run.
+app. The editor starts that command as a child process, names the workspace in
+`session/new`, and speaks the protocol over the child's stdin and stdout.
+`--model`, `--config`, `--mode`, `--allow`, `--max-steps` and `--system` apply
+as they do to a headless run.
 
-```json
-{
-  "command": "niki",
-  "args": ["--acp"]
-}
+```bash
+niki --acp
 ```
 
 Frames are newline-delimited JSON-RPC 2.0. stdout carries frames only, and
