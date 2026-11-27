@@ -153,7 +153,7 @@ function init(github, owner, repo, config, core) {
     const labels = new Set();
     for (const rule of rules) {
       // skipExcluded: ignore files whose basename is in the top-level
-      // "excludedFiles" list (e.g. uv.lock) so lockfile-only changes
+      // "excludedFiles" list (e.g. generated lockfiles) so lockfile-only changes
       // don't trigger package labels.
       const candidates = rule.skipExcluded
         ? files.filter(f => !excluded.has((f.filename ?? '').split('/').pop()))

@@ -27,6 +27,7 @@ const MIRRORS = [
   { source: 'docs/niki/ARCHITECTURE.md', target: 'docs/architecture.md' },
   { source: 'docs/niki/INDEPENDENCE.md', target: 'docs/independence.md' },
   { source: 'SECURITY.md', target: 'docs/security.md' },
+  { source: 'CHANGELOG.md', target: 'docs/changelog.md' },
 ]
 
 // Links written for a reader browsing the repository checkout.

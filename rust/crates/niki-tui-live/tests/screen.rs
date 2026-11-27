@@ -75,8 +75,9 @@ fn the_composer_sits_above_the_status_bar() {
     let mut app = app();
     let buffer = render(&mut app, 60, 12);
     // Twelve rows: nine of transcript, two of composer frame plus one of text,
-    // and the status bar.
-    assert_eq!(row(&buffer, 0), "");
+    // and the status bar. A fresh session fills the body with the welcome block.
+    let screen = text(&buffer);
+    assert!(screen.contains("NIKI AGENT"), "{screen}");
     assert!(row(&buffer, 8).starts_with('╭'), "{}", row(&buffer, 8));
     assert!(row(&buffer, 9).contains(PLACEHOLDER), "{}", row(&buffer, 9));
     assert!(row(&buffer, 10).starts_with('╰'), "{}", row(&buffer, 10));
@@ -85,6 +86,41 @@ fn the_composer_sits_above_the_status_bar() {
         assert!(status.contains(field), "{field} missing from {status:?}");
     }
     assert_eq!(app.status.turn, TurnState::Idle);
+}
+
+#[test]
+fn a_fresh_session_shows_the_welcome_block() {
+    let mut app = app();
+    let buffer = render(&mut app, 80, 24);
+    let screen = text(&buffer);
+    for needle in [
+        "NIKI AGENT",
+        concat!("v", env!("CARGO_PKG_VERSION")),
+        "an approval gate in front of every change",
+        "mock:mock-model",
+        "manual mode",
+        "/work",
+        "To get started",
+        "/init",
+        "/status",
+        "/theme",
+        "/help",
+        "Type a prompt to begin",
+    ] {
+        assert!(screen.contains(needle), "{needle} missing from\n{screen}");
+    }
+}
+
+#[test]
+fn the_welcome_block_yields_to_the_first_prompt() {
+    let mut app = app();
+    type_text(&mut app, "hi");
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.apply(AgentEvent::Text("Hello.".to_owned()));
+    let buffer = render(&mut app, 80, 24);
+    let screen = text(&buffer);
+    assert!(!screen.contains("To get started"), "{screen}");
+    assert!(screen.contains("› hi"), "{screen}");
 }
 
 #[test]

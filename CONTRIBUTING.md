@@ -1,7 +1,7 @@
 # Contributing to Niki Agent
 
-Thanks for helping. This page covers the local loop: how to run the product, the
-checks CI runs, and the conventions a pull request has to follow.
+Thanks for helping. This page covers the local loop: how to build the product,
+the checks CI runs, and the conventions a pull request has to follow.
 
 ## Set up
 
@@ -12,15 +12,6 @@ git clone https://github.com/RavaniRoshan/niki-agent.git
 cd niki-agent/rust
 cargo build --release -p niki --bin niki
 cargo run -q -p niki --bin niki -- --version
-```
-
-The Python reference implementation in `libs/code` needs Python 3.12+ and
-[uv](https://docs.astral.sh/uv/); it supplies the behavioural fixtures and is not
-the shipped client:
-
-```bash
-cd libs/code
-uv sync --all-groups
 ```
 
 For the docs site and the marketing site, see
@@ -38,10 +29,6 @@ cargo clippy -j 2 --workspace --all-targets -- -D warnings
 cargo test -j 2 --workspace
 ```
 
-`make check` in `libs/code` is the gate for the Python reference package (Ruff,
-`ty`, import boundaries, tests, and repository gates). Run it when you change
-`libs/code`.
-
 The other surfaces have their own gates:
 
 ```bash
@@ -57,25 +44,38 @@ run `npm run sync` there, never the generated copy.
 - Branch names are `<github-username>/<scope>/<short-description>`.
 - Titles follow Conventional Commits: `type(scope): description`. Allowed
   scopes are `ci`, `code`, `deps`, `docs`, `examples`, `infra`, `quickjs`,
-  `repo`, `rust`, `sdk`, and `site`. A title scope has to cover every package
-  directory the PR touches.
+  `repo`, `rust`, `sdk`, and `site`. Use `rust` for the workspace, `site` for
+  the marketing site, `docs` for the documentation set, and `repo` for
+  repository-wide changes. A title scope has to cover every package directory
+  the PR touches.
 - Keep a PR to one concern. Add a test when behaviour a user can see changes.
 - New Markdown files need the `ci:ack-markdown` label.
 - Never commit a `Co-Authored-By` trailer for an AI tool.
 
 ## Language and attribution
 
-User-visible language is the product's own: Niki Agent, not the project it grew
-out of. Attribution belongs in [`NOTICE`](NOTICE), [`LICENSE`](LICENSE), and the
-`PROVENANCE.md` files beside each vendored directory. The vendored trees under
-`libs/code/niki_agent/{sdk,acp_sdk,_vendor}` are excluded from lint on purpose,
-so their diff against `PROVENANCE.md` stays auditable.
+User-visible language is the product's own: Niki Agent, everywhere. Attribution
+for third-party code belongs in [`NOTICE`](NOTICE) and [`LICENSE`](LICENSE).
+The version line and the help screen do not credit another product, and public
+copy does not name a competing agent.
 
 ## Releases
 
-Releases are cut from a `v<version>` tag; the workflow builds the wheel,
-assembles the three archives, and publishes the GitHub Release. The steps and
-the release-notes template are in [`.github/RELEASING.md`](.github/RELEASING.md).
+Releases are cut from a `v<version>` tag. The workflow builds `niki` for Linux
+x86_64, macOS arm64, macOS x86_64, and Windows x86_64, packs one archive per
+platform plus `SHA256SUMS`, and publishes the GitHub Release. A version that
+contains a hyphen is published as a pre-release. The steps and the release-notes
+template are in [`.github/RELEASING.md`](.github/RELEASING.md).
+
+## Where to start
+
+- [`docs/niki/ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md) maps the crates and
+  the turn loop.
+- The public roadmap is pinned in
+  [issue #114](https://github.com/RavaniRoshan/niki-agent/issues/114); items
+  labelled `good first issue` are scoped for a first pull request.
+- The beta feedback form collects reproducible reports from people running a
+  pre-release.
 
 ## Reporting
 

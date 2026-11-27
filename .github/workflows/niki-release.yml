@@ -1,7 +1,7 @@
 # Niki Agent release pipeline.
 #
 # Builds a GitHub Release carrying a self-contained `niki` binary in a platform
-# archive, plus the installers. The binary is the product: no Python runtime is
+# archive, plus the installers. The binary is the product: no language runtime is
 # required on the user's machine.
 #
 # Platforms:
@@ -178,7 +178,9 @@ jobs:
         run: |
           set -euo pipefail
           prefix="$RUNNER_TEMP/niki-smoke"
-          python3 .github/scripts/smoke_turn.py --niki "$prefix/bin/niki" --timeout 300
+          cd rust
+          cargo build -q -p niki-smoke
+          ./target/debug/niki-smoke --niki "$prefix/bin/niki" --timeout 300
 
       - uses: actions/upload-artifact@v4
         with:

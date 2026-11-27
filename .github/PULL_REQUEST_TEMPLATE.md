@@ -22,7 +22,7 @@ submitting.
    Allowed types and scopes are defined in
    [`.github/workflows/pr_lint.yml`](workflows/pr_lint.yml).
 2. **One package per PR** unless a maintainer says otherwise.
-3. **External contributors:** do not change `uv.lock` or add dependencies
+3. **External contributors:** do not change `Cargo.lock` or add dependencies
    without maintainer approval.
 4. **Large pasted AI descriptions** may be ignored or closed. A short rationale
    written by you is more useful than a generated wall of text.
@@ -31,8 +31,10 @@ submitting.
 Run the local checks before pushing:
 
 ```bash
-cd libs/code
-make check
+cd rust
+cargo fmt --all -- --check
+cargo clippy -j 2 --workspace --all-targets -- -D warnings
+cargo test -j 2 --workspace
 ```
 
 The full contributor guide is [`AGENTS.md`](../AGENTS.md).

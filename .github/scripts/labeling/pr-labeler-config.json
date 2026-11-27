@@ -34,9 +34,7 @@
       "label": "size: XL"
     }
   ],
-  "excludedFiles": [
-    "uv.lock"
-  ],
+  "excludedFiles": [],
   "excludedPaths": [
     "docs/"
   ],
@@ -87,7 +85,6 @@
     "size: M": "Pull request with a medium diff.",
     "size: L": "Pull request with a large diff.",
     "size: XL": "Pull request with an extra-large diff.",
-    "package:code": "Changes to the terminal agent in `libs/code`.",
     "package:rust": "Changes to the Rust client in `rust/`.",
     "package:infra": "Changes to installers and repository automation.",
     "package:docs": "Changes to user documentation.",
@@ -95,12 +92,9 @@
   },
   "scopeToLabel": {
     "ci": "package:ci",
-    "code": "package:code",
     "docs": "package:docs",
     "infra": "package:infra",
-    "quickjs": "package:code",
-    "rust": "package:rust",
-    "sdk": "package:code"
+    "rust": "package:rust"
   },
   "scopeAliases": {},
   "branchRules": [
@@ -113,11 +107,6 @@
     {
       "label": "package:ci",
       "prefix": ".github/",
-      "skipExcludedFiles": true
-    },
-    {
-      "label": "package:code",
-      "prefix": "libs/code/",
       "skipExcludedFiles": true
     },
     {
@@ -136,78 +125,5 @@
       "skipExcludedFiles": true
     }
   ],
-  "topicFileRules": [
-    {
-      "label": "topic:middleware",
-      "prefix": "libs/code/niki_agent/sdk/middleware/"
-    },
-    {
-      "label": "topic:subagents",
-      "pattern": "(?:^|/)subagents\\.py$"
-    },
-    {
-      "label": "topic:async-subagents",
-      "pattern": "(?:^|/)async_subagents\\.py$"
-    },
-    {
-      "label": "topic:memory",
-      "pattern": "(?:^|/)(?:memory|memory_guard)\\.py$"
-    },
-    {
-      "label": "topic:filesystem",
-      "pattern": "(?:^|/)(?:filesystem|file_ops|_fs_interrupt)\\.py$"
-    },
-    {
-      "label": "topic:backends",
-      "prefix": "libs/code/niki_agent/sdk/backends/"
-    },
-    {
-      "label": "topic:sandboxes",
-      "pattern": "(?:^|/)(?:sandbox|local_shell)\\.py$"
-    },
-    {
-      "label": "topic:skills",
-      "pattern": "(?:^|/)(?:skills|skill_providers)\\.py$"
-    },
-    {
-      "label": "topic:skills",
-      "prefix": "libs/code/niki_agent/skills/"
-    },
-    {
-      "label": "topic:skills",
-      "prefix": "libs/code/niki_agent/built_in_skills/"
-    },
-    {
-      "label": "topic:mcp",
-      "pattern": "(?:^|/)mcp_[^/]+\\.py$"
-    },
-    {
-      "label": "topic:mcp",
-      "prefix": "libs/code/niki_agent/mcp_providers/"
-    },
-    {
-      "label": "topic:models",
-      "pattern": "(?:^|/)(?:_models|model_config|configurable_model|model_retry)\\.py$"
-    },
-    {
-      "label": "topic:tracing",
-      "pattern": "(?:^|/)_tracing\\.py$"
-    },
-    {
-      "label": "topic:prompts",
-      "pattern": "(?:^|/)(?:system_prompt\\.md|default_agent_prompt\\.md|_prompt_caching\\.py)$"
-    },
-    {
-      "label": "topic:multimodal",
-      "pattern": "(?:^|/)(?:_video|media_utils)\\.py$"
-    },
-    {
-      "label": "topic:streaming",
-      "pattern": "(?:^|/)_tool_stream\\.py$"
-    },
-    {
-      "label": "topic:performance",
-      "pattern": "(?:^|/)(?:cost_tracking|cold_cache)\\.py$"
-    }
-  ]
+  "topicFileRules": []
 }

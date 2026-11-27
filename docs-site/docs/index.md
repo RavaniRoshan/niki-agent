@@ -9,7 +9,10 @@ hero:
   tagline: You say what you want; it reads your repository, edits files, runs commands, and shows you each step. It uses the model you already pay for, keeps its sessions on your own disk, and asks before it runs a shell command.
   actions:
     - theme: brand
-      text: Install
+      text: Download
+      link: https://niki-site.vercel.app/download
+    - theme: alt
+      text: Install guide
       link: /getting-started/install
     - theme: alt
       text: Your first turn
@@ -36,11 +39,12 @@ features:
 ## Install
 
 Linux x86_64, macOS (Apple silicon and Intel), and Windows x86_64 have prebuilt
-release archives. Verify one against `SHA256SUMS`, then run the installer inside
-the archive or place the binary yourself:
+release archives. The [download page](https://niki-site.vercel.app/download)
+detects your platform, gives the one-line installer, and lists every archive and
+its checksum. To verify an archive by hand:
 
 ```bash
-VERSION=2.1.4
+VERSION=2.2.0
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -

@@ -4,10 +4,42 @@ All notable changes to Niki Agent are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions use
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The product is a single Rust binary. `2.0.0` is the release where the shipped
-client became that binary; `1.x` was the earlier Python implementation.
+The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
+
+## [2.2.0] - 2026-11-27
+
+### Added
+
+- A welcome block on a fresh session: the product name and version, what the
+  agent is for, the model, the approval mode, and the working folder, plus the
+  four commands worth knowing first. It yields to the transcript as soon as the
+  first prompt is sent.
+- A download page: it detects the platform, offers the one-line installer, and
+  lists every archive with its size, its SHA-256, and the command that verifies
+  it in each shell.
+- A changelog page, generated from this file by `site/scripts/sync-changelog.mjs`
+  and checked in CI so it cannot drift.
+- `niki-smoke`, a release-gate binary in the workspace. It starts a loopback
+  model, runs one headless turn from the installed archive, and asserts that a
+  `write_file` tool call round-tripped.
+
+### Changed
+
+- The repository no longer contains a second implementation. The CI workflows,
+  the labeling rules, the pre-commit hooks, and the release workflow refer only
+  to the Rust workspace, and the branch and PR scopes are the ones in use.
+- The README opens with the approval gate and carries a recording of this build:
+  a read, the gate, a write, `cargo test`, and the answer.
+- The documentation site links to the download page and mirrors this changelog
+  instead of keeping a hand-written copy.
+
+### Fixed
+
+- A notify program written seconds earlier could fail to start with `ETXTBSY`
+  and be dropped with a warning. Niki now retries for up to a second, so a
+  hook script that was just saved still runs.
 
 ## [2.1.4] - 2026-11-27
 
@@ -124,15 +156,14 @@ client became that binary; `1.x` was the earlier Python implementation.
   into one `niki` executable.
 - Installation is one archive and one executable; the installer verifies
   `SHA256SUMS` before placing it under `~/.local/niki`.
-- The Python client in `libs/code` is retired as the product: it remains as the
-  reference implementation and fixture source, and installs no console script.
 
 ### Removed
 
-- The Python runtime, virtual environment, and package resolution from the
-  install path. Existing `~/.niki` configuration, sessions, and skills are kept.
+- Install-time dependencies beyond the binary itself. Existing `~/.niki`
+  configuration, sessions, and skills are kept.
 
-[Unreleased]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.4...HEAD
+[Unreleased]: https://github.com/RavaniRoshan/niki-agent/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.4...v2.2.0
 [2.1.4]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/RavaniRoshan/niki-agent/compare/v2.1.1...v2.1.2

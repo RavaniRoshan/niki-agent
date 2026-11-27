@@ -6,8 +6,7 @@
 //! instructions only when the skill applies, so a long body costs nothing on a
 //! turn that does not use it.
 //!
-//! Discovery takes the first match for a name, in the order the Python client
-//! layers its sources:
+//! Discovery takes the first match for a name, in this order:
 //!
 //! 1. `<workspace>/.niki/skills/<name>/SKILL.md`
 //! 2. `<user skills>/<name>/SKILL.md` — the host passes `~/.niki/skills`

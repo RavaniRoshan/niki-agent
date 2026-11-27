@@ -3,7 +3,8 @@
 # Why this exists:
 #   PR titles use Conventional Commit scopes, and those scopes drive release notes,
 #   package labels, and reviewer expectations. A title like `fix(cli): ...` should
-#   not describe a PR whose only package edits live under `libs/code/`. This check
+#   not describe a PR whose only package edits live in another package
+#   directory. This check
 #   compares package scopes from the PR title with package directories from the
 #   changed-file list, posts a sticky warning when they disagree, and FAILS the
 #   check so the mismatch is fixed before merge.
@@ -21,7 +22,7 @@
 # How it stays faithful to existing repo configuration:
 #   - Scope -> package and dir -> package mappings are read from
 #     .github/scripts/labeling/pr-labeler-config.json by the helper script — see
-#     .github/scripts/labeling/check_pr_scope_files.py.
+#     .github/scripts/labeling/check-pr-scope-files.mjs.
 #
 # Trust model:
 #   - The detector and labeler config run from the PR *base* revision, not the
@@ -73,7 +74,7 @@ jobs:
       - name: "📋 Checkout base revision"
         # Check out the PR *base* (trusted), never the PR head. The detector and
         # labeler config are executed from this tree, so the PR under test cannot
-        # edit check_pr_scope_files.py or pr-labeler-config.json to print "[]" and
+        # edit check-pr-scope-files.mjs or pr-labeler-config.json to print "[]" and
         # self-bypass the gate — defeating it for the exact PRs it must block. The
         # PR title (event payload) and changed-file list (API) are fed in
         # separately and are authoritative regardless of this checkout.
@@ -85,11 +86,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
-
-      - name: "🐍 Setup Python 3.11"
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.11"
 
       - name: "Collect changed files"
         # Use the API rather than `git diff` so the changed-file list is
@@ -130,13 +126,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
-          # Preferred nested path ships on this PR; until that lands on base,
-          # fall back to the flat layout so the gate still enforces.
-          detector=".github/scripts/labeling/check_pr_scope_files.py"
-          legacy_detector=".github/scripts/check_pr_scope_files.py"
-          if [[ ! -f "$detector" && -f "$legacy_detector" ]]; then
-            detector="$legacy_detector"
-          fi
+          detector=".github/scripts/labeling/check-pr-scope-files.mjs"
           if [[ ! -f "$detector" ]]; then
             # The detector does not exist on the base revision: the bootstrapping
             # PR that first introduces this check, or a branch cut from before it
@@ -157,7 +147,7 @@ jobs:
             # A config-read error in the detector exits non-zero; under `set -e`
             # the command substitution propagates it and this step fails, so the
             # comment step (default `if: success()`) is skipped — fail closed.
-            offenders=$(python "$detector" "$PR_TITLE" < changed_files.txt)
+            offenders=$(node "$detector" "$PR_TITLE" < changed_files.txt)
           fi
           # Heredoc form so a multi-line value can never corrupt $GITHUB_OUTPUT.
           {
@@ -213,7 +203,7 @@ jobs:
             // Display-only: this re-parses the title solely to render the
             // scope list in the sticky comment. The pass/fail decision comes
             // entirely from the detector's JSON offenders, not from here. Keep
-            // this regex in sync with `_TITLE_RE` in check_pr_scope_files.py.
+            // this regex in sync with `_TITLE_RE` in check-pr-scope-files.mjs.
             const titleScopes = (() => {
               const match = title.match(/^[a-z]+(?:\(([^)]*)\))?!?:\s/);
               if (!match || !match[1]) {
@@ -320,7 +310,7 @@ jobs:
               '',
               '### To resolve',
               '',
-              'Edit the PR title scope so it covers the changed package directory (for example, use `fix(code): ...` for `libs/code/**`), or move the files so they match the declared scope.',
+              'Edit the PR title scope so it covers the changed package directory (for example, use `fix(rust): ...` for `rust/**`), or move the files so they match the declared scope.',
               '',
               'If this is a feature plus incidental cross-package dependency/lock churn, split into:',
               '',

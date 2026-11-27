@@ -34,8 +34,8 @@
 # Rules:
 #   1. The 'Type' must start with a lowercase letter.
 #   2. Breaking changes: append "!" after type/scope (e.g., feat(sdk)!: drop x support)
-#   3. When releasing (updating the pyproject.toml and uv.lock), the commit message
-#      should be: `release(scope): x.y.z` (e.g., `release(code): 1.2.0` with no
+#   3. When releasing (bumping the workspace version), the commit message
+#      should be: `release(scope): x.y.z` (e.g., `release(rust): 1.2.0` with no
 #      body, footer, or preceding/following text).
 #
 # Enforces Conventional Commits format for pull request titles to maintain a clear and
@@ -105,15 +105,12 @@ jobs:
             hotfix
           scopes: |
             ci
-            code
             deps
             docs
             examples
             infra
-            quickjs
             repo
             rust
-            sdk
             site
           requireScope: true
           disallowScopes: |

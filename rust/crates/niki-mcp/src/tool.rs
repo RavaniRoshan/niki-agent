@@ -19,17 +19,16 @@ pub struct McpTool {
     /// JSON Schema of the argument object.
     pub input_schema: Value,
     /// Whether the server declared the tool read-only: `readOnlyHint` is `true`
-    /// and `destructiveHint` is not. Only a coherent declaration counts, the
-    /// same rule the Python client applies.
+    /// and `destructiveHint` is not. Only a coherent declaration counts.
     pub read_only: bool,
 }
 
 /// The provider-visible name of an MCP tool: `mcp__<server>__<tool>`.
 ///
 /// The prefix keeps every MCP name away from a built-in, and the double
-/// underscore is the name the Python client uses in hooks and matchers, so a
-/// saved matcher works in both clients. Characters outside `[A-Za-z0-9_-]`
-/// become `_`; a name longer than the provider cap keeps a stable digest.
+/// underscore is the name hooks and matchers use, so a saved matcher resolves
+/// to the same tool. Characters outside `[A-Za-z0-9_-]` become `_`; a name
+/// longer than the provider cap keeps a stable digest.
 #[must_use]
 pub fn tool_name(server: &str, tool: &str) -> String {
     let base = format!("mcp__{}__{}", sanitize(server), sanitize(tool));
@@ -63,9 +62,8 @@ fn sanitize(name: &str) -> String {
     }
 }
 
-/// FNV-1a, so a truncated name is stable across runs and machines. The Python
-/// client uses SHA-256; this client only needs the same input to yield the
-/// same name every time.
+/// FNV-1a, so a truncated name is stable across runs and machines. The only
+/// requirement is that the same input yields the same name every time.
 fn fnv1a(bytes: &[u8]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325_u64;
     for byte in bytes {

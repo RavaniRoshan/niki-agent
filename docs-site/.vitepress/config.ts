@@ -30,6 +30,7 @@ export default defineConfig({
       { text: 'Extensions', link: '/extensions/', activeMatch: '^/extensions/' },
       { text: 'Security', link: '/security', activeMatch: '^/security' },
       { text: 'Troubleshooting', link: '/troubleshooting' },
+      { text: 'Download', link: 'https://niki-site.vercel.app/download' },
     ],
     sidebar: [
       {
@@ -71,6 +72,8 @@ export default defineConfig({
         items: [
           { text: 'Beta builds', link: '/beta' },
           { text: 'Changelog', link: '/changelog' },
+          { text: 'Download', link: 'https://niki-site.vercel.app/download' },
+          { text: 'Website', link: 'https://niki-site.vercel.app' },
         ],
       },
       {

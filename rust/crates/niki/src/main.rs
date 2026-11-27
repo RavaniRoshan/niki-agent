@@ -13,7 +13,7 @@ use niki_proto::{Frame, Transcript};
 use niki_render::{TranscriptModel, display_width};
 use niki_tui::{AppState, BINDINGS, chord_label};
 
-/// The Python engine release this client speaks to.
+/// The engine protocol version this client speaks.
 const ENGINE_VERSION: &str = "1.0.0";
 const CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_ENGINE: &str = "http://127.0.0.1:2024";

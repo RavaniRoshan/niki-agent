@@ -4,7 +4,7 @@ One product, one pipeline. Every workflow below is live.
 
 | Workflow | What it does |
 | --- | --- |
-| `ci.yml` | Runs `make check` in `libs/code`; publishes the aggregate **✅ CI Success** check. |
+| `ci.yml` | Runs the Rust workspace gate; publishes the aggregate **✅ CI Success** check. |
 | `niki-release.yml` | On a `v*` tag or manual dispatch, builds `niki` for Linux, macOS (arm64 and x86_64) and Windows, runs the installer and a smoke turn, and publishes a GitHub Release. |
 | `pr_lint.yml` | Validates Conventional Commits titles and the allowed scope list. |
 | `pr_lint_trailer.yml` | Checks the required commit trailer. |
@@ -18,8 +18,8 @@ One product, one pipeline. Every workflow below is live.
 
 ## Scripts
 
-- `.github/scripts/checks/` — repo gates invoked by `make check`:
-  `check_version_equality.py`, `check_extras_sync.py`, and the lockfile helper.
+- `.github/scripts/checks/` — repo gates: the branch-name/scope sync check and
+  the Markdown gate.
 - `.github/scripts/release/` — release-note and freshness helpers. The
   release-please fan-out scripts are retained for history but are no longer
   wired to a workflow.

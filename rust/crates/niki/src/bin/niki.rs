@@ -1,11 +1,10 @@
 //! `niki` — the Rust entry point.
 //!
-//! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
-//! Python product reads. With `--acp` it serves an editor over stdin/stdout on
-//! that same agent, provider and workspace. `doctor` prints a read-only
-//! diagnosis of the install, and `sessions` finds, copies and archives saved
-//! sessions so a headless user can work without the app. Without any of them it
-//! opens the full-screen app. Named `niki` until cutover (RULES.md 2).
+//! With `-n` it runs one prompt headlessly, reading `config.toml`. With `--acp`
+//! it serves an editor over stdin/stdout on that same agent, provider and
+//! workspace. `doctor` prints a read-only diagnosis of the install, and
+//! `sessions` finds, copies and archives saved sessions so a headless user can
+//! work without the app. Without any of them it opens the full-screen app.
 
 #[path = "../doctor.rs"]
 mod doctor;

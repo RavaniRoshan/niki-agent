@@ -1,15 +1,16 @@
 //! Keymap, reader mode, and view state for the Niki terminal UI.
 //!
-//! The Python keymap is the reference (`docs/niki/KEYMAP.md`). This crate keeps
-//! the same app-level bindings so a user's muscle memory survives the port,
-//! and it holds the state the renderer needs without depending on a terminal.
+//! The binding table in `docs/niki/KEYMAP.md` is the reference. This crate holds
+//! the app-level bindings so a user's muscle memory stays valid across
+//! releases, and it holds the state the renderer needs without depending on a
+//! terminal.
 
 use std::sync::LazyLock;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_render::{Glyphs, TranscriptModel};
 
-/// App-level actions from the Python binding registry.
+/// App-level actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Action {
     QuitOrInterrupt,
@@ -48,7 +49,7 @@ const fn chord(key: KeyCode, modifiers: KeyModifiers, action: Action) -> Binding
     }
 }
 
-/// The app-level keymap, matching the Python registry.
+/// The app-level keymap.
 ///
 /// Built once at first use: `KeyModifiers` combines with a non-const `BitOr`,
 /// so the table cannot be a `const` item.
@@ -179,8 +180,8 @@ pub fn chord_label(binding: &Binding) -> String {
     parts.join("+")
 }
 
-/// Screen-reader mode is opt-in through the same env var the Python client
-/// uses, plus an explicit flag for tests.
+/// Screen-reader mode is opt-in through an env var, plus an explicit flag for
+/// tests.
 #[must_use]
 pub fn screen_reader_enabled(value: Option<&str>) -> bool {
     matches!(

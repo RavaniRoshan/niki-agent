@@ -1,12 +1,8 @@
 # Niki Agent CI.
 #
-# One package, one job. `libs/code` is the whole product: the vendored SDK and
-# ACP trees live inside it.
-#
-# `make check` is the same gauntlet a contributor runs locally: lint, type
-# check, import graph, unit tests, extras/version gates, and lockfile drift.
-# The Rust client is a separate toolchain (rust/) and gets its own job: tests,
-# formatting, and clippy at deny-warnings.
+# The product is the Rust workspace in `rust/`: tests, formatting, and clippy
+# at deny-warnings. The aggregate **✅ CI Success** check is what branch
+# protection requires.
 
 name: "🔧 CI"
 
@@ -23,42 +19,7 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  UV_NO_SYNC: "true"
-
 jobs:
-  check:
-    name: "🧪 make check"
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: "📋 Checkout Code"
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: "🐍 Set up Python"
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-
-      - name: "⚡ Install uv"
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: "📦 Sync dependencies"
-        working-directory: libs/code
-        run: uv sync --all-groups --frozen
-
-      - name: "✅ make check"
-        working-directory: libs/code
-        env:
-          TERM: xterm-256color
-        run: |
-          # `NO_COLOR` breaks the doctor snapshot that asserts links render.
-          unset NO_COLOR
-          # Cap xdist: the default `-n auto` oversubscribes the runner.
-          PYTEST_EXTRA="-n 4" make check
-
   rust:
     name: "🦀 rust client"
     runs-on: ubuntu-latest
@@ -97,21 +58,16 @@ jobs:
 
   ci_success:
     name: "✅ CI Success"
-    needs: [check, rust]
+    needs: [rust]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: "Aggregate result"
         env:
-          CHECK_RESULT: ${{ needs.check.result }}
           RUST_RESULT: ${{ needs.rust.result }}
         run: |
-          if [ "$CHECK_RESULT" != "success" ]; then
-            echo "libs/code check finished as '$CHECK_RESULT'"
-            exit 1
-          fi
           if [ "$RUST_RESULT" != "success" ]; then
             echo "rust client finished as '$RUST_RESULT'"
             exit 1
           fi
-          echo "libs/code check and the rust client passed"
+          echo "the rust client passed"

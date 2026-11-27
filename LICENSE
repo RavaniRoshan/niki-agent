@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This product includes MIT-licensed software developed by LangChain, Inc.,
-vendored under `libs/code/niki_agent/sdk/` and `libs/code/niki_agent/acp_sdk/`.
-Those directories carry the upstream copyright notice in their own `LICENSE`
-files. See `NOTICE` for the full attribution.

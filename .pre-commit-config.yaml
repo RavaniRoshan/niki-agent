@@ -42,9 +42,7 @@ repos:
         args: ["--unsafe"] # allow custom tags
       - id: check-toml # validate TOML syntax
       - id: end-of-file-fixer # ensure files end with a newline
-        exclude: libs/code/tests/unit_tests/niki/__snapshots__/
       - id: trailing-whitespace # remove trailing whitespace from lines
-        exclude: \.ambr$
 
   - repo: https://github.com/sirosen/texthooks
     rev: 0.6.8
@@ -54,38 +52,10 @@ repos:
 
   - repo: local
     hooks:
-      - id: niki-agent
-        name: format and lint niki-agent
-        language: system
-        entry: make -C libs/code format lint
-        files: ^libs/code/
-        pass_filenames: false
-      - id: commands-catalog
-        name: regenerate niki-agent COMMANDS.md
-        language: system
-        entry: make -C libs/code commands-catalog
-        files: ^libs/code/(niki_agent/command_registry\.py|COMMANDS\.md|scripts/generate_commands_catalog\.py)$
-        pass_filenames: false
-      - id: lock-check
-        name: check lockfiles are up-to-date
-        language: system
-        entry: python3 .github/scripts/checks/check_lockfiles_pre_commit.py
-        files: (^libs/code/pyproject\.toml|^libs/code/uv\.lock)$
-      - id: extras-sync
-        name: check extras sync with required deps
-        language: system
-        entry: python3 .github/scripts/checks/check_extras_sync.py
-        files: ^libs/code/pyproject\.toml$
-      - id: version-equality
-        name: check pyproject.toml and _version.py match
-        language: system
-        entry: python3 .github/scripts/checks/check_version_equality.py
-        files: ^libs/code/(pyproject\.toml|niki_agent/_version\.py)$
-        pass_filenames: false
       - id: branch-scopes-sync
         name: check branch-name rules match across hook, CI and pr_lint
         language: system
-        entry: python3 .github/scripts/checks/check_branch_scopes_sync.py
+        entry: node .github/scripts/checks/check-branch-scopes-sync.mjs
         files: (^\.githooks/pre-push|^\.github/workflows/(branch_name_check|pr_lint)\.yml)$
         pass_filenames: false
       - id: branch-name

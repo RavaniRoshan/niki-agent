@@ -51,17 +51,18 @@ installer refuses an archive whose checksum does not match.
 ## Proving the installed binary runs a turn
 
 `niki --version` only prints a version line, so the release workflow runs
-[`../.github/scripts/smoke_turn.py`](../.github/scripts/smoke_turn.py) against
-the installed binary. It starts a loopback mock model server — no API key, no
+`niki-smoke` — a workspace binary built from `rust/crates/niki-smoke` — against
+the installed binary. It starts a loopback model server — no API key, no
 external network — runs one headless turn, and asserts that the file-writing
 tool ran and that the model saw the tool result:
 
 ```bash
-python3 .github/scripts/smoke_turn.py --niki "$HOME/.local/niki/bin/niki"
+cargo run -q -p niki-smoke -- --niki "$HOME/.local/niki/bin/niki"
 ```
 
-The script is stdlib-only and prints a PASS/FAIL line per check. On failure it
-also prints the child's stdout and stderr.
+It prints the binary's version, the number of model requests, the file it read
+back, and one `PASS` or `FAIL` line. On failure it also prints the child's
+stdout and stderr.
 
 - `--timeout SECONDS` — wall-clock limit for the child (default 180).
 - `--keep-temp` — keep the throwaway profile and workspace and print the path.

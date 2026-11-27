@@ -12,10 +12,9 @@ pub(crate) enum Matcher {
 }
 
 impl Matcher {
-    /// Compile the `matcher` field the way the Python client does: omitted,
-    /// empty or `*` matches everything; a string made only of word
-    /// characters, whitespace, `-`, `,` and `|` is a list of exact names;
-    /// anything else is an unanchored regular expression.
+    /// Compile the `matcher` field: omitted, empty or `*` matches everything;
+    /// a string made only of word characters, whitespace, `-`, `,` and `|` is a
+    /// list of exact names; anything else is an unanchored regular expression.
     pub(crate) fn compile(raw: &str) -> Result<Option<Self>, String> {
         if raw.is_empty() || raw == "*" {
             return Ok(None);
@@ -42,7 +41,7 @@ impl Matcher {
     }
 }
 
-/// The Python client's exact-match character set: `^[\w\s,\-|]+$`.
+/// The exact-match character set: `^[\w\s,\-|]+$`.
 fn is_exact_matcher(raw: &str) -> bool {
     raw.chars().all(|ch| {
         ch.is_alphanumeric() || ch == '_' || ch.is_whitespace() || matches!(ch, ',' | '-' | '|')

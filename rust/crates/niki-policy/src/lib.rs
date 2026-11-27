@@ -1,7 +1,7 @@
 //! Approval modes, shell allow-lists, and the workspace path boundary.
 //!
-//! The Python product gates tool actions with a live Manual/Auto/YOLO mode and
-//! a shell allow-list. This crate is the policy half of that gate: it decides
+//! Tool actions are gated with a live Manual/Auto/YOLO mode and a shell
+//! allow-list. This crate is the policy half of that gate: it decides
 //! whether a command runs, asks, or is refused, and it refuses any path that
 //! resolves outside the workspace root. Refusing is deliberate — RULES 7 says a
 //! path that escapes is refused, never clamped.

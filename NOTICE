@@ -6,34 +6,3 @@ terminal UI, and the ACP integration live in this repository; nothing imports an
 upstream agent distribution at runtime.
 
 The MIT license at the repository root applies to Niki Agent.
-
-Vendored components
--------------------
-
-Three directories are copies of MIT-licensed software developed by LangChain,
-Inc., taken from the Deep Agents project
-(https://github.com/langchain-ai/deepagents):
-
-  * `libs/code/niki_agent/sdk/` — the `deepagents` package, version 0.7.21.
-  * `libs/code/niki_agent/acp_sdk/` — the `deepagents-acp` package, version
-    0.0.12.
-  * `libs/code/niki_agent/_vendor/quickjs/` — the `langchain-quickjs` package,
-    version 0.3.8.
-
-Each directory carries a `PROVENANCE.md` naming the upstream version, the commit
-it was copied from, and the mechanical changes made to the copy, alongside a
-`LICENSE` file with the upstream notice reproduced verbatim:
-
-    MIT License
-    Copyright (c) LangChain, Inc.
-
-The full upstream license text is also preserved at
-`libs/code/niki_agent/sdk/LICENSE`, `libs/code/niki_agent/acp_sdk/LICENSE`, and
-`libs/code/niki_agent/_vendor/quickjs/LICENSE`.
-
-Third-party components
-----------------------
-
-Niki Agent depends on third-party packages including Textual, Rich, LangChain,
-and LangGraph. Their licenses apply unchanged; see `libs/code/pyproject.toml`
-for the dependency list.

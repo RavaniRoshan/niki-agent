@@ -1,8 +1,7 @@
 //! Lifecycle hooks for the Niki agent.
 //!
 //! A `hooks.json` document maps an event name to matcher groups, and each
-//! group to the shell commands that run for it — the same shape the Python
-//! client reads:
+//! group to the shell commands that run for it:
 //!
 //! ```json
 //! {
@@ -27,9 +26,9 @@
 //!
 //! Supported events are [`Event::PreToolUse`], [`Event::PostToolUse`] and
 //! [`Event::UserPromptSubmit`]; any other event name is ignored with a warning.
-//! Tool matchers use the Python client's wire names (`shell` is `Bash`,
-//! `write_file` is `Write`, MCP tools keep `mcp__<server>__<tool>`), so an
-//! existing `hooks.json` keeps selecting the same tool.
+//! Tool matchers use wire names (`shell` is `Bash`, `write_file` is `Write`,
+//! MCP tools keep `mcp__<server>__<tool>`), so an existing `hooks.json` keeps
+//! selecting the same tool.
 //!
 //! Each handler receives one JSON object on stdin with `hook_event_name`,
 //! `cwd`, `session_id` when the host has one, and the event fields: `tool_name`,
@@ -48,10 +47,10 @@
 //! - `"continue": false` stops the event with `stopReason` as the reason.
 //!
 //! A blocked `PreToolUse` becomes the tool result
-//! `"<tool> blocked by hook: <reason>"`, exactly the text the Python client
-//! returns to the model. A blocked `UserPromptSubmit` stops the prompt before
-//! the model sees it. On `PostToolUse` a block is feedback appended to the tool
-//! result, not a refusal — the tool has already run.
+//! `"<tool> blocked by hook: <reason>"`, returned to the model. A blocked
+//! `UserPromptSubmit` stops the prompt before the model sees it. On `PostToolUse`
+//! a block is feedback appended to the tool result, not a refusal — the tool has
+//! already run.
 //!
 //! Every handler matched by an event runs, in configuration order, with its own
 //! timeout (`600s` by default, `30s` for `UserPromptSubmit`). A command that

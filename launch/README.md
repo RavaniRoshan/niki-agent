@@ -8,19 +8,14 @@ the `niki` binary or by the installers.
 | `product-hunt.md` | Listing copy, maker comment, FAQ, and the day-of checklist |
 | `gallery/01-hero.png` … `05-long-sessions.png` | 1270×760 gallery images |
 | `gallery/thumbnail-240.png` | 240×240 listing thumbnail |
-| `render_gallery.py` | Rebuilds the gallery from `../intro.gif` |
 
 ## Rebuilding the gallery
 
-The screenshots come from the README recording, so the two stay in sync:
-
-```bash
-python3 launch/render_gallery.py
-```
-
-The script reads `intro.gif` and writes `launch/gallery/`. It needs Pillow and
-the DejaVu fonts; nothing else. Frame indices for the approval card and the
-final answer are chosen in the script and may need updating after a re-record.
+The screenshots come from the README recording, and the rendered results are
+committed assets. No gallery-rendering script is part of this repository:
+regenerate the images outside the tree from the committed `intro.gif`, then
+replace the files under `launch/gallery/`. Frame selection for the approval card
+and the final answer is a property of that external render.
 
 ## Rules for this copy
 

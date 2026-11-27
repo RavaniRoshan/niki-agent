@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Niki Agent installer for Linux and macOS.
 #
-# Installs a prebuilt, self-contained `niki` binary. There is no Python
-# runtime, no virtual environment, and no package resolution at install time:
+# Installs a prebuilt, self-contained `niki` binary. There is no language runtime,
+# no virtual environment, and no package resolution at install time:
 # the release archive holds one executable, and the release's SHA256SUMS proves
 # it before anything is written to the prefix.
 #

@@ -68,7 +68,7 @@ jobs:
           # `branch-scopes-sync` pre-commit hook fails the commit if they drift.
           ALLOWED_RE='^(main|master|v[0-9]+\.[0-9]+.*)$'
           ALLOWED_PREFIX_RE='^(release-please--|dependabot/|copilot/|alpha/|beta/|rc/|dev/)'
-          SCOPES_RE='(ci|code|deps|docs|examples|infra|quickjs|repo|rust|sdk)'
+          SCOPES_RE='(ci|deps|docs|examples|infra|repo|rust|site)'
 
           if [[ "$HEAD_REF" =~ $ALLOWED_RE ]] || [[ "$HEAD_REF" =~ $ALLOWED_PREFIX_RE ]]; then
             echo "::notice::Branch '$HEAD_REF' is protected or automation-owned; skipping name check."

@@ -6,7 +6,7 @@ Niki is an independent terminal coding agent written in Rust: one native
 executable that runs a real agent loop, edits your files, runs commands, and puts
 an approval card in front of every change. Sessions live on your disk, eleven
 providers are built in, and any OpenAI-compatible endpoint works. There is no
-Python interpreter to install, no virtual environment to create, and no packages
+language runtime to install, no virtual environment to create, and no packages
 to resolve on first run. Linux and WSL share one archive, Windows has its own,
 and macOS has one for Apple silicon and one for Intel. Each release's changes are
 listed under **What changed** below.
@@ -40,6 +40,27 @@ niki
 No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
+
+## What changed in 2.2.0
+
+**The first thing you see is the product.** A fresh session now opens on a
+welcome block: the name and version, the one-line promise, the model, the
+approval mode, and the folder you are in, followed by the four commands worth
+knowing first. It yields to the transcript the moment you send a prompt.
+
+**The repository holds one implementation.** Every workflow, label, pre-commit
+hook and release step now refers only to the Rust workspace; the earlier client
+tree and its tooling are gone. The gate that proves an installed archive runs a
+real turn is a Rust binary in that workspace rather than a script beside it.
+
+**A download page and a changelog page.** The marketing site now detects your
+platform, offers the one-line installer, and lists every archive with its size,
+its SHA-256, and the command that verifies it. The changelog page is generated
+from `CHANGELOG.md` and checked in CI, so it cannot drift.
+
+**A just-saved hook script runs.** A notify program written moments earlier
+could fail to start with `ETXTBSY` and be dropped with a warning. Niki now
+retries for up to a second.
 
 ## What changed in 2.1.4
 
@@ -218,12 +239,10 @@ slash commands, and session resume all ship in the same executable.
 checks its SHA-256 against the release, and copies the binary into place.
 There is nothing to compile and nothing to resolve.
 
-**The Python client is retired.** `libs/code` stays in the repository as the
-reference implementation and the source of the behavioural fixtures, but it is
-no longer installed, no longer shipped, and no longer the supported product.
-If you installed 1.1.x, re-run the install command: the installer replaces the
-application under `~/.local/niki`. Your configuration, sessions, and skills in
-`~/.niki` are untouched.
+**The interpreter-based client is retired.** It is no longer installed, no longer shipped,
+and no longer the supported product. If you installed 1.1.x, re-run the install
+command: the installer replaces the application under `~/.local/niki`. Your
+configuration, sessions, and skills in `~/.niki` are untouched.
 
 ## What makes it different
 
@@ -274,8 +293,8 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 Re-run the install command. The installer replaces the application under
 `~/.local/niki` (`%LOCALAPPDATA%\niki` on Windows) and leaves `~/.niki` — your
-configuration, sessions, and skills — untouched. The old Python environment is
-no longer used and can be removed.
+configuration, sessions, and skills — untouched. The old interpreter environment
+is no longer used and can be removed.
 
 ## Uninstalling
 

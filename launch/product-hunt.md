@@ -23,7 +23,8 @@ never claim a feature that is still under "Known gaps".
 - Website: https://niki-site.vercel.app
 - Docs: https://niki-docs.vercel.app
 - GitHub: https://github.com/RavaniRoshan/niki-agent
-- Install: https://github.com/RavaniRoshan/niki-agent#install
+- Download: https://niki-site.vercel.app/download
+- Changelog: https://niki-site.vercel.app/changelog
 
 **Gallery order and captions:**
 
@@ -34,8 +35,8 @@ never claim a feature that is still under "Known gaps".
 5. `gallery/05-long-sessions.png` — Built for the long session.
 6. `gallery/thumbnail-240.png` — Thumbnail.
 
-The gallery is rendered from the README recording by `render_gallery.py`, so the
-screenshots are the product, not a mock.
+The gallery is rendered from sessions recorded from the shipped binary against a
+loopback model, so the screenshots are the product, not a mock.
 
 ## Maker comment
 
@@ -44,8 +45,8 @@ screenshots are the product, not a mock.
 > model that amounted to "hope".
 >
 > Niki is the opposite of that. It is one native executable with no language
-> runtime behind it, so startup is a process launch. The screen is quiet: an
-> idle session draws nothing, and the composer is a single rule. Sessions, skills,
+> runtime behind it, so startup is a process launch. The screen is quiet: a fresh
+> session draws a welcome line and one composer rule, not a box. Sessions, skills,
 > and credentials stay in `~/.niki` — no account, no sync, no telemetry. And every
 > shell command and file write passes an approval gate that names the exact
 > command or path.
@@ -91,8 +92,8 @@ The client is MIT licensed. You pay your model provider directly; Niki has no
 subscription and no account.
 
 **What do I need to run it?**
-A 64-bit Linux, macOS, or Windows machine, or WSL. No Python, Node, or package
-manager. Build from source with Rust 1.85+ if your platform has no archive.
+A 64-bit Linux, macOS, or Windows machine, or WSL. No interpreter, Node, or
+package manager. Build from source with Rust 1.85+ if your platform has no archive.
 
 **Which models work?**
 Eleven providers are built in, including local Ollama. Any OpenAI-compatible
@@ -127,7 +128,7 @@ Before submitting:
 - [ ] `niki --version` and the README badge match the newest tag.
 - [ ] `CHANGELOG.md` has an entry for that tag.
 - [ ] Both install one-liners were run into a fresh `HOME` on Linux.
-- [ ] The gallery images are the current UI (`python3 launch/render_gallery.py`).
+- [ ] The gallery images are the current UI.
 - [ ] The site and docs are deployed and the beta/changelog links resolve.
 - [ ] The repo About line and topics match the listing.
 - [ ] A test issue submitted through the beta form reaches the right label.
