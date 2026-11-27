@@ -50,7 +50,7 @@ Everything a person touches every minute. All four slices are in.
 | Prompt reuse | `/prompts` searches history and inserts a previous prompt |
 | Editor | `/editor` opens `$EDITOR` over the draft |
 
-## Phase 3 — the Codex-class surface
+## Phase 3 — the full-screen surface
 
 | Work | Detail |
 | --- | --- |
