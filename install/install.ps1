@@ -119,15 +119,23 @@ function Install-Niki {
     $archive = Find-Archive
     Write-Step "installing $(Split-Path -Leaf $archive)"
 
-    $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("niki-stage-" + [guid]::NewGuid().ToString('n'))
-    Expand-Archive -Path $archive -DestinationPath $stage -Force
-    $binary = Get-ChildItem -Path $stage -Filter 'niki.exe' -Recurse |
-        Select-Object -First 1
-    if (-not $binary) { Fail 'archive contained no niki.exe' }
+    # An extracted release archive holds the installer beside `niki.exe`; that
+    # file is already the binary the archive shipped, not a zip to unpack.
+    if ($archive -match '\.exe$') {
+        New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+        Copy-Item -Path $archive -Destination (Join-Path $BinDir 'niki.exe') -Force
+    }
+    else {
+        $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("niki-stage-" + [guid]::NewGuid().ToString('n'))
+        Expand-Archive -Path $archive -DestinationPath $stage -Force
+        $binary = Get-ChildItem -Path $stage -Filter 'niki.exe' -Recurse |
+            Select-Object -First 1
+        if (-not $binary) { Fail 'archive contained no niki.exe' }
 
-    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-    Copy-Item -Path $binary.FullName -Destination (Join-Path $BinDir 'niki.exe') -Force
-    Remove-Item -Path $stage -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+        Copy-Item -Path $binary.FullName -Destination (Join-Path $BinDir 'niki.exe') -Force
+        Remove-Item -Path $stage -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     & (Join-Path $BinDir 'niki.exe') --version
     Write-Host ''
