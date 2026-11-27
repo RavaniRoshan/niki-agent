@@ -14,6 +14,9 @@ use niki_provider::{
 use niki_tools::{Registry, ToolContext};
 use serde_json::{Map, Value};
 
+use crate::context::{
+    Compaction, ContextReport, SessionUsage, estimate_text_tokens, estimate_tokens, keep_from,
+};
 use crate::{
     AgentError, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, RunOutcome,
 };
@@ -24,6 +27,11 @@ You are Niki, a coding agent working directly in the user's workspace. Use the \
 tools to inspect and change files. Prefer small, verifiable steps, run the \
 project's own checks when they exist, and say what you changed and what you did \
 not verify.";
+
+/// Instruction sent with the older history to produce a compaction summary.
+const COMPACT_INSTRUCTION: &str = "\
+Summarize the conversation so far for another assistant to continue. Keep \
+decisions, file paths and open tasks. Do not add commentary.";
 
 /// Bounds and identity for one agent.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,7 +73,8 @@ pub struct Agent {
     session_id: Option<String>,
     cancel: CancelHandle,
     messages: Vec<Message>,
-    usage: Usage,
+    session: SessionUsage,
+    last_usage: Usage,
 }
 
 impl Agent {
@@ -87,7 +96,8 @@ impl Agent {
             session_id: None,
             cancel: CancelHandle::new(),
             messages: Vec::new(),
-            usage: Usage::default(),
+            session: SessionUsage::default(),
+            last_usage: Usage::default(),
         }
     }
 
@@ -172,7 +182,29 @@ impl Agent {
     /// Token usage accumulated over every run of this agent.
     #[must_use]
     pub fn usage(&self) -> Usage {
-        self.usage
+        Usage {
+            input_tokens: self.session.input_tokens,
+            output_tokens: self.session.output_tokens,
+        }
+    }
+
+    /// Tokens and steps accumulated over every run of this agent.
+    #[must_use]
+    pub fn session_usage(&self) -> SessionUsage {
+        self.session
+    }
+
+    /// The conversation's size, the last reported usage, and the session's
+    /// step count.
+    #[must_use]
+    pub fn context_report(&self) -> ContextReport {
+        ContextReport {
+            messages: self.messages.len(),
+            estimated_tokens: estimate_tokens(&self.messages),
+            last_input_tokens: self.last_usage.input_tokens,
+            last_output_tokens: self.last_usage.output_tokens,
+            steps: self.session.steps,
+        }
     }
 
     /// Run one prompt to completion.
@@ -262,8 +294,9 @@ impl Agent {
                     StreamEvent::Usage(usage) => {
                         run_usage.input_tokens += usage.input_tokens;
                         run_usage.output_tokens += usage.output_tokens;
-                        self.usage.input_tokens += usage.input_tokens;
-                        self.usage.output_tokens += usage.output_tokens;
+                        self.session.input_tokens += usage.input_tokens;
+                        self.session.output_tokens += usage.output_tokens;
+                        self.last_usage = usage;
                         on_event(&AgentEvent::Usage(usage));
                     }
                     StreamEvent::Done(reason) => {
@@ -317,6 +350,7 @@ impl Agent {
             }
         }
 
+        self.session.steps += steps;
         Ok(RunOutcome {
             text: last_text,
             steps,
@@ -324,6 +358,105 @@ impl Agent {
             stop,
             usage: run_usage,
         })
+    }
+
+    /// Fold the turns older than the last `keep_last` into one summary.
+    ///
+    /// The older messages and a fixed instruction are sent to `provider`, and
+    /// their answer replaces them as a single assistant message. The last
+    /// `keep_last` turns stay verbatim; a turn starts at a user message, and a
+    /// summary a previous compaction left counts as one. When there is nothing
+    /// older to fold, or the answer is empty, the history is unchanged and
+    /// [`Compaction::default`] is returned. A provider error leaves the history
+    /// unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AgentError::Provider`] when the summarising request or its
+    /// stream fails.
+    pub async fn compact(
+        &mut self,
+        provider: &dyn Provider,
+        keep_last: usize,
+    ) -> Result<Compaction, AgentError> {
+        let split = keep_from(&self.messages, keep_last);
+        if split == 0 {
+            return Ok(Compaction::default());
+        }
+
+        let mut request_messages = self.messages[..split].to_vec();
+        request_messages.push(Message::user(COMPACT_INSTRUCTION));
+        let request = ChatRequest {
+            model: self.config.model.clone(),
+            system: self.config.system.clone(),
+            messages: request_messages,
+            tools: Vec::new(),
+            max_tokens: self.config.max_tokens,
+        };
+
+        let mut summary = String::new();
+        let mut stream = provider.stream(request);
+        while let Some(event) = stream.next().await {
+            match event.map_err(|source| AgentError::Provider {
+                provider: provider.name().to_owned(),
+                source,
+            })? {
+                StreamEvent::TextDelta(delta) => summary.push_str(&delta),
+                StreamEvent::Usage(usage) => {
+                    self.session.input_tokens += usage.input_tokens;
+                    self.session.output_tokens += usage.output_tokens;
+                    self.last_usage = usage;
+                }
+                StreamEvent::ToolCallDelta { .. } | StreamEvent::Done(_) => {}
+            }
+        }
+
+        let summary = summary.trim();
+        if summary.is_empty() {
+            return Ok(Compaction::default());
+        }
+        let content = format!("Summary of the earlier conversation:\n\n{summary}");
+        let summary_tokens = estimate_text_tokens(&content);
+        self.replace_older(split, content);
+        Ok(Compaction {
+            replaced: split,
+            summary_tokens,
+        })
+    }
+
+    /// Fold the turns older than the last `keep_last` without a model.
+    ///
+    /// The older messages become one assistant message that records how many
+    /// were dropped, so the model still sees that the conversation was
+    /// compacted. This is the fallback for a session with no provider to ask.
+    /// When there is nothing older to fold the history is unchanged.
+    pub fn compact_without_model(&mut self, keep_last: usize) -> Compaction {
+        let split = keep_from(&self.messages, keep_last);
+        if split == 0 {
+            return Compaction::default();
+        }
+        let content = match split {
+            1 => "1 earlier message was dropped to keep the context small; \
+                  the conversation continues from here."
+                .to_owned(),
+            count => format!(
+                "{count} earlier messages were dropped to keep the context small; \
+                 the conversation continues from here."
+            ),
+        };
+        let summary_tokens = estimate_text_tokens(&content);
+        self.replace_older(split, content);
+        Compaction {
+            replaced: split,
+            summary_tokens,
+        }
+    }
+
+    fn replace_older(&mut self, split: usize, content: String) {
+        let mut messages = Vec::with_capacity(self.messages.len() - split + 1);
+        messages.push(Message::assistant(content));
+        messages.extend_from_slice(&self.messages[split..]);
+        self.messages = messages;
     }
 
     /// Run `UserPromptSubmit` and report what it asked for.

@@ -46,7 +46,8 @@ OPTIONS:
     --quiet               Do not report tool calls on stderr
     --output-format <text|json>
                           text streams the answer (default); json prints one
-                          object with the answer, steps, tool calls and usage
+                          object with the answer, steps, tool calls, usage and
+                          the session totals
     --resume <ID|last>    Continue a saved session by id, or the newest one
     --continue            Continue the newest session for this workspace
     --version             Print the version line
@@ -198,6 +199,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
             .context("run the turn")?;
 
         if json {
+            let session_usage = agent.session_usage();
             let value = json!({
                 "answer": outcome.text,
                 "steps": outcome.steps,
@@ -205,6 +207,11 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
                 "usage": {
                     "input_tokens": outcome.usage.input_tokens,
                     "output_tokens": outcome.usage.output_tokens,
+                },
+                "session_usage": {
+                    "input_tokens": session_usage.input_tokens,
+                    "output_tokens": session_usage.output_tokens,
+                    "steps": session_usage.steps,
                 },
                 "stop": stop_label(&outcome.stop),
                 "session": session.as_ref().map(SessionId::as_str),
