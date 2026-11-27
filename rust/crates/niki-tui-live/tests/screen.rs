@@ -400,3 +400,164 @@ fn a_queued_prompt_is_drawn_dim_under_the_transcript_and_counted_in_the_bar() {
         "the row sits under an empty transcript: {screen}"
     );
 }
+
+fn ctrl_t(app: &mut App) {
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL));
+}
+
+/// A conversation longer than any viewport these tests use, so the top and the
+/// bottom of it can never be on screen at the same time.
+fn conversation(app: &mut App) {
+    app.transcript.push_user("first prompt");
+    for index in 0..20 {
+        app.transcript
+            .push_assistant(&format!("answer line {index}\n"));
+        app.transcript.end_stream();
+    }
+    app.transcript.push_user("last prompt");
+}
+
+#[test]
+fn ctrl_t_opens_at_the_newest_line_and_home_reaches_the_first_row() {
+    let mut app = app();
+    conversation(&mut app);
+
+    ctrl_t(&mut app);
+    assert!(app.transcript_overlay.is_some());
+
+    let newest = text(&render(&mut app, 40, 12));
+    assert!(newest.contains("transcript"), "{newest}");
+    assert!(newest.contains("last prompt"), "{newest}");
+    assert!(
+        !newest.contains("first prompt"),
+        "the view starts at the bottom: {newest}"
+    );
+    assert!(newest.contains("Esc close"), "the footer hint: {newest}");
+
+    stroke(&mut app, KeyCode::Home);
+    let top = text(&render(&mut app, 40, 12));
+    assert!(top.contains("first prompt"), "{top}");
+    assert!(top.contains("line 1/"), "the header names the top: {top}");
+    assert!(!top.contains("last prompt"), "{top}");
+}
+
+#[test]
+fn end_returns_to_the_last_row() {
+    let mut app = app();
+    conversation(&mut app);
+    ctrl_t(&mut app);
+    let newest = text(&render(&mut app, 40, 12));
+
+    stroke(&mut app, KeyCode::Home);
+    let top = text(&render(&mut app, 40, 12));
+    assert_ne!(top, newest);
+
+    stroke(&mut app, KeyCode::End);
+    let back = text(&render(&mut app, 40, 12));
+    assert_eq!(back, newest, "end shows the newest content again");
+    assert!(back.contains("last prompt"), "{back}");
+}
+
+#[test]
+fn escape_closes_the_overlay_and_restores_the_screen_and_state() {
+    let mut app = app();
+    conversation(&mut app);
+    type_text(&mut app, "half typed");
+    let before = text(&render(&mut app, 60, 16));
+    let state = (
+        app.composer.text().to_owned(),
+        app.composer.row_col(),
+        app.transcript.rows().to_vec(),
+        app.status_line(),
+        app.scroll.offset(),
+        app.queued().len(),
+        app.status.mode,
+        app.status.turn,
+        app.palette.name,
+        app.completion().is_none(),
+        app.history().is_browsing(),
+    );
+
+    ctrl_t(&mut app);
+    let open = text(&render(&mut app, 60, 16));
+    assert_ne!(open, before, "the overlay covers the screen");
+
+    stroke(&mut app, KeyCode::Esc);
+    assert!(app.transcript_overlay.is_none(), "escape closes it");
+    let after = text(&render(&mut app, 60, 16));
+    assert_eq!(after, before, "the screen comes back unchanged");
+    assert_eq!(
+        (
+            app.composer.text().to_owned(),
+            app.composer.row_col(),
+            app.transcript.rows().to_vec(),
+            app.status_line(),
+            app.scroll.offset(),
+            app.queued().len(),
+            app.status.mode,
+            app.status.turn,
+            app.palette.name,
+            app.completion().is_none(),
+            app.history().is_browsing(),
+        ),
+        state,
+        "only the overlay flag changed"
+    );
+}
+
+#[test]
+fn keys_while_the_overlay_is_open_never_reach_the_composer_or_send() {
+    let mut app = app();
+    conversation(&mut app);
+    type_text(&mut app, "keep me");
+    ctrl_t(&mut app);
+    let rows = app.transcript.rows().to_vec();
+
+    type_text(&mut app, "hello");
+    assert_eq!(app.composer.text(), "keep me", "typing is dropped");
+    assert_eq!(press(&mut app, KeyCode::Enter), None, "enter sends nothing");
+    assert_eq!(app.composer.text(), "keep me");
+    assert_eq!(app.transcript.rows(), rows.as_slice());
+    assert!(app.transcript_overlay.is_some(), "the overlay stays open");
+    assert_eq!(app.queued().len(), 0, "nothing was queued");
+
+    assert_eq!(press(&mut app, KeyCode::Esc), None);
+    assert!(app.transcript_overlay.is_none());
+    assert_eq!(app.composer.text(), "keep me", "the draft survives");
+}
+
+#[test]
+fn an_empty_transcript_shows_a_placeholder() {
+    let mut app = app();
+    let before = text(&render(&mut app, 40, 10));
+    ctrl_t(&mut app);
+    let screen = text(&render(&mut app, 40, 10));
+    assert!(screen.contains("transcript"), "{screen}");
+    assert!(screen.contains("nothing yet"), "{screen}");
+    assert!(screen.contains("Esc close"), "{screen}");
+
+    stroke(&mut app, KeyCode::Esc);
+    assert_eq!(text(&render(&mut app, 40, 10)), before);
+}
+
+#[test]
+fn the_overlay_renders_an_answer_with_the_markdown_renderer() {
+    let mut app = app();
+    app.transcript.push_user("plan it");
+    app.transcript
+        .push_assistant("## Plan\n\n**first** step and `code`");
+    ctrl_t(&mut app);
+
+    let screen = text(&render(&mut app, 60, 12));
+    assert!(screen.contains("Plan"), "{screen}");
+    assert!(screen.contains("first step and code"), "{screen}");
+    assert!(
+        !screen.contains("## Plan"),
+        "the heading is rendered: {screen}"
+    );
+    assert!(!screen.contains("**first**"), "{screen}");
+}
+
+fn press(app: &mut App, code: KeyCode) -> Option<Command> {
+    app.handle_key(KeyEvent::new(code, KeyModifiers::NONE))
+}

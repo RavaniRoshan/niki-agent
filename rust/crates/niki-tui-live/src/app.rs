@@ -32,6 +32,7 @@ use crate::history::History;
 use crate::scroll::Scroll;
 use crate::status::{Status, TurnState, describe_context};
 use crate::transcript::{Row, RowKind, Transcript};
+use crate::transcript_overlay::TranscriptOverlay;
 
 /// Spinner frames for a terminal that draws Unicode.
 const UNICODE_SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -110,6 +111,8 @@ pub struct App {
     pub pending: Option<ApprovalRequest>,
     /// The overlay on top of the screen, if one is open.
     pub modal: Option<Modal>,
+    /// The whole conversation on one screen, opened by `Ctrl+T`.
+    pub transcript_overlay: Option<TranscriptOverlay>,
     /// The models the configuration offers, for `/model`.
     pub models: ModelPicker,
     /// The skills discovery found for this session, shown by `/skills`.
@@ -161,6 +164,7 @@ impl App {
             motion: Motion::default(),
             pending: None,
             modal: None,
+            transcript_overlay: None,
             models: ModelPicker::default(),
             skills: SkillCatalog::default(),
             refresh_system: None,
@@ -276,7 +280,7 @@ impl App {
     /// draft and only Enter sends it. While a modal is open the modal owns the
     /// keyboard, so the paste is dropped rather than reaching the composer.
     pub fn handle_paste(&mut self, text: &str) {
-        if self.modal.is_some() {
+        if self.modal.is_some() || self.transcript_overlay.is_some() {
             return;
         }
         self.composer.insert_str(text);
@@ -383,6 +387,16 @@ impl App {
         if self.modal.is_some() {
             return self.modal_key(key);
         }
+        if self.transcript_overlay.is_some() {
+            let stays = self
+                .transcript_overlay
+                .as_mut()
+                .is_some_and(|overlay| overlay.handle_key(key));
+            if !stays {
+                self.transcript_overlay = None;
+            }
+            return None;
+        }
         let command = match key.code {
             KeyCode::Enter => self.enter(key.modifiers),
             KeyCode::Esc => self.escape(),
@@ -439,6 +453,10 @@ impl App {
                 Some(Command::Mode(mode))
             }
             KeyCode::Char('y') if control => self.copy(),
+            KeyCode::Char('t') if control => {
+                self.open_transcript();
+                None
+            }
             KeyCode::Char('?') if self.composer.is_empty() => {
                 self.open_help();
                 None
@@ -505,8 +523,16 @@ impl App {
     }
 
     /// Move the transcript one wheel notch, away from the newest line or back
-    /// towards it.
+    /// towards it. While the whole transcript is open, the wheel moves it.
     pub fn wheel(&mut self, up: bool) {
+        if let Some(overlay) = self.transcript_overlay.as_mut() {
+            if up {
+                overlay.scroll_up(WHEEL_LINES);
+            } else {
+                overlay.scroll_down(WHEEL_LINES);
+            }
+            return;
+        }
         if up {
             self.scroll.up(WHEEL_LINES);
         } else {
@@ -517,6 +543,11 @@ impl App {
     /// Open the keymap overlay.
     pub fn open_help(&mut self) {
         self.modal = Some(Modal::Help(HelpOverlay::new()));
+    }
+
+    /// Open the whole conversation, starting at its newest line.
+    pub fn open_transcript(&mut self) {
+        self.transcript_overlay = Some(TranscriptOverlay::new());
     }
 
     /// Open the model picker over the configured models.

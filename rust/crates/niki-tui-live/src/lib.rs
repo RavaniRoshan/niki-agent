@@ -20,6 +20,7 @@ mod run;
 mod scroll;
 mod status;
 mod transcript;
+mod transcript_overlay;
 mod ui;
 mod worker;
 
@@ -32,5 +33,6 @@ pub use run::run;
 pub use scroll::Scroll;
 pub use status::{Status, TurnState};
 pub use transcript::{Row, RowKind, Transcript};
+pub use transcript_overlay::TranscriptOverlay;
 pub use ui::{PLACEHOLDER, draw};
 pub use worker::{SessionParts, WorkerEvent, WorkerHandle};
