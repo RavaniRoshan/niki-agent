@@ -102,7 +102,7 @@ time, and the decision of what the agent may do on its own.
 
 ### From a release
 
-Linux, WSL, and Windows:
+Linux, macOS, WSL, and Windows:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
@@ -112,17 +112,20 @@ curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/
 irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 ```
 
-The installer downloads the platform archive, verifies it against the release's
-`SHA256SUMS`, and installs one executable under `~/.local/niki`
-(`%LOCALAPPDATA%\niki` on Windows). It never edits your shell profile unless you
-ask with `NIKI_SHELL=1`. To uninstall, remove `~/.local/niki` (the application)
-and `~/.niki` (your configuration and sessions).
-
-macOS has no prebuilt asset yet; build it from source (below).
+Every release publishes four archives: `niki-<version>-linux-x86_64.tar.gz`,
+`niki-<version>-macos-aarch64.tar.gz` (Apple silicon),
+`niki-<version>-macos-x86_64.tar.gz` (Intel), and
+`niki-<version>-windows-x86_64.zip`. The installer picks the one for your
+`uname -s` and `uname -m`, verifies it against the release's `SHA256SUMS`, and
+installs one executable under `~/.local/niki` (`%LOCALAPPDATA%\niki` on
+Windows). It never edits your shell profile unless you ask with `NIKI_SHELL=1`.
+To uninstall, remove `~/.local/niki` (the application) and `~/.niki` (your
+configuration and sessions).
 
 ### From source
 
-Requires a Rust toolchain (1.85+). No Python is needed.
+For a host with no published archive, and for working on Niki itself. Requires a
+Rust toolchain (1.85+). No Python is needed.
 
 ```bash
 git clone https://github.com/RavaniRoshan/niki-agent.git

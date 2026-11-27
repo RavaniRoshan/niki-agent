@@ -6,11 +6,11 @@
 shipped product is still a single self-contained executable: there is no Python
 interpreter to install, no virtual environment to create, and no packages to
 resolve on first run. Linux and WSL share one archive, Windows has its own, and
-macOS builds from source in two commands.
+macOS has one for Apple silicon and one for Intel.
 
 ## Install
 
-**Linux / WSL**
+**Linux, macOS, and WSL**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
@@ -24,16 +24,8 @@ irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install
 
 Both verify the archive against the release's `SHA256SUMS`, install one
 executable under `~/.local/niki` (`%LOCALAPPDATA%\niki` on Windows), and leave
-your shell profile alone unless you pass `NIKI_SHELL=1`.
-
-**macOS** has no prebuilt asset yet:
-
-```bash
-git clone https://github.com/RavaniRoshan/niki-agent
-cd niki-agent/rust
-cargo build --release -p niki --bin niki
-install -m 0755 target/release/niki ~/.local/niki/bin/niki
-```
+your shell profile alone unless you pass `NIKI_SHELL=1`. On macOS the installer
+picks `macos-aarch64` on Apple silicon and `macos-x86_64` on Intel.
 
 Then:
 
@@ -159,10 +151,12 @@ motion and an ASCII glyph set are one environment variable each.
 | File | Platform |
 | --- | --- |
 | `niki-<version>-linux-x86_64.tar.gz` | Linux x86-64 and WSL |
+| `niki-<version>-macos-aarch64.tar.gz` | macOS on Apple silicon |
+| `niki-<version>-macos-x86_64.tar.gz` | macOS on Intel |
 | `niki-<version>-windows-x86_64.zip` | Windows x86-64 |
 
-`SHA256SUMS` covers both. Each archive contains the binary, both installers,
-`NOTICE`, `LICENSE`, and `README.md`.
+`SHA256SUMS` covers every archive. Each archive contains the binary, both
+installers, `NOTICE`, `LICENSE`, and `README.md`.
 
 To verify by hand:
 

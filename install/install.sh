@@ -6,6 +6,10 @@
 # the release archive holds one executable, and the release's SHA256SUMS proves
 # it before anything is written to the prefix.
 #
+# The release publishes one archive per platform-architecture pair; the matching
+# one is chosen from `uname -s` and `uname -m`:
+#   linux-x86_64, macos-aarch64 (Apple silicon), macos-x86_64 (Intel).
+#
 #   curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
 #
 # Environment:
@@ -121,7 +125,10 @@ find_archive() {
   if [ -z "$asset" ]; then
     if [ "$platform" = "macos" ]; then
       cat >&2 <<EOF
-error: this release publishes no macOS binary for $arch.
+error: this release publishes no niki-$platform-$arch archive.
+macOS archives are named macos-aarch64 (Apple silicon) and macos-x86_64
+(Intel). Releases published before the macOS archives existed carry neither;
+otherwise this host's archive was not built for this release.
 Build it from source instead:
   git clone https://github.com/$REPO
   cd niki-agent/rust

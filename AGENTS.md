@@ -98,11 +98,11 @@ justify a suppression, the code is probably the problem.
 ## Releases
 
 Push a `v<version>` tag or dispatch **Niki Release**
-(`.github/workflows/niki-release.yml`). It builds `niki` for Linux x86_64 and
-Windows x86_64, packs one archive per platform plus `SHA256SUMS`, runs the
-installer and one headless turn from the installed binary on Linux, and
-publishes a GitHub Release. macOS has no prebuilt archive; the installer prints
-the two build-from-source commands. See `.github/RELEASING.md`.
+(`.github/workflows/niki-release.yml`). It builds `niki` for Linux x86_64, macOS
+arm64, macOS x86_64, and Windows x86_64, packs one archive per platform plus
+`SHA256SUMS`, runs the installer and one headless turn from the installed binary
+on Linux and macOS arm64, and publishes a GitHub Release. See
+`.github/RELEASING.md`.
 
 ## CI
 

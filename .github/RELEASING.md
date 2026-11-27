@@ -1,8 +1,9 @@
 # Releasing Niki Agent
 
 Niki Agent ships as a self-contained Rust binary in a platform archive. There is
-one product and two prebuilt artifacts: `linux-x86_64` and `windows-x86_64`.
-macOS builds from source; the installer says so on Darwin.
+one product and four prebuilt artifacts: `linux-x86_64`, `macos-aarch64`,
+`macos-x86_64`, and `windows-x86_64`. Every host with an archive installs with
+one command; any other host builds from source.
 
 ## Version source
 
@@ -37,23 +38,38 @@ not part of a release. It is the reference implementation and the fixture source
 ## What the workflow does
 
 `Niki Release` builds each platform on its own runner with `cargo build --release
---locked -p niki --bin niki`. It stages the binary with `install/install.sh`,
-`install/install.ps1`, `NOTICE`, `LICENSE`, and `README.md`, then:
+--locked -p niki --bin niki`: Linux on `ubuntu-latest`, macOS arm64 on
+`macos-26`, macOS x86_64 on `macos-26-intel`, and Windows on `windows-latest`.
+The macOS runner labels name an architecture, so each macOS job checks
+`uname -m` before building; a label that moved to another host fails the job
+instead of publishing a mislabelled archive. It stages the binary with
+`install/install.sh`, `install/install.ps1`, `NOTICE`, `LICENSE`, and
+`README.md`, then:
 
 - runs the packaged installer into a scratch prefix and prints `niki --version`;
-- on Linux, runs `.github/scripts/smoke_turn.py` against the installed binary:
-  one headless turn against a loopback mock provider, asserting that a
-  `write_file` tool call wrote the file and the tool result reached the model;
+- on Linux and macOS arm64, runs `.github/scripts/smoke_turn.py` against the
+  installed binary: one headless turn against a loopback mock provider,
+  asserting that a `write_file` tool call wrote the file and the tool result
+  reached the model. macOS arm64 gets the same gate because it is the archive
+  most macOS users download; the Intel macOS and Windows jobs exercise start-up
+  only, and smoke-testing the Intel archive would add a whole macOS runner to
+  every release for the same code at a different word size;
 - uploads the archive, and the `release` job attaches every archive plus a
   `SHA256SUMS` file to a GitHub Release named `Niki Agent v<version>`, using
-  `.github/RELEASE_NOTES_niki.md` as the body.
+  `.github/RELEASE_NOTES_niki.md` as the body. The release step names all four
+  archives, so a missing one fails the publish instead of shipping a release
+  without it.
 
 A version print alone cannot catch a binary that fails on its first turn, so the
 smoke turn is the gate, not `--version`.
 
+The macOS binaries are not notarized. The documented installer downloads with
+`curl`, which does not set the quarantine attribute, so the binary runs; a
+browser download can trip Gatekeeper, so the one-liner is the supported path.
+
 ## Installing a release
 
-Linux/WSL and Windows:
+Linux, macOS, WSL, and Windows:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
@@ -63,13 +79,16 @@ curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/
 irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 ```
 
-The installer downloads the platform archive, verifies it against `SHA256SUMS`,
-and installs one executable under `~/.local/niki` (`%LOCALAPPDATA%\niki` on
-Windows). It prints `niki --version` on success.
+The installer downloads the archive for the host (`linux-x86_64`,
+`macos-aarch64`, `macos-x86_64`, or `windows-x86_64`), verifies it against
+`SHA256SUMS`, and installs one executable under `~/.local/niki`
+(`%LOCALAPPDATA%\niki` on Windows). It prints `niki --version` on success.
 
 ## What a release must include
 
-- The platform archive: `niki`, both installers, `NOTICE`, `LICENSE`, `README.md`.
+- One archive per platform-architecture pair (`linux-x86_64`, `macos-aarch64`,
+  `macos-x86_64`, `windows-x86_64`), each holding `niki`, both installers,
+  `NOTICE`, `LICENSE`, and `README.md`.
 - `SHA256SUMS` covering every archive.
 - Release notes written for the person installing it, not a changelog of
   merged pull requests.
