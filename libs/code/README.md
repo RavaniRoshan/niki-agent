@@ -13,17 +13,8 @@ Niki is a terminal coding agent with an interactive UI, persistent memory,
 skills, subagents, and approval controls. It runs on any model that supports
 tool calling.
 
-**Installing the released product** — use the release installer in
-[`install/`](../../install): it verifies the release checksum and installs into an
-isolated environment. The script below builds from this checkout instead, which
-is what you want when you are changing the code:
-
-```bash
-curl -LsSf https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/libs/code/scripts/install.sh | bash
-niki
-```
-
-Or from a checkout:
+This package is not installed by any release. It is here to be read and run
+from a checkout:
 
 ```bash
 git clone https://github.com/RavaniRoshan/niki-agent.git
@@ -51,7 +42,9 @@ runtime are vendored under `niki_agent/` with their MIT notices intact (see
 `niki_agent/sdk/PROVENANCE.md` and `niki_agent/acp_sdk/PROVENANCE.md`), so
 installing `niki-agent` pulls no second agent distribution.
 
-`niki` is the only console script.
+The wheel declares no console script, so installing this package puts nothing
+named `niki` on your `PATH`. Run the reference client with `uv run niki` from
+this directory, and install the Rust product for real use.
 
 ## Security model
 
