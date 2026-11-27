@@ -4,7 +4,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph, Wrap};
 
-use crate::approval::ApprovalModal;
+use crate::approval::{ApprovalModal, ellipsize};
 use crate::help::HelpOverlay;
 use crate::model::ModelPicker;
 use crate::threads::ThreadPicker;
@@ -19,33 +19,44 @@ pub(crate) fn approval(
     palette: &Palette,
     glyphs: GlyphMode,
 ) {
-    let mut lines = vec![
-        Line::from(Span::styled(
-            format!("`{}`", modal.request().command),
-            palette.accent_style(),
-        )),
-        Line::from(Span::styled(
-            format!(
+    let width = usize::from(area.width.min(MAX_WIDTH).saturating_sub(2));
+    let mut lines: Vec<Line> = Vec::new();
+    for (index, detail) in modal.body(width).into_iter().enumerate() {
+        let style = if index == 0 {
+            palette.accent_style()
+        } else {
+            palette.muted_style()
+        };
+        lines.push(Line::from(Span::styled(detail, style)));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        ellipsize(
+            &format!(
                 "the policy in {} mode needs your answer before it runs",
                 modal.request().mode.label()
             ),
-            palette.muted_style(),
-        )),
-        Line::default(),
-    ];
+            width,
+        ),
+        palette.muted_style(),
+    )));
+    lines.push(Line::default());
     for (index, (_, label)) in modal.options().into_iter().enumerate() {
         let chosen = index == modal.selected();
-        let marker = if chosen { "> " } else { "  " };
         let style = if chosen {
             palette.accent_style()
         } else {
             palette.body_style()
         };
+        let marker = if chosen { "> " } else { "  " };
         lines.push(Line::from(Span::styled(format!("{marker}{label}"), style)));
     }
     lines.push(Line::default());
     lines.push(Line::from(Span::styled(
-        "y allow once | a always | n refuse | enter choose | escape refuse",
+        ellipsize(
+            "y/a allow once | s allow session | d/n/escape refuse",
+            width,
+        ),
         palette.muted_style(),
     )));
     let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;

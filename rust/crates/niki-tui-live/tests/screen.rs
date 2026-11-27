@@ -228,18 +228,37 @@ fn a_tiny_terminal_still_draws() {
 #[test]
 fn an_approval_prompt_covers_the_screen_and_names_the_command() {
     let mut app = app();
-    app.request_approval(niki_agent::ApprovalRequest {
-        command: "cargo publish --dry-run".to_owned(),
-        mode: Mode::Manual,
-    });
+    app.request_approval(niki_agent::ApprovalRequest::command(
+        "cargo publish --dry-run",
+        Mode::Manual,
+    ));
     let buffer = render(&mut app, 80, 20);
     let screen = text(&buffer);
     assert!(screen.contains("Approve a command"), "{screen}");
     assert!(screen.contains("cargo publish --dry-run"), "{screen}");
     assert!(screen.contains("> Allow this once"), "{screen}");
-    assert!(screen.contains("Always allow this command"), "{screen}");
+    assert!(screen.contains("Allow for this session"), "{screen}");
     assert!(screen.contains("Refuse it"), "{screen}");
     assert!(screen.contains("waiting for you"), "{screen}");
+}
+
+#[test]
+fn an_approval_write_body_names_the_absolute_path_and_boundary() {
+    let mut app = app();
+    app.request_approval(niki_agent::ApprovalRequest::write(
+        "write_file",
+        "/outside/secret.txt".into(),
+        false,
+        Mode::Manual,
+    ));
+    let buffer = render(&mut app, 80, 20);
+    let screen = text(&buffer);
+    assert!(screen.contains("/outside/secret.txt"), "{screen}");
+    assert!(
+        screen.contains("resolves outside the workspace"),
+        "{screen}"
+    );
+    assert!(screen.contains("Allow for this session"), "{screen}");
 }
 
 #[test]

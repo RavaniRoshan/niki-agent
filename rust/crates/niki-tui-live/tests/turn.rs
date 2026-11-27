@@ -638,11 +638,11 @@ fn an_approval_answer_lets_the_gated_command_run() {
 }
 
 #[test]
-fn always_answers_the_next_identical_command_without_asking() {
+fn a_session_answer_covers_the_next_command_of_the_same_program() {
     let workspace = tempfile::tempdir().expect("workspace");
     let turns = Arc::new(Mutex::new(VecDeque::from(vec![
-        tool_turn("call-1", "shell", r#"{"command":"echo once > twice.txt"}"#),
-        tool_turn("call-2", "shell", r#"{"command":"echo once > twice.txt"}"#),
+        tool_turn("call-1", "shell", r#"{"command":"echo once"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo twice"}"#),
         text_turn("done"),
     ])));
     let build_turns = Arc::clone(&turns);
@@ -667,12 +667,52 @@ fn always_answers_the_next_identical_command_without_asking() {
 
     send(&mut app, &mut worker, "twice");
 
-    // One key only: the second identical command must not ask again.
-    pump_answering(&mut app, &mut worker, &[KeyCode::Char('a')]);
+    // One key only: the second command of the same program must not ask again.
+    pump_answering(&mut app, &mut worker, &[KeyCode::Char('s')]);
+
+    assert_eq!(app.status.turn, TurnState::Idle);
+}
+
+#[test]
+fn a_session_answer_does_not_cover_a_new_redirect() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo once > twice.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo twice > twice.txt"}"#),
+        text_turn("done"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel)
+        .with_approver(parts.approver))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "twice");
+
+    // Two keys: a second redirect of the same program is a new question.
+    pump_answering(
+        &mut app,
+        &mut worker,
+        &[KeyCode::Char('s'), KeyCode::Char('s')],
+    );
 
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("twice.txt")).expect("file"),
-        "once\n"
+        "twice\n"
     );
     assert_eq!(app.status.turn, TurnState::Idle);
 }

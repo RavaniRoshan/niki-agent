@@ -1074,6 +1074,7 @@ dependencies = [
  "niki-agent",
  "niki-commands",
  "niki-config",
+ "niki-render",
  "niki-tui",
  "niki-tui-themes",
  "ratatui",
