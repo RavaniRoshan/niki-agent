@@ -764,6 +764,106 @@ fn an_unknown_resume_id_is_a_clear_failure() {
     assert!(stderr.contains("no saved session"), "{stderr}");
 }
 
+#[test]
+fn continue_skips_an_archived_session_while_an_explicit_id_still_resumes_it() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, seen) = serve(vec![answer_turn(), answer_turn()]);
+    let config = home.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let store =
+        niki_session::SessionStore::open(home.path().join("sessions.db")).expect("session store");
+    let older = store.create(workspace.path()).expect("older session");
+    store
+        .append(&older, "user", "older prompt")
+        .expect("older prompt");
+    let archived = store.create(workspace.path()).expect("archived session");
+    store
+        .append(&archived, "user", "archived prompt")
+        .expect("archived prompt");
+    store.set_archived(&archived, true).expect("archive");
+    drop(store);
+
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_niki"))
+            .args(["-n", "next", "--quiet"])
+            .args(args)
+            .arg("--config")
+            .arg(&config)
+            .arg("--root")
+            .arg(workspace.path())
+            .env("NIKI_TEST_KEY", "test-key")
+            .env("NIKI_HOME", home.path())
+            .output()
+            .expect("run niki")
+    };
+
+    let continued = run(&["--continue"]);
+    assert!(
+        continued.status.success(),
+        "exit {:?}\nstderr: {}",
+        continued.status.code(),
+        String::from_utf8_lossy(&continued.stderr)
+    );
+
+    let resumed = run(&["--resume", archived.as_str()]);
+    assert!(
+        resumed.status.success(),
+        "exit {:?}\nstderr: {}",
+        resumed.status.code(),
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 2);
+    assert!(
+        requests[0].contains("older prompt"),
+        "the live session supplies the history: {}",
+        requests[0]
+    );
+    assert!(
+        !requests[0].contains("archived prompt"),
+        "the archived session is skipped: {}",
+        requests[0]
+    );
+    assert!(
+        requests[1].contains("archived prompt"),
+        "an explicit id still loads it: {}",
+        requests[1]
+    );
+}
+
+#[test]
+fn continue_with_only_an_archived_session_fails_as_if_none_existed() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, "http://127.0.0.1:1");
+
+    let store =
+        niki_session::SessionStore::open(config_dir.path().join("sessions.db")).expect("store");
+    let archived = store.create(workspace.path()).expect("session");
+    store.append(&archived, "user", "old news").expect("append");
+    store.set_archived(&archived, true).expect("archive");
+    drop(store);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "hi", "--continue", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", config_dir.path())
+        .output()
+        .expect("run niki");
+
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("no saved session"), "{stderr}");
+}
+
 #[cfg(unix)]
 fn notify_program(dir: &Path, body: &str) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt;

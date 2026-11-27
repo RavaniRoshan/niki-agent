@@ -10,7 +10,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OptionalExtension, ToSql, params};
 
 pub mod export;
 
@@ -76,7 +76,8 @@ pub struct Summary {
     pub first_prompt: Option<String>,
     pub title: Option<String>,
     pub cwd: String,
-    /// Whether the session was archived, which hides it from the default list.
+    /// Whether the session was archived, which hides it from the lists a
+    /// person picks a session to resume from.
     pub archived: bool,
     pub created_at: i64,
     /// The latest stored write to the session, in Unix seconds.
@@ -109,6 +110,19 @@ const SUMMARY_COLUMNS: &str = "sessions.id, sessions.title, sessions.cwd, sessio
       WHERE messages.session_id = sessions.id AND messages.role = 'user'
       ORDER BY messages.id ASC LIMIT 1),
      (sessions.archived_at IS NOT NULL)";
+
+fn read_summary(row: &rusqlite::Row<'_>) -> rusqlite::Result<Summary> {
+    Ok(Summary {
+        id: SessionId(row.get(0)?),
+        title: row.get(1)?,
+        cwd: row.get(2)?,
+        created_at: row.get(3)?,
+        updated_at: row.get(4)?,
+        messages: row.get(5)?,
+        first_prompt: row.get(6)?,
+        archived: row.get(7)?,
+    })
+}
 
 impl SessionStore {
     /// Open or create the database at `path` and apply the schema.
@@ -192,7 +206,7 @@ impl SessionStore {
     /// Mark a session archived, or restore it, without touching its transcript.
     ///
     /// An archived session keeps its messages and stays readable; the flag is
-    /// only what the default list filters on. Archiving an archived session
+    /// only what the resume lists filter on. Archiving an archived session
     /// refreshes the stamp, and restoring a live one is a no-op.
     ///
     /// # Errors
@@ -249,41 +263,35 @@ impl SessionStore {
         Ok(id)
     }
 
-    /// Every session, newest first.
+    /// Every session, newest first, archived ones included.
     ///
     /// # Errors
     ///
     /// Returns [`SessionError::Sqlite`] when the query fails.
     pub fn list(&self) -> Result<Vec<Summary>, SessionError> {
-        let mut statement = self.connection.prepare(&format!(
-            "SELECT {SUMMARY_COLUMNS}
-             FROM sessions
-             ORDER BY sessions.created_at DESC, sessions.rowid DESC",
-        ))?;
-        let rows = statement.query_map([], |row| {
-            Ok(Summary {
-                id: SessionId(row.get(0)?),
-                title: row.get(1)?,
-                cwd: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
-                messages: row.get(5)?,
-                first_prompt: row.get(6)?,
-                archived: row.get(7)?,
-            })
-        })?;
-        let mut summaries = Vec::new();
-        for summary in rows {
-            summaries.push(summary?);
-        }
-        Ok(summaries)
+        self.summaries("", &[])
     }
 
-    /// Every session rooted at `cwd`, newest first.
+    /// Every live session, newest first; archived sessions are left out.
+    ///
+    /// This is the listing a person picks a session to resume from. Archiving
+    /// hides a session from it without deleting anything, and [`find`] still
+    /// reaches that session by id.
+    ///
+    /// [`find`]: SessionStore::find
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::Sqlite`] when the query fails.
+    pub fn list_active(&self) -> Result<Vec<Summary>, SessionError> {
+        self.summaries("WHERE sessions.archived_at IS NULL", &[])
+    }
+
+    /// Every session rooted at `cwd`, newest first, archived ones included.
     ///
     /// The workspace key is the stored `cwd` text, the same equality
-    /// [`SessionStore::latest_for`] resumes by, so a caller must not hash or
-    /// otherwise normalise the path itself.
+    /// [`SessionStore::latest_active`] resumes by, so a caller must not hash
+    /// or otherwise normalise the path itself.
     ///
     /// # Errors
     ///
@@ -291,32 +299,27 @@ impl SessionStore {
     /// [`SessionError::Sqlite`] when the query fails.
     pub fn list_for(&self, cwd: impl AsRef<Path>) -> Result<Vec<Summary>, SessionError> {
         let cwd = cwd.as_ref().to_str().ok_or(SessionError::NonUtf8Path)?;
-        let mut statement = self.connection.prepare(&format!(
-            "SELECT {SUMMARY_COLUMNS}
-             FROM sessions
-             WHERE sessions.cwd = ?1
-             ORDER BY sessions.created_at DESC, sessions.rowid DESC",
-        ))?;
-        let rows = statement.query_map(params![cwd], |row| {
-            Ok(Summary {
-                id: SessionId(row.get(0)?),
-                title: row.get(1)?,
-                cwd: row.get(2)?,
-                created_at: row.get(3)?,
-                updated_at: row.get(4)?,
-                messages: row.get(5)?,
-                first_prompt: row.get(6)?,
-                archived: row.get(7)?,
-            })
-        })?;
-        let mut summaries = Vec::new();
-        for summary in rows {
-            summaries.push(summary?);
-        }
-        Ok(summaries)
+        self.summaries("WHERE sessions.cwd = ?1", &[&cwd])
+    }
+
+    /// Every live session rooted at `cwd`, newest first.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::NonUtf8Path`] when `cwd` is not UTF-8, and
+    /// [`SessionError::Sqlite`] when the query fails.
+    pub fn list_for_active(&self, cwd: impl AsRef<Path>) -> Result<Vec<Summary>, SessionError> {
+        let cwd = cwd.as_ref().to_str().ok_or(SessionError::NonUtf8Path)?;
+        self.summaries(
+            "WHERE sessions.cwd = ?1 AND sessions.archived_at IS NULL",
+            &[&cwd],
+        )
     }
 
     /// One session by id, when it exists.
+    ///
+    /// An archived session is still found by its id, so an explicit resume or
+    /// fork keeps working.
     ///
     /// # Errors
     ///
@@ -327,55 +330,57 @@ impl SessionStore {
             .query_row(
                 &format!("SELECT {SUMMARY_COLUMNS} FROM sessions WHERE sessions.id = ?1"),
                 params![id],
-                |row| {
-                    Ok(Summary {
-                        id: SessionId(row.get(0)?),
-                        title: row.get(1)?,
-                        cwd: row.get(2)?,
-                        created_at: row.get(3)?,
-                        updated_at: row.get(4)?,
-                        messages: row.get(5)?,
-                        first_prompt: row.get(6)?,
-                        archived: row.get(7)?,
-                    })
-                },
+                read_summary,
             )
             .optional()?;
         Ok(summary)
     }
 
-    /// The newest session rooted at `cwd`, when there is one.
+    /// The newest live session rooted at `cwd`, when there is one.
+    ///
+    /// An archived session is never the workspace's current session, so
+    /// `--continue` and `--resume last` skip it and fall back to the newest
+    /// one before it.
     ///
     /// # Errors
     ///
-    /// Returns [`SessionError::Sqlite`] when the query fails.
-    pub fn latest_for(&self, cwd: impl AsRef<Path>) -> Result<Option<Summary>, SessionError> {
+    /// Returns [`SessionError::NonUtf8Path`] when `cwd` is not UTF-8, and
+    /// [`SessionError::Sqlite`] when the query fails.
+    pub fn latest_active(&self, cwd: impl AsRef<Path>) -> Result<Option<Summary>, SessionError> {
         let cwd = cwd.as_ref().to_str().ok_or(SessionError::NonUtf8Path)?;
         let summary = self
             .connection
             .query_row(
                 &format!(
                     "SELECT {SUMMARY_COLUMNS}
-                     FROM sessions WHERE sessions.cwd = ?1
+                     FROM sessions WHERE sessions.cwd = ?1 AND sessions.archived_at IS NULL
                      ORDER BY sessions.created_at DESC, sessions.rowid DESC
                      LIMIT 1"
                 ),
                 params![cwd],
-                |row| {
-                    Ok(Summary {
-                        id: SessionId(row.get(0)?),
-                        title: row.get(1)?,
-                        cwd: row.get(2)?,
-                        created_at: row.get(3)?,
-                        updated_at: row.get(4)?,
-                        messages: row.get(5)?,
-                        first_prompt: row.get(6)?,
-                        archived: row.get(7)?,
-                    })
-                },
+                read_summary,
             )
             .optional()?;
         Ok(summary)
+    }
+
+    fn summaries(
+        &self,
+        filter: &str,
+        arguments: &[&dyn ToSql],
+    ) -> Result<Vec<Summary>, SessionError> {
+        let mut statement = self.connection.prepare(&format!(
+            "SELECT {SUMMARY_COLUMNS}
+             FROM sessions
+             {filter}
+             ORDER BY sessions.created_at DESC, sessions.rowid DESC",
+        ))?;
+        let rows = statement.query_map(arguments, read_summary)?;
+        let mut summaries = Vec::new();
+        for summary in rows {
+            summaries.push(summary?);
+        }
+        Ok(summaries)
     }
 
     /// Append one message and return its id.
