@@ -21,7 +21,8 @@
 
 use std::borrow::Cow;
 
-use super::{display_width, unicode_width, wrap};
+use super::diff::DiffKind;
+use super::{Rgb, display_width, unicode_width, wrap};
 
 /// One of the six ATX heading depths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -73,6 +74,9 @@ impl HeadingLevel {
 ///
 /// A theme decides which attributes a heading or an inline marker sets; the
 /// attributes are semantic, not colours, so a plain theme is still meaningful.
+/// The one exception is [`color`](Self::color): a surface that knows its
+/// palette, such as the diff renderer, may pin a colour to a run, and a plain
+/// theme simply leaves it unset.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct SpanStyle {
     /// Strong emphasis.
@@ -89,6 +93,8 @@ pub struct SpanStyle {
     pub quote: bool,
     /// The heading level this text belongs to, when it belongs to one.
     pub heading: Option<HeadingLevel>,
+    /// An explicit colour for this run, when the surface knows one.
+    pub color: Option<Rgb>,
 }
 
 impl SpanStyle {
@@ -101,7 +107,15 @@ impl SpanStyle {
         link: false,
         quote: false,
         heading: None,
+        color: None,
     };
+
+    /// Pin a palette colour to this run.
+    #[must_use]
+    pub const fn with_color(mut self, color: Rgb) -> Self {
+        self.color = Some(color);
+        self
+    }
 
     const fn with_bold(mut self) -> Self {
         self.bold = true;
@@ -149,6 +163,10 @@ impl SpanStyle {
             link: self.link || accent.link,
             quote: self.quote || accent.quote,
             heading: self.heading,
+            color: match self.color {
+                Some(color) => Some(color),
+                None => accent.color,
+            },
         }
     }
 }
@@ -249,6 +267,10 @@ pub enum LineKind {
     Quote,
     /// A line inside a fenced code block, verbatim.
     Code,
+    /// A line inside a unified diff.
+    Diff(DiffKind),
+    /// A `@@` hunk header in a unified diff.
+    DiffHunk,
     /// A thematic break.
     ThematicBreak,
 }

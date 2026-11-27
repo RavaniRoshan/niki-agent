@@ -8,11 +8,35 @@
 use niki_proto::{EventName, Frame, Transcript, message_content, message_role};
 use serde_json::Value;
 
+pub mod diff;
 mod markdown;
 
+pub use diff::{DiffKind, DiffLine, DiffTheme, FileDiff, Hunk, parse_unified, render_diff};
 pub use markdown::{
     HeadingLevel, LineKind, MarkdownTheme, RenderedLine, Span, SpanStyle, render_markdown,
 };
+
+/// An sRGB colour attached to a rendered run of text.
+///
+/// Kept as plain data: this crate never draws, so it carries the colour the
+/// theme chose and leaves the conversion to the backend's own colour type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Rgb {
+    /// Red channel.
+    pub r: u8,
+    /// Green channel.
+    pub g: u8,
+    /// Blue channel.
+    pub b: u8,
+}
+
+impl Rgb {
+    /// Build a colour from its channels.
+    #[must_use]
+    pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+}
 
 /// Glyphs with an ASCII fallback, mirroring the Python `Glyphs` registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
