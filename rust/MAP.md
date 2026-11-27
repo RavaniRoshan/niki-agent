@@ -11,7 +11,7 @@ Read this file, then `DECISIONS.md`, `GLOSSARY.md`, `RULES.md`, and
 | | |
 | --- | --- |
 | Source | `libs/code` — 377 files, ~250k lines, 41 analyzable units |
-| Rust today | `rust/crates/` — 39,738 lines across 21 crates |
+| Rust today | `rust/crates/` — 45,063 lines across 21 crates |
 | Fallback rate | 0% for a headless or interactive turn; the `niki` engine client is unchanged and is not packaged |
 | Cutover | done — v2.0.0 shipped the Rust binary for four platforms; Python is reference-only |
 

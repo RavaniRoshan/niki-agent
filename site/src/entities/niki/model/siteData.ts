@@ -162,7 +162,7 @@ export const PARALLAX_CHAPTERS: ParallaxChapter[] = [
     indexLabel: '02',
     title: 'Sessions that survive',
     summary:
-      'Every turn is written to a local SQLite store under ~/.niki. /threads browses saved sessions and previews their first prompt, /resume brings one back, /compact folds older turns into a summary to keep the conversation inside the context window, and /clear starts a fresh one.',
+      'Every turn is written to a local SQLite store under ~/.niki. /threads browses saved sessions and previews their first prompt, /resume brings one back, /compact folds older turns into a summary to keep the conversation inside the context window, and /clear starts a fresh one. From the shell, `niki sessions fork` copies a session and `archive` hides one from every picker while an explicit id still opens it.',
     metricValue: 'SQLite',
     metricLabel: 'local session store',
     detailId: 'sessions',
@@ -182,7 +182,7 @@ export const PARALLAX_CHAPTERS: ParallaxChapter[] = [
     indexLabel: '04',
     title: 'A gate in front of every tool',
     summary:
-      'Manual, Auto, and YOLO modes cycle on Shift+Tab. Auto only skips the prompt for commands on your shell allow-list — there is no classifier — and a workspace path boundary refuses anything outside the root.',
+      'Manual, Auto, and YOLO modes cycle on Shift+Tab. Auto only skips the prompt for commands on your shell allow-list — there is no classifier — and a workspace path boundary refuses anything outside the root. A repository\'s own hooks, skills and instruction files do not load until `niki trust` records that workspace.',
     metricValue: '3 modes',
     metricLabel: 'manual · auto · yolo',
     detailId: 'agent-loop',

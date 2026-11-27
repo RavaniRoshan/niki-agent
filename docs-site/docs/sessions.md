@@ -213,10 +213,11 @@ no saved sessions
 | `title` | string or null | The title `/rename` set, when there is one. |
 | `messages` | number | Stored rows of every role. |
 | `workspace` | string | The `cwd` the session was created in. |
+| `archived` | boolean | Whether `niki sessions archive` hid the session. |
 
 ```bash
 $ niki sessions list --json
-[{"id":"000000000000000018ebde128ab2bf5e-00","messages":0,"title":"deploy notes","updated_at":1795773047,"workspace":"/tmp/tmp.CftaOuqUi2"}]
+[{"archived":false,"id":"000000000000000018ebde128ab2bf5e-00","messages":0,"title":"deploy notes","updated_at":1795773047,"workspace":"/tmp/tmp.CftaOuqUi2"}]
 ```
 
 An empty store prints `[]`. `--root <PATH>` filters the list to sessions whose
@@ -227,6 +228,36 @@ written, so pass the path the session recorded.
 niki sessions list --root /home/you/src/app
 niki sessions list --json --root /home/you/src/app
 ```
+
+## `niki sessions fork` and `archive`
+
+Two shell commands move a session's lifecycle without opening the app.
+`fork` copies every stored message under a new id, so you can take one session
+in a second direction without disturbing the first:
+
+```bash
+$ niki sessions list                 # find the id
+000000000000000018ebde128ab2bf5e-00  1795773047  deploy notes  4 messages
+$ niki sessions fork 000000000000000018ebde128ab2bf5e-00
+000000000000000018ebde128ab2bf5e-01
+```
+
+`--json` prints one object instead, `{"from": "<old id>", "id": "<new id>"}`.
+The copy keeps the title, the workspace and the messages; the two sessions then
+evolve independently.
+
+`archive` hides a session from every implicit picker — `--continue`, the
+`/resume` list, the `/threads` browser and `niki sessions list` — while an
+explicit id keeps working for `--resume <id>`, `fork` and a restore:
+
+```bash
+niki sessions archive 000000000000000018ebde128ab2bf5e-00
+niki sessions archive --undo 000000000000000018ebde128ab2bf5e-00
+niki sessions list --all             # archived rows end with "  [archived]"
+```
+
+`archive` prints nothing on success and exits 0; an unknown id prints
+`niki: no saved session "<id>"; run niki sessions list` and exits 1.
 
 ## What `/compact` does
 
