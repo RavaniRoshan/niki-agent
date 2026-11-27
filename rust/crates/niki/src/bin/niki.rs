@@ -2,8 +2,12 @@
 //!
 //! With `-n` it runs one prompt headlessly, reading the same `config.toml` the
 //! Python product reads. With `--acp` it serves an editor over stdin/stdout on
-//! that same agent, provider and workspace. Without either it opens the
-//! full-screen app. Named `niki` until cutover (RULES.md 2).
+//! that same agent, provider and workspace. `doctor` prints a read-only
+//! diagnosis of the install. Without any of them it opens the full-screen app.
+//! Named `niki` until cutover (RULES.md 2).
+
+#[path = "../doctor.rs"]
+mod doctor;
 
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -13,7 +17,7 @@ use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
 use niki_config::instructions::Instructions;
 use niki_config::{Config, Protocol, config_home};
-use niki_hooks::{HookRunner, Hooks, Loaded, Notify};
+use niki_hooks::{Event, HookRunner, Hooks, Loaded, Notify};
 use niki_mcp::ToolBridge;
 use niki_provider::{
     AnthropicProvider, Message, OpenAiProvider, Provider, RetryPolicy, StopReason,
@@ -33,7 +37,11 @@ niki — Niki agent (Rust)
 USAGE:
     niki -n <PROMPT> [options]   run one prompt and exit
     niki --acp [options]         serve an editor over stdin/stdout
-    niki [options]              open the full-screen app
+    niki doctor [options]         diagnose the install
+    niki [options]                open the full-screen app
+
+COMMANDS:
+    doctor                Read-only self-diagnosis; exit 0 when the install is usable
 
 OPTIONS:
     -n, --prompt <TEXT>   Prompt to run headlessly; without it the app opens
@@ -65,7 +73,7 @@ ENVIRONMENT:
 EXIT STATUS:
     0   the turn finished (a refused tool is a result, not a failure)
     1   configuration, provider or workspace failure
-    2   usage error: --acp cannot be combined with -n
+    2   usage error: --acp, -n and doctor cannot be combined
     124 the step budget ran out before the model stopped calling tools
     130 cancelled with Ctrl-C
 ";
@@ -94,6 +102,14 @@ fn run(args: Vec<String>) -> Result<i32> {
         Parsed::Run(options) => *options,
     };
 
+    if options.doctor {
+        if options.acp || options.prompt.is_some() {
+            eprintln!("niki: doctor only diagnoses the install; drop --acp and -n to run it");
+            return Ok(2);
+        }
+        return run_doctor(options);
+    }
+
     if options.acp && options.prompt.is_some() {
         eprintln!(
             "niki: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout \
@@ -119,6 +135,112 @@ fn run(args: Vec<String>) -> Result<i32> {
         acp(options, config, config_path)
     } else {
         screen(options, config, config_path)
+    }
+}
+
+/// `niki doctor`: print the install's state without opening a terminal or a
+/// network connection.
+///
+/// It never writes: the session store is opened only when its database already
+/// exists, and MCP servers and hooks are not started.
+fn run_doctor(options: Options) -> Result<i32> {
+    let config_path = options
+        .config
+        .clone()
+        .unwrap_or_else(|| config_home().join("config.toml"));
+    let config_state = match std::fs::metadata(&config_path) {
+        Ok(_) => match Config::load(&config_path) {
+            Ok(config) => doctor::ConfigState::Loaded(config),
+            Err(error) => doctor::ConfigState::Broken(format!("{error}")),
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => doctor::ConfigState::Missing,
+        Err(error) => {
+            doctor::ConfigState::Broken(format!("cannot read {}: {error}", config_path.display()))
+        }
+    };
+    let config = match &config_state {
+        doctor::ConfigState::Loaded(config) => config.clone(),
+        doctor::ConfigState::Missing | doctor::ConfigState::Broken(_) => Config::default(),
+    };
+
+    let model = doctor_model(&options, &config, &config_path);
+    let (provider_name, provider_block) = match &model {
+        Ok(spec) => match split_spec(spec) {
+            Ok((name, _)) => (Some(name.to_owned()), config.provider(name)),
+            Err(_) => (None, None),
+        },
+        Err(_) => (None, None),
+    };
+    let credential = match (&provider_name, &provider_block) {
+        (Some(name), block) => {
+            doctor::credential(block.as_ref(), name, |var| std::env::var(var).ok())
+        }
+        (None, _) => doctor::Credential::Unknown,
+    };
+
+    let home = config_home();
+    let sessions = session_count(&home);
+    let root = workspace_root(&options).unwrap_or_else(|_| PathBuf::from("."));
+    let instructions = instructions_for(&root);
+    let skills = skill_catalog(&root);
+    let loaded = Hooks::load(&root, &home);
+    let hook_events = Event::ALL
+        .iter()
+        .filter(|event| loaded.hooks.has_handlers(**event))
+        .count();
+
+    let inputs = doctor::Inputs {
+        config_path,
+        config: config_state,
+        model,
+        credential,
+        session_dir: home,
+        sessions,
+        instruction_files: instructions.len(),
+        instruction_bytes: instructions.bytes(),
+        skill_count: skills.list().len(),
+        skill_warnings: skills.warnings().len(),
+        mcp_servers: config.mcp_servers.len(),
+        hooks: doctor::HookState {
+            events: hook_events,
+            warnings: loaded.warnings.len(),
+        },
+    };
+
+    let report = doctor::report(&inputs);
+    print!("{}", report.render());
+    Ok(report.exit_code())
+}
+
+/// The model a `doctor` run checks, resolved the way a turn resolves it, with
+/// the provider's existence checked as well.
+fn doctor_model(options: &Options, config: &Config, config_path: &Path) -> Result<String, String> {
+    let spec = model_spec(options, config, config_path).map_err(|error| format!("{error:#}"))?;
+    let (provider_name, model) = split_spec(&spec).map_err(|error| format!("{error:#}"))?;
+    if model.trim().is_empty() {
+        return Err(format!(
+            "model spec {spec:?} names no model; use provider:model"
+        ));
+    }
+    if config.provider(provider_name).is_none() {
+        return Err(format!(
+            "unknown provider {provider_name:?}; this build resolves: {}",
+            config.provider_names().join(", ")
+        ));
+    }
+    Ok(spec)
+}
+
+/// Count saved sessions without creating a store that is not there yet.
+fn session_count(home: &Path) -> Result<usize, String> {
+    let database = home.join("sessions.db");
+    match std::fs::metadata(&database) {
+        Ok(_) => SessionStore::open(&database)
+            .and_then(|store| store.list())
+            .map(|sessions| sessions.len())
+            .map_err(|error| format!("cannot read {}: {error}", database.display())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(0),
+        Err(error) => Err(format!("cannot read {}: {error}", database.display())),
     }
 }
 
@@ -831,6 +953,7 @@ fn install_hooks(loaded: Loaded, app: &mut App) -> Arc<dyn HookRunner> {
 struct Options {
     prompt: Option<String>,
     acp: bool,
+    doctor: bool,
     model: Option<String>,
     config: Option<PathBuf>,
     root: Option<PathBuf>,
@@ -898,6 +1021,7 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
             "--quiet" | "-q" => options.quiet = true,
             "--help" | "-h" => return Ok(Parsed::Help),
             "--version" | "-V" => return Ok(Parsed::Version),
+            "doctor" if !options.doctor => options.doctor = true,
             other if other.starts_with('-') && other.len() > 1 => {
                 bail!("unknown option {other}; run niki --help")
             }
