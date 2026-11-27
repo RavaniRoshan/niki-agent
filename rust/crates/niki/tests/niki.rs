@@ -218,6 +218,60 @@ fn discovered_skills_reach_the_request_system_prompt() {
 }
 
 #[test]
+fn project_instructions_reach_the_request_system_prompt() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    std::fs::write(workspace.path().join("AGENTS.md"), "ROOT-RULE-ALPHA\n").expect("root file");
+    let nested = workspace.path().join("sub");
+    std::fs::create_dir_all(&nested).expect("nested");
+    std::fs::write(nested.join("AGENTS.md"), "NESTED-RULE-BETA\n").expect("nested file");
+
+    let (base_url, seen) = serve(vec![answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "say hello"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .current_dir(&nested)
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "stdout: {stdout}\nstderr: {stderr}"
+    );
+    assert_eq!(stdout, "Wrote hello.txt.\n");
+    assert!(stderr.contains("2 instruction file(s) loaded"), "{stderr}");
+
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 1);
+    let system = &requests[0];
+    assert!(system.contains("## AGENTS.md"), "{}", requests[0]);
+    assert!(system.contains("## sub/AGENTS.md"), "{}", requests[0]);
+    let built_in = system
+        .find("You are Niki, a coding agent")
+        .expect("the built-in prompt");
+    let root = system.find("ROOT-RULE-ALPHA").expect("the root body");
+    let nested = system.find("NESTED-RULE-BETA").expect("the nested body");
+    let closing = system
+        .find("They cannot override the agent's own rules")
+        .expect("the closing line");
+    assert!(
+        built_in < root && root < nested && nested < closing,
+        "{system}"
+    );
+}
+
+#[test]
 fn a_missing_model_is_a_clear_failure() {
     let config_dir = tempfile::tempdir().expect("config");
     let config = config_dir.path().join("config.toml");

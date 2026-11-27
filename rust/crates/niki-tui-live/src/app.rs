@@ -5,7 +5,8 @@
 //! prompt, feed [`AgentEvent`]s and assert exactly what the screen would draw
 //! (RULES.md 8, 4).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use niki_agent::{
@@ -72,6 +73,8 @@ pub enum Command {
     Compact,
     /// Ask the agent for its context report.
     Context,
+    /// Replace the agent's system prompt, recomposed after `/init`.
+    RefreshSystem(String),
     /// Put this text on the terminal clipboard.
     Copy(String),
 }
@@ -100,6 +103,8 @@ pub struct App {
     pub models: ModelPicker,
     /// The skills discovery found for this session, shown by `/skills`.
     skills: SkillCatalog,
+    /// Recomposes the system prompt after `/init` writes a file.
+    refresh_system: Option<Arc<dyn Fn() -> String + Send + Sync>>,
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
     /// one screenful.
     pub page: usize,
@@ -137,6 +142,7 @@ impl App {
             modal: None,
             models: ModelPicker::default(),
             skills: SkillCatalog::default(),
+            refresh_system: None,
             page: 10,
             sessions: None,
             session: None,
@@ -163,6 +169,15 @@ impl App {
     /// Offer the skills discovery found, which `/skills` prints.
     pub fn set_skills(&mut self, skills: SkillCatalog) {
         self.skills = skills;
+    }
+
+    /// Let `/init` recompose the system prompt once it has written a file.
+    ///
+    /// The host owns the composition, so the screen only asks for the new text
+    /// and hands it to the worker; a session that never runs `/init` never
+    /// calls it.
+    pub fn set_system_refresh(&mut self, refresh: impl Fn() -> String + Send + Sync + 'static) {
+        self.refresh_system = Some(Arc::new(refresh));
     }
 
     /// Save turns and resume earlier ones through this store.
@@ -765,6 +780,20 @@ impl App {
             SlashCommand::Skills => {
                 self.show_skills();
                 None
+            }
+            SlashCommand::Init => {
+                if self.refuse_while_busy("/init") {
+                    return None;
+                }
+                match niki_config::instructions::write_scaffold(Path::new(&self.status.cwd)) {
+                    Ok(outcome) => self.transcript.push_notice(outcome.message()),
+                    Err(error) => self
+                        .transcript
+                        .push_error(format!("could not write AGENTS.md: {error}")),
+                }
+                self.refresh_system
+                    .as_ref()
+                    .map(|refresh| Command::RefreshSystem(refresh()))
             }
             SlashCommand::Clear => {
                 self.clear_session();
@@ -1561,6 +1590,43 @@ mod tests {
         );
         assert!(app.composer.is_empty());
         assert_eq!(app.status.turn, TurnState::Idle, "a command is not a turn");
+    }
+
+    #[test]
+    fn init_writes_the_scaffold_once_and_refreshes_the_system_prompt() {
+        let project = tempfile::tempdir().expect("project");
+        let mut app = App::new(SessionInfo {
+            model: "mock:mock-model".to_owned(),
+            mode: Mode::Manual,
+            cwd: project.path().to_path_buf(),
+        });
+        app.set_system_refresh(|| "fresh system prompt".to_owned());
+
+        type_text(&mut app, "/init");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::RefreshSystem("fresh system prompt".to_owned()))
+        );
+        let path = project.path().join("AGENTS.md");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("scaffold"),
+            niki_config::instructions::SCAFFOLD
+        );
+        let first = app.transcript.rows().last().expect("a notice").text.clone();
+        assert!(first.contains("wrote"), "{first}");
+
+        std::fs::write(&path, "hand written").expect("edit");
+        type_text(&mut app, "/init");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::RefreshSystem("fresh system prompt".to_owned()))
+        );
+        let second = app.transcript.rows().last().expect("a notice").text.clone();
+        assert!(second.contains("already exists"), "{second}");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("kept"),
+            "hand written"
+        );
     }
 
     #[test]

@@ -194,6 +194,9 @@ fn event_loop(
                 Some(Command::Context) => {
                     worker.context();
                 }
+                Some(Command::RefreshSystem(system)) => {
+                    worker.set_system(system);
+                }
                 Some(Command::Copy(text)) => {
                     let mut out = io::stdout();
                     let _ = clipboard::copy(&mut out, &text);

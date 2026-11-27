@@ -5,8 +5,9 @@
 //! for user providers (also accepted under `[models.providers.<name>]`),
 //! `[models].default` for the default model, `[ui].theme` for the theme, and
 //! `[mcp_servers.<name>]` for MCP servers. Unknown keys are ignored, so a file
-//! written for a newer Python release still loads. This crate only reads; the
-//! Rust binary does not write the file.
+//! written for a newer Python release still loads. This crate only reads
+//! `config.toml`; the Rust binary does not write it. [`instructions`] is the
+//! one part that writes a file, and only when `/init` asks it to.
 
 #![forbid(unsafe_code)]
 
@@ -20,6 +21,7 @@ use std::{env, fs};
 use serde::Deserialize;
 
 mod builtin;
+pub mod instructions;
 
 /// The wire protocol a provider speaks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

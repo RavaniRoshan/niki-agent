@@ -154,6 +154,15 @@ impl Agent {
         self.mode = mode;
     }
 
+    /// Replace the system prompt without touching the conversation.
+    ///
+    /// The next request carries it; history, usage and the approved tools stay
+    /// as they were. `/init` uses this after writing `AGENTS.md`, so the model
+    /// reads the new file without the session restarting.
+    pub fn set_system(&mut self, system: impl Into<String>) {
+        self.config.system = system.into();
+    }
+
     /// The mode currently in force.
     #[must_use]
     pub fn mode(&self) -> Mode {
