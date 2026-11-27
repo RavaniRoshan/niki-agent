@@ -23,6 +23,7 @@ use tokio::sync::oneshot;
 
 use crate::app::{App, Command};
 use crate::clipboard;
+use crate::editor::{self, TempPrompt};
 use crate::history::History;
 use crate::ui;
 use crate::worker::{WorkerEvent, WorkerHandle};
@@ -48,7 +49,7 @@ const COMPACT_KEEP_TURNS: usize = 6;
 pub fn run(app: &mut App, worker: &mut WorkerHandle) -> io::Result<i32> {
     app.attach_history(History::from_env());
     let mut screen = Screen::enter()?;
-    let outcome = event_loop(&mut screen.terminal, app, worker);
+    let outcome = event_loop(&mut screen, app, worker);
     screen.leave();
     let code = outcome?;
     Ok(code)
@@ -80,6 +81,43 @@ impl Screen {
         let _ = disable_modes(self.terminal.backend_mut());
         let _ = self.terminal.show_cursor();
         let _ = io::stdout().flush();
+    }
+
+    /// Give the terminal to another program until the returned guard is
+    /// dropped.
+    ///
+    /// The exit steps are best effort: a failure to leave one mode does not
+    /// stop the others, and the guard still tries to restore everything on the
+    /// way back.
+    fn suspend(&mut self) -> Suspended<'_> {
+        let _ = disable_raw_mode();
+        let _ = disable_modes(self.terminal.backend_mut());
+        let _ = self.terminal.show_cursor();
+        let _ = io::stdout().flush();
+        Suspended { screen: self }
+    }
+
+    /// Take the terminal back after [`Self::suspend`], repainting from scratch.
+    fn resume(&mut self) -> io::Result<()> {
+        enable_raw_mode()?;
+        enable_modes(self.terminal.backend_mut())?;
+        // The other program painted the primary screen while the alternate one
+        // was gone, so the frame ratatui has cached no longer matches the
+        // terminal.
+        self.terminal.clear()
+    }
+}
+
+/// A suspended screen. Dropping it restores the terminal, whatever happened
+/// while it was suspended — the editor failing is not a reason to leave the
+/// person in a cooked tty with no prompt.
+struct Suspended<'a> {
+    screen: &'a mut Screen,
+}
+
+impl Drop for Suspended<'_> {
+    fn drop(&mut self) {
+        let _ = self.screen.resume();
     }
 }
 
@@ -113,16 +151,12 @@ impl Drop for Screen {
     }
 }
 
-fn event_loop(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    app: &mut App,
-    worker: &mut WorkerHandle,
-) -> io::Result<i32> {
+fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> io::Result<i32> {
     // The channel the turn waits on while the person decides. Dropping it
     // without an answer makes the turn read a refusal, which is the safe way to
     // leave a question nobody answered.
     let mut reply: Option<oneshot::Sender<Approval>> = None;
-    terminal.draw(|frame| ui::draw(frame, app))?;
+    screen.terminal.draw(|frame| ui::draw(frame, app))?;
     loop {
         let mut changed = false;
         while let Some(message) = worker.try_recv() {
@@ -163,7 +197,7 @@ fn event_loop(
             changed = true;
         }
         if changed {
-            terminal.draw(|frame| ui::draw(frame, app))?;
+            screen.terminal.draw(|frame| ui::draw(frame, app))?;
         }
 
         if !event::poll(if busy { BUSY_TICK } else { IDLE_WAIT })? {
@@ -215,6 +249,7 @@ fn event_loop(
                     let mut out = io::stdout();
                     let _ = clipboard::copy(&mut out, &text);
                 }
+                Some(Command::EditPrompt) => edit_prompt(screen, app),
                 Some(Command::Quit) => return Ok(exit_code(app)),
                 None => {}
             },
@@ -226,8 +261,31 @@ fn event_loop(
             Event::Paste(text) => app.handle_paste(&text),
             _ => {}
         }
-        terminal.draw(|frame| ui::draw(frame, app))?;
+        screen.terminal.draw(|frame| ui::draw(frame, app))?;
     }
+}
+
+/// Hand the draft to the person's editor and take back what it left.
+///
+/// The file is written before the screen is suspended, so a failure to write it
+/// leaves the UI untouched. The [`Suspended`] guard keeps the terminal out of
+/// the app's hands for exactly the editor's lifetime, including the path where
+/// the editor cannot start.
+fn edit_prompt(screen: &mut Screen, app: &mut App) {
+    let draft = app.composer.text().to_owned();
+    let file = match TempPrompt::create(&draft) {
+        Ok(file) => file,
+        Err(error) => {
+            app.finish_edit(Err(format!("could not write the editor file: {error}")));
+            return;
+        }
+    };
+    let command = editor::resolve_editor_from_env();
+    let result = {
+        let _suspended = screen.suspend();
+        editor::edit_file(&command, file.path())
+    };
+    app.finish_edit(result.map_err(|error| error.warning()));
 }
 
 fn exit_code(app: &App) -> i32 {

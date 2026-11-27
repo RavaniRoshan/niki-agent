@@ -113,7 +113,8 @@ listed in `RULES.md` with its justification.
 
 ## ADR-008: Ship beside, then cut over
 
-Status: accepted (2026-11-26)
+Status: accepted (2026-11-26); executed at v2.0.0 — the release archive ships
+the Rust `niki`, and the Python client is reference-only.
 
 Context: the Python product is released and installable today.
 

@@ -14,11 +14,13 @@ mod approval;
 mod help;
 mod model;
 mod overlay;
+mod status;
 mod threads;
 
 pub use approval::ApprovalModal;
 pub use help::{HelpOverlay, describe};
 pub use model::{ModelChoice, ModelPicker};
+pub use status::{StatusCard, StatusField};
 pub use threads::{NO_PROMPT, ThreadEntry, ThreadPicker};
 
 use crossterm::event::KeyEvent;
@@ -38,6 +40,8 @@ pub enum Modal {
     Threads(ThreadPicker),
     /// The keymap.
     Help(HelpOverlay),
+    /// The running session's facts, read-only.
+    Status(StatusCard),
 }
 
 /// What a key press did to the modal it reached.
@@ -64,6 +68,7 @@ impl Modal {
             Self::Models(_) => "Model",
             Self::Threads(_) => "Sessions",
             Self::Help(_) => "Keys",
+            Self::Status(_) => "Status",
         }
     }
 
@@ -74,6 +79,7 @@ impl Modal {
             Self::Models(modal) => modal.handle_key(key),
             Self::Threads(modal) => modal.handle_key(key),
             Self::Help(modal) => modal.handle_key(key),
+            Self::Status(modal) => modal.handle_key(key),
         }
     }
 
@@ -84,6 +90,7 @@ impl Modal {
             Self::Models(modal) => overlay::models(frame, area, modal, palette, glyphs),
             Self::Threads(modal) => overlay::threads(frame, area, modal, palette, glyphs),
             Self::Help(modal) => overlay::help(frame, area, modal, palette, glyphs),
+            Self::Status(modal) => overlay::status(frame, area, modal, palette, glyphs),
         }
     }
 }

@@ -577,6 +577,24 @@ fn the_overlay_renders_an_answer_with_the_markdown_renderer() {
     assert!(!screen.contains("**first**"), "{screen}");
 }
 
+#[test]
+fn the_status_card_draws_over_the_screen_and_fits_a_twenty_by_six_terminal() {
+    let mut app = app();
+    app.set_session_file("/home/somebody/.niki/sessions.db");
+    app.open_status();
+    let buffer = render(&mut app, 20, 6);
+    assert_eq!(buffer.area.width, 20);
+    assert_eq!(buffer.area.height, 6);
+    let screen = text(&buffer);
+    assert!(screen.contains("Status"), "{screen}");
+    assert!(screen.contains("model"), "{screen}");
+
+    app.open_status();
+    assert!(app.modal.is_none(), "a second open closes the card");
+    let after = text(&render(&mut app, 20, 6));
+    assert!(!after.contains("Status"), "{after}");
+}
+
 fn press(app: &mut App, code: KeyCode) -> Option<Command> {
     app.handle_key(KeyEvent::new(code, KeyModifiers::NONE))
 }

@@ -1,17 +1,13 @@
 # Rust client status
 
-The Rust workspace in `rust/` is a second front end for the same engine, built
-one crate at a time. Python is still the product until the port reaches its
-cutover wave: see [`MAP.md`](./MAP.md) for the wave plan and
-[`DECISIONS.md`](./DECISIONS.md) for the reasoning behind it. W0–W3 are done.
-W4 (extensions) has started: `niki-mcp` speaks stdio and HTTP, parses
-`[mcp_servers]`, registers discovered tools in the existing registry, and the
-`niki` entry points now connect the configured servers at startup.
-`niki-skills` discovers project, user and built-in skills and every entry point
-gives them to the model through the system prompt. `niki-hooks` runs
-`PreToolUse`, `PostToolUse` and `UserPromptSubmit` handlers from `hooks.json`,
-and `niki-commands` owns the slash command grammar. The screen persists every
-completed turn and handles bracketed paste.
+The Rust workspace in `rust/` is the product: `niki` is one native binary built
+from it, and the release archive installs it with no language runtime. The
+Python package in `libs/code` is the deprecated reference client and its wheel
+declares no console script. [`MAP.md`](./MAP.md) records the wave plan that got
+here, [`DECISIONS.md`](./DECISIONS.md) the reasoning, and
+[`PARITY.md`](./PARITY.md) the distance that remains.
+
+The rest of this file describes the Rust client as it stands.
 
 ## What is implemented
 
@@ -95,8 +91,10 @@ opens `~/.niki/sessions.db`, creates a session row immediately and appends every
 completed turn as `user`, `assistant`, `tool_call`, `tool_result`, `tool_error`
 or `error` messages, so `/resume` lists and rebuilds sessions on the next
 launch. `/clear` starts a new session without deleting the old one, `/compact`
-folds older rows out of the view only — this build has no summarising model, and
-the help overlay says so — `/tools` lists the registry including `mcp__` names,
+sends the turns before the newest six to the provider with a fixed instruction
+and replaces them with one `Summary of the earlier conversation:` message — the
+saved rows are untouched and the transcript folds to the newest twelve rows —
+`/tools` lists the registry including `mcp__` names,
 and `/version` names Niki Agent. Bracketed paste is enabled with the alternate
 screen, arrives as one `Event::Paste`, and is inserted literally; a paste never
 sends the prompt, and a second prompt waits for the running turn so a turn can
@@ -159,7 +157,7 @@ transcript and either surface can read the other's sessions.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 1 --workspace        # 356 tests, 0 failures
+cargo test -j 2 --workspace        # 653 tests, 0 failures
 ```
 
 `crates/niki-acp` contributes 27 of them: 14 unit tests for framing, the
@@ -222,7 +220,8 @@ startup wiring is covered without a network or a terminal.
   plus the aliases in `niki_tui_themes::palette`); `/theme` cycles and
   `/theme <name>` selects. `NIKI_ASCII=1` and `NIKI_REDUCED_MOTION=1` do what
   they say at startup.
-- The binary is `niki` until W6 (RULES.md 2).
+- The shipped binary is `niki` (RULES.md 2). The deprecated engine client is not
+  packaged and takes no compatibility aliases.
 
 ## M4 decisions
 
@@ -284,13 +283,13 @@ The provider stream is read to its end rather than stopping at the finish
 reason, because OpenAI sends the usage chunk after it; token counts were
 always zero before that change.
 
-W4 is complete: `niki-mcp` (stdio, HTTP, config, registration, startup
+W4 and W5 are complete: `niki-mcp` (stdio, HTTP, config, registration, startup
 wiring and a per-server startup budget), `niki-skills` (discovery, front
-matter, system-prompt injection, `/skills`) and `niki-hooks` are done, and
-`niki-commands` owns `App::slash` with the help overlay reading the same
-table. Every entry point calls `niki_mcp::load` and installs the hooks runner,
-and all three inject the same skills section into their system prompt. W5 (ACP
-and headless parity) has started: `niki-acp` is done; headless parity remains.
+matter, system-prompt injection, `/skills`), `niki-hooks` and `niki-commands`
+are done, and every entry point calls `niki_mcp::load` and installs the hooks
+runner with the same skills section in its system prompt. `niki-acp` and the
+headless surfaces (`-n`, `--output-format json` and `jsonl`, `--resume`,
+`--continue`, exit codes 0/1/2/124/130) are in the binary.
 
 ## Known gaps
 
@@ -302,13 +301,13 @@ and headless parity) has started: `niki-acp` is done; headless parity remains.
 - MCP HTTP has no integration test: a test server would need a listener. The SSE
   parser, batch matching, server-request replies and JSON-RPC error decoding are
   unit-tested; the six required protocol cases run against the stdio fixture.
-- Built-in writes — `write_file`, `edit_file` — are not approval-gated, unlike
-  the Python product. This slice deliberately did not change that (see M4
-  decisions).
 - No streaming cancel inside a provider request beyond the per-event check.
 - The composer has no mouse selection.
-- `Ctrl+O`, `Ctrl+T`, `Ctrl+N`, `Ctrl+G` are in `BINDINGS` but not implemented in
-  the live app; the help overlay says so.
+- `Ctrl+O` (tool output) and `Ctrl+N` (notifications) are in `BINDINGS` but not
+  implemented in the live app; the help overlay says so. `Ctrl+G` hands the
+  composer to `$EDITOR`, `Ctrl+T` opens the transcript overlay, and the help
+  entry for `Ctrl+T` still reads "subagent activity" — that label is wrong and
+  is the next one-line fix.
 - ratatui 0.29 pulls crossterm 0.28 alongside the workspace's 0.29. Both are
   small and the ANSI output agrees, but a single version would be tidier at
   cutover.

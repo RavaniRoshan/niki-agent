@@ -44,6 +44,8 @@ pub enum SlashCommand {
     Tools,
     /// List the skills discovery found.
     Skills,
+    /// Show the running session's model, mode, paths and counts.
+    Status,
     /// Write an `AGENTS.md` template when the workspace has none.
     Init,
     /// Show the version line.
@@ -131,6 +133,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/skills",
         summary: "List project and user skills",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/status",
+        summary: "Show the running session's model, mode, paths and counts",
         aliases: &[],
     },
     CommandInfo {
@@ -328,6 +335,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/rename" => SlashCommand::Rename(remainder(text)),
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
+        "/status" => SlashCommand::Status,
         "/init" => SlashCommand::Init,
         "/version" | "/about" => SlashCommand::Version,
         other => {
@@ -371,6 +379,7 @@ mod tests {
             (SlashCommand::Threads, "/threads"),
             (SlashCommand::Tools, "/tools"),
             (SlashCommand::Skills, "/skills"),
+            (SlashCommand::Status, "/status"),
             (SlashCommand::Init, "/init"),
             (SlashCommand::Version, "/version"),
             (SlashCommand::Mode(Mode::Yolo), "/yolo"),
@@ -383,7 +392,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 19);
+        assert_eq!(listed.len(), 20);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -404,6 +413,13 @@ mod tests {
         let mut sorted = names.clone();
         sorted.sort_unstable();
         assert_eq!(names, sorted, "COMMANDS stays sorted for the help overlay");
+    }
+
+    #[test]
+    fn status_parses_and_is_listed_once() {
+        assert_eq!(parse("/status"), Ok(SlashCommand::Status));
+        assert!(COMMANDS.iter().any(|info| info.name == "/status"));
+        assert!(!ROADMAP.iter().any(|info| info.name == "/status"));
     }
 
     #[test]

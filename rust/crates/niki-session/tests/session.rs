@@ -138,6 +138,78 @@ fn list_is_newest_first() {
 }
 
 #[test]
+fn list_for_keeps_only_the_named_workspace() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let first = temp.path().join("first");
+    let second = temp.path().join("second");
+    let first_session = store.create(&first).unwrap();
+    let second_session = store.create(&second).unwrap();
+
+    let listed = store.list_for(&first).unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, first_session);
+    assert_eq!(listed[0].cwd, first.to_string_lossy());
+    assert_ne!(first_session, second_session);
+
+    assert!(
+        store
+            .list_for(temp.path().join("absent"))
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(store.list().unwrap().len(), 2, "the plain list sees both");
+}
+
+#[test]
+fn updated_at_is_the_latest_stored_write() {
+    let temp = TempDir::new().unwrap();
+    let path = scratch(&temp);
+    let store = open(&path);
+    let session = store.create(temp.path()).unwrap();
+    store.append(&session, "user", "later").unwrap();
+
+    {
+        let connection = rusqlite::Connection::open(&path).unwrap();
+        connection
+            .execute("UPDATE sessions SET created_at = 100", [])
+            .unwrap();
+        connection
+            .execute("UPDATE messages SET created_at = 400", [])
+            .unwrap();
+    }
+
+    let summary = store
+        .list()
+        .unwrap()
+        .into_iter()
+        .find(|summary| summary.id == session)
+        .unwrap();
+    assert_eq!(summary.created_at, 100);
+    assert_eq!(summary.updated_at, 400, "the message is the later write");
+    assert_eq!(
+        store.find(session.as_str()).unwrap().unwrap().updated_at,
+        400
+    );
+    assert_eq!(
+        store.latest_for(temp.path()).unwrap().unwrap().updated_at,
+        400
+    );
+
+    let empty = store.create(temp.path().join("empty")).unwrap();
+    let summary = store
+        .list()
+        .unwrap()
+        .into_iter()
+        .find(|summary| summary.id == empty)
+        .unwrap();
+    assert_eq!(
+        summary.updated_at, summary.created_at,
+        "a session without messages was last written when it was created"
+    );
+}
+
+#[test]
 fn a_session_from_another_file_is_unknown() {
     let temp = TempDir::new().unwrap();
     let first = open(&temp.path().join("first.db"));

@@ -45,6 +45,8 @@ export default defineConfig({
         items: [
           { text: 'Providers', link: '/providers/' },
           { text: 'Permissions', link: '/permissions' },
+          { text: 'Sessions', link: '/sessions' },
+          { text: 'Headless and scripted runs', link: '/headless' },
           { text: 'Keyboard reference', link: '/keyboard' },
         ],
       },
