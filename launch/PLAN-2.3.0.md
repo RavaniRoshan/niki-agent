@@ -16,10 +16,10 @@ gate that closes it.
 
 | When | Step | Closed when |
 | --- | --- | --- |
-| Now | Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and export `PRODUCT_HUNT_TOKEN` | `node launch/ph-launch.mjs --check 2026-12-08` returns composer limits instead of `invalid_token` |
-| By 2026-12-04 | Create the draft and fill it from `launch/product-hunt.md` | `--show <id>` lists tagline, description, topics, links, and makers correctly |
+| Done | Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and export `PRODUCT_HUNT_TOKEN` | Closed 2026-11-27: OAuth completed against the server, and `launch/ph-token.mjs` refreshes the stored token |
+| Done | Create the draft and fill it from `launch/product-hunt.md` | Closed 2026-11-27: draft `U3SR3K6SCALYK3CBK6RG475MQPF7SQ5M7C`, assessment `no_known_blockers` |
 | Done | Re-render the gallery from the 2.2.0 binary and stage it | Closed: four slides now come from the 2.2.0 recording, and OCR reads `NIKI AGENT v2.2.0` on the hero, the approval card on the gate slide, and `test result: ok. 2 passed` on the proof slide |
-| 2026-12-07 | Submit for the 12-08 date | `--submit <id>` returns the scheduled launch, and the editor shows the date |
+| Done | Submit for the 12-08 date | Closed 2026-11-27: launch `1333841`, status `scheduled`, 2026-12-08 00:00 Pacific |
 | 2026-12-08 | Run the day-of checklist in `launch/product-hunt.md` | Every box ticked, comments answered in-thread |
 | 2026-12-09 | Write down what launch week changed | A 2.3.0 section in `CHANGELOG.md` and the release notes |
 

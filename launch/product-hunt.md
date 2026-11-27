@@ -162,11 +162,23 @@ one you get on that product.
 
 Gates before the date is booked:
 
-- [ ] The release the listing links to is tagged, and every archive installs.
-- [ ] The site, docs, changelog, and download pages are live and cross-linked.
-- [ ] The gallery images show the shipped binary, not an earlier build.
-- [ ] The Product Hunt account is connected to the MCP server (below) so the
+- [x] The release the listing links to is tagged, and every archive installs.
+- [x] The site, docs, changelog, and download pages are live and cross-linked.
+- [x] The gallery images show the shipped binary, not an earlier build.
+- [x] The Product Hunt account is connected to the MCP server (below) so the
       draft can be created and scheduled without a browser form.
+
+## Booked
+
+The listing was filled and submitted through the MCP server on 2026-11-27:
+
+- Launch ID `1333841`, status `scheduled`, `launchDate` 2026-12-08 at 00:00
+  America/Los_Angeles.
+- Edit it before launch day at https://www.producthunt.com/posts/niki-agent/edit
+  (media and the investor-questions section are the editable parts).
+- Tags: Developer Tools, Artificial Intelligence, Open Source, plus GitHub from
+  the product links. Categories: AI Coding Agents, Command Line Tools, Terminals.
+- The maker comment in this file was posted and pinned by the submission.
 
 Launch-day clock, Pacific:
 
@@ -194,11 +206,19 @@ The tools, in order:
 | 4 | `prepare_launch_asset` | Stages the thumbnail and gallery from a public URL, then attaches them by asset id. |
 | 5 | `submit_launch` | Schedules the draft for its launch date. Two calls: the first returns a preview and a token, the second submits it. |
 
+Values the composer accepts, recorded after the first real fill, because the
+tool descriptions do not carry them: `update_launch` takes `changes` and
+`expected_revision`, not `values`; `additionalLinks` is a list of URL strings;
+`topics` and `categories` are numeric IDs that `get_launch_context` returns when
+asked with `topic` or `category` (Developer Tools `267`, Artificial
+Intelligence `268`, Open Source `89`; AI Coding Agents `88`, Command Line Tools
+`827`, Terminals `464`).
+
 `launch/ph-launch.mjs` drives those calls over the same endpoint with the bearer
 token from `PRODUCT_HUNT_TOKEN`, and reads only until `--submit` is passed:
 
 ```bash
-export PRODUCT_HUNT_TOKEN=...          # OAuth, scope launches:write
+export PRODUCT_HUNT_TOKEN=$(node launch/ph-token.mjs)   # refreshes when expired
 node launch/ph-launch.mjs --check 2026-12-08        # limits and date availability
 node launch/ph-launch.mjs --draft values.json       # create the draft
 node launch/ph-launch.mjs --assets <id> <url> ...    # stage thumbnail, then gallery
