@@ -6,7 +6,8 @@
 //! the autoincrement id, so a transcript replays in the order it was written.
 
 use std::fmt;
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{Connection, OptionalExtension, params};
@@ -89,7 +90,11 @@ impl SessionStore {
     /// Returns [`SessionError::Sqlite`] when the file cannot be opened or the
     /// schema cannot be applied.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, SessionError> {
+        let path = path.as_ref();
         let connection = Connection::open(path)?;
+        // A transcript holds prompts, answers and tool output, so the file
+        // must not be readable by another account on the machine.
+        restrict_permissions(path)?;
         connection.pragma_update(None, "foreign_keys", true)?;
         connection.execute_batch(SCHEMA)?;
         Ok(Self { connection })
@@ -347,6 +352,26 @@ impl SessionStore {
     }
 }
 
+#[cfg(unix)]
+fn restrict_permissions(path: &Path) -> Result<(), SessionError> {
+    use std::os::unix::fs::PermissionsExt;
+
+    if path.as_os_str() == ":memory:" {
+        return Ok(());
+    }
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).map_err(|source| {
+        SessionError::Permissions {
+            path: path.to_path_buf(),
+            source,
+        }
+    })
+}
+
+#[cfg(not(unix))]
+fn restrict_permissions(_path: &Path) -> Result<(), SessionError> {
+    Ok(())
+}
+
 fn now() -> Result<i64, SessionError> {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -365,6 +390,12 @@ pub enum SessionError {
     UnknownCheckpoint { session: SessionId, label: String },
     #[error("the working directory is not valid UTF-8")]
     NonUtf8Path,
+    #[error("cannot restrict the permissions of {path}: {source}")]
+    Permissions {
+        path: PathBuf,
+        #[source]
+        source: io::Error,
+    },
     #[error("the system clock is before the Unix epoch")]
     Clock,
     #[error("could not allocate a unique session id")]

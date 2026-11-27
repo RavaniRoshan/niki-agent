@@ -70,7 +70,7 @@ fn main() {
     let code = match run(std::env::args().skip(1).collect()) {
         Ok(code) => code,
         Err(error) => {
-            eprintln!("niki: {error:#}");
+            eprintln!("niki: {}", sanitize_terminal(&format!("{error:#}")));
             1
         }
     };
@@ -130,7 +130,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     let skills = skill_catalog(&ctx.root);
     for warning in skills.warnings() {
         // stderr, not stdout: the answer a pipe captures stays the answer.
-        eprintln!("niki: warning: {warning}");
+        eprintln!("niki: warning: {}", sanitize_terminal(&warning.to_string()));
     }
 
     let mode = mode(options.mode.as_deref());
@@ -145,7 +145,7 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
 
     let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
     for error in &mcp_errors {
-        eprintln!("niki: warning: {error}");
+        eprintln!("niki: warning: {}", sanitize_terminal(&error.to_string()));
     }
     let mcp_tools = Arc::new(mcp_tools);
     let hooks = load_hooks(&root, &config_home());
@@ -244,7 +244,10 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
 
         if let (Some(store), Some(session)) = (&store, &session) {
             if let Err(error) = record(store, session, &saved_prompt, &outcome, &rows) {
-                eprintln!("niki: warning: the session was not saved: {error:#}");
+                eprintln!(
+                    "niki: warning: the session was not saved: {}",
+                    sanitize_terminal(&format!("{error:#}"))
+                );
             }
         }
 
@@ -282,7 +285,10 @@ fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
             if options.resume.is_some() || options.continue_session {
                 return Err(error).context("resume needs the session store");
             }
-            eprintln!("niki: warning: sessions are not saved: {error:#}");
+            eprintln!(
+                "niki: warning: sessions are not saved: {}",
+                sanitize_terminal(&format!("{error:#}"))
+            );
             return Ok(Resumed {
                 store: None,
                 session: None,
@@ -499,7 +505,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
 
     let (mcp_tools, mcp_errors) = runtime.block_on(niki_mcp::load(&config.mcp_servers));
     for error in &mcp_errors {
-        eprintln!("niki: warning: {error}");
+        eprintln!("niki: warning: {}", sanitize_terminal(&error.to_string()));
     }
     let mcp_tools = Arc::new(mcp_tools);
 
@@ -513,7 +519,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             let ctx = ToolContext::new(seed.cwd.as_path()).map_err(|error| error.to_string())?;
             let skills = skill_catalog(&ctx.root);
             for warning in skills.warnings() {
-                eprintln!("niki: warning: {warning}");
+                eprintln!("niki: warning: {}", sanitize_terminal(&warning.to_string()));
             }
             let system = skills.inject_into(&base_system);
             let settings = AgentConfig {
@@ -567,9 +573,27 @@ fn attach_sessions(app: &mut App) {
 
 /// Open `sessions.db` under `home`, creating the directory when it is missing.
 fn open_store(home: &Path) -> Result<SessionStore> {
-    std::fs::create_dir_all(home).with_context(|| format!("create {}", home.display()))?;
+    create_private_dir(home).with_context(|| format!("create {}", home.display()))?;
     SessionStore::open(home.join("sessions.db"))
         .with_context(|| format!("open the session store in {}", home.display()))
+}
+
+/// Create a directory only the current user may read or write.
+#[cfg(unix)]
+fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(path)?;
+    // `DirBuilder` does not tighten a directory that already exists.
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))
+}
+
+#[cfg(not(unix))]
+fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(path)
 }
 
 /// Connect every configured MCP server before the screen takes the terminal.
@@ -649,7 +673,7 @@ fn tool_registry(tools: &[ToolBridge], subagent: Option<SubagentTool>) -> Regist
 fn load_hooks(root: &Path, config_dir: &Path) -> Arc<dyn HookRunner> {
     let loaded = Hooks::load(root, config_dir);
     for warning in &loaded.warnings {
-        eprintln!("niki: warning: {warning}");
+        eprintln!("niki: warning: {}", sanitize_terminal(warning));
     }
     Arc::new(loaded.hooks)
 }
@@ -842,7 +866,7 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
         }
         AgentEvent::ToolStart { name, arguments } if !quiet => {
             let _ = out.flush();
-            eprintln!("· {name} {}", one_line(arguments));
+            eprintln!("· {} {}", sanitize_terminal(name), one_line(arguments));
         }
         AgentEvent::ToolEnd {
             name,
@@ -850,14 +874,14 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
             is_error,
         } if !quiet => {
             let mark = if *is_error { '✗' } else { '✓' };
-            eprintln!("  {mark} {name} {}", one_line(output));
+            eprintln!("  {mark} {} {}", sanitize_terminal(name), one_line(output));
         }
         AgentEvent::StepLimit { steps } if !quiet => {
             eprintln!("niki: step limit of {steps} reached");
         }
         AgentEvent::Notice(text) => {
             let _ = out.flush();
-            eprintln!("niki: {text}");
+            eprintln!("niki: {}", sanitize_terminal(text));
         }
         AgentEvent::Cancelled if !quiet => {
             eprintln!("niki: cancelled");
@@ -866,9 +890,27 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
     }
 }
 
+/// Remove the control characters that let a string drive the terminal.
+///
+/// A tool result, a file name or a hook message can carry CSI/OSC sequences
+/// (clipboard writes, title changes, cursor moves). `is_control` covers C0,
+/// DEL and C1.
+fn sanitize_terminal(text: &str) -> String {
+    text.chars()
+        .filter(|character| !character.is_control())
+        .collect()
+}
+
 /// Shorten a multi-line argument or result to one readable line.
 fn one_line(text: &str) -> String {
-    let mut line: String = text.lines().next().unwrap_or("").trim().to_owned();
+    let mut line: String = text
+        .lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .chars()
+        .filter(|character| !character.is_control())
+        .collect();
     if line.chars().count() > 120 {
         line = line.chars().take(117).collect::<String>() + "...";
     }
@@ -878,6 +920,44 @@ fn one_line(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tool_output_cannot_drive_the_terminal() {
+        let hostile = "ok\u{1b}]52;c;ZWNobyBwd25lZA==\u{7}done";
+        let line = one_line(hostile);
+        assert!(!line.contains('\u{1b}'), "{line:?}");
+        assert!(!line.chars().any(char::is_control), "{line:?}");
+        assert!(line.contains("done"), "{line:?}");
+
+        let notice = sanitize_terminal("warn\u{9b}2Jning\nnext");
+        assert!(!notice.contains('\u{9b}'), "{notice:?}");
+        assert!(notice.contains("next"), "{notice:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_session_home_and_database_are_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join(".niki");
+        let _store = open_store(&home).expect("store");
+
+        let home_mode = std::fs::metadata(&home)
+            .expect("home metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(home_mode, 0o700, "{home_mode:o}");
+
+        let database = home.join("sessions.db");
+        let database_mode = std::fs::metadata(&database)
+            .expect("database metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(database_mode, 0o600, "{database_mode:o}");
+    }
 
     #[test]
     fn the_theme_setting_selects_the_palette() {
