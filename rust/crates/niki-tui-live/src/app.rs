@@ -21,7 +21,8 @@ use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
 use niki_tui_modals::{
-    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, ThreadEntry, ThreadPicker,
+    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, StatusCard, StatusField, ThreadEntry,
+    ThreadPicker,
 };
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -30,7 +31,7 @@ use crate::composer::Composer;
 use crate::diff_source::{self, DiffSection};
 use crate::history::History;
 use crate::scroll::Scroll;
-use crate::status::{Status, TurnState, describe_context};
+use crate::status::{Status, TurnState, context_percentage, describe_context, format_tokens};
 use crate::transcript::{Row, RowKind, Transcript};
 use crate::transcript_overlay::TranscriptOverlay;
 
@@ -129,6 +130,10 @@ pub struct App {
     session: Option<SessionId>,
     /// First transcript row of the turn in flight, so only that turn is saved.
     turn_start: Option<usize>,
+    /// The file the session store writes, when the host named it.
+    session_file: Option<PathBuf>,
+    /// Whether any turn has been written to the store yet.
+    saved_turn: bool,
     /// Tool names the registry holds, for `/tools`.
     tools: Vec<String>,
     /// Prompts the arrows walk back through.
@@ -177,6 +182,8 @@ impl App {
             sessions: None,
             session: None,
             turn_start: None,
+            session_file: None,
+            saved_turn: false,
             tools: Vec::new(),
             history: History::default(),
             queued: VecDeque::new(),
@@ -229,6 +236,14 @@ impl App {
     #[must_use]
     pub fn session_id(&self) -> Option<&str> {
         self.session.as_ref().map(SessionId::as_str)
+    }
+
+    /// Tell the status card where the session store writes.
+    ///
+    /// The host opens the database, so it owns the path. A host that never
+    /// calls this leaves the card printing `unknown` for that line.
+    pub fn set_session_file(&mut self, path: impl Into<PathBuf>) {
+        self.session_file = Some(path.into());
     }
 
     /// The tool names `/tools` lists.
@@ -549,6 +564,86 @@ impl App {
     /// Open the keymap overlay.
     pub fn open_help(&mut self) {
         self.modal = Some(Modal::Help(HelpOverlay::new()));
+    }
+
+    /// Open the status card, or close it when it is already open.
+    ///
+    /// The card is read-only: opening it sends nothing to the model and writes
+    /// no transcript row.
+    pub fn open_status(&mut self) {
+        if matches!(self.modal, Some(Modal::Status(_))) {
+            self.modal = None;
+            return;
+        }
+        self.modal = Some(Modal::Status(StatusCard::new(self.status_fields())));
+    }
+
+    /// The status card's labelled lines, read from the state the screen holds.
+    fn status_fields(&self) -> Vec<StatusField> {
+        let spec = &self.status.model;
+        let provider = spec
+            .split_once(':')
+            .map_or(spec.as_str(), |(provider, _)| provider);
+        let mut fields = vec![
+            StatusField::new("model", spec.clone()),
+            StatusField::new("provider", provider),
+            StatusField::new("mode", self.status.mode.label()),
+            StatusField::new("session", self.session_label()),
+            StatusField::new("session file", self.session_file_label()),
+            StatusField::new("workspace", self.status.cwd.clone()),
+            StatusField::new("tokens", self.tokens_label()),
+            StatusField::new("skills", self.skills.list().len().to_string()),
+        ];
+        let mcp = self.mcp_tool_count();
+        if mcp > 0 {
+            fields.push(StatusField::new("mcp tools", mcp.to_string()));
+        }
+        fields.push(StatusField::new(
+            "client",
+            format!("niki {}", env!("CARGO_PKG_VERSION")),
+        ));
+        fields
+    }
+
+    fn session_label(&self) -> String {
+        let Some(id) = &self.session else {
+            return "not saved".to_owned();
+        };
+        if self.saved_turn {
+            id.as_str().to_owned()
+        } else {
+            format!("{} new", id.as_str())
+        }
+    }
+
+    fn session_file_label(&self) -> String {
+        self.session_file
+            .as_ref()
+            .map_or_else(|| "unknown".to_owned(), |path| path.display().to_string())
+    }
+
+    fn tokens_label(&self) -> String {
+        let Some(report) = self.status.context else {
+            return "not measured yet".to_owned();
+        };
+        let used = format_tokens(u64::try_from(report.estimated_tokens).unwrap_or(u64::MAX));
+        match self.status.context_window {
+            Some(window) if window > 0 => {
+                let limit = format_tokens(u64::try_from(window).unwrap_or(u64::MAX));
+                match context_percentage(report.estimated_tokens, window) {
+                    Some(percent) => format!("{used} / {limit} ({percent}%)"),
+                    None => format!("{used} / {limit}"),
+                }
+            }
+            _ => format!("{used} / unknown"),
+        }
+    }
+
+    fn mcp_tool_count(&self) -> usize {
+        self.tools
+            .iter()
+            .filter(|name| name.starts_with("mcp__"))
+            .count()
     }
 
     /// Open the whole conversation, starting at its newest line.
@@ -1042,6 +1137,10 @@ impl App {
                 self.show_skills();
                 None
             }
+            SlashCommand::Status => {
+                self.open_status();
+                None
+            }
             SlashCommand::Init => {
                 if self.refuse_while_busy("/init") {
                     return None;
@@ -1236,6 +1335,7 @@ impl App {
                     plural(count, "message")
                 ));
                 self.session = Some(id);
+                self.saved_turn = count > 0;
                 self.turn_start = None;
                 self.scroll.reset();
                 self.status.turn = TurnState::Idle;
@@ -1359,6 +1459,7 @@ impl App {
     /// given in. The configured shell allow-list is untouched.
     fn new_session(&mut self) {
         self.session = None;
+        self.saved_turn = false;
         self.session_allow = ProgramAllow::default();
         let Some(store) = &self.sessions else {
             return;
@@ -1394,17 +1495,24 @@ impl App {
             return;
         };
         let mut failure = None;
+        let mut saved = false;
         {
             let rows = self.transcript.rows();
             for row in rows.iter().skip(start) {
                 let Some((role, content)) = persisted(row) else {
                     continue;
                 };
-                if let Err(error) = store.append(session, role, &content) {
-                    failure = Some(error.to_string());
-                    break;
+                match store.append(session, role, &content) {
+                    Ok(_) => saved = true,
+                    Err(error) => {
+                        failure = Some(error.to_string());
+                        break;
+                    }
                 }
             }
+        }
+        if saved {
+            self.saved_turn = true;
         }
         if let Some(error) = failure {
             self.transcript
@@ -2942,5 +3050,140 @@ mod tests {
             );
         }
         assert_eq!(app.session_id(), None, "nothing was cleared or resumed");
+    }
+
+    fn card_fields(app: &mut App) -> Vec<(String, String)> {
+        app.open_status();
+        let Some(Modal::Status(card)) = app.modal.take() else {
+            panic!("the status card is open");
+        };
+        card.fields()
+            .iter()
+            .map(|field| (field.label.clone(), field.value.clone()))
+            .collect()
+    }
+
+    fn value<'a>(fields: &'a [(String, String)], label: &str) -> Option<&'a str> {
+        fields
+            .iter()
+            .find(|(name, _)| name == label)
+            .map(|(_, value)| value.as_str())
+    }
+
+    #[test]
+    fn the_status_command_opens_and_closes_the_card_without_a_transcript_row() {
+        let mut app = app();
+        let before = app.transcript.rows().len();
+        type_text(&mut app, "/status");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(matches!(app.modal, Some(Modal::Status(_))));
+        assert!(app.composer.is_empty());
+        assert_eq!(app.transcript.rows().len(), before, "no row was added");
+        assert_eq!(app.status.turn, TurnState::Idle);
+
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert!(app.modal.is_none(), "escape closes the card");
+
+        app.open_status();
+        stroke(&mut app, KeyCode::Char('q'));
+        assert!(app.modal.is_none(), "q closes the card");
+
+        app.open_status();
+        assert!(matches!(app.modal, Some(Modal::Status(_))));
+        app.open_status();
+        assert!(app.modal.is_none(), "opening it again closes it");
+        assert_eq!(app.transcript.rows().len(), before);
+    }
+
+    #[test]
+    fn the_status_card_reports_the_state_the_app_holds() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let directory = project.path().join(".niki/skills/deploy");
+        std::fs::create_dir_all(&directory).expect("skill directory");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            "---\nname: deploy\ndescription: Ship a release safely.\n---\nbody\n",
+        )
+        .expect("skill");
+
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let session = format!("{} new", app.session_id().expect("session"));
+        let skills = SkillCatalog::discover(project.path(), user.path());
+        let skill_count = skills.list().len().to_string();
+        app.set_skills(skills);
+        app.set_tools(vec![
+            "read_file".to_owned(),
+            "mcp__fixture__echo".to_owned(),
+            "mcp__fixture__clock".to_owned(),
+        ]);
+        app.set_session_file("/home/me/.niki/sessions.db");
+        app.status.context_window = Some(8_000);
+        app.set_context(
+            ContextReport {
+                messages: 2,
+                estimated_tokens: 1_000,
+                last_input_tokens: 900,
+                last_output_tokens: 100,
+                steps: 1,
+            },
+            SessionUsage {
+                input_tokens: 900,
+                output_tokens: 100,
+                steps: 1,
+            },
+        );
+        let client = format!("niki {}", env!("CARGO_PKG_VERSION"));
+
+        let fields = card_fields(&mut app);
+        assert_eq!(value(&fields, "model"), Some("mock:mock-model"));
+        assert_eq!(value(&fields, "provider"), Some("mock"));
+        assert_eq!(value(&fields, "mode"), Some("manual"));
+        assert_eq!(value(&fields, "session"), Some(session.as_str()));
+        assert_eq!(
+            value(&fields, "session file"),
+            Some("/home/me/.niki/sessions.db")
+        );
+        assert_eq!(value(&fields, "workspace"), Some("/work"));
+        assert_eq!(value(&fields, "tokens"), Some("1,000 / 8,000 (13%)"));
+        assert_eq!(value(&fields, "skills"), Some(skill_count.as_str()));
+        assert_ne!(
+            skill_count, "0",
+            "the catalog the test discovered is not empty"
+        );
+        assert_eq!(value(&fields, "mcp tools"), Some("2"));
+        assert_eq!(value(&fields, "client"), Some(client.as_str()));
+    }
+
+    #[test]
+    fn the_status_card_says_what_it_does_not_know_and_omits_absent_mcp_tools() {
+        let mut app = app();
+        app.set_tools(vec!["read_file".to_owned(), "shell".to_owned()]);
+        let fields = card_fields(&mut app);
+        assert!(
+            !fields.iter().any(|(label, _)| label == "mcp tools"),
+            "no MCP tools, so no line: {fields:?}"
+        );
+        assert_eq!(value(&fields, "tokens"), Some("not measured yet"));
+        assert_eq!(value(&fields, "session"), Some("not saved"));
+        assert_eq!(value(&fields, "session file"), Some("unknown"));
+    }
+
+    #[test]
+    fn a_saved_turn_drops_the_new_marker_from_the_session() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let id = app.session_id().expect("session").to_owned();
+        type_text(&mut app, "hello");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("hello".to_owned()))
+        );
+        assert_eq!(app.finish(Ok(outcome())), None);
+        let fields = card_fields(&mut app);
+        assert_eq!(value(&fields, "session"), Some(id.as_str()));
     }
 }
