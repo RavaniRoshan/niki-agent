@@ -14,6 +14,7 @@ mod app;
 pub mod clipboard;
 mod completion;
 mod composer;
+pub mod diff_source;
 mod history;
 mod run;
 mod scroll;

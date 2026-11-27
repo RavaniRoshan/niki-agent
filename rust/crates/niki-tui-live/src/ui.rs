@@ -7,8 +7,11 @@
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph};
+
+use niki_render::{RenderedLine, SpanStyle};
 
 use crate::app::App;
 use crate::transcript::RowKind;
@@ -64,6 +67,20 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
     let marks = app.marks();
     let mut lines: Vec<Line<'static>> = Vec::new();
     for row in app.transcript.rows() {
+        if row.kind == RowKind::Diff {
+            if !lines.is_empty() {
+                lines.push(Line::default());
+            }
+            let title = row.title.clone().unwrap_or_default();
+            lines.push(Line::from(Span::styled(
+                clip(&title, width).0,
+                palette.accent_style(),
+            )));
+            for line in row.rendered.iter().flatten() {
+                lines.push(rendered_line(line, width));
+            }
+            continue;
+        }
         let (marker, style) = match row.kind {
             RowKind::User => (format!("{} ", marks.user), palette.accent_style()),
             RowKind::Assistant => (format!("{} ", marks.assistant), palette.body_style()),
@@ -71,6 +88,7 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
             RowKind::ToolResult => (format!("{} ", marks.tool), palette.muted_style()),
             RowKind::Error => ("! ".to_owned(), palette.error_style()),
             RowKind::Notice => ("- ".to_owned(), palette.muted_style()),
+            RowKind::Diff => continue,
         };
         let indent = " ".repeat(niki_render::display_width(&marker));
         let wrap_width = width
@@ -96,6 +114,59 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
         }
     }
     lines
+}
+
+/// One pre-rendered line, clipped to the viewport rather than wrapped.
+fn rendered_line(line: &RenderedLine, width: usize) -> Line<'static> {
+    let mut spans = Vec::new();
+    let mut used = 0;
+    for span in &line.spans {
+        if used >= width {
+            break;
+        }
+        let (text, cells) = clip(&span.text, width - used);
+        if !text.is_empty() {
+            spans.push(Span::styled(text, span_style(span.style)));
+        }
+        used += cells;
+    }
+    Line::from(spans)
+}
+
+fn span_style(style: SpanStyle) -> Style {
+    let mut paint = Style::new();
+    if let Some(color) = style.color {
+        paint = paint.fg(Color::Rgb(color.r, color.g, color.b));
+    }
+    if style.bold {
+        paint = paint.add_modifier(Modifier::BOLD);
+    }
+    if style.italic {
+        paint = paint.add_modifier(Modifier::ITALIC);
+    }
+    if style.underline {
+        paint = paint.add_modifier(Modifier::UNDERLINED);
+    }
+    paint
+}
+
+/// The longest prefix of `text` that fits in `width` cells, and its width.
+fn clip(text: &str, width: usize) -> (String, usize) {
+    let total = niki_render::display_width(text);
+    if total <= width {
+        return (text.to_owned(), total);
+    }
+    let mut clipped = String::new();
+    let mut used = 0;
+    for character in text.chars() {
+        let cells = niki_render::display_width(&character.to_string());
+        if used + cells > width {
+            break;
+        }
+        clipped.push(character);
+        used += cells;
+    }
+    (clipped, used)
 }
 
 fn draw_composer(frame: &mut Frame, app: &mut App, area: Rect) -> Option<Position> {

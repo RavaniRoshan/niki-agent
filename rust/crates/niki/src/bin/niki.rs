@@ -18,11 +18,12 @@ use niki_mcp::ToolBridge;
 use niki_provider::{
     AnthropicProvider, Message, OpenAiProvider, Provider, RetryPolicy, StopReason,
 };
+use niki_render::DiffTheme;
 use niki_session::{SessionId, SessionStore};
 use niki_skills::SkillCatalog;
 use niki_subagents::{SubagentTool, TOOL_NAME};
 use niki_tools::{Registry, ToolContext};
-use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, run as run_screen};
+use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, diff_source, run as run_screen};
 use niki_tui_themes::{GlyphMode, Motion, palette_or_default};
 use serde_json::json;
 
@@ -97,6 +98,10 @@ fn run(args: Vec<String>) -> Result<i32> {
              and -n runs one prompt"
         );
         return Ok(2);
+    }
+
+    if options.prompt.as_deref().map(str::trim) == Some("/diff") {
+        return headless_diff(&options);
     }
 
     let config_path = options
@@ -276,6 +281,24 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
         }
         Ok(exit_code(&outcome))
     })
+}
+
+/// `niki -n /diff` prints the working tree's diff instead of running a turn.
+fn headless_diff(options: &Options) -> Result<i32> {
+    let root = workspace_root(options)?;
+    let views = diff_source::collect(
+        &root,
+        &diff_source::DiffSection::ALL,
+        diff_source::RENDER_WIDTH,
+        &DiffTheme::default(),
+    )?;
+    let text = format!("{}\n", diff_source::plain_text(&views));
+    let mut out = std::io::stdout().lock();
+    match out.write_all(text.as_bytes()).and_then(|()| out.flush()) {
+        Ok(()) => Ok(0),
+        Err(error) if error.kind() == std::io::ErrorKind::BrokenPipe => Ok(0),
+        Err(error) => Err(error.into()),
+    }
 }
 
 /// The saved conversation a headless run continues.

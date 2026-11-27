@@ -96,7 +96,7 @@ fn the_list_is_capped_at_six_commands_in_registry_order() {
     type_text(&mut app, "/");
     assert_eq!(
         names(&app),
-        ["/auto", "/clear", "/compact", "/context", "/help", "/init"]
+        ["/auto", "/clear", "/compact", "/context", "/diff", "/help"]
     );
     assert_eq!(app.completion_height(), 7, "six names and the description");
 }
@@ -153,7 +153,7 @@ fn the_arrows_move_the_highlight_while_the_list_is_open() {
     for _ in 0..10 {
         stroke(&mut app, KeyCode::Down);
     }
-    assert_eq!(highlighted(&app), "/init", "the last row is the bottom");
+    assert_eq!(highlighted(&app), "/help", "the last row is the bottom");
     assert_eq!(app.composer.text(), "/", "the draft is untouched");
 }
 

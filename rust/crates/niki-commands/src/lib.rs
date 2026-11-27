@@ -30,6 +30,8 @@ pub enum SlashCommand {
     Compact,
     /// Show the conversation's size and what the session has spent.
     Context,
+    /// Show the working tree's staged, unstaged and untracked changes.
+    Diff(Option<String>),
     /// List saved sessions, or resume one by id or one-based index.
     Resume(Option<String>),
     /// Browse saved sessions and preview their first prompt.
@@ -75,6 +77,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/context",
         summary: "Show the conversation's size and the session's token total",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/diff",
+        summary: "Show the working tree's staged, unstaged and untracked changes",
         aliases: &[],
     },
     CommandInfo {
@@ -298,6 +305,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/clear" => SlashCommand::Clear,
         "/compact" => SlashCommand::Compact,
         "/context" => SlashCommand::Context,
+        "/diff" => SlashCommand::Diff(argument),
         "/resume" => SlashCommand::Resume(argument),
         "/threads" => SlashCommand::Threads,
         "/tools" => SlashCommand::Tools,
@@ -324,7 +332,9 @@ mod tests {
             (SlashCommand::Clear, "/clear"),
             (SlashCommand::Compact, "/compact"),
             (SlashCommand::Context, "/context"),
+            (SlashCommand::Diff(None), "/diff"),
             (SlashCommand::Help, "/help"),
+            (SlashCommand::Init, "/init"),
             (SlashCommand::Mode(Mode::Manual), "/manual"),
             (SlashCommand::Model(None), "/model"),
             (SlashCommand::Quit, "/quit"),
@@ -345,7 +355,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 16);
+        assert_eq!(listed.len(), 17);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -401,6 +411,17 @@ mod tests {
         assert_eq!(parse("/threads"), Ok(SlashCommand::Threads));
         assert!(COMMANDS.iter().any(|info| info.name == "/threads"));
         assert!(!ROADMAP.iter().any(|info| info.name == "/threads"));
+    }
+
+    #[test]
+    fn diff_parses_with_its_optional_section() {
+        assert_eq!(parse("/diff"), Ok(SlashCommand::Diff(None)));
+        assert_eq!(
+            parse("/diff staged"),
+            Ok(SlashCommand::Diff(Some("staged".to_owned())))
+        );
+        assert!(COMMANDS.iter().any(|info| info.name == "/diff"));
+        assert!(!ROADMAP.iter().any(|info| info.name == "/diff"));
     }
 
     #[test]
