@@ -155,7 +155,7 @@ transcript and either surface can read the other's sessions.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 642 tests, 0 failures
+cargo test -j 2 --workspace        # 653 tests, 0 failures
 ```
 
 `crates/niki-acp` contributes 27 of them: 14 unit tests for framing, the
