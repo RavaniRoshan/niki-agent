@@ -47,10 +47,12 @@ OPTIONS:
     --max-steps <N>       Model turns allowed (default: 40)
     --system <TEXT>       Override the system prompt
     --quiet               Do not report tool calls on stderr
-    --output-format <text|json>
+    --output-format <text|json|jsonl>
                           text streams the answer (default); json prints one
                           object with the answer, steps, tool calls, usage, the
-                          session totals and a context audit
+                          session totals and a context audit; jsonl writes one
+                          JSON object per event, one per line
+    --output <FORMAT>     Alias for --output-format
     --resume <ID|last>    Continue a saved session by id, or the newest one
     --continue            Continue the newest session for this workspace
     --version             Print the version line
@@ -195,6 +197,8 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
 
     let quiet = options.quiet;
     let json = options.output == OutputFormat::Json;
+    let jsonl = options.output == OutputFormat::Jsonl;
+    let mut stream = JsonlStream::new(&spec, session.as_ref().map(SessionId::as_str), &root);
     let saved_prompt = prompt.clone();
     runtime.block_on(async move {
         let signal = cancel.clone();
@@ -207,7 +211,10 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
         let mut out = std::io::stdout().lock();
         let mut rows: Vec<(String, String)> = Vec::new();
         let mut buffered = String::new();
-        let outcome = agent
+        if jsonl {
+            stream.start(&mut out);
+        }
+        let result = agent
             .run(prompt, &mut |event| {
                 match event {
                     AgentEvent::Text(delta) if json => buffered.push_str(delta),
@@ -222,14 +229,45 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
                     }
                     _ => {}
                 }
-                if !(json && matches!(event, AgentEvent::Text(_))) {
+                if jsonl {
+                    stream.event(event, &mut out);
+                    if !matches!(event, AgentEvent::Text(_)) {
+                        report(event, quiet, &mut out);
+                    }
+                } else if !(json && matches!(event, AgentEvent::Text(_))) {
                     report(event, quiet, &mut out);
                 }
             })
-            .await
-            .context("run the turn")?;
+            .await;
 
-        if json {
+        let outcome = match result {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                if jsonl {
+                    stream.error(&mut out, &format!("{error:#}"));
+                    stream.end(
+                        &mut out,
+                        "error",
+                        stream.turns,
+                        stream.results,
+                        stream.input,
+                        stream.output,
+                    );
+                }
+                return Err(error).context("run the turn");
+            }
+        };
+
+        if jsonl {
+            stream.end(
+                &mut out,
+                stop_label(&outcome.stop),
+                outcome.steps,
+                outcome.tool_calls,
+                outcome.usage.input_tokens,
+                outcome.usage.output_tokens,
+            );
+        } else if json {
             let session_usage = agent.session_usage();
             let audit = agent.context_audit();
             let value = json!({
@@ -771,6 +809,8 @@ enum OutputFormat {
     Text,
     /// Print one JSON object after the turn ends.
     Json,
+    /// Stream each event as one JSON object per line.
+    Jsonl,
 }
 
 enum Parsed {
@@ -799,12 +839,15 @@ fn parse_options(args: Vec<String>) -> Result<Parsed> {
                 );
             }
             "--system" => options.system = Some(value(&argument, iter.next())?),
-            "--output-format" => {
+            "--output-format" | "--output" => {
                 let raw = value(&argument, iter.next())?;
                 options.output = match raw.as_str() {
                     "text" => OutputFormat::Text,
                     "json" => OutputFormat::Json,
-                    other => bail!("--output-format takes text or json, got {other:?}"),
+                    "jsonl" => OutputFormat::Jsonl,
+                    other => {
+                        bail!("--output-format takes text, json or jsonl, got {other:?}");
+                    }
                 };
             }
             "--resume" => options.resume = Some(value(&argument, iter.next())?),
@@ -978,6 +1021,157 @@ fn report(event: &AgentEvent, quiet: bool, out: &mut impl Write) {
         }
         _ => {}
     }
+}
+
+/// Room for one tool result on a JSON line. A file read or a shell command can
+/// be far larger than a pipeline wants to buffer.
+const JSONL_TOOL_TEXT_BYTES: usize = 4096;
+
+/// Writes a turn as JSON Lines: one object per event, in order.
+struct JsonlStream {
+    model: String,
+    session: String,
+    cwd: String,
+    calls: u64,
+    pending: Option<String>,
+    turns: u32,
+    results: usize,
+    input: u64,
+    output: u64,
+}
+
+impl JsonlStream {
+    fn new(model: &str, session: Option<&str>, cwd: &Path) -> Self {
+        Self {
+            model: model.to_owned(),
+            session: session.unwrap_or("").to_owned(),
+            cwd: cwd.display().to_string(),
+            calls: 0,
+            pending: None,
+            turns: 0,
+            results: 0,
+            input: 0,
+            output: 0,
+        }
+    }
+
+    fn start(&self, out: &mut impl Write) {
+        self.write(
+            out,
+            json!({
+                "type": "start",
+                "model": self.model.as_str(),
+                "session": self.session.as_str(),
+                "cwd": self.cwd.as_str(),
+            }),
+        );
+    }
+
+    fn event(&mut self, event: &AgentEvent, out: &mut impl Write) {
+        match event {
+            AgentEvent::Text(delta) => {
+                self.write(out, json!({"type": "text", "delta": delta}));
+            }
+            AgentEvent::ToolStart { name, arguments } => {
+                self.calls += 1;
+                let id = format!("call_{}", self.calls);
+                self.pending = Some(id.clone());
+                let arguments = serde_json::from_str::<serde_json::Value>(arguments)
+                    .unwrap_or_else(|_| json!({ "raw": arguments }));
+                self.write(
+                    out,
+                    json!({
+                        "type": "tool_call",
+                        "id": id,
+                        "name": name,
+                        "arguments": arguments,
+                    }),
+                );
+            }
+            AgentEvent::ToolEnd {
+                name,
+                output,
+                is_error,
+            } => {
+                self.results += 1;
+                let id = self.pending.take().unwrap_or_else(|| {
+                    self.calls += 1;
+                    format!("call_{}", self.calls)
+                });
+                let (text, truncated) = truncate_tool_text(output);
+                let mut value = json!({
+                    "type": "tool_result",
+                    "id": id,
+                    "name": name,
+                    "ok": !is_error,
+                    "text": text,
+                });
+                if truncated {
+                    value["truncated"] = json!(true);
+                }
+                self.write(out, value);
+            }
+            AgentEvent::Usage(usage) => {
+                self.turns += 1;
+                self.input += usage.input_tokens;
+                self.output += usage.output_tokens;
+                self.write(
+                    out,
+                    json!({
+                        "type": "usage",
+                        "input": usage.input_tokens,
+                        "output": usage.output_tokens,
+                        "total": usage.input_tokens + usage.output_tokens,
+                    }),
+                );
+            }
+            AgentEvent::Notice(_) | AgentEvent::StepLimit { .. } | AgentEvent::Cancelled => {}
+        }
+    }
+
+    fn error(&self, out: &mut impl Write, message: &str) {
+        self.write(out, json!({"type": "error", "message": message}));
+    }
+
+    fn end(
+        &self,
+        out: &mut impl Write,
+        reason: &str,
+        steps: u32,
+        tool_calls: usize,
+        input: u64,
+        output: u64,
+    ) {
+        self.write(
+            out,
+            json!({
+                "type": "end",
+                "reason": reason,
+                "steps": steps,
+                "tool_calls": tool_calls,
+                "usage": {"input": input, "output": output},
+            }),
+        );
+    }
+
+    fn write(&self, out: &mut impl Write, value: serde_json::Value) {
+        if let Ok(line) = serde_json::to_string(&value) {
+            let _ = writeln!(out, "{line}");
+            let _ = out.flush();
+        }
+    }
+}
+
+/// Cut a tool result to the JSON-lines budget without splitting a character.
+fn truncate_tool_text(text: &str) -> (&str, bool) {
+    if text.len() <= JSONL_TOOL_TEXT_BYTES {
+        return (text, false);
+    }
+    let mut end = JSONL_TOOL_TEXT_BYTES;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    (&text[..end], true)
 }
 
 /// Remove the control characters that let a string drive the terminal.
