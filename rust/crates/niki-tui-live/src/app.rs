@@ -91,6 +91,8 @@ pub enum Command {
     RefreshSystem(String),
     /// Put this text on the terminal clipboard.
     Copy(String),
+    /// Hand the draft to the person's editor.
+    EditPrompt,
 }
 
 /// The whole screen state.
@@ -459,6 +461,7 @@ impl App {
                 Some(Command::Mode(mode))
             }
             KeyCode::Char('y') if control => self.copy(),
+            KeyCode::Char('g') if control => Some(Command::EditPrompt),
             KeyCode::Char('t') if control => {
                 self.open_transcript();
                 None
@@ -952,6 +955,24 @@ impl App {
         self.composer.clear();
         if !text.is_empty() {
             self.composer.insert_str(text);
+        }
+    }
+
+    /// Take back what the editor left: the new draft, or the reason the old
+    /// one stays.
+    ///
+    /// The text replaces the draft rather than joining it, and [`Self::set_draft`]
+    /// leaves the cursor after the last character, so the person can keep
+    /// typing or send it straight away.
+    pub fn finish_edit(&mut self, result: Result<String, String>) {
+        match result {
+            Ok(text) => {
+                self.set_draft(&text);
+                self.last_escape = None;
+                self.history.reset();
+                self.refresh_completion();
+            }
+            Err(message) => self.transcript.push_notice(message),
         }
     }
 
@@ -1578,6 +1599,46 @@ mod tests {
         type_text(&mut app, "   ");
         assert_eq!(press(&mut app, KeyCode::Enter), None);
         assert!(app.transcript.is_empty());
+    }
+
+    #[test]
+    fn control_g_hands_the_draft_to_the_editor_without_starting_a_turn() {
+        let mut app = app();
+        let edit = KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL);
+        assert_eq!(
+            app.handle_key(edit),
+            Some(Command::EditPrompt),
+            "an empty composer can still be edited"
+        );
+        assert_eq!(app.status.turn, TurnState::Idle);
+        assert!(app.transcript.is_empty(), "no turn is recorded");
+
+        type_text(&mut app, "half a thought");
+        assert_eq!(app.handle_key(edit), Some(Command::EditPrompt));
+        assert_eq!(app.composer.text(), "half a thought");
+        assert_eq!(app.status.turn, TurnState::Idle);
+        assert!(app.transcript.is_empty(), "ctrl+g never starts a turn");
+    }
+
+    #[test]
+    fn a_finished_edit_replaces_the_draft_and_leaves_the_cursor_at_the_end() {
+        let mut app = app();
+        type_text(&mut app, "replace me");
+        app.finish_edit(Ok("a longer\nreplacement".to_owned()));
+        assert_eq!(app.composer.text(), "a longer\nreplacement");
+        assert_eq!(app.composer.row_col(), (1, 11));
+        assert!(app.transcript.is_empty());
+    }
+
+    #[test]
+    fn a_failed_edit_keeps_the_draft_and_says_why() {
+        let mut app = app();
+        type_text(&mut app, "half a thought");
+        app.finish_edit(Err("editor exited with status 3".to_owned()));
+        assert_eq!(app.composer.text(), "half a thought");
+        let last = app.transcript.rows().last().expect("a warning");
+        assert_eq!(last.kind, RowKind::Notice);
+        assert_eq!(last.text, "editor exited with status 3");
     }
 
     #[test]
