@@ -4,10 +4,10 @@
 
 *A terminal coding agent that stays quiet, starts fast, and runs on your machine.*
 
-<sub>Current release: <a href="https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.0">v2.1.0</a> · <a href="https://niki-docs.vercel.app">Documentation</a> · <a href="https://niki-site.vercel.app">Website</a></sub>
+<sub>Current release: <a href="https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.1">v2.1.1</a> · <a href="https://niki-docs.vercel.app">Documentation</a> · <a href="https://niki-site.vercel.app">Website</a></sub>
 
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
-[![Release](https://img.shields.io/badge/release-v2.1.0-blue?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![Release](https://img.shields.io/badge/release-v2.1.1-blue?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
 [Install](#install) · [First five minutes](#first-five-minutes) · [Approval modes](#approval-modes) ·
@@ -60,7 +60,8 @@ The composer keeps up with the turn: Enter while one is running queues the next
 message, `Alt+Enter` or `Ctrl+Enter` steers the running turn, and `Esc Esc` on
 an empty composer takes the last turn back out of the view and the history. A
 line beginning with `!` runs locally through the same allow-list and costs no
-tokens.
+tokens. `Ctrl+T` opens the whole conversation in a scrollable overlay when the
+viewport is not enough.
 
 Instructions are files, not settings: `AGENTS.md` and `.niki/AGENTS.md` are read
 from the repository root down to the working directory, with your user-level
@@ -92,9 +93,10 @@ time, and the decision of what the agent may do on its own.
 | **It knows what it costs** | Token usage accumulates across turns; `/context` reports the conversation's size and the session total, and `/compact` folds older turns through the model instead of dropping them silently. |
 | **A real approval gate** | Manual, Auto, and YOLO modes, a shell allow-list, a workspace path boundary, and built-in writes gated the same way. |
 | **The working tree in place** | `/diff` shows staged, unstaged, and untracked changes in the transcript, rendered by the same diff renderer the agent's edits use. |
+| **The whole conversation on demand** | `Ctrl+T` opens every prompt, answer, tool call and result in a scrollable overlay; `Esc` returns to the composer. |
 | **Sessions you can name and keep** | `/threads` finds a session by its first prompt, `/rename` gives it a title, `/export` writes the whole thing out as Markdown. |
 | **Accessible, not as an afterthought** | Four themes with contrast measured by the test suite, reduced motion, and glyph fallbacks for terminals that need them. |
-| **Extensible without a plugin runtime** | MCP servers over stdio or HTTP, project and user skills as plain files, and lifecycle hooks. |
+| **Extensible without a plugin runtime** | MCP servers over stdio or HTTP, project and user skills as plain files, lifecycle hooks, and an optional `[notify]` program that runs once when a turn ends. |
 
 ## Install
 

@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/ARCHITECTURE.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: a1fc2c470038f82583f27bfeb4320e507b2a7ccbe17539200c3640f04d71140a
+  source-sha256: a3b81fb520fa289c35807a47dc0f3139f08e119e418fc3eb2c971c32b33adb98
 -->
 # How Niki Agent fits together
 
@@ -67,7 +67,9 @@ registered tool is dispatched through the same gate.
 
 - A tool failure and a policy refusal are **tool results**, not agent errors, so
   the model can read them and react.
-- A provider failure aborts the run.
+- A provider failure aborts the run, after `niki-provider` has already retried
+  the request twice when the failure was transient (429, 5xx, connection loss)
+  and the stream had not started.
 - The transcript is append-only. A cancelled turn keeps what it already
   produced.
 - `Decision::Ask` goes to the approval callback the host installed. A headless
@@ -102,7 +104,7 @@ restores the transcript as it was written, not as it was compacted.
 
 | Surface | Owns |
 | --- | --- |
-| Full-screen (`niki`) | Input, approvals, the transcript, and presentation. |
+| Full-screen (`niki`) | Input, approvals, the transcript, the `Ctrl+T` overlay that shows the whole conversation, and presentation. |
 | Headless (`niki -n`) | One prompt and exit; the answer goes to stdout, tool activity to stderr. `--output-format json` prints one document; `--output-format jsonl` streams one event per line (`start`, `text`, `tool_call`, `tool_result`, `usage`, `end`). |
 | Editor (`niki --acp`) | The Agent Client Protocol on stdin/stdout; the editor answers permission requests. |
 

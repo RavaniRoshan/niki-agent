@@ -20,7 +20,8 @@ upstream project; the behaviour is the specification, not the source.
 | Context | token accounting, offload/summarize | `context_report`, `context_audit`, `/compact` through the provider, occupancy in the status line |
 | Editor protocol | ACP | ACP |
 | Headless | `-n`, JSON, exit codes | `-n`, JSON (usage, session totals, context audit), `--output-format jsonl` event stream, exit codes 0/1/2/124/130 |
-| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~4k lines: transcript, working-tree diffs, composer with completion, history, queueing, steering and `!`, copy, approval dialog, model picker, session browser, help, status line |
+| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~4k lines: transcript with a `Ctrl+T` full-history overlay, working-tree diffs, composer with completion, history, queueing, steering and `!`, copy, approval dialog, model picker, session browser, help, status line |
+| Providers | per-provider clients, retries | three clients over one normalisation; bounded retry before the first event |
 
 `ROADMAP` in `rust/crates/niki-commands` is the machine-readable half of the
 command table: a command leaves it the day `parse` answers it, and a test fails
