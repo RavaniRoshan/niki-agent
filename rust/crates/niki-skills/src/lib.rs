@@ -22,6 +22,12 @@
 //! path the model could read. Their instructions are short and are included in
 //! the injected section; [`SkillCatalog::inject_into`] is the only place a body
 //! is inlined, and a test holds every built-in body to a small size.
+//!
+//! Project skills are project-provided content and are admitted only when the
+//! workspace is trusted (see [`niki_config::trust`]). [`SkillCatalog::discover`]
+//! is the historical entry point for a caller that already decided;
+//! [`SkillCatalog::discover_with`] applies an explicit [`ProjectTrust`] and
+//! records the suppression as a warning instead of silently loading nothing.
 
 #![forbid(unsafe_code)]
 
@@ -30,6 +36,7 @@ mod frontmatter;
 mod skill;
 
 pub use error::SkillError;
+pub use niki_config::trust::{ProjectTrust, TrustStore};
 pub use skill::{Origin, Skill};
 
 use std::ffi::OsStr;
@@ -41,6 +48,10 @@ use crate::skill::Source;
 
 /// The file every skill directory holds.
 const SKILL_FILE: &str = "SKILL.md";
+
+/// The reason the project skills directory was not read.
+const PROJECT_SUPPRESSED: &str =
+    "project skills are not loaded because this workspace is not trusted";
 
 /// How much of one description reaches the system prompt.
 ///
@@ -90,10 +101,16 @@ impl fmt::Display for SkillWarning {
 pub struct SkillCatalog {
     skills: Vec<Skill>,
     warnings: Vec<SkillWarning>,
+    project_suppressed: bool,
 }
 
 impl SkillCatalog {
-    /// Discover the project, user and built-in skills.
+    /// Discover the project, user and built-in skills, admitting project skills.
+    ///
+    /// This is the historical entry point: a host that has not made a trust
+    /// decision keeps the behaviour it had before the gate existed. A host that
+    /// gates project content calls [`Self::discover_with`] with the workspace's
+    /// [`ProjectTrust`].
     ///
     /// `workspace_root` is the directory the tools are rooted at; the project
     /// skills are found under its `.niki/skills`. `user_skills` is the user's
@@ -105,18 +122,30 @@ impl SkillCatalog {
     /// itself cannot fail, because one broken file must not hide the rest.
     #[must_use]
     pub fn discover(workspace_root: &Path, user_skills: &Path) -> Self {
+        Self::discover_with(workspace_root, user_skills, ProjectTrust::Trusted)
+    }
+
+    /// Discover the skills under `trust`.
+    ///
+    /// The user directory and the built-ins are always loaded. When the
+    /// workspace is untrusted, `.niki/skills` is not listed at all,
+    /// [`Self::project_suppressed`] is set and a warning explains why.
+    #[must_use]
+    pub fn discover_with(workspace_root: &Path, user_skills: &Path, trust: ProjectTrust) -> Self {
         let mut catalog = Self::default();
-        // A project skill comes from the repository, so it must not follow a
-        // symlink out of the workspace: a hostile checkout could otherwise make
-        // discovery read any file the person can read, or a device that never
-        // ends. The user's own skills directory may be a link into a shared
-        // profile, so it is deliberately not bounded.
-        let boundary = workspace_root.canonicalize().ok();
-        catalog.load_dir(
-            &workspace_root.join(".niki").join("skills"),
-            Origin::Project,
-            boundary.as_deref(),
-        );
+        let project_skills = workspace_root.join(".niki").join("skills");
+        if trust.is_trusted() {
+            // A project skill comes from the repository, so it must not follow a
+            // symlink out of the workspace: a hostile checkout could otherwise
+            // make discovery read any file the person can read, or a device that
+            // never ends. The user's own skills directory may be a link into a
+            // shared profile, so it is deliberately not bounded.
+            let boundary = workspace_root.canonicalize().ok();
+            catalog.load_dir(&project_skills, Origin::Project, boundary.as_deref());
+        } else {
+            catalog.project_suppressed = true;
+            catalog.warn(&project_skills, PROJECT_SUPPRESSED);
+        }
         catalog.load_dir(user_skills, Origin::User, None);
         catalog.load_built_ins();
         catalog
@@ -132,6 +161,13 @@ impl SkillCatalog {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.skills.is_empty()
+    }
+
+    /// Whether the project skills directory was skipped because the workspace
+    /// is untrusted.
+    #[must_use]
+    pub fn project_suppressed(&self) -> bool {
+        self.project_suppressed
     }
 
     /// The skills that were skipped, and why.
@@ -749,6 +785,98 @@ mod tests {
             ["alpha", "zulu", "user-one", "commit", "review"],
             "sources are grouped, each alphabetical"
         );
+    }
+
+    #[test]
+    fn an_untrusted_workspace_skips_project_skills_and_keeps_user_and_built_ins() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let project_skills = project.path().join(".niki/skills");
+        write_skill(
+            &project_skills,
+            "deploy",
+            &described("deploy", "a project skill"),
+        );
+        write_skill(
+            &project_skills,
+            "commit",
+            &described("commit", "a project override"),
+        );
+        write_skill(
+            user.path(),
+            "user-one",
+            &described("user-one", "a user skill"),
+        );
+
+        let catalog =
+            SkillCatalog::discover_with(project.path(), user.path(), ProjectTrust::Untrusted);
+        let names: Vec<&str> = catalog.list().iter().map(Skill::name).collect();
+        assert_eq!(names, ["user-one", "commit", "review"]);
+        assert!(
+            catalog
+                .list()
+                .iter()
+                .all(|skill| skill.origin() != Origin::Project),
+            "no project skill reached the catalog"
+        );
+        assert!(catalog.project_suppressed());
+        assert_eq!(catalog.warnings().len(), 1, "{:?}", catalog.warnings());
+        let warning = &catalog.warnings()[0];
+        assert!(warning.path.ends_with(".niki/skills"), "{warning}");
+        assert!(warning.reason.contains("not trusted"), "{warning}");
+        assert!(!catalog.inject_into("").contains("a project skill"));
+    }
+
+    #[test]
+    fn a_trusted_workspace_loads_project_skills_as_before() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        write_skill(
+            &project.path().join(".niki/skills"),
+            "deploy",
+            &described("deploy", "a project skill"),
+        );
+        write_skill(
+            user.path(),
+            "user-one",
+            &described("user-one", "a user skill"),
+        );
+
+        let catalog =
+            SkillCatalog::discover_with(project.path(), user.path(), ProjectTrust::Trusted);
+        let names: Vec<&str> = catalog.list().iter().map(Skill::name).collect();
+        assert_eq!(names, ["deploy", "user-one", "commit", "review"]);
+        assert!(!catalog.project_suppressed());
+        assert!(catalog.warnings().is_empty(), "{:?}", catalog.warnings());
+    }
+
+    #[test]
+    fn the_catalog_follows_a_persisted_trust_store() {
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let home = tempfile::tempdir().expect("home");
+        write_skill(
+            &project.path().join(".niki/skills"),
+            "deploy",
+            &described("deploy", "a project skill"),
+        );
+
+        let mut store = TrustStore::at(home.path().join("trusted_workspaces.toml"));
+        let untrusted = SkillCatalog::discover_with(
+            project.path(),
+            user.path(),
+            store.decision(project.path()),
+        );
+        assert!(untrusted.project_suppressed());
+
+        store.trust(project.path()).expect("trust");
+        let trusted = SkillCatalog::discover_with(
+            project.path(),
+            user.path(),
+            store.decision(project.path()),
+        );
+        assert!(!trusted.project_suppressed());
+        assert!(trusted.list().iter().any(|skill| skill.name() == "deploy"));
     }
 
     #[cfg(unix)]

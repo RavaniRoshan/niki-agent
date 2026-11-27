@@ -67,6 +67,14 @@
 //! [`Notify`] runs once at the end of a turn — completed, failed or cancelled —
 //! with a JSON document on stdin. It is spawned detached and never blocks the
 //! turn; a failure is one warning line on stderr.
+//!
+//! Project hooks are executable repository content and are admitted only when
+//! the workspace is trusted (see [`niki_config::trust`]). [`Hooks::load`] and
+//! [`Hooks::load_from`] are the historical entry points for a caller that
+//! already decided; [`Hooks::load_with`] and [`Hooks::load_from_with`] apply an
+//! explicit [`ProjectTrust`]. An untrusted workspace still reads the user file,
+//! never the project file, records [`Hooks::project_suppressed`] and puts the
+//! reason in [`Loaded::warnings`].
 
 #![forbid(unsafe_code)]
 
@@ -81,6 +89,7 @@ use std::path::Path;
 use serde_json::Value;
 
 pub use config::{Event, Hooks, Loaded};
+pub use niki_config::trust::{ProjectTrust, TrustStore};
 pub use notify::{ANSWER_LIMIT, Notify, TurnEnd};
 pub use payload::{PostToolUse, PreToolUse, ToolCall, UserPrompt, wire_tool_name};
 pub use runner::Outcome;

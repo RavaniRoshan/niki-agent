@@ -22,6 +22,12 @@
 //! arbitrary file. The user-level file is outside the workspace by definition
 //! and is not bounded.
 //!
+//! Project files are admitted only when the workspace is trusted (see
+//! [`crate::trust`]). [`Instructions::discover`] is the historical entry point
+//! for a caller that already decided; [`Instructions::discover_with`] applies an
+//! explicit [`ProjectTrust`] and records a suppressed project chain instead of
+//! silently returning nothing.
+//!
 //! [`write_scaffold`] backs `/init`: it writes [`SCAFFOLD`] at the root with
 //! `create_new`, so a second run reports the file and changes nothing.
 
@@ -29,11 +35,17 @@ use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
+use crate::trust::ProjectTrust;
+
 /// The file names tried in one directory, most preferred first.
 pub const FILES: [&str; 2] = ["AGENTS.md", ".niki/AGENTS.md"];
 
 /// Body bytes the whole chain may carry in one system prompt.
 pub const MAX_BYTES: usize = 32 * 1024;
+
+/// The reason a project instruction chain was not read.
+pub const PROJECT_SUPPRESSED: &str =
+    "project instruction files are not loaded because this workspace is not trusted";
 
 /// The marker appended to a file the budget cut.
 pub const TRUNCATED: &str = "[truncated]";
@@ -74,10 +86,17 @@ pub struct Instruction {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Instructions {
     files: Vec<Instruction>,
+    project_suppressed: bool,
 }
 
 impl Instructions {
-    /// Discover the user, root and nested instruction files.
+    /// Discover the user, root and nested instruction files, admitting project
+    /// files.
+    ///
+    /// This is the historical entry point: a host that has not made a trust
+    /// decision keeps the behaviour it had before the gate existed. A host that
+    /// gates project content calls [`Self::discover_with`] with the workspace's
+    /// [`ProjectTrust`].
     ///
     /// `root` is the workspace root and `cwd` the directory the agent was
     /// started in; when `cwd` is not inside `root` only the root is walked.
@@ -88,6 +107,16 @@ impl Instructions {
     /// one broken file must not hide the rest.
     #[must_use]
     pub fn discover(root: &Path, cwd: &Path, config_home: &Path) -> Self {
+        Self::discover_with(root, cwd, config_home, ProjectTrust::Trusted)
+    }
+
+    /// Discover the user, root and nested instruction files under `trust`.
+    ///
+    /// The user-level file is always read. When the workspace is untrusted, the
+    /// project chain is not walked at all, [`Self::project_suppressed`] is set
+    /// and [`Self::suppression_notice`] explains why, so a caller can say so.
+    #[must_use]
+    pub fn discover_with(root: &Path, cwd: &Path, config_home: &Path, trust: ProjectTrust) -> Self {
         let mut instructions = Self::default();
         let mut seen: Vec<PathBuf> = Vec::new();
         let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
@@ -101,6 +130,11 @@ impl Instructions {
                 body,
                 truncated: false,
             });
+        }
+
+        if !trust.is_trusted() {
+            instructions.project_suppressed = true;
+            return instructions;
         }
 
         let cwd = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
@@ -137,6 +171,18 @@ impl Instructions {
     #[must_use]
     pub fn files(&self) -> &[Instruction] {
         &self.files
+    }
+
+    /// Whether the project chain was skipped because the workspace is untrusted.
+    #[must_use]
+    pub fn project_suppressed(&self) -> bool {
+        self.project_suppressed
+    }
+
+    /// The sentence a caller shows when project files were suppressed.
+    #[must_use]
+    pub fn suppression_notice(&self) -> Option<&'static str> {
+        self.project_suppressed.then_some(PROJECT_SUPPRESSED)
     }
 
     /// Whether discovery found nothing to send.
@@ -517,6 +563,55 @@ mod tests {
         assert!(found.is_empty());
         assert_eq!(found.inject_into("BUILT-IN-PROMPT"), "BUILT-IN-PROMPT");
         assert_eq!(found.render(), "");
+    }
+
+    #[test]
+    fn an_untrusted_workspace_reads_the_user_file_and_skips_the_project_chain() {
+        let workspace = tempdir();
+        let home = tempdir();
+        let root = workspace.path();
+        write(&home.path().join("AGENTS.md"), "USER-BODY\n");
+        write(&root.join("AGENTS.md"), "ROOT-BODY\n");
+        write(&root.join("sub/AGENTS.md"), "NESTED-BODY\n");
+
+        let found = Instructions::discover_with(
+            root,
+            &root.join("sub"),
+            home.path(),
+            ProjectTrust::Untrusted,
+        );
+        assert_eq!(found.len(), 1, "{:?}", found.files());
+        assert_eq!(found.files()[0].path, USER_HEADER);
+        assert!(found.files()[0].body.contains("USER-BODY"));
+        assert!(found.project_suppressed());
+        assert_eq!(found.suppression_notice(), Some(PROJECT_SUPPRESSED));
+        assert!(!found.render().contains("ROOT-BODY"));
+        assert!(!found.render().contains("NESTED-BODY"));
+    }
+
+    #[test]
+    fn a_trusted_workspace_reads_the_same_chain_as_before() {
+        let workspace = tempdir();
+        let home = tempdir();
+        let root = workspace.path();
+        write(&home.path().join("AGENTS.md"), "USER-BODY\n");
+        write(&root.join("AGENTS.md"), "ROOT-BODY\n");
+        write(&root.join("sub/AGENTS.md"), "NESTED-BODY\n");
+
+        let found = Instructions::discover_with(
+            root,
+            &root.join("sub"),
+            home.path(),
+            ProjectTrust::Trusted,
+        );
+        let paths: Vec<&str> = found
+            .files()
+            .iter()
+            .map(|file| file.path.as_str())
+            .collect();
+        assert_eq!(paths, [USER_HEADER, "AGENTS.md", "sub/AGENTS.md"]);
+        assert!(!found.project_suppressed());
+        assert_eq!(found.suppression_notice(), None);
     }
 
     #[test]

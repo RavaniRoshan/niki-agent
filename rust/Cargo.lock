@@ -929,6 +929,7 @@ dependencies = [
 name = "niki-hooks"
 version = "2.1.2"
 dependencies = [
+ "niki-config",
  "regex",
  "serde_json",
  "tempfile",
@@ -1004,6 +1005,7 @@ dependencies = [
 name = "niki-skills"
 version = "2.1.2"
 dependencies = [
+ "niki-config",
  "tempfile",
  "thiserror",
 ]

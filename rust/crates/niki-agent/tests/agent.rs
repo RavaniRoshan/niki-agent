@@ -702,6 +702,52 @@ async fn a_blocking_hook_stops_a_tool_and_the_model_sees_the_reason() {
 }
 
 #[tokio::test]
+async fn an_untrusted_workspace_does_not_run_its_project_hooks() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let project = dir.path().join(".niki");
+    std::fs::create_dir_all(&project).expect("hooks dir");
+    std::fs::write(
+        project.join("hooks.json"),
+        r#"{"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": [
+            {"type": "command", "command": "printf 'no writes today' >&2; exit 2"}
+        ]}]}}"#,
+    )
+    .expect("hooks file");
+    let loaded = niki_hooks::Hooks::load_from_with(
+        &project.join("hooks.json"),
+        &dir.path().join("home").join("hooks.json"),
+        niki_hooks::ProjectTrust::Untrusted,
+    );
+    assert!(loaded.hooks.project_suppressed());
+    assert_eq!(loaded.warnings.len(), 1, "{:?}", loaded.warnings);
+
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"file_path":"allowed.txt","content":"ok"}"#,
+        ),
+        text_turn("written"),
+    ]);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_policy(Mode::Auto, AllowList::parse(""))
+        .with_hooks(std::sync::Arc::new(loaded.hooks));
+
+    let outcome = agent.run("write it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert!(
+        dir.path().join("allowed.txt").exists(),
+        "the suppressed hook did not block the write"
+    );
+    assert!(
+        !agent.messages()[2].content.contains("no writes today"),
+        "{}",
+        agent.messages()[2].content
+    );
+}
+
+#[tokio::test]
 async fn a_blocking_prompt_hook_stops_the_turn_before_the_model() {
     let dir = tempfile::tempdir().expect("tempdir");
     let hooks = hooks_document(
