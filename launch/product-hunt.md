@@ -28,12 +28,11 @@ never claim a feature that is still under "Known gaps".
 
 **Gallery order and captions:**
 
-1. `gallery/01-hero.png` — A quiet coding agent, in one native binary.
-2. `gallery/02-one-binary.png` — One archive, one executable, one command.
-3. `gallery/03-approval-gate.png` — It asks before it acts. Manual, Auto, YOLO.
-4. `gallery/04-providers.png` — Your model, your files, one TOML block.
-5. `gallery/05-long-sessions.png` — Built for the long session.
-6. `gallery/thumbnail-240.png` — Thumbnail.
+1. `gallery/01-hero.png` — One native binary. No runtime, no account.
+2. `gallery/02-read-before-write.png` — It reads before it writes.
+3. `gallery/03-approval-gate.png` — It asks before it acts. That card is the gate.
+4. `gallery/04-proof.png` — Then it proves the change: cargo test, two tests green.
+5. `gallery/thumbnail-240.png` — Thumbnail.
 
 The gallery is rendered from sessions recorded from the shipped binary against a
 loopback model, so the screenshots are the product, not a mock.
