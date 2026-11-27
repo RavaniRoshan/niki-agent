@@ -35,7 +35,7 @@ const TOML_GATEWAYS = [
     section: '[providers.kilo]',
     protocol: 'openai',
     env: 'KILO_API_KEY',
-    model: 'claude-opus-4.7',
+    model: 'gpt-5.4-code',
   },
   {
     id: 'opencode',

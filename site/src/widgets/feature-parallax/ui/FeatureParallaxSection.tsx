@@ -314,7 +314,7 @@ export function FeatureParallaxSection({ onSelectDetail }: FeatureParallaxSectio
                     <TerminalTitleBar title="sessions · sqlite" rightLabel="/resume" />
                     <div className="p-6 space-y-3 font-tech">
                       <div className="rounded-[2px] border border-dashed border-[#2f415a] bg-[#141d2b] px-4 py-2.5 opacity-60 max-w-[380px]">
-                        <div className="text-[10.5px] text-[#8ea0b8]">Older rows folded by /compact · still stored</div>
+                        <div className="text-[10.5px] text-[#8ea0b8]">Older turns summarised by /compact · store intact</div>
                       </div>
                       <div className="rounded-[2px] border border-[#9ec8f8]/60 bg-[#23354f] px-4 py-3.5 max-w-[380px] space-y-2">
                         <div className="flex justify-between text-[11.5px]">

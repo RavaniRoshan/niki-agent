@@ -90,6 +90,28 @@ export const SOURCE_BUILD_COMMAND = 'cargo build --release -p niki --bin niki';
 
 export const TEST_COMMAND = 'cargo test -j 4 --workspace';
 
+const SLASH_COMMANDS = [
+  '/auto',
+  '/clear',
+  '/compact',
+  '/context',
+  '/diff',
+  '/help',
+  '/init',
+  '/manual',
+  '/model',
+  '/quit',
+  '/resume',
+  '/skills',
+  '/theme',
+  '/threads',
+  '/tools',
+  '/version',
+  '/yolo',
+] as const;
+
+const SLASH_COMMAND_LINE = `Slash commands: ${SLASH_COMMANDS.join(', ')}`;
+
 export const HERO_QUICK_PRESETS: HeroQuickPreset[] = [
   {
     id: 'install',
@@ -139,7 +161,7 @@ export const PARALLAX_CHAPTERS: ParallaxChapter[] = [
     indexLabel: '02',
     title: 'Sessions that survive',
     summary:
-      'Every turn is written to a local SQLite store under ~/.niki. /resume brings a session back, /compact folds older rows out of the view without deleting them, and /clear starts a fresh one.',
+      'Every turn is written to a local SQLite store under ~/.niki. /threads browses saved sessions and previews their first prompt, /resume brings one back, /compact folds older turns into a summary to keep the conversation inside the context window, and /clear starts a fresh one.',
     metricValue: 'SQLite',
     metricLabel: 'local session store',
     detailId: 'sessions',
@@ -223,7 +245,7 @@ export const ECOSYSTEM_LOGOS_ROW_1: EcosystemLogoItem[] = [
     name: 'Anthropic',
     actionType: 'Built-in',
     envVar: 'ANTHROPIC_API_KEY',
-    summary: 'Built in. Set a key and pick a Claude model in /model; nothing else to install.',
+    summary: 'Built in. Set a key and pick an Anthropic model in /model; nothing else to install.',
     configSnippet: `export ANTHROPIC_API_KEY=sk-ant-...\nniki`,
   },
   {
@@ -376,6 +398,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
     bullets: [
       { lead: 'Approve', text: 'a tool call with y and reject it with n' },
       { lead: 'Cycle', text: 'Manual → Auto → YOLO approval modes with Shift+Tab' },
+      { lead: 'Steer', text: 'a running turn with Alt+Enter; Enter queues the next prompt and the status bar counts it' },
       { lead: 'Open', text: 'the searchable command palette with Ctrl+Shift+P' },
     ],
     links: [
@@ -388,8 +411,8 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
     label: 'Sessions',
     headline: 'Sessions persist in a local SQLite store.',
     bullets: [
-      { lead: 'Resume', text: 'a saved session by id or index with /resume' },
-      { lead: 'Fold', text: 'older rows out of the view with /compact; the store keeps them' },
+      { lead: 'Browse', text: 'saved sessions with /threads, or resume one by id or index with /resume' },
+      { lead: 'Fold', text: 'older turns into a summary with /compact; the store keeps them' },
       { lead: 'Clear', text: 'the transcript and start fresh with /clear' },
     ],
     links: [
@@ -418,19 +441,26 @@ export const PILLAR_CARDS: PillarCardData[] = [
     id: 'niki-ui',
     packageName: 'niki · composer',
     title: 'Single binary, single-rule composer',
-    subtitle: 'Bracketed paste, slash commands, and no runtime to install',
+    subtitle: 'Bracketed paste, queued turns, and no runtime to install',
     ctaLabel: 'Explore the composer',
     installCmd: INSTALL_COMMAND,
     highlights: [
       'One Rust executable: no interpreter, package manager, or virtual environment',
       'Bracketed paste keeps multi-line text intact; one hairline composer rule',
-      'Slash commands: /model, /theme, /skills, /resume, /compact, /tools',
+      'Enter while a turn runs queues the prompt in a dim queued row; the status bar counts it',
+      'Alt+Enter or Ctrl+Enter steers the turn that is already running',
+      'Esc twice on an empty composer restores the last prompt and drops its answer from the view',
+      '! runs a line in the local shell through the same approval policy, without a model turn',
+      SLASH_COMMAND_LINE,
     ],
     codeSnippet: `# Interactive terminal session (no API key needed to look around)
 niki
 
 # One prompt, then exit
 niki -n "explain the workspace layout"
+
+# The same turn as one JSON event per line, for scripts
+niki -n "explain the workspace layout" --output-format jsonl
 
 # Run the workspace suite without a network or TTY
 cargo test -j 4 --workspace`,
@@ -516,7 +546,7 @@ export const BENCHMARK_STORIES: BenchmarkStory[] = [
     beforePct: 100,
     afterPct: 8,
     method:
-      'Turns are written to a local SQLite session store under ~/.niki. /resume lists saved sessions, /compact folds older rows out of the view, and /clear starts a fresh session.',
+      'Turns are written to a local SQLite session store under ~/.niki. /threads browses them and previews each first prompt, /resume lists and restores one, /compact folds older turns into a summary, and /clear starts a fresh session.',
     verification:
       'Sessions live beside config, skills, hooks, and MCP settings, so NIKI_HOME moves the whole tree together.',
     command: 'niki -n "summarise this workspace"',
@@ -595,7 +625,10 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     capabilities: [
       'Manual, Auto, and YOLO modes cycle on Shift+Tab; the status bar names the active mode',
       'Auto skips the prompt only for commands on your shell allow-list — there is no classifier',
+      'write_file and edit_file ask first; Auto runs them unattended only when the path stays inside the workspace',
       'A workspace path boundary refuses any path that resolves outside the root',
+      'AGENTS.md is read from the workspace root down to the working directory, user-level file first, inside one 32 KiB budget',
+      '/init writes an AGENTS.md template when the workspace has none',
       'y approves the pending call and n rejects it; Shift+Tab cycles the mode',
     ],
   },
@@ -620,12 +653,16 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     category: 'Presentation Layer',
     tagline: 'Paste multi-line text as text, not as keystrokes.',
     description:
-      'Bracketed paste keeps newlines and punctuation inside the composer, and slash commands stay one word away. Motion is a switch: the spinner runs while the agent works, and NIKI_REDUCED_MOTION=1 stops it.',
+      'Bracketed paste keeps newlines and punctuation inside the composer, and slash commands stay one word away. A prompt sent during a running turn waits in a dim queued row until that turn ends; Alt+Enter hands the draft to the running turn instead. Motion is a switch: the spinner runs while the agent works, and NIKI_REDUCED_MOTION=1 stops it.',
     capabilities: [
       'Bracketed paste sends a multi-line block as one text payload',
+      'Enter queues a prompt while a turn runs; the status bar counts queued prompts',
+      'Alt+Enter or Ctrl+Enter steers the turn that is already running',
+      'Esc twice on an empty composer restores the last prompt and drops its answer from the view',
+      '! runs a line in the local shell through the same approval policy, without a model turn',
       'NIKI_REDUCED_MOTION=1 disables the spinner',
       'NIKI_ASCII=1 falls back to an ASCII glyph and border set',
-      'Slash commands: /model, /theme, /skills, /clear, /compact, /resume, /tools, /version, /help',
+      SLASH_COMMAND_LINE,
     ],
   },
   'themes-system': {
@@ -677,13 +714,30 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     category: 'Architecture',
     tagline: 'A local SQLite store instead of a transcript that disappears.',
     description:
-      'Each turn is written to a session store under ~/.niki. Resume one by id or index, fold older rows out of the view, or clear the transcript and start a fresh session.',
+      'Each turn is written to a session store under ~/.niki. /threads browses the saved sessions and previews their first prompt, /compact folds older turns into a summary with the model so the conversation stays inside the context window, and /clear starts a fresh session.',
     capabilities: [
+      '/threads opens a session browser with a filter and a first-prompt preview',
       '/resume lists saved sessions or resumes one by id or index',
-      '/compact folds older rows out of the view; the store keeps them',
+      '/compact replaces older turns with a model-written summary; the store keeps the originals',
+      '/context reports the conversation size and what the session has spent',
       '/clear empties the transcript and starts a new session',
       'Sessions sit beside config, skills, and hooks under NIKI_HOME',
     ],
+  },
+  'working-tree': {
+    id: 'working-tree',
+    name: 'Working-Tree Diff',
+    category: 'Presentation Layer',
+    tagline: 'Staged, unstaged, and untracked changes, drawn inside the transcript.',
+    description:
+      '/diff reads the working tree with git and renders staged and unstaged changes as unified diffs with old and new gutters; on the untracked side it reads each file and draws it as additions. Every section is capped so a large change cannot flood the transcript.',
+    capabilities: [
+      '/diff shows all three sections; /diff staged, /diff unstaged, and /diff untracked narrow it',
+      'Each section stops at 20 files and 400 lines, and reports what it withheld',
+      'An untracked file over 1 MiB is named with its size instead of being read',
+      'A clean tree answers "no changes" without printing a diff',
+    ],
+    codePreview: '/diff unstaged',
   },
   providers: {
     id: 'providers',
@@ -709,7 +763,8 @@ export const ARCHITECTURE_NAV_GROUPS = [
       { label: 'One Binary', desc: 'No runtime, no virtual environment', detailId: 'binary' },
       { label: 'Runtime Themes', desc: '4 palettes via /theme', detailId: 'themes-system' },
       { label: 'Live Composer', desc: 'Bracketed paste + reduced motion', detailId: 'adaptive-motion' },
-      { label: 'Session Store', desc: 'SQLite sessions and /resume', detailId: 'sessions' },
+      { label: 'Session Store', desc: 'SQLite sessions, /threads and /resume', detailId: 'sessions' },
+      { label: 'Working-Tree Diff', desc: '/diff renders staged, unstaged, untracked', detailId: 'working-tree' },
       { label: 'Live Keymap', desc: 'Every advertised chord has a handler', detailId: 'keymap' },
     ],
   },
@@ -820,8 +875,15 @@ export const MEGA_MENU_CAPABILITIES = [
     id: 'sessions',
     icon: 'motion' as const,
     title: 'Session Resume',
-    desc: 'SQLite-backed sessions, /resume and /compact.',
+    desc: 'SQLite sessions, /threads, /resume and /compact.',
     detailId: 'sessions',
+  },
+  {
+    id: 'working-tree',
+    icon: 'diff' as const,
+    title: 'Working-Tree Diff',
+    desc: '/diff renders staged, unstaged, and untracked changes.',
+    detailId: 'working-tree',
   },
 ];
 
@@ -894,6 +956,7 @@ export const FOOTER_COLUMNS = {
     { label: 'One Binary', detailId: 'binary' },
     { label: 'Runtime Themes (/theme)', detailId: 'themes-system' },
     { label: 'Live Composer', detailId: 'adaptive-motion' },
+    { label: 'Working-Tree Diff (/diff)', detailId: 'working-tree' },
     { label: 'Session Store', detailId: 'sessions' },
     { label: 'Live Keymap Registry', detailId: 'keymap' },
     { label: 'Providers', detailId: 'providers' },
