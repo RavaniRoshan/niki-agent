@@ -2,8 +2,8 @@
   "format": "niki.protocol.fixture.v1",
   "name": "hello",
   "provenance": {
-    "captured_with": "langgraph_api 0.15.1 / langgraph 1.2.12",
-    "graph": "langgraph dev (scripted fixture graph)",
+    "captured_with": "niki-protocol-reference 1.0",
+    "graph": "scripted reference server",
     "normalization": "UUIDs replaced in first-appearance order"
   },
   "request": {
@@ -54,30 +54,30 @@
             "graph_id": "agent",
             "assistant_id": "00000000-0000-7000-8000-000000000003",
             "run_attempt": 1,
-            "langgraph_version": "1.2.12",
-            "langgraph_api_version": "0.15.1",
-            "langgraph_plan": "enterprise",
-            "langgraph_host": "self-hosted",
-            "langgraph_api_url": "http://127.0.0.1:2025",
+            "engine_version": "1.2.12",
+            "engine_api_version": "0.15.1",
+            "engine_plan": "enterprise",
+            "engine_host": "self-hosted",
+            "engine_api_url": "http://127.0.0.1:2025",
             "run_id": "00000000-0000-7000-8000-000000000001",
             "thread_id": "00000000-0000-7000-8000-000000000004",
-            "ls_integration": "langchain_chat_model",
-            "langgraph_step": 1,
-            "langgraph_node": "respond",
-            "langgraph_triggers": [
+            "model_integration": "chat_model",
+            "engine_step": 1,
+            "engine_node": "respond",
+            "engine_triggers": [
               "branch:to:respond"
             ],
-            "langgraph_path": [
+            "engine_path": [
               "__pregel_pull",
               "respond"
             ],
-            "langgraph_checkpoint_ns": "respond:00000000-0000-7000-8000-000000000005",
+            "engine_checkpoint_ns": "respond:00000000-0000-7000-8000-000000000005",
             "checkpoint_ns": "respond:00000000-0000-7000-8000-000000000005",
-            "ls_provider": "genericfakechatmodel",
-            "ls_model_type": "chat",
-            "lc_versions": {
-              "langchain-core": "1.6.6",
-              "langchain": "1.4.3"
+            "model_provider": "genericfakechatmodel",
+            "model_type": "chat",
+            "client_versions": {
+              "core": "1.6.6",
+              "client": "1.4.3"
             }
           }
         }

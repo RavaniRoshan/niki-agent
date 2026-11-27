@@ -1,15 +1,16 @@
 # Niki Agent
 
-**A terminal coding agent that stays quiet, starts fast, and runs on your
-machine.**
+**One binary. No runtime. A terminal coding agent that starts instantly.**
 
-1.1.2 is the release that makes the installed product complete: the wheel now
-carries everything a turn needs, the project directory is `.niki`, and every
-page a new user reads describes the product rather than how it was built.
+2.0.0 is a new implementation of Niki Agent in Rust. The shipped product is a
+single self-contained executable: there is no Python interpreter to install, no
+virtual environment to create, and no packages to resolve on first run. Linux
+and WSL share one archive, Windows has its own, and macOS builds from source in
+two commands.
 
 ## Install
 
-**Linux / macOS**
+**Linux / WSL**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
@@ -21,9 +22,18 @@ curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/
 irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 ```
 
-Both create an isolated environment under `~/.local/niki`
-(`%LOCALAPPDATA%\niki` on Windows), verify the release checksum, and leave your
-shell profile alone unless you pass `NIKI_SHELL=1`. Requires Python 3.12+.
+Both verify the archive against the release's `SHA256SUMS`, install one
+executable under `~/.local/niki` (`%LOCALAPPDATA%\niki` on Windows), and leave
+your shell profile alone unless you pass `NIKI_SHELL=1`.
+
+**macOS** has no prebuilt asset yet:
+
+```bash
+git clone https://github.com/RavaniRoshan/niki-agent
+cd niki-agent/rust
+cargo build --release -p niki --bin niki
+install -m 0755 target/release/niki ~/.local/niki/bin/niki
+```
 
 Then:
 
@@ -36,65 +46,64 @@ No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
 
-## What is fixed in 1.1.2
+## What changed in 2.0.0
 
-**The first turn works.** The shipped wheel used to install, answer
-`niki --version`, and then fail when you asked it to do something: the JS
-interpreter it uses for code execution was pulled from a package whose published
-release did not match the interface the agent calls. The interpreter now ships
-inside this wheel, so an installed release does a complete turn — prompt, tool
-call, file written — with no missing pieces. The release pipeline now proves
-that with a real turn before publishing, not with a version print.
+**The product is a Rust binary.** The turn loop, provider clients, tool
+execution, permission policy, session store, MCP client, and terminal UI are one
+workspace compiled into `niki`. Startup no longer imports a language runtime,
+and an idle session does not redraw.
 
-**The project directory is `.niki`.** Configuration, sessions, history, skills,
-and stored keys live under `~/.niki`; a repository-level `.niki/` holds
-project-scoped settings.
+**Every surface is in the binary.** The interactive TUI, headless `-n` runs,
+JSON output, editor integration over the Agent Client Protocol, skills, hooks,
+slash commands, and session resume all ship in the same executable.
 
-**The documentation is the product's.** The README, the provider guide, the
-architecture note, the independence page, the security policy, and the issue and
-pull-request templates were rewritten for the person using the agent. Two real
-documentation bugs are gone with them: the provider-table example used a TOML
-table the config reader ignores, and the command palette was advertised on a key
-that has no binding.
+**Installation is one file.** The installer downloads a platform archive,
+checks its SHA-256 against the release, and copies the binary into place.
+There is nothing to compile and nothing to resolve.
+
+**The Python client is retired.** `libs/code` stays in the repository as the
+reference implementation and the source of the behavioural fixtures, but it is
+no longer installed, no longer shipped, and no longer the supported product.
+If you installed 1.1.x, re-run the install command: the installer replaces the
+application under `~/.local/niki`. Your configuration, sessions, and skills in
+`~/.niki` are untouched.
 
 ## What makes it different
 
-**It is quiet.** Zero idle redraws. The composer is a single rule, not a box. A
-long transcript is mounted in a bounded window, so hour two of a session
-renders like minute one.
+**It is lean.** The composer is a single rule, not a box, and the whole client
+is one native executable with no package graph behind it. The screen is drawn
+by a key-driven event loop and its layout is exercised in CI against a ratatui
+test backend, so a regression fails the build rather than shipping.
 
-**It does not waste your first minute.** `niki --version` answers without
-importing the agent runtime, and the TUI paints before model setup finishes.
+**It does not waste your first minute.** There is no interpreter to boot and no
+import graph to warm. `niki` is a native executable.
 
-**You choose the model.** Anthropic, OpenAI, and Google Gemini work immediately;
-eighteen more provider integrations are one `/install` away; any
-OpenAI-compatible endpoint is a config block in `~/.niki/config.toml`.
+**You choose the model.** Eleven providers have a built-in block — Anthropic,
+OpenAI, Google Gemini, Ollama, OpenRouter, NVIDIA, Groq, Together, DeepSeek,
+Mistral, and xAI — and any OpenAI-compatible endpoint is a config block in
+`~/.niki/config.toml`. MCP servers over stdio or HTTP extend the tool set.
 
-**It asks before it acts.** Shift+Tab cycles Manual → Auto → YOLO. Auto sends
-anything uncertain to a classifier and still asks when review fails. A shell
-allow-list and sandbox backends give you a hard boundary when you need one.
+**It asks before it acts.** Shift+Tab cycles Manual → Auto → YOLO. There is no
+classifier in this build: Manual asks for every gated command, Auto runs what
+the allow-list matches and asks for the rest, and YOLO runs everything. A
+workspace path boundary keeps every tool inside the root.
 
 **Accessibility is built in, not bolted on.** Four themes with measured
-contrast — body text at 4.5:1, UI glyphs at 3:1. Reduced motion, an ASCII glyph
-set, a screen-reader mode, and layouts checked at 40, 50, 80, 120, and 160
-columns.
+contrast — body text at 4.5:1, UI glyphs at 3:1, gated in the tests. Reduced
+motion and an ASCII glyph set are one environment variable each.
 
 **Your data stays put.** Sessions, history, skills, and stored keys live in
-`~/.niki`. No account and no cloud sync. The only network calls outside a turn
-are the update check, the optional self-update, and the model-pricing refresh,
-and each is described in `SECURITY.md`.
+`~/.niki`. No account and no cloud sync.
 
 ## Artifacts
 
 | File | Platform |
 | --- | --- |
-| `niki-<version>-linux.tar.gz` | Linux x86-64 and WSL |
-| `niki-<version>-macos.tar.gz` | macOS, Apple Silicon and Intel |
-| `niki-<version>-windows.zip` | Windows x86-64 |
+| `niki-<version>-linux-x86_64.tar.gz` | Linux x86-64 and WSL |
+| `niki-<version>-windows-x86_64.zip` | Windows x86-64 |
 
-`SHA256SUMS` covers all three. Each archive contains the pinned wheel, both
-installers, `NOTICE`, and `README.md`. The macOS archive is
-architecture-independent because the wheel is pure Python.
+`SHA256SUMS` covers both. Each archive contains the binary, both installers,
+`NOTICE`, `LICENSE`, and `README.md`.
 
 To verify by hand:
 
@@ -102,11 +111,12 @@ To verify by hand:
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-## Upgrading
+## Upgrading from 1.x
 
-Re-run the install command. The installer replaces the environment under
-`~/.local/niki` and leaves `~/.niki` — your configuration, sessions, and skills —
-untouched.
+Re-run the install command. The installer replaces the application under
+`~/.local/niki` (`%LOCALAPPDATA%\niki` on Windows) and leaves `~/.niki` — your
+configuration, sessions, and skills — untouched. The old Python environment is
+no longer used and can be removed.
 
 ## Uninstalling
 

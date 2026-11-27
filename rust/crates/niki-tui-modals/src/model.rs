@@ -139,12 +139,12 @@ default = "kimi:kimi-k3"
 
 [providers.kimi]
 display_name = "Kimi"
-class_path = "langchain_openai:ChatOpenAI"
+class_path = "openai:Chat"
 models = ["kimi-k3", "kimi-k2.7-code"]
 
 [providers.anthropic]
 display_name = "Anthropic"
-class_path = "langchain_anthropic:ChatAnthropic"
+class_path = "anthropic:Chat"
 models = ["claude-sonnet-4"]
 "#;
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 import io
 import os
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -30,9 +29,10 @@ from niki_agent.niki.accessibility import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
+    from pathlib import Path
 
-VENV_BIN = Path(__file__).resolve().parents[3] / ".venv" / "bin"
-NIKI = str(VENV_BIN / "niki")
+# The Python client ships no console script; run the module directly.
+NIKI = [sys.executable, "-m", "niki_agent"]
 
 
 @pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "on", " On "])
@@ -137,7 +137,9 @@ def test_bare_launch_explains_linear_mode_and_exits(tmp_path: Path) -> None:
     """No prompt, no TUI: one line of guidance and a non-zero exit."""
     home = tmp_path / "home"
     home.mkdir()
-    child = pexpect.spawn(NIKI, [], env=_env(home), encoding="utf-8", timeout=60)
+    child = pexpect.spawn(
+        NIKI[0], [*NIKI[1:]], env=_env(home), encoding="utf-8", timeout=60
+    )
     child.expect(pexpect.EOF)
     output = child.before or ""
     child.close()

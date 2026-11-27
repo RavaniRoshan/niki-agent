@@ -117,7 +117,7 @@ Status: accepted (2026-11-26)
 
 Context: the Python product is released and installable today.
 
-Decision: the Rust binary ships as `niki-rs` from the `rust/` workspace until
+Decision: the Rust binary ships as `niki` from the `rust/` workspace until
 cutover. The Python `niki` remains the product. Cutover requires every remaining
 surface to reach the same behaviour and a release carrying both archives.
 

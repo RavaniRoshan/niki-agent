@@ -1,5 +1,11 @@
 # ◐ Niki Agent
 
+> **Deprecated as the shipped product.** Niki Agent 2.0.0 is a self-contained
+> Rust binary. This Python package stays in the repository as the reference
+> implementation and the source of the behavioural fixtures; it is no longer
+> installed by the release installer and no longer provides a `niki` console
+> script. See the [repository README](../../README.md) for the product.
+
 [![PyPI - Version](https://img.shields.io/badge/pypi-niki--agent-blue)](https://pypi.org/project/niki-agent/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver)](../../NOTICE)
 

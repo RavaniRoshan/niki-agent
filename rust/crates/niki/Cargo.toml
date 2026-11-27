@@ -7,13 +7,17 @@ rust-version.workspace = true
 repository.workspace = true
 description = "Niki Agent terminal client"
 
+# The shipped product binary. `cargo build --release -p niki --bin niki` is
+# what the release workflow packages.
 [[bin]]
 name = "niki"
-path = "src/main.rs"
+path = "src/bin/niki.rs"
 
+# The older engine client, kept as a reference front end for the HTTP/SSE
+# engine. Not shipped.
 [[bin]]
-name = "niki-rs"
-path = "src/bin/niki_rs.rs"
+name = "niki-engine"
+path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
