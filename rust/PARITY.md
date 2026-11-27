@@ -13,14 +13,14 @@ upstream project; the behaviour is the specification, not the source.
 
 | Surface | Python reference | Rust today |
 | --- | --- | --- |
-| Slash commands | 47 public, plus aliases | 10, plus aliases (`niki-commands`) |
-| Tools | file, edit, shell, search, web, todo, subagent, memory | 7: `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, plus MCP |
-| Agent loop | multi-turn, compaction, subagents | multi-turn, hooks, skills, policy, cancel |
-| Sessions | SQLite, thread browser, resume | SQLite, `--resume` / `--continue`, `/resume` |
-| Context | token accounting, offload/summarize | per-turn usage only |
+| Slash commands | 47 public, plus aliases | 11, plus aliases; 24 on `ROADMAP` (`niki-commands`) |
+| Tools | file, edit, shell, search, web, todo, subagent, memory | 8: `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, `task`; plus MCP |
+| Agent loop | multi-turn, compaction, subagents | multi-turn, hooks, skills, policy, cancel, delegation |
+| Sessions | SQLite, thread browser, resume | SQLite, `--resume` / `--continue`, `/resume` by index or id |
+| Context | token accounting, offload/summarize | `context_report`, `context_audit`, `/compact` through the provider, occupancy in the status line |
 | Editor protocol | ACP | ACP |
-| Headless | `-n`, JSON, exit codes | `-n`, JSON, exit codes 0/1/2/124/130 |
-| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~3.1k lines: transcript, composer, approval dialog, model picker, help |
+| Headless | `-n`, JSON, exit codes | `-n`, JSON (usage, session totals, context audit), exit codes 0/1/2/124/130 |
+| Full-screen UI | ~100k lines of Python: diffs, tool cards, pickers, palettes | ~3.8k lines: transcript, composer with completion and history, copy, approval dialog, model picker, help, status line |
 
 `ROADMAP` in `rust/crates/niki-commands` is the machine-readable half of the
 command table: a command leaves it the day `parse` answers it, and a test fails
@@ -28,14 +28,14 @@ if a name is in both places.
 
 ## Phase 1 — the interaction floor
 
-Everything a person touches every minute. In flight as three slices.
+Everything a person touches every minute. All four slices are in.
 
-| Slice | Work | Done when |
-| --- | --- | --- |
-| Commands | `niki-commands` carries the catalogue and aliases; `ROADMAP` names the gap | alias and roadmap tests pass; `/help` cannot list a dead command |
-| Compose | slash autocomplete, prompt history in `$NIKI_HOME/history.jsonl`, copy the last answer | tests for filtering, Tab, history round-trip, the clipboard escape |
-| Context | usage accumulation across turns, `ContextReport`, real compaction through the provider | compaction replaces older turns once; a provider failure leaves history intact |
-| Delegate | `task` tool that runs a child agent with a fresh context and returns its answer | the child cannot spawn a child; cancel reaches it; the step budget is reported |
+| Slice | State |
+| --- | --- |
+| Commands | Done: `niki-commands` carries the catalogue and aliases; `ROADMAP` names the gap; alias and roadmap tests keep `/help` from listing a dead command. |
+| Compose | Done: slash autocomplete, prompt history in `$NIKI_HOME/history.jsonl`, `Ctrl+Y` copy, all in the help overlay. |
+| Context | Done: usage and steps across turns, `ContextReport`, `ContextAudit`, real compaction through the provider, occupancy in the status line. |
+| Delegate | Done: the `task` tool runs a child with a fresh history, no `task` of its own, the parent's cancel handle and a 20-step budget. |
 
 ## Phase 2 — the agent shell
 
@@ -52,7 +52,7 @@ Everything a person touches every minute. In flight as three slices.
 
 | Work | Detail |
 | --- | --- |
-| Transcript | streamed markdown, per-tool cards with collapsed output, unified diffs with line numbers |
+| Transcript | the Markdown renderer exists in `niki-render` with tests; the full-screen transcript does not call it yet. Per-tool cards with collapsed output and unified diffs with line numbers are still open. |
 | Status bar | model, mode, context percentage, token counts; never a redraw when idle |
 | Pickers | one fuzzy picker for models, sessions, prompts and themes; `Ctrl+K` palette |
 | Approvals | per-command preview, "always allow this command", a path-boundary warning |
