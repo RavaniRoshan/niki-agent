@@ -45,11 +45,12 @@ pub enum ProviderError {
 impl ProviderError {
     /// Whether the failure is worth another attempt.
     ///
-    /// Retrying only helps when nothing was accepted: a 429 or a 5xx before the
-    /// stream started. Everything else is the user's configuration or the
-    /// provider's permanent answer.
+    /// Retrying only helps when nothing was accepted: a 408, 409, 425, 429 or a
+    /// transient 5xx before the stream started. Everything else is the user's
+    /// configuration or the provider's permanent answer. See
+    /// [`crate::retry::is_retryable`] for the policy the clients use.
     #[must_use]
     pub fn is_retryable_status(status: u16) -> bool {
-        status == 429 || (500..600).contains(&status)
+        crate::retry::is_retryable_status(status)
     }
 }
