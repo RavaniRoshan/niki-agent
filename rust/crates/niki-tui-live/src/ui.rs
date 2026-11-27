@@ -37,12 +37,25 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let cursor = draw_composer(frame, app, composer);
     draw_completion(frame, app, completion);
     draw_status(frame, app, status);
+    if let Some(overlay) = app.transcript_overlay.as_mut() {
+        crate::transcript_overlay::draw(
+            frame,
+            area,
+            overlay,
+            app.transcript.rows(),
+            app.palette,
+            app.glyphs,
+        );
+    }
     // A modal owns the keys while it is open, so the composer cursor would be a
-    // promise the screen cannot keep.
+    // promise the screen cannot keep. The transcript overlay hides it too,
+    // because the composer is not on screen.
     if let Some(modal) = &app.modal {
         modal.draw(frame, area, app.palette, app.glyphs);
-    } else if let Some(position) = cursor {
-        frame.set_cursor_position(position);
+    } else if app.transcript_overlay.is_none() {
+        if let Some(position) = cursor {
+            frame.set_cursor_position(position);
+        }
     }
 }
 
@@ -139,7 +152,7 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
 }
 
 /// One pre-rendered line, clipped to the viewport rather than wrapped.
-fn rendered_line(line: &RenderedLine, width: usize) -> Line<'static> {
+pub(crate) fn rendered_line(line: &RenderedLine, width: usize) -> Line<'static> {
     let mut spans = Vec::new();
     let mut used = 0;
     for span in &line.spans {
