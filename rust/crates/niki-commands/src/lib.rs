@@ -227,7 +227,6 @@ pub const ROADMAP: &[CommandInfo] = &[
     },
 ];
 
-
 /// A line that is not one of the commands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnknownCommand {
