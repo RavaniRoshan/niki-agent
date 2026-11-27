@@ -18,7 +18,7 @@ gate that closes it.
 | --- | --- | --- |
 | Now | Connect the Product Hunt account to `https://mcp.producthunt.com/mcp` and export `PRODUCT_HUNT_TOKEN` | `node launch/ph-launch.mjs --check 2026-12-08` returns composer limits instead of `invalid_token` |
 | By 2026-12-04 | Create the draft and fill it from `launch/product-hunt.md` | `--show <id>` lists tagline, description, topics, links, and makers correctly |
-| By 2026-12-04 | Re-render the gallery from the 2.2.0 binary and stage it | The staged images match what the shipped binary draws today |
+| By 2026-12-04 | Re-render the gallery from the 2.2.0 binary and stage it | The staged images match what the shipped binary draws today — `02-one-binary.png` currently reads `2.1.3` and every slide predates the 2.2.0 welcome line |
 | 2026-12-07 | Submit for the 12-08 date | `--submit <id>` returns the scheduled launch, and the editor shows the date |
 | 2026-12-08 | Run the day-of checklist in `launch/product-hunt.md` | Every box ticked, comments answered in-thread |
 | 2026-12-09 | Write down what launch week changed | A 2.3.0 section in `CHANGELOG.md` and the release notes |
