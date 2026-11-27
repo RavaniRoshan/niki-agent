@@ -36,6 +36,11 @@ pub enum ToolError {
         timeout: std::time::Duration,
     },
 
+    /// The question tool could not get a usable answer from the installed
+    /// asker.
+    #[error("{0}")]
+    Ask(String),
+
     /// A tool backed by an external service — an MCP server — failed, or the
     /// server reported the tool's own `isError` result.
     #[error("{0}")]

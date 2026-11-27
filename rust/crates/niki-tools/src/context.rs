@@ -1,12 +1,27 @@
+use std::fmt;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
-use crate::{ToolError, io_error};
+use crate::{Asker, ToolError, io_error};
 
-/// The workspace a tool may touch.
-#[derive(Debug, Clone)]
+/// The workspace a tool may touch, and the channel it may use to reach the
+/// person.
+#[derive(Clone)]
 pub struct ToolContext {
     /// Root of the workspace. Paths handed to a tool are joined to it.
     pub root: PathBuf,
+    /// The channel `request_user_input` asks through. `None` in a headless run.
+    pub asker: Option<Arc<dyn Asker + Send + Sync>>,
+}
+
+impl fmt::Debug for ToolContext {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ToolContext")
+            .field("root", &self.root)
+            .field("asker", &self.asker.is_some())
+            .finish()
+    }
 }
 
 impl ToolContext {
@@ -16,7 +31,20 @@ impl ToolContext {
         let canonical = root
             .canonicalize()
             .map_err(|source| io_error(&root, source))?;
-        Ok(Self { root: canonical })
+        Ok(Self {
+            root: canonical,
+            asker: None,
+        })
+    }
+
+    /// Attach the channel `request_user_input` uses to reach the person.
+    ///
+    /// Without one the tool reports that no interactive user is attached
+    /// instead of waiting.
+    #[must_use]
+    pub fn with_asker(mut self, asker: Arc<dyn Asker + Send + Sync>) -> Self {
+        self.asker = Some(asker);
+        self
     }
 
     /// Resolve a tool path argument against the root, refusing any result that

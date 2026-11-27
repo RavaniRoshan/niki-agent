@@ -340,6 +340,7 @@ async fn registry_specs_cover_every_tool() {
             "grep",
             "list_dir",
             "read_file",
+            "request_user_input",
             "shell",
             "write_file"
         ]
