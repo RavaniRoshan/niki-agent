@@ -484,8 +484,7 @@ async fn edit_file_refuses_a_file_larger_than_it_will_load() {
         json!({"file_path": "huge.bin", "old_string": "a", "new_string": "b"}),
     )
     .await
-    .err()
-    .expect("the edit is refused instead of loading 40 MiB");
+    .expect_err("the edit is refused instead of loading 40 MiB");
 
     match error {
         ToolError::InvalidArguments(message) => {
