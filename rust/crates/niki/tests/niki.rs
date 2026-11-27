@@ -99,6 +99,37 @@ fn tool_call_turn() -> String {
     ])
 }
 
+fn text_tool_call_turn() -> String {
+    sse(&[
+        json!({"choices": [{"delta": {"content": "Checking."}, "finish_reason": null}]}),
+        json!({"choices": [{"delta": {"tool_calls": [{
+            "index": 0,
+            "id": "call_1",
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "arguments": "{\"path\":\"hello.txt\",\"content\":\"hello from rust\"}"
+            }
+        }]}, "finish_reason": null}]}),
+        json!({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]}),
+    ])
+}
+
+fn read_file_turn(path: &str) -> String {
+    sse(&[
+        json!({"choices": [{"delta": {"tool_calls": [{
+            "index": 0,
+            "id": "call_1",
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "arguments": format!("{{\"file_path\":\"{path}\"}}")
+            }
+        }]}, "finish_reason": null}]}),
+        json!({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]}),
+    ])
+}
+
 fn answer_turn() -> String {
     sse(&[
         json!({"choices": [{"delta": {"content": "Wrote hello.txt."}, "finish_reason": null}]}),
@@ -394,6 +425,229 @@ fn json_output_prints_one_object_with_the_answer_and_usage() {
         part("system") + part("tool_schemas") + part("messages"),
         "{stdout}"
     );
+}
+
+/// Parse one JSON object per stdout line, failing with the offending line.
+fn jsonl_objects(stdout: &str) -> Vec<Value> {
+    stdout
+        .lines()
+        .map(|line| {
+            serde_json::from_str(line)
+                .unwrap_or_else(|error| panic!("not JSON: {line:?} ({error})"))
+        })
+        .collect()
+}
+
+fn jsonl_types(values: &[Value]) -> Vec<&str> {
+    values
+        .iter()
+        .map(|value| {
+            value["type"]
+                .as_str()
+                .unwrap_or_else(|| panic!("every line has a type: {value}"))
+        })
+        .collect()
+}
+
+#[test]
+fn jsonl_streams_the_turn_as_one_object_per_event() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, _seen) = serve(vec![text_tool_call_turn(), answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args([
+            "-n",
+            "create hello.txt",
+            "--output-format",
+            "jsonl",
+            "--mode",
+            "auto",
+            "--quiet",
+        ])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "exit {:?}\nstdout: {stdout}\nstderr: {stderr}",
+        output.status.code()
+    );
+    assert!(
+        !stdout.contains('\u{1b}'),
+        "stdout carries no ANSI: {stdout:?}"
+    );
+
+    let values = jsonl_objects(&stdout);
+    let types = jsonl_types(&values);
+    let required = ["start", "text", "tool_call", "tool_result", "usage", "end"];
+    let mut next = 0;
+    for wanted in required {
+        let at = types[next..]
+            .iter()
+            .position(|kind| *kind == wanted)
+            .map(|offset| offset + next)
+            .unwrap_or_else(|| panic!("missing {wanted} in {types:?}"));
+        next = at + 1;
+    }
+    assert_eq!(types.first(), Some(&"start"), "{types:?}");
+    assert_eq!(types.last(), Some(&"end"), "{types:?}");
+    assert_eq!(
+        types.iter().filter(|kind| **kind == "end").count(),
+        1,
+        "end is written once: {types:?}"
+    );
+
+    let start = &values[0];
+    assert_eq!(start["model"], "mock:mock-model");
+    assert!(start["session"].is_string(), "{start}");
+    assert!(start["cwd"].is_string(), "{start}");
+
+    let call = values
+        .iter()
+        .find(|value| value["type"] == "tool_call")
+        .expect("tool_call");
+    assert_eq!(call["name"], "write_file");
+    assert!(call["id"].is_string(), "{call}");
+    assert_eq!(call["arguments"]["path"], "hello.txt", "{call}");
+    assert_eq!(call["arguments"]["content"], "hello from rust", "{call}");
+
+    let result = values
+        .iter()
+        .find(|value| value["type"] == "tool_result")
+        .expect("tool_result");
+    assert_eq!(result["id"], call["id"]);
+    assert_eq!(result["name"], "write_file");
+    assert_eq!(result["ok"], true);
+    assert!(result["truncated"].is_null(), "{result}");
+
+    let usage = values
+        .iter()
+        .find(|value| value["type"] == "usage")
+        .expect("usage");
+    assert_eq!(usage["input"], 12);
+    assert_eq!(usage["output"], 5);
+    assert_eq!(usage["total"], 17);
+
+    let end = values.last().expect("end");
+    assert_eq!(end["reason"], "end_turn");
+    assert_eq!(end["steps"], 2);
+    assert_eq!(end["tool_calls"], 1);
+    assert_eq!(end["usage"]["input"], 12);
+    assert_eq!(end["usage"]["output"], 5);
+
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("hello.txt")).expect("file"),
+        "hello from rust"
+    );
+}
+
+#[test]
+fn jsonl_truncates_a_tool_result_larger_than_four_kibibytes() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let big = "x".repeat(5000);
+    std::fs::write(workspace.path().join("big.txt"), &big).expect("big file");
+    let (base_url, _seen) = serve(vec![read_file_turn("big.txt"), answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args([
+            "-n",
+            "read big.txt",
+            "--output",
+            "jsonl",
+            "--mode",
+            "auto",
+            "--quiet",
+        ])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success(),
+        "exit {:?}\nstdout: {stdout}",
+        output.status.code()
+    );
+
+    let values = jsonl_objects(&stdout);
+    let result = values
+        .iter()
+        .find(|value| value["type"] == "tool_result")
+        .expect("tool_result");
+    assert_eq!(result["name"], "read_file");
+    assert_eq!(result["truncated"], true, "{result}");
+    let text = result["text"].as_str().expect("text is a string");
+    assert_eq!(text.len(), 4096, "cut at the 4 KiB budget");
+    assert!(text.chars().all(|character| character == 'x'), "{result}");
+    assert_eq!(values.last().expect("end")["type"], "end");
+}
+
+#[test]
+fn jsonl_ends_after_a_failed_turn_with_error_then_end() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, "http://127.0.0.1:1");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "hi", "--output-format", "jsonl", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    assert_eq!(output.status.code(), Some(1));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains('\u{1b}'),
+        "stdout carries no ANSI: {stdout:?}"
+    );
+
+    let values = jsonl_objects(&stdout);
+    let types = jsonl_types(&values);
+    assert_eq!(types.first(), Some(&"start"), "{types:?}");
+    assert_eq!(types[types.len() - 2], "error", "{types:?}");
+    assert_eq!(types.last(), Some(&"end"), "{types:?}");
+    assert_eq!(
+        types.iter().filter(|kind| **kind == "end").count(),
+        1,
+        "end is written once: {types:?}"
+    );
+
+    let error = &values[values.len() - 2];
+    assert!(
+        error["message"]
+            .as_str()
+            .is_some_and(|message| !message.is_empty()),
+        "{error}"
+    );
+    assert_eq!(values.last().expect("end")["reason"], "error");
 }
 
 #[test]
