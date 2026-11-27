@@ -30,6 +30,14 @@ pub use tools::{EditFile, Glob, Grep, ListDir, ReadFile, RequestUserInput, Shell
 
 use std::io;
 
+/// Largest file `grep` and `edit_file` will load whole into memory.
+///
+/// Both read a file in one call. A workspace can hold a database, a release
+/// tarball, or a core dump; reading it whole would cost the machine more than
+/// the search or the edit is worth, so anything larger is skipped by `grep` and
+/// refused by `edit_file` with the limit named.
+pub(crate) const MAX_LOADED_FILE_BYTES: u64 = 32 * 1024 * 1024;
+
 pub(crate) fn io_error(path: &std::path::Path, source: io::Error) -> ToolError {
     ToolError::Io {
         path: path.display().to_string(),

@@ -79,6 +79,12 @@ impl Tool for Grep {
                 continue;
             }
             // A file that cannot be read must not abort a workspace-wide search.
+            let Ok(metadata) = fs::metadata(&file) else {
+                continue;
+            };
+            if metadata.len() > crate::MAX_LOADED_FILE_BYTES {
+                continue;
+            }
             let Ok(contents) = fs::read(&file) else {
                 continue;
             };
