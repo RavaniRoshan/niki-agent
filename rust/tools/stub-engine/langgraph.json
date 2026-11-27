@@ -1,5 +1,0 @@
-{
-  "dependencies": ["."],
-  "graphs": {"agent": "./stub_graph.py:graph"},
-  "env": ".env"
-}
