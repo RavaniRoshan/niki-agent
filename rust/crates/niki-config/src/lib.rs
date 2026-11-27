@@ -9,6 +9,9 @@
 //! written for a newer Python release still loads. This crate only reads
 //! `config.toml`; the Rust binary does not write it. [`instructions`] is the
 //! one part that writes a file, and only when `/init` asks it to.
+//!
+//! [`trust`] holds the persisted workspace trust decisions that gate project
+//! skills, hooks and instruction files.
 
 #![forbid(unsafe_code)]
 
@@ -23,6 +26,7 @@ use serde::Deserialize;
 
 mod builtin;
 pub mod instructions;
+pub mod trust;
 
 /// The wire protocol a provider speaks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

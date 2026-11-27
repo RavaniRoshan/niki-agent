@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use niki_hooks::{
-    Event, HookRunner, Hooks, Outcome, PostToolUse, PreToolUse, ToolCall, UserPrompt,
+    Event, HookRunner, Hooks, Outcome, PostToolUse, PreToolUse, ProjectTrust, ToolCall, UserPrompt,
 };
 use serde_json::{Value, json};
 
@@ -418,6 +418,114 @@ fn load_reads_the_project_and_user_locations() {
 
     assert!(!outcome.is_blocked());
     assert_eq!(workspace.read("log"), "prompted");
+}
+
+#[test]
+fn an_untrusted_workspace_skips_the_project_file_and_keeps_the_user_file() {
+    let workspace = Workspace::new();
+    workspace.write(
+        ".niki/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"PreToolUse": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf project >> log")
+        ),
+    );
+    workspace.write(
+        "home/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"PreToolUse": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf user >> log")
+        ),
+    );
+
+    let loaded = Hooks::load_from_with(
+        &workspace.path().join(".niki/hooks.json"),
+        &workspace.path().join("home/hooks.json"),
+        ProjectTrust::Untrusted,
+    );
+    assert!(loaded.hooks.project_suppressed());
+    assert_eq!(loaded.warnings.len(), 1, "{:?}", loaded.warnings);
+    assert!(
+        loaded.warnings[0].contains("hooks.json"),
+        "{:?}",
+        loaded.warnings
+    );
+    assert!(
+        loaded.warnings[0].contains("not trusted"),
+        "{:?}",
+        loaded.warnings
+    );
+    assert!(loaded.hooks.has_handlers(Event::PreToolUse));
+
+    workspace.pre(&loaded.hooks, "shell", json!({"command": "ls"}));
+    assert_eq!(
+        workspace.read("log"),
+        "user",
+        "the project handler did not run"
+    );
+}
+
+#[test]
+fn a_trusted_workspace_still_reads_the_project_file() {
+    let workspace = Workspace::new();
+    workspace.write(
+        ".niki/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"PreToolUse": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf project >> log")
+        ),
+    );
+    workspace.write(
+        "home/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"PreToolUse": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf user >> log")
+        ),
+    );
+
+    let loaded = Hooks::load_from_with(
+        &workspace.path().join(".niki/hooks.json"),
+        &workspace.path().join("home/hooks.json"),
+        ProjectTrust::Trusted,
+    );
+    assert!(!loaded.hooks.project_suppressed());
+    assert!(loaded.warnings.is_empty(), "{:?}", loaded.warnings);
+
+    workspace.pre(&loaded.hooks, "shell", json!({"command": "ls"}));
+    assert_eq!(workspace.read("log"), "project", "the project file wins");
+}
+
+#[test]
+fn load_with_gates_the_standard_project_location() {
+    let workspace = Workspace::new();
+    workspace.write(
+        ".niki/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"UserPromptSubmit": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf project >> log")
+        ),
+    );
+    workspace.write(
+        "home/hooks.json",
+        &format!(
+            r#"{{"hooks": {{"UserPromptSubmit": [{{"hooks": [{}]}}]}}}}"#,
+            handler("printf user >> log")
+        ),
+    );
+
+    let loaded = Hooks::load_with(
+        workspace.path(),
+        &workspace.path().join("home"),
+        ProjectTrust::Untrusted,
+    );
+    assert!(loaded.hooks.project_suppressed());
+    assert!(loaded.hooks.has_handlers(Event::UserPromptSubmit));
+    loaded.hooks.user_prompt_submit(&UserPrompt {
+        prompt: "hello",
+        cwd: workspace.path(),
+        session_id: None,
+    });
+    assert_eq!(workspace.read("log"), "user");
 }
 
 #[test]

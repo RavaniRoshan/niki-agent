@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Lifecycle hooks for the Niki agent: PreToolUse, PostToolUse and UserPromptSubmit"
 
 [dependencies]
+niki-config = { path = "../niki-config" }
 regex.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

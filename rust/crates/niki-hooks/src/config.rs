@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
+use niki_config::trust::ProjectTrust;
 use serde_json::{Map, Value};
 
 use crate::matcher::Matcher;
@@ -94,29 +95,64 @@ pub struct Loaded {
 #[derive(Debug, Default)]
 pub struct Hooks {
     pub(crate) groups: BTreeMap<Event, Vec<Group>>,
+    project_suppressed: bool,
 }
 
 impl Hooks {
     /// Load `{project_root}/.niki/hooks.json` and
-    /// `{config_dir}/hooks.json`.
+    /// `{config_dir}/hooks.json`, admitting project hooks.
+    ///
+    /// This is the historical entry point: a host that has not made a trust
+    /// decision keeps the behaviour it had before the gate existed. A host that
+    /// gates project content calls [`Self::load_with`] with the workspace's
+    /// [`ProjectTrust`].
     ///
     /// `config_dir` is the user configuration directory — the one holding
     /// `config.toml` — so `NIKI_HOME` is honoured without this crate reading
     /// the environment itself.
     #[must_use]
     pub fn load(project_root: &Path, config_dir: &Path) -> Loaded {
-        Self::load_from(
+        Self::load_with(project_root, config_dir, ProjectTrust::Trusted)
+    }
+
+    /// Load the project and user hook files under `trust`.
+    ///
+    /// An untrusted workspace never reads the project file; the user file still
+    /// loads and the reason is one [`Loaded::warnings`] entry.
+    #[must_use]
+    pub fn load_with(project_root: &Path, config_dir: &Path, trust: ProjectTrust) -> Loaded {
+        Self::load_from_with(
             &project_root.join(".niki").join("hooks.json"),
             &config_dir.join("hooks.json"),
+            trust,
         )
     }
 
-    /// Load two explicit files. The project path wins per event, the user path
-    /// fills in the rest; equal paths are read once.
+    /// Load two explicit files, admitting project hooks.
+    ///
+    /// The project path wins per event, the user path fills in the rest; equal
+    /// paths are read once.
     #[must_use]
     pub fn load_from(project: &Path, user: &Path) -> Loaded {
+        Self::load_from_with(project, user, ProjectTrust::Trusted)
+    }
+
+    /// Load two explicit files under `trust`.
+    ///
+    /// An untrusted workspace does not read the project path; the user path
+    /// still loads unless it is the same file.
+    #[must_use]
+    pub fn load_from_with(project: &Path, user: &Path, trust: ProjectTrust) -> Loaded {
         let mut warnings = Vec::new();
-        let project_document = read_document(project, &mut warnings);
+        let project_document = if trust.is_trusted() {
+            read_document(project, &mut warnings)
+        } else {
+            warnings.push(format!(
+                "project hooks at {} are not loaded because this workspace is not trusted",
+                project.display()
+            ));
+            BTreeMap::new()
+        };
         let user_document = if same_file(project, user) {
             BTreeMap::new()
         } else {
@@ -135,9 +171,19 @@ impl Hooks {
         }
 
         Loaded {
-            hooks: Self { groups },
+            hooks: Self {
+                groups,
+                project_suppressed: !trust.is_trusted(),
+            },
             warnings,
         }
+    }
+
+    /// Whether the project hook file was skipped because the workspace is
+    /// untrusted.
+    #[must_use]
+    pub fn project_suppressed(&self) -> bool {
+        self.project_suppressed
     }
 
     /// Whether the configuration has at least one handler for `event`.
