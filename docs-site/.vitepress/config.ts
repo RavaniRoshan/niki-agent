@@ -2,8 +2,17 @@ import { defineConfig } from 'vitepress'
 
 // Navigation and sidebar are written by hand: the site is small enough that a
 // generated tree would hide the order the reader needs. Local search indexes
-// the built pages; nothing here loads a font, a script, or an analytics tag
-// from another origin.
+// the built pages; the only third-party load is Vercel's same-origin insights
+// script, and no font is fetched.
+const HOST = 'https://niki-docs.vercel.app'
+const HOST_SITE = 'https://niki-site.vercel.app'
+
+/** Canonical URL for a page, with the trailing slash only on the root. */
+function canonical(relativePath: string): string {
+  const page = relativePath.replace(/(index)?\.md$/, '').replace(/\/$/, '')
+  return page === '' ? `${HOST}/` : `${HOST}/${page}`
+}
+
 export default defineConfig({
   lang: 'en-US',
   title: 'Niki Agent',
@@ -14,10 +23,36 @@ export default defineConfig({
   cleanUrls: true,
   appearance: true,
   lastUpdated: false,
+  sitemap: { hostname: HOST },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/mark.svg' }],
     ['meta', { name: 'theme-color', content: '#101014' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'Niki Agent' }],
+    ['meta', { property: 'og:locale', content: 'en_US' }],
+    ['meta', { property: 'og:image', content: `${HOST_SITE}/og.png` }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    [
+      'meta',
+      {
+        property: 'og:image:alt',
+        content: 'Niki Agent: a quiet terminal coding agent in one native Rust binary.',
+      },
+    ],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: `${HOST_SITE}/og.png` }],
+    ['link', { rel: 'apple-touch-icon', href: '/mark.svg' }],
+    [
+      'script',
+      {},
+      "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};",
+    ],
+    ['script', { defer: '', src: '/_vercel/insights/script.js' }],
   ],
+  transformHead({ pageData }) {
+    return [['link', { rel: 'canonical', href: canonical(pageData.relativePath) }]]
+  },
   markdown: {
     theme: { light: 'github-light', dark: 'github-dark' },
   },
