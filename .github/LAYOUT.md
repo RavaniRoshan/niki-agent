@@ -5,7 +5,7 @@ One product, one pipeline. Every workflow below is live.
 | Workflow | What it does |
 | --- | --- |
 | `ci.yml` | Runs `make check` in `libs/code`; publishes the aggregate **✅ CI Success** check. |
-| `niki-release.yml` | On a `v*` tag or manual dispatch, builds the wheel on Linux/macOS/Windows and publishes a GitHub Release. |
+| `niki-release.yml` | On a `v*` tag or manual dispatch, builds `niki` for Linux, macOS (arm64 and x86_64) and Windows, runs the installer and a smoke turn, and publishes a GitHub Release. |
 | `pr_lint.yml` | Validates Conventional Commits titles and the allowed scope list. |
 | `pr_lint_trailer.yml` | Checks the required commit trailer. |
 | `branch_name_check.yml` | Enforces `<user>/<scope>/<description>` branch names. |

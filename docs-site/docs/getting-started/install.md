@@ -1,7 +1,7 @@
 # Install
 
 Two routes: the release archive, which requires no toolchain, and a source
-build, which is for macOS and for working on Niki itself.
+build, which is for developing Niki itself or for a platform with no archive.
 
 ## From a release archive
 
@@ -14,7 +14,7 @@ yourself.
 ### Linux x86_64
 
 ```bash
-VERSION=2.0.0
+VERSION=2.1.1
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
@@ -52,9 +52,21 @@ Get-FileHash "niki-$Version-windows-x86_64.zip" -Algorithm SHA256   # compare wi
 Expand-Archive "niki-$Version-windows-x86_64.zip"
 ```
 
-### macOS
+### macOS (arm64 and x86_64)
 
-There is no prebuilt macOS archive. Build from source:
+The release publishes `niki-<version>-macos-aarch64.tar.gz` and
+`niki-<version>-macos-x86_64.tar.gz`. The installer picks the one that matches
+`uname -m`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
+```
+
+The archives are not notarized. A file downloaded by `curl` carries no
+quarantine attribute, so it runs directly; a browser download may need
+`xattr -d com.apple.quarantine` or the Gatekeeper prompt.
+
+Building from source works the same way as on Linux:
 
 ```bash
 git clone https://github.com/RavaniRoshan/niki-agent.git

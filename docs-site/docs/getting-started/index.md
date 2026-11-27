@@ -15,15 +15,15 @@ reads your repository, edits files, runs commands, and shows you each step.
 
 | | |
 | --- | --- |
-| Platform | Linux x86_64 has a prebuilt release archive. Windows has a `.zip` archive that has not been exercised on Windows, so treat it as untested. macOS builds from source. |
+| Platform | Linux x86_64, macOS arm64 and macOS x86_64 have prebuilt release archives. Windows has a `.zip` archive that has not been exercised on Windows, so treat it as untested. |
 | Rust (source build only) | Rust 1.85 or newer, for the 2024 edition. A release archive needs no Rust. |
 | Terminal | Any terminal that runs the full-screen app. `niki -n` also runs without a TTY. |
 | A model provider | A default model and a provider key are needed before the first turn. |
 
 ## Next
 
-- [Install](/getting-started/install) — the release archive on Linux and
-  Windows, or a source build on macOS and for development.
+- [Install](/getting-started/install) — the release archive on Linux, macOS
+  and Windows, or a source build for development.
 - [Your first turn](/getting-started/first-turn) — the flags, the exit codes,
   the keys, and the headless mode.
 

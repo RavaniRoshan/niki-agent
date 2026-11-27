@@ -6,7 +6,6 @@ import {
   FEATURE_DETAILS,
   INSTALL_COMMAND,
   PillarCardData,
-  SOURCE_BUILD_COMMAND,
   TEST_COMMAND,
   WINDOWS_INSTALL_COMMAND,
 } from '../../../entities/niki';
@@ -214,8 +213,8 @@ niki`;
       <div className="rounded-[2px] border border-grid bg-muted/45 p-4 font-tech text-[12px] space-y-1.5 text-muted-foreground">
         <div className="text-chart-1 dark:text-chart-2">Windows PowerShell</div>
         <div className="text-foreground break-all">{WINDOWS_INSTALL_COMMAND}</div>
-        <div className="pt-2 text-chart-1 dark:text-chart-2">macOS from source</div>
-        <div className="text-foreground">{SOURCE_BUILD_COMMAND}</div>
+        <div className="pt-2 text-chart-1 dark:text-chart-2">macOS arm64 and x86_64</div>
+        <div className="text-foreground break-all">{INSTALL_COMMAND}</div>
         <div className="pt-2 text-chart-1 dark:text-chart-2">Verify the workspace without a network</div>
         <div className="text-foreground">{TEST_COMMAND}</div>
       </div>

@@ -75,9 +75,10 @@ publishes platform archives named `niki-<version>-<platform>-<arch>.tar.gz`, a
 Windows `.zip`, and a `SHA256SUMS` file that covers every archive. The installer
 verifies the checksum before it places the binary on `PATH`.
 
-Linux x86_64 has a prebuilt archive. Windows has an archive that has not been
-exercised on a Windows machine, so treat it as untested. macOS builds from
-source; there is no prebuilt macOS archive.
+Linux x86_64, macOS arm64 and macOS x86_64 have prebuilt archives, and Windows
+has one that has not been exercised on a Windows machine, so treat Windows as
+untested. The release workflow installs the Linux archive and runs one headless
+turn from the installed binary; it does the same on macOS arm64.
 
 ## Upgrades
 
