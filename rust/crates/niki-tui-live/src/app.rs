@@ -17,7 +17,9 @@ use niki_skills::SkillCatalog;
 use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
+use crate::completion::Completion;
 use crate::composer::Composer;
+use crate::history::History;
 use crate::scroll::Scroll;
 use crate::status::{Status, TurnState};
 use crate::transcript::{Row, RowKind, Transcript};
@@ -61,6 +63,8 @@ pub enum Command {
     Answer(Approval),
     /// The person chose a model spec.
     SelectModel(String),
+    /// Put this text on the terminal clipboard.
+    Copy(String),
 }
 
 /// The whole screen state.
@@ -97,6 +101,14 @@ pub struct App {
     turn_start: Option<usize>,
     /// Tool names the registry holds, for `/tools`.
     tools: Vec<String>,
+    /// Prompts the arrows walk back through.
+    history: History,
+    /// The command list under the composer, when the draft matches one.
+    completion: Option<Completion>,
+    /// The draft whose command list Esc closed, until the draft changes.
+    completion_closed: Option<String>,
+    /// Whether `Ctrl+Y` may write the clipboard escape.
+    clipboard: bool,
     spinner: usize,
 }
 
@@ -121,6 +133,10 @@ impl App {
             session: None,
             turn_start: None,
             tools: Vec::new(),
+            history: History::default(),
+            completion: None,
+            completion_closed: None,
+            clipboard: !clipboard_disabled(),
             spinner: 0,
         }
     }
@@ -160,6 +176,31 @@ impl App {
         self.tools = tools;
     }
 
+    /// Read and append the prompt history at this file from now on.
+    ///
+    /// The screen starts with none so a test never touches the person's file;
+    /// the event loop attaches the one under `$NIKI_HOME` at startup.
+    pub fn attach_history(&mut self, history: History) {
+        self.history = history;
+    }
+
+    /// The prompt history, newest last.
+    #[must_use]
+    pub fn history(&self) -> &History {
+        &self.history
+    }
+
+    /// Allow or refuse `Ctrl+Y`, which a test uses in place of the environment.
+    pub fn set_clipboard(&mut self, enabled: bool) {
+        self.clipboard = enabled;
+    }
+
+    /// The command list under the composer, when one is open.
+    #[must_use]
+    pub fn completion(&self) -> Option<&Completion> {
+        self.completion.as_ref()
+    }
+
     /// Insert pasted text literally.
     ///
     /// A bracketed paste is text, not keys: newlines and colons stay in the
@@ -170,6 +211,8 @@ impl App {
             return;
         }
         self.composer.insert_str(text);
+        self.history.reset();
+        self.refresh_completion();
     }
 
     /// Switch the marker registry.
@@ -231,11 +274,25 @@ impl App {
         lines.clamp(1, MAX_COMPOSER_LINES) + 2
     }
 
+    /// Rows the command list needs under the composer: one per match and one
+    /// for the highlighted command's description.
+    #[must_use]
+    pub fn completion_height(&self) -> u16 {
+        match &self.completion {
+            Some(completion) => {
+                let rows = completion.commands().len() + 1;
+                u16::try_from(rows).unwrap_or(u16::MAX)
+            }
+            None => 0,
+        }
+    }
+
     /// Handle one key press.
     ///
     /// The composer owns the keys a person typing expects — characters,
     /// arrows, Home and End, Enter to send and Esc to clear — so the transcript
-    /// is scrolled with PageUp, PageDown and the mouse wheel instead.
+    /// is scrolled with PageUp, PageDown and the mouse wheel instead. The
+    /// command list and the prompt history take the arrows while each is open.
     pub fn handle_key(&mut self, key: KeyEvent) -> Option<Command> {
         let control = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
@@ -249,47 +306,55 @@ impl App {
         if self.modal.is_some() {
             return self.modal_key(key);
         }
-        match key.code {
+        let command = match key.code {
             KeyCode::Enter
                 if key
                     .modifiers
                     .intersects(KeyModifiers::ALT | KeyModifiers::SHIFT) =>
             {
                 self.composer.newline();
+                self.history.reset();
                 None
             }
             KeyCode::Enter => self.submit(),
             KeyCode::Esc => self.escape(),
+            KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => self.complete(),
             KeyCode::Backspace => {
                 self.composer.backspace();
+                self.history.reset();
                 None
             }
             KeyCode::Delete => {
                 self.composer.delete();
+                self.history.reset();
                 None
             }
             KeyCode::Left => {
                 self.composer.left();
+                self.history.reset();
                 None
             }
             KeyCode::Right => {
                 self.composer.right();
+                self.history.reset();
                 None
             }
             KeyCode::Up => {
-                self.composer.up();
+                self.up();
                 None
             }
             KeyCode::Down => {
-                self.composer.down();
+                self.down();
                 None
             }
             KeyCode::Home => {
                 self.composer.home();
+                self.history.reset();
                 None
             }
             KeyCode::End => {
                 self.composer.end();
+                self.history.reset();
                 None
             }
             KeyCode::PageUp => {
@@ -305,16 +370,20 @@ impl App {
                 self.status.mode = mode;
                 Some(Command::Mode(mode))
             }
+            KeyCode::Char('y') if control => self.copy(),
             KeyCode::Char('?') if self.composer.is_empty() => {
                 self.open_help();
                 None
             }
             KeyCode::Char(character) if !control && !key.modifiers.contains(KeyModifiers::ALT) => {
                 self.composer.insert_char(character);
+                self.history.reset();
                 None
             }
             _ => None,
-        }
+        };
+        self.refresh_completion();
+        command
     }
 
     /// Switch palette by name, or to the next one when no name is given.
@@ -477,8 +546,14 @@ impl App {
     }
 
     fn escape(&mut self) -> Option<Command> {
+        if self.completion.is_some() {
+            self.completion_closed = Some(self.composer.text().to_owned());
+            self.completion = None;
+            return None;
+        }
         if !self.composer.is_empty() {
             self.composer.clear();
+            self.history.reset();
             return None;
         }
         if self.status.turn == TurnState::Working {
@@ -493,6 +568,7 @@ impl App {
             return None;
         }
         if text.starts_with('/') {
+            self.history.reset();
             return self.slash(&text);
         }
         if self.status.turn.is_busy() {
@@ -500,6 +576,7 @@ impl App {
                 .push_notice("wait for the running turn to finish; press ctrl+c to stop it");
             return None;
         }
+        self.history.record(&text);
         self.composer.clear();
         self.turn_start = Some(self.transcript.rows().len());
         self.transcript.push_user(text.clone());
@@ -507,6 +584,103 @@ impl App {
         self.status.turn = TurnState::Working;
         self.spinner = 0;
         Some(Command::Submit(text))
+    }
+
+    /// Tab: put the highlighted command in the draft, ready for its argument.
+    fn complete(&mut self) -> Option<Command> {
+        let completion = self.completion.as_ref()?;
+        let completed = completion.completed();
+        self.composer.clear();
+        self.composer.insert_str(&completed);
+        self.history.reset();
+        None
+    }
+
+    /// Up: the list takes it first, then the history, then the composer cursor.
+    fn up(&mut self) {
+        if let Some(completion) = self.completion.as_mut() {
+            completion.up();
+            return;
+        }
+        let browsing = self.history.is_browsing();
+        let single_line = self.composer.line_count() == 1;
+        if self.composer.is_empty() || (browsing && single_line) {
+            let current = self.composer.text().to_owned();
+            if let Some(prompt) = self.history.older(&current) {
+                self.set_draft(&prompt);
+            }
+            return;
+        }
+        self.composer.up();
+        self.history.reset();
+    }
+
+    /// Down: the list takes it first, then the history, then the cursor.
+    fn down(&mut self) {
+        if let Some(completion) = self.completion.as_mut() {
+            completion.down();
+            return;
+        }
+        let single_line = self.composer.line_count() == 1;
+        if self.history.is_browsing() && single_line {
+            if let Some(prompt) = self.history.newer() {
+                self.set_draft(&prompt);
+            }
+            return;
+        }
+        self.composer.down();
+        self.history.reset();
+    }
+
+    fn set_draft(&mut self, text: &str) {
+        self.composer.clear();
+        if !text.is_empty() {
+            self.composer.insert_str(text);
+        }
+    }
+
+    /// Recompute the command list from the draft, keeping the highlight on the
+    /// command it was on when that one is still listed.
+    fn refresh_completion(&mut self) {
+        let draft = self.composer.text();
+        if self.completion_closed.as_deref() == Some(draft) {
+            self.completion = None;
+            return;
+        }
+        self.completion_closed = None;
+        let selected = self
+            .completion
+            .as_ref()
+            .map(|completion| completion.selected().name);
+        self.completion = Completion::of(draft);
+        if let (Some(completion), Some(name)) = (self.completion.as_mut(), selected) {
+            completion.reselect(name);
+        }
+    }
+
+    /// Copy the newest answer to the terminal clipboard, or say why not.
+    fn copy(&mut self) -> Option<Command> {
+        let answer = self
+            .transcript
+            .rows()
+            .iter()
+            .rev()
+            .find(|row| row.kind == RowKind::Assistant)
+            .map(|row| row.text.clone());
+        let Some(answer) = answer else {
+            self.transcript.push_notice("no answer to copy yet");
+            return None;
+        };
+        let characters = answer.chars().count();
+        if !self.clipboard {
+            self.transcript.push_notice(format!(
+                "copy: {characters} characters (clipboard disabled)"
+            ));
+            return None;
+        }
+        self.transcript
+            .push_notice(format!("copy: {characters} characters"));
+        Some(Command::Copy(answer))
     }
 
     fn slash(&mut self, text: &str) -> Option<Command> {
@@ -826,6 +1000,10 @@ fn add_usage(total: &mut Usage, usage: Usage) {
 
 fn is_cancelled(stop: &StopReason) -> bool {
     matches!(stop, StopReason::Other(reason) if reason == "cancelled")
+}
+
+fn clipboard_disabled() -> bool {
+    matches!(std::env::var("NIKI_NO_CLIPBOARD").as_deref(), Ok("1"))
 }
 
 #[cfg(test)]

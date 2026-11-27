@@ -283,6 +283,49 @@ fn an_ascii_terminal_draws_the_overlay_without_box_drawing() {
 }
 
 #[test]
+fn the_command_list_is_drawn_under_the_composer() {
+    let mut app = app();
+    type_text(&mut app, "/t");
+    let buffer = render(&mut app, 60, 20);
+    let screen = text(&buffer);
+    for name in ["/theme", "/tools", "/compact", "/quit"] {
+        assert!(screen.contains(name), "{name} missing from {screen}");
+    }
+    assert!(
+        screen.contains("Choose a palette, or cycle to the next one"),
+        "the highlighted command's description: {screen}"
+    );
+
+    let lines: Vec<&str> = screen.lines().collect();
+    let composer_top = lines
+        .iter()
+        .position(|line| line.starts_with('╭'))
+        .expect("the composer frame");
+    let first_match = lines
+        .iter()
+        .position(|line| line.contains("/theme"))
+        .expect("the list");
+    assert!(
+        first_match > composer_top,
+        "the list sits under the composer: {screen}"
+    );
+
+    stroke(&mut app, KeyCode::Tab);
+    let after = text(&render(&mut app, 60, 20));
+    assert!(!after.contains("Choose a palette"), "{after}");
+    assert!(after.contains("/theme "), "the completed draft: {after}");
+}
+
+#[test]
+fn a_tiny_terminal_with_the_command_list_still_draws() {
+    let mut app = app();
+    type_text(&mut app, "/t");
+    let buffer = render(&mut app, 12, 6);
+    assert_eq!(buffer.area.width, 12);
+    assert_eq!(buffer.area.height, 6);
+}
+
+#[test]
 fn the_theme_command_repaints_with_the_new_palette() {
     let mut app = app();
     app.apply(AgentEvent::Text("recoloured".to_owned()));

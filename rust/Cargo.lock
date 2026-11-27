@@ -1043,6 +1043,7 @@ dependencies = [
  "niki-tui-modals",
  "niki-tui-themes",
  "ratatui",
+ "serde_json",
  "tempfile",
  "tokio",
 ]

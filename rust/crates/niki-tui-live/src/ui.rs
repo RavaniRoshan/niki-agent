@@ -24,13 +24,15 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let areas = Layout::vertical([
         Constraint::Min(1),
         Constraint::Length(app.composer_height()),
+        Constraint::Length(app.completion_height()),
         Constraint::Length(1),
     ])
     .split(area);
-    let [body, composer, status] = [areas[0], areas[1], areas[2]];
+    let [body, composer, completion, status] = [areas[0], areas[1], areas[2], areas[3]];
 
     draw_transcript(frame, app, body);
     let cursor = draw_composer(frame, app, composer);
+    draw_completion(frame, app, completion);
     draw_status(frame, app, status);
     // A modal owns the keys while it is open, so the composer cursor would be a
     // promise the screen cannot keep.
@@ -135,6 +137,40 @@ fn draw_composer(frame: &mut Frame, app: &mut App, area: Rect) -> Option<Positio
         .saturating_add(u16::try_from(row.saturating_sub(offset)).unwrap_or(last_row))
         .min(inner.y.saturating_add(last_row));
     Some(Position::new(x, y))
+}
+
+fn draw_completion(frame: &mut Frame, app: &App, area: Rect) {
+    let Some(completion) = app.completion() else {
+        return;
+    };
+    if area.is_empty() {
+        return;
+    }
+    let palette = app.palette;
+    let marks = app.marks();
+    let mut lines = Vec::with_capacity(completion.commands().len() + 1);
+    for (index, command) in completion.commands().iter().enumerate() {
+        let chosen = index == completion.selected_index();
+        let lead = if chosen {
+            format!("{} ", marks.user)
+        } else {
+            "  ".to_owned()
+        };
+        let style = if chosen {
+            palette.accent_style()
+        } else {
+            palette.muted_style()
+        };
+        lines.push(Line::from(vec![
+            Span::styled(lead, style),
+            Span::styled(command.name, style),
+        ]));
+    }
+    lines.push(Line::from(Span::styled(
+        format!("  {}", completion.selected().summary),
+        palette.muted_style(),
+    )));
+    frame.render_widget(Paragraph::new(lines), area);
 }
 
 fn draw_status(frame: &mut Frame, app: &App, area: Rect) {

@@ -11,7 +11,10 @@
 #![forbid(unsafe_code)]
 
 mod app;
+pub mod clipboard;
+mod completion;
 mod composer;
+mod history;
 mod run;
 mod scroll;
 mod status;
@@ -20,7 +23,9 @@ mod ui;
 mod worker;
 
 pub use app::{App, Command, SessionInfo, WHEEL_LINES};
+pub use completion::{Completion, MAX_COMPLETIONS};
 pub use composer::Composer;
+pub use history::History;
 pub use niki_tui_modals::{Modal, ModelPicker, Outcome};
 pub use run::run;
 pub use scroll::Scroll;
