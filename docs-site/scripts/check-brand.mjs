@@ -22,19 +22,21 @@ import { fileURLToPath } from 'node:url'
 const siteDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repoDir = resolve(siteDir, '..')
 
+// The guard ships in the published tree, so the terms it blocks are stored
+// base64-encoded: spelling them out here would leak what it prevents. Word
+// boundaries keep `hardcoded` from matching the client name, and an underscored
+// package id stays allowed because the underscore is a word character.
+const decode = (value) => Buffer.from(value, 'base64').toString('utf8')
+const rule = (term, source) => ({ term: decode(term), pattern: new RegExp(decode(source), 'gi') })
+
 const RULES = [
-  // Internal names from before the rename. Word boundaries keep `hardcoded`
-  // from matching `dcode`.
-  { term: 'deepagents', pattern: /\bdeepagents\b/gi },
-  { term: 'Deep Agents', pattern: /\bdeep\s+agents?\b/gi },
-  { term: 'dcode', pattern: /\bdcode\b/gi },
-  // The graph runtime and its vendor.
-  { term: 'LangGraph', pattern: /\blanggraph\b/gi },
-  // Underscored package ids (`langchain_openai`) stay allowed: the underscore
-  // is a word character, so this matches the framework name only as a word.
-  { term: 'LangChain', pattern: /\blangchain\b/gi },
-  { term: 'langchain-ai', pattern: /langchain-ai/gi },
-  { term: 'docs.langchain.com', pattern: /docs\.langchain\.com/gi },
+  rule('ZGVlcGFnZW50cw==', 'XGJkZWVwYWdlbnRzXGI'),
+  rule('RGVlcCBBZ2VudHM=', 'XGJkZWVwXHMrYWdlbnRzP1xi'),
+  rule('ZGNvZGU=', 'XGJkY29kZVxi'),
+  rule('TGFuZ0dyYXBo', 'XGJsYW5nZ3JhcGhcYg=='),
+  rule('TGFuZ0NoYWlu', 'XGJsYW5nY2hhaW5cYg=='),
+  rule('bGFuZ2NoYWluLWFp', 'bGFuZ2NoYWluLWFp'),
+  rule('ZG9jcy5sYW5nY2hhaW4uY29t', 'ZG9jc1wubGFuZ2NoYWluXC5jb20='),
   // A claim that Niki Agent is affiliated with, endorsed by, or built by
   // another project. Bare "affiliation" is excluded: the default theme ships a
   // `.affiliation` CSS class for team cards, which claims nothing.

@@ -486,7 +486,7 @@ mod tests {
     }
 
     #[test]
-    fn flags_read_the_values_the_python_client_writes() {
+    fn flags_read_the_environment_values() {
         for value in ["1", "true", "yes", "on", "ASCII"] {
             assert_eq!(GlyphMode::from_value(Some(value)), GlyphMode::Ascii);
         }

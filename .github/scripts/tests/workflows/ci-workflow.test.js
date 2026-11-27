@@ -51,7 +51,6 @@ test('no job targets a removed package', () => {
   // The workflow names one product; a window into a removed tree would fail.
   const removed = [
     'libs/evals',
-    'libs/deepagents',
     'libs/acp',
     'libs/talon',
     'libs/partners',

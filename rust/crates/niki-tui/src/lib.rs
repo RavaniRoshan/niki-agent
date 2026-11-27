@@ -392,7 +392,7 @@ mod tests {
     }
 
     #[test]
-    fn screen_reader_truthy_values_match_the_python_client() {
+    fn screen_reader_truthy_values_are_recognised() {
         for value in ["1", "true", "yes", "on", "TRUE"] {
             assert!(screen_reader_enabled(Some(value)), "{value}");
         }

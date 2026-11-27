@@ -10,8 +10,6 @@ GitHub automatically provides `GITHUB_TOKEN` to each workflow run. It is not a c
 ## Design principles
 
 - Use non-human service accounts or project credentials for CI when possible. Do not bind CI to a maintainer's personal API key.
-- **LangSmith:** Prefer a single-workspace service key over an organization-scoped key.
-  - At the time of writing, existing workflows do not select a workspace with `LANGSMITH_WORKSPACE_ID`
 - Store credentials in the narrowest GitHub environment that needs them.
 - Inject a provider credential only into the runtime step and package job that consumes it.
 - Track any temporary exception to these rules explicitly and remove it when its blocker is resolved.
@@ -54,10 +52,6 @@ release pipeline (`release.yml`, `release_please*.yml`, `check_sdk_pin.yml`,
 that this repository no longer contains. `niki-release.yml` needs nothing beyond
 `GITHUB_TOKEN`. Archive the environments in GitHub if they still exist; nothing
 here reads them.
-
-## LangSmith permission caveats
-
-The permission lists in this document describe operations required by the currently locked clients. Granular custom roles and service-key role assignment require LangSmith Enterprise RBAC; on other plans these minima are design targets rather than directly assignable roles.
 
 ## GitHub App credentials
 

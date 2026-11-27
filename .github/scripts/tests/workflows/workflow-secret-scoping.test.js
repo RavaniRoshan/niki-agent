@@ -58,11 +58,11 @@ test('issue topic classifier uses dedicated environment', () => {
   const job = jobBlock(workflow, 'classifier-dry-run');
 
   assert.equal(valueAt(job, 'environment', 4), 'labeling');
-  assert.ok(!('LANGSMITH_API_KEY' in (mapAt(workflow, 'env', 0) ?? {})));
-  assert.ok(!('LANGSMITH_API_KEY' in (mapAt(job, 'env', 4) ?? {})));
+  assert.ok(!('GROQ_API_KEY' in (mapAt(workflow, 'env', 0) ?? {})));
+  assert.ok(!('GROQ_API_KEY' in (mapAt(job, 'env', 4) ?? {})));
 
   const step = stepNamed(job, 'Classify issue');
   const env = mapAt(step, 'env', 8);
-  assert.equal(env.LANGSMITH_API_KEY, '${{ secrets.LANGSMITH_API_KEY }}');
-  assert.equal(env.TOPIC_CLASSIFIER_PROVIDER, 'semif');
+  assert.equal(env.GROQ_API_KEY, '${{ secrets.GROQ_API_KEY }}');
+  assert.ok(!('TOPIC_CLASSIFIER_PROVIDER' in env), 'one provider, no switch');
 });

@@ -464,7 +464,7 @@ async fn read_file_accepts_the_wire_file_path_alias() {
 }
 
 #[tokio::test]
-async fn the_schemas_advertise_the_names_the_python_client_uses() {
+async fn the_schemas_advertise_the_canonical_argument_names() {
     let registry = Registry::new();
 
     for (tool, required) in [
