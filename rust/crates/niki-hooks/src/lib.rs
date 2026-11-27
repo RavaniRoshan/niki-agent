@@ -62,11 +62,17 @@
 //!
 //! Hooks run on the caller's thread and block it until the command finishes, so
 //! the [`HookRunner`] seam is synchronous.
+//!
+//! A `[notify]` program in `config.toml` is separate from `hooks.json`:
+//! [`Notify`] runs once at the end of a turn — completed, failed or cancelled —
+//! with a JSON document on stdin. It is spawned detached and never blocks the
+//! turn; a failure is one warning line on stderr.
 
 #![forbid(unsafe_code)]
 
 mod config;
 mod matcher;
+mod notify;
 mod payload;
 mod runner;
 
@@ -75,6 +81,7 @@ use std::path::Path;
 use serde_json::Value;
 
 pub use config::{Event, Hooks, Loaded};
+pub use notify::{ANSWER_LIMIT, Notify, TurnEnd};
 pub use payload::{PostToolUse, PreToolUse, ToolCall, UserPrompt, wire_tool_name};
 pub use runner::Outcome;
 

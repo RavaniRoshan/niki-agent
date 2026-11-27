@@ -20,6 +20,12 @@
 //! [`AgentError::HookBlocked`]. A hook that cannot run is an
 //! [`AgentEvent::Notice`], never an error.
 //!
+//! A turn-end notifier is optional too: [`Agent::with_notify`] installs a
+//! [`niki_hooks::Notify`], and every finished turn — completed, failed or
+//! cancelled — runs that program once with a JSON document on stdin. A child
+//! agent built without the method, such as the one behind the `task` tool, never
+//! notifies.
+//!
 //! The loop has no opinion about transport: any [`Provider`] streams the events
 //! it already normalises, and any [`Registry`] tool is dispatched through the
 //! same gate. That keeps the crate testable without a network (RULES.md 8).

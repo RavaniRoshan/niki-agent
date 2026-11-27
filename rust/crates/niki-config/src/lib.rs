@@ -3,8 +3,9 @@
 //! ADR-005: one config file serves both binaries during the port. The table
 //! names are the ones the Python product already uses — `[providers.<name>]`
 //! for user providers (also accepted under `[models.providers.<name>]`),
-//! `[models].default` for the default model, `[ui].theme` for the theme, and
-//! `[mcp_servers.<name>]` for MCP servers. Unknown keys are ignored, so a file
+//! `[models].default` for the default model, `[ui].theme` for the theme,
+//! `[mcp_servers.<name>]` for MCP servers, and `[notify]` for the program run
+//! when a turn ends. Unknown keys are ignored, so a file
 //! written for a newer Python release still loads. This crate only reads
 //! `config.toml`; the Rust binary does not write it. [`instructions`] is the
 //! one part that writes a file, and only when `/init` asks it to.
@@ -149,6 +150,19 @@ pub enum McpTransport {
     },
 }
 
+/// One `[notify]` block: the program run once when a turn ends.
+///
+/// A block without `program` — or with an empty one — spawns nothing. `args`
+/// are passed to the program as separate arguments, never through a shell.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Notify {
+    /// Executable to run.
+    pub program: Option<String>,
+    /// Arguments passed to the executable, verbatim.
+    pub args: Vec<String>,
+}
+
 /// The parts of `config.toml` this port consumes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
@@ -160,6 +174,8 @@ pub struct Config {
     pub theme: Option<String>,
     /// MCP servers, keyed by the table name after `mcp_servers.`.
     pub mcp_servers: BTreeMap<String, McpServer>,
+    /// `[notify]`, the turn-end program.
+    pub notify: Notify,
 }
 
 impl Config {
@@ -313,6 +329,7 @@ struct RawConfig {
     models: RawModels,
     ui: RawUi,
     mcp_servers: BTreeMap<String, toml::Value>,
+    notify: Notify,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -454,6 +471,7 @@ impl RawConfig {
             default_model: self.models.default,
             theme: self.ui.theme,
             mcp_servers,
+            notify: self.notify,
         })
     }
 }
@@ -617,6 +635,30 @@ headers = { Authorization = "Bearer token" }
             headers.get("Authorization").map(String::as_str),
             Some("Bearer token")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn a_notify_block_parses_and_args_are_optional() -> Result<(), ConfigError> {
+        let config = Config::from_str(
+            r#"
+[notify]
+program = "/usr/local/bin/notify-turn"
+args = ["--title", "Niki"]
+"#,
+        )?;
+        assert_eq!(
+            config.notify.program.as_deref(),
+            Some("/usr/local/bin/notify-turn")
+        );
+        assert_eq!(config.notify.args, vec!["--title", "Niki"]);
+
+        let without_args = Config::from_str("[notify]\nprogram = \"notify\"\n")?;
+        assert!(without_args.notify.args.is_empty());
+
+        let absent = Config::from_str("")?;
+        assert_eq!(absent.notify, Notify::default());
+        assert_eq!(absent.notify.program, None);
         Ok(())
     }
 
