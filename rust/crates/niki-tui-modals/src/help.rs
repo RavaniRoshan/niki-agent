@@ -16,7 +16,9 @@ pub fn describe(action: Action) -> &'static str {
         Action::Help => "This list",
         Action::ToggleAutoApprove => "Cycle manual, auto and yolo",
         Action::ToggleToolOutput => "Show or hide tool output (not in this build)",
-        Action::ToggleSubagents => "Show or hide subagent activity (not in this build)",
+        // The shipped app binds `Ctrl+T` to the transcript overlay; this action
+        // is the only registry entry for that chord.
+        Action::ToggleSubagents => "Open the whole conversation in a scrollable overlay",
         Action::OpenNotifications => "Show notifications (not in this build)",
         Action::OpenEditor => "Edit the prompt in your editor ($VISUAL, then $EDITOR)",
         Action::ScrollUp => "Move the cursor up a line in the composer",
@@ -174,11 +176,11 @@ mod tests {
     #[test]
     fn only_the_keys_that_are_missing_say_so() {
         assert!(!describe(Action::OpenEditor).contains("not in this build"));
-        for action in [
-            Action::ToggleToolOutput,
-            Action::ToggleSubagents,
-            Action::OpenNotifications,
-        ] {
+        assert_eq!(
+            describe(Action::ToggleSubagents),
+            "Open the whole conversation in a scrollable overlay"
+        );
+        for action in [Action::ToggleToolOutput, Action::OpenNotifications] {
             assert!(
                 describe(action).contains("not in this build"),
                 "{action:?} still has no implementation and must say so"

@@ -304,9 +304,9 @@ headless surfaces (`-n`, `--output-format json` and `jsonl`, `--resume`,
 - The composer has no mouse selection.
 - `Ctrl+O` (tool output) and `Ctrl+N` (notifications) are in `BINDINGS` but not
   implemented in the live app; the help overlay says so. `Ctrl+G` hands the
-  composer to `$EDITOR`, `Ctrl+T` opens the transcript overlay, and the help
-  entry for `Ctrl+T` still reads "subagent activity" — that label is wrong and
-  is the next one-line fix.
+  composer to `$EDITOR` and `Ctrl+T` opens the transcript overlay; the help entry
+  for `Ctrl+T` now describes that overlay rather than the unshipped subagent
+  panel.
 - ratatui 0.29 pulls crossterm 0.28 alongside the workspace's 0.29. Both are
   small and the ANSI output agrees, but a single version would be tidier at
   cutover.
