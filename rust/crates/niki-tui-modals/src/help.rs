@@ -9,7 +9,9 @@ pub fn describe(action: Action) -> &'static str {
     match action {
         Action::QuitOrInterrupt => "Stop the running turn; leaves when nothing is running",
         Action::Quit => "Leave the app",
-        Action::Interrupt => "Clear the draft, then stop the running turn",
+        Action::Interrupt => {
+            "Close the command list, then clear the draft, then stop the running turn"
+        }
         Action::CommandPalette => "Start a slash command in the composer",
         Action::Help => "This list",
         Action::ToggleAutoApprove => "Cycle manual, auto and yolo",
@@ -57,6 +59,24 @@ impl HelpOverlay {
             .iter()
             .map(|command| (command.name, command.summary))
             .collect()
+    }
+
+    /// Keys the composer acts on outside the shared binding registry.
+    ///
+    /// [`Self::entries`] is drawn from [`BINDINGS`] alone, so the completion,
+    /// history and copy keys would otherwise be invisible here. The chords are
+    /// spelled the way [`chord_label`] spells the registry's.
+    #[must_use]
+    pub fn composer_entries() -> &'static [(&'static str, &'static str)] {
+        const ENTRIES: &[(&str, &str)] = &[
+            ("tab", "Complete the highlighted slash command"),
+            (
+                "up, down",
+                "Move the command list, or recall an earlier prompt in an empty composer",
+            ),
+            ("ctrl+y", "Copy the newest answer to the terminal clipboard"),
+        ];
+        ENTRIES
     }
 
     /// How many lines the overlay is scrolled down.
@@ -110,6 +130,27 @@ mod tests {
             assert!(!description.is_empty(), "{chord} has no description");
             assert!(!description.contains("  "), "{chord}: {description}");
         }
+    }
+
+    #[test]
+    fn composer_keys_are_listed_and_do_not_duplicate_the_registry() {
+        let entries = HelpOverlay::composer_entries();
+        assert!(!entries.is_empty());
+        let registry: Vec<String> = HelpOverlay::entries()
+            .into_iter()
+            .map(|(chord, _)| chord)
+            .collect();
+        for (chord, description) in entries {
+            assert!(!chord.is_empty());
+            assert!(!description.is_empty(), "{chord} has no description");
+            assert!(!description.contains("  "), "{chord}: {description}");
+            assert!(
+                !registry.contains(&(*chord).to_owned()),
+                "{chord} is already drawn from the registry"
+            );
+        }
+        assert!(entries.iter().any(|(chord, _)| *chord == "ctrl+y"));
+        assert!(entries.iter().any(|(chord, _)| *chord == "tab"));
     }
 
     #[test]

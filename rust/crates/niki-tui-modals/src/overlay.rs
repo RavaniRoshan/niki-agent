@@ -122,6 +122,14 @@ pub(crate) fn help(
         palette.muted_style(),
     )));
     lines.push(Line::default());
+    lines.push(Line::from(Span::styled("composer", palette.accent_style())));
+    for (chord, description) in HelpOverlay::composer_entries() {
+        lines.push(Line::from(vec![
+            Span::styled(format!("{chord:<12}"), palette.accent_style()),
+            Span::styled(*description, palette.body_style()),
+        ]));
+    }
+    lines.push(Line::default());
     lines.push(Line::from(Span::styled("commands", palette.accent_style())));
     for (name, summary) in HelpOverlay::command_entries() {
         lines.push(Line::from(vec![
