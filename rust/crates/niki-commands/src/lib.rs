@@ -131,6 +131,11 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/context-doctor",
+        summary: "Report what a session injects and its estimated token cost",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/copy",
         summary: "Copy the latest answer",
         aliases: &[],
