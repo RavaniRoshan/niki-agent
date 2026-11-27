@@ -36,6 +36,10 @@ pub enum SlashCommand {
     Resume(Option<String>),
     /// Browse saved sessions and preview their first prompt.
     Threads,
+    /// Write the current session as Markdown, or to the path named.
+    Export(Option<String>),
+    /// Name the current session, or show its title.
+    Rename(Option<String>),
     /// List the registered tools.
     Tools,
     /// List the skills discovery found.
@@ -85,6 +89,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/export",
+        summary: "Write the session to Markdown",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/help",
         summary: "This list",
         aliases: &["/keys"],
@@ -108,6 +117,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "/quit",
         summary: "Leave the app",
         aliases: &["/exit", "/q"],
+    },
+    CommandInfo {
+        name: "/rename",
+        summary: "Name the current session, or show its title",
+        aliases: &[],
     },
     CommandInfo {
         name: "/resume",
@@ -284,8 +298,10 @@ impl std::error::Error for UnknownCommand {}
 
 /// Parse one line typed into the composer.
 ///
-/// Only the first word is the command and only the second is its argument; a
-/// command that takes no argument ignores anything after it.
+/// Only the first word is the command. `/rename` and `/export` take the rest of
+/// the line as their argument, because a title and a path can both hold spaces;
+/// every other command takes only the second word, and a command that takes no
+/// argument ignores anything after it.
 ///
 /// # Errors
 ///
@@ -308,6 +324,8 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/diff" => SlashCommand::Diff(argument),
         "/resume" => SlashCommand::Resume(argument),
         "/threads" => SlashCommand::Threads,
+        "/export" => SlashCommand::Export(remainder(text)),
+        "/rename" => SlashCommand::Rename(remainder(text)),
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
         "/init" => SlashCommand::Init,
@@ -319,6 +337,14 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         }
     };
     Ok(command)
+}
+
+/// Everything after the command word, trimmed, when anything is left.
+fn remainder(text: &str) -> Option<String> {
+    let mut words = text.trim_start().splitn(2, char::is_whitespace);
+    let _name = words.next();
+    let rest = words.next().unwrap_or_default().trim();
+    (!rest.is_empty()).then(|| rest.to_owned())
 }
 
 #[cfg(test)]
@@ -333,11 +359,13 @@ mod tests {
             (SlashCommand::Compact, "/compact"),
             (SlashCommand::Context, "/context"),
             (SlashCommand::Diff(None), "/diff"),
+            (SlashCommand::Export(None), "/export"),
             (SlashCommand::Help, "/help"),
             (SlashCommand::Init, "/init"),
             (SlashCommand::Mode(Mode::Manual), "/manual"),
             (SlashCommand::Model(None), "/model"),
             (SlashCommand::Quit, "/quit"),
+            (SlashCommand::Rename(None), "/rename"),
             (SlashCommand::Resume(None), "/resume"),
             (SlashCommand::Theme(None), "/theme"),
             (SlashCommand::Threads, "/threads"),
@@ -355,7 +383,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 17);
+        assert_eq!(listed.len(), 19);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -383,6 +411,33 @@ mod tests {
         assert_eq!(parse("/init"), Ok(SlashCommand::Init));
         assert!(COMMANDS.iter().any(|info| info.name == "/init"));
         assert!(!ROADMAP.iter().any(|info| info.name == "/init"));
+    }
+
+    #[test]
+    fn rename_and_export_take_the_rest_of_the_line() {
+        assert_eq!(parse("/rename"), Ok(SlashCommand::Rename(None)));
+        assert_eq!(parse("/rename   "), Ok(SlashCommand::Rename(None)));
+        assert_eq!(
+            parse("/rename session two"),
+            Ok(SlashCommand::Rename(Some("session two".to_owned())))
+        );
+        assert_eq!(
+            parse("  /rename\tplan the port  "),
+            Ok(SlashCommand::Rename(Some("plan the port".to_owned())))
+        );
+        assert_eq!(parse("/export"), Ok(SlashCommand::Export(None)));
+        assert_eq!(
+            parse("/export notes/today.md"),
+            Ok(SlashCommand::Export(Some("notes/today.md".to_owned())))
+        );
+    }
+
+    #[test]
+    fn rename_and_export_are_implemented_rather_than_planned() {
+        for name in ["/rename", "/export"] {
+            assert!(COMMANDS.iter().any(|info| info.name == name), "{name}");
+            assert!(!ROADMAP.iter().any(|info| info.name == name), "{name}");
+        }
     }
 
     #[test]

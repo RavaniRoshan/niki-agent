@@ -12,6 +12,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{Connection, OptionalExtension, params};
 
+pub mod export;
+
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
@@ -110,6 +112,7 @@ impl SessionStore {
         restrict_permissions(path)?;
         connection.pragma_update(None, "foreign_keys", true)?;
         connection.execute_batch(SCHEMA)?;
+        add_missing_title(&connection)?;
         Ok(Self { connection })
     }
 
@@ -127,6 +130,47 @@ impl SessionStore {
             params![id.as_str(), now()?, cwd],
         )?;
         Ok(id)
+    }
+
+    /// The title a session carries, when it has one.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::UnknownSession`] for an id this store did not
+    /// create, and [`SessionError::Sqlite`] when the query fails.
+    pub fn title(&self, session: &SessionId) -> Result<Option<String>, SessionError> {
+        self.ensure_session(session)?;
+        let title = self.connection.query_row(
+            "SELECT title FROM sessions WHERE id = ?1",
+            params![session.as_str()],
+            |row| row.get(0),
+        )?;
+        Ok(title)
+    }
+
+    /// Replace a session's title and return what was stored.
+    ///
+    /// The title is trimmed, and an empty one clears the column back to `NULL`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SessionError::UnknownSession`] for an id this store did not
+    /// create, and [`SessionError::Sqlite`] when the write fails.
+    pub fn set_title(
+        &self,
+        session: &SessionId,
+        title: Option<&str>,
+    ) -> Result<Option<String>, SessionError> {
+        self.ensure_session(session)?;
+        let title = title
+            .map(str::trim)
+            .filter(|title| !title.is_empty())
+            .map(str::to_owned);
+        self.connection.execute(
+            "UPDATE sessions SET title = ?2 WHERE id = ?1",
+            params![session.as_str(), title],
+        )?;
+        Ok(title)
     }
 
     /// Every session, newest first.
@@ -364,6 +408,24 @@ impl SessionStore {
         }
         Err(SessionError::IdCollision)
     }
+}
+
+/// Add the `title` column to a database created before it was declared.
+///
+/// `CREATE TABLE IF NOT EXISTS` leaves an existing table alone, so a store
+/// opened over an older file needs the column added explicitly.
+fn add_missing_title(connection: &Connection) -> Result<(), SessionError> {
+    let present: bool = connection.query_row(
+        "SELECT EXISTS (
+             SELECT 1 FROM pragma_table_info('sessions') WHERE name = 'title'
+         )",
+        [],
+        |row| row.get(0),
+    )?;
+    if !present {
+        connection.execute("ALTER TABLE sessions ADD COLUMN title TEXT", [])?;
+    }
+    Ok(())
 }
 
 #[cfg(unix)]

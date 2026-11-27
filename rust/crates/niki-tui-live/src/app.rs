@@ -1047,6 +1047,47 @@ impl App {
                 self.open_threads();
                 None
             }
+            SlashCommand::Export(path) => {
+                if self.refuse_while_busy("/export") {
+                    return None;
+                }
+                let line = match (&self.sessions, &self.session) {
+                    (Some(store), Some(session)) => match niki_session::export::write(
+                        store,
+                        session,
+                        Path::new(&self.status.cwd),
+                        path.as_deref(),
+                    ) {
+                        Ok(written) => format!("wrote {}", written.display()),
+                        Err(error) => error.to_string(),
+                    },
+                    _ => "no session is saved in this build".to_owned(),
+                };
+                self.transcript.push_notice(line);
+                None
+            }
+            SlashCommand::Rename(title) => {
+                if self.refuse_while_busy("/rename") {
+                    return None;
+                }
+                let line = match (&self.sessions, &self.session) {
+                    (Some(store), Some(session)) => match title.as_deref() {
+                        Some(raw) => match store.set_title(session, Some(raw)) {
+                            Ok(Some(title)) => format!("renamed to {title}"),
+                            Ok(None) => "title cleared".to_owned(),
+                            Err(error) => format!("could not rename the session: {error}"),
+                        },
+                        None => match store.title(session) {
+                            Ok(Some(title)) => title,
+                            Ok(None) => "untitled".to_owned(),
+                            Err(error) => format!("could not read the session title: {error}"),
+                        },
+                    },
+                    _ => "no session is saved in this build".to_owned(),
+                };
+                self.transcript.push_notice(line);
+                None
+            }
             SlashCommand::Tools => {
                 self.list_tools();
                 None
@@ -1389,7 +1430,7 @@ fn split_record(content: &str) -> (&str, &str) {
 fn thread_entry(summary: &Summary) -> ThreadEntry {
     ThreadEntry::new(
         summary.id.as_str(),
-        summary.first_prompt.as_deref(),
+        summary.title.as_deref().or(summary.first_prompt.as_deref()),
         summary.messages,
         summary.cwd.as_str(),
     )
