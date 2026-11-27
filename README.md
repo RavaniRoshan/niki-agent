@@ -50,8 +50,9 @@ niki --version                   # the installed version
 
 Type a request and press Enter. `Shift+Tab` cycles approval modes, `/model`
 picks a provider and model, `/theme` changes the palette, `/skills` lists
-project and user skills, and `/help` lists every command. The complete keymap is
-in [`docs/niki/KEYMAP.md`](docs/niki/KEYMAP.md).
+project and user skills, `/resume` restores a saved session, `/context` shows
+what the conversation costs, and `/help` lists every command. The complete
+keymap is in [`docs/niki/KEYMAP.md`](docs/niki/KEYMAP.md).
 
 Niki is for people who already work in a terminal: it fits the shell you have,
 reads the repository you are in, and never takes over the screen.
@@ -69,6 +70,8 @@ time, and the decision of what the agent may do on its own.
 | **A fast start** | Startup is a native process launch — no interpreter to boot and no import graph to warm. |
 | **Your files, your machine** | Sessions, history, skills, and stored credentials live in `~/.niki`. No account and no cloud sync. |
 | **Your model** | Anthropic, OpenAI, Google Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, and local Ollama are built in; any OpenAI-compatible endpoint is a config block. |
+| **Delegation with a budget** | The `task` tool hands one self-contained job to a child agent with an empty history, no way to spawn further children, and a fixed step budget. You get the answer, not a second transcript. |
+| **It knows what it costs** | Token usage accumulates across turns; `/context` reports the conversation's size and the session total, and `/compact` folds older turns through the model instead of dropping them silently. |
 | **A real approval gate** | Manual, Auto, and YOLO modes, a shell allow-list, and a workspace path boundary. |
 | **Accessible, not as an afterthought** | Four themes with contrast measured by the test suite, reduced motion, and glyph fallbacks for terminals that need them. |
 | **Extensible without a plugin runtime** | MCP servers over stdio or HTTP, project and user skills as plain files, and lifecycle hooks. |
@@ -187,11 +190,15 @@ cargo test -j 4 --workspace
 | --- | --- |
 | `niki-config` | `~/.niki/config.toml`, provider blocks, built-in providers |
 | `niki-provider` | OpenAI and Anthropic wire clients, SSE streaming, tool calls |
-| `niki-agent` | the turn loop: model → tools → results → model |
+| `niki-agent` | the turn loop: model → tools → results → model, usage accounting, compaction |
 | `niki-tools` | file read/write/edit/list, shell, grep, glob |
+| `niki-subagents` | the `task` tool: a child agent with its own history and a step budget |
+| `niki-commands` | the slash-command catalogue, aliases, and the not-yet list |
 | `niki-policy` | Manual/Auto/YOLO, shell allow-list, path boundary |
 | `niki-workspace` / `niki-session` | project root, ignore rules, SQLite sessions |
+| `niki-skills` / `niki-hooks` | project and user skills, lifecycle hooks |
 | `niki-mcp` | stdio and HTTP MCP clients |
+| `niki-render` | Markdown and diff rendering |
 | `niki-tui*` | the full-screen terminal app, modals, and themes |
 | `niki` | the `niki` binary |
 
