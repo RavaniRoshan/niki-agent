@@ -1,10 +1,9 @@
 //! The JSON payload each hook receives on stdin.
 //!
-//! The shape follows the Python client's compatible envelope: common `cwd`,
-//! `session_id` where the caller has one, `hook_event_name`, and the event's
-//! own fields. Tool names are the wire names the Python client exposes
-//! (`shell` is `Bash`, `write_file` is `Write`, …), so a `hooks.json` written
-//! for the Python client selects the same tool here.
+//! The shape is a compatible envelope: common `cwd`, `session_id` where the
+//! caller has one, `hook_event_name`, and the event's own fields. Tool names
+//! are wire names (`shell` is `Bash`, `write_file` is `Write`, …), so a
+//! `hooks.json` keeps selecting the same tool.
 
 use std::path::Path;
 
@@ -99,7 +98,7 @@ fn add_tool(payload: &mut Map<String, Value>, tool: ToolCall<'_>) {
     payload.insert("tool_use_id".to_owned(), json!(tool.id));
 }
 
-/// The name the Python client uses for a matcher and on the wire.
+/// The name used for a matcher and on the wire.
 #[must_use]
 pub fn wire_tool_name(name: &str) -> &str {
     match name {
@@ -115,7 +114,7 @@ pub fn wire_tool_name(name: &str) -> &str {
 }
 
 /// Translate a built-in tool's argument names to the wire vocabulary a hook
-/// written for the Python client reads. Unknown tools keep their arguments.
+/// reads. Unknown tools keep their arguments.
 fn wire_tool_input(name: &str, input: &Value) -> Value {
     let Value::Object(input) = input else {
         return input.clone();

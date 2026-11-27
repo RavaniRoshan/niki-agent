@@ -969,7 +969,8 @@ export const FOOTER_COLUMNS = {
   ],
   docs: [
     { label: 'Documentation site', href: 'https://niki-docs.vercel.app' },
-    { label: 'Changelog', href: 'https://niki-docs.vercel.app/changelog' },
+    { label: 'Download', href: '/download' },
+    { label: 'Changelog', href: '/changelog' },
     { label: 'Beta builds', href: 'https://niki-docs.vercel.app/beta' },
     { label: 'README.md', href: 'https://github.com/RavaniRoshan/niki-agent' },
     { label: 'ARCHITECTURE.md', href: 'https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/ARCHITECTURE.md' },

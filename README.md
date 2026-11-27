@@ -5,43 +5,65 @@
 **A quiet terminal coding agent, written in Rust.**
 
 One native binary. Eleven providers. Sessions on your disk.
-An approval gate in front of anything that changes your machine.
+An approval card in front of anything that changes your machine.
 
-[![Release](https://img.shields.io/badge/release-v2.1.4-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![Release](https://img.shields.io/badge/release-v2.2.0-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
-[Install](#install) · [Beta](#beta) · [Documentation](https://niki-docs.vercel.app) · [Changelog](CHANGELOG.md)
+[Install](#install) · [Download](https://niki-site.vercel.app/download) · [Documentation](https://niki-docs.vercel.app) · [Changelog](https://niki-site.vercel.app/changelog) · [Beta](#beta)
 
 </div>
 
 <div align="center">
-  <img src="intro.gif" width="1000" alt="A Niki Agent session: it reads src/weather.rs, asks to write a retry helper, runs the tests, and reports the result">
+  <img src="intro.gif" width="1000" alt="A Niki Agent session: it reads src/lib.rs, asks before rewriting it so backoff caps at three attempts, runs cargo test, and reports that both tests pass">
 </div>
 
-<p align="center"><sub>Recorded from the shipped binary against a loopback provider, so no key or network is involved.</sub></p>
+<p align="center"><sub>Recorded from the shipped binary against a loopback model, with no key and no network. The card in the middle is the approval gate.</sub></p>
 
 ## What it is
 
-Niki is a coding agent that runs in your terminal. You say what you want; it
-reads the repository, edits files, runs commands, and shows each step. It uses
-the model you already pay for, keeps its sessions on your own disk, and stops to
-ask before it changes anything.
+Niki runs in your terminal. You describe a change; it reads the repository,
+proposes an edit or a command, and waits for your answer before anything touches
+your machine. Approve once, allow it for the session, or refuse — and the model
+is told what you decided, so the turn continues instead of dying.
 
-It is one self-contained executable. There is no interpreter to install, no
-virtual environment to create, and nothing to resolve on first run.
+It is one native executable built from [`rust/`](rust/): the turn loop, the
+providers, the tools, the policy, the sessions, the MCP client, and the
+full-screen UI. There is no interpreter to install, no virtual environment to
+create, and nothing to resolve on first run.
+
+No account, no telemetry, no subscription. You bring a key for the model you
+already pay for, or point Niki at a local daemon.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
 niki
 ```
 
-No account and no API key are needed to look around: the first launch lands on a
-working composer. Add a key when you want it to work:
+No key is needed to look around: the first launch lands on a working composer
+with the current folder, model, and approval mode already named. Add a key when
+you want it to work:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+## Why this one
+
+A generic agent gives you a chat box and a lot of motion. Niki is built around
+what a long session actually costs you: attention, trust, and startup time.
+
+| | |
+| --- | --- |
+| **The gate is the product** | Every gated action arrives as a card that names the command or the absolute path, says whether it resolves inside the workspace, offers *allow once / allow for this session / refuse*, and keeps the conversation on screen behind it. |
+| **One binary, no runtime** | The turn loop, providers, tools, policy, sessions, MCP, and UI compile into a single executable. The release archive is about 5 MiB and needs nothing else installed. |
+| **Open providers, no proxy** | Eleven providers are built in — Anthropic, OpenAI, Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, Ollama — plus any OpenAI-compatible endpoint by config. You pay your provider directly; there is no billing layer in between. |
+| **Local by conviction** | Sessions, skills, credentials, and the trust store live in `~/.niki`. No account, no cloud sync, no update check, no remote config. |
+| **Starts in milliseconds** | `niki --version` returns in 1.8 ms on a Ryzen 7 4800H (mean of 20 runs after 5 warm-ups); there is no interpreter to boot and no import graph to warm. |
+| **Quiet by default** | An idle session draws a welcome block and one composer rule, not a box. Tool output collapses to a row you can open. |
+| **Delegation with a budget** | The `task` tool gives one child agent a fresh history, a fixed step budget, and no way to spawn further children. |
+| **Scriptable when you need it** | `niki -n` answers once on stdout; `--output-format jsonl` streams a turn as events for your own tooling. |
 
 ## Install
 
@@ -62,8 +84,10 @@ release's `SHA256SUMS`, and places one executable under `~/.local/niki`
 (`%LOCALAPPDATA%\niki` on Windows). It does not touch your shell profile unless
 you pass `NIKI_SHELL=1`. To remove Niki, delete `~/.local/niki` and `~/.niki`.
 
-Linux, WSL, and macOS are exercised by the release workflow. The Windows archive
-is built by CI but has not been executed on Windows; the
+Every archive, its size, its checksum, and the one-line verification command are
+on the [download page](https://niki-site.vercel.app/download). Linux, WSL, and
+macOS are exercised by the release workflow; the Windows archive is built by CI
+but has not been executed on Windows, and the
 [beta page](https://niki-docs.vercel.app/beta) tracks platform support.
 
 Requires a 64-bit Linux, macOS (Apple silicon or Intel), or Windows machine.
@@ -74,23 +98,6 @@ git clone https://github.com/RavaniRoshan/niki-agent.git
 cd niki-agent/rust
 cargo build --release -p niki --bin niki
 ```
-
-## Why this one
-
-A generic agent gives you a chat box and a lot of motion. Niki is built around
-what a long session actually costs you: attention, startup time, and the
-decision of what the agent may do on its own.
-
-| | |
-| --- | --- |
-| **One binary** | Turn loop, providers, tools, policy, sessions, MCP, and UI are one native executable. |
-| **Quiet by default** | An idle session draws nothing. The composer is a single rule, not a box. |
-| **Starts instantly** | Native process launch; no interpreter to boot, no import graph to warm. |
-| **Your files stay yours** | Sessions, skills, and credentials live in `~/.niki`. No account, no cloud sync. |
-| **Your model** | Anthropic, OpenAI, Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, and Ollama, plus any OpenAI-compatible endpoint. |
-| **A real approval gate** | Manual, Auto, and YOLO modes, a shell allow-list, a workspace boundary, and a trust gate for project hooks and skills. |
-| **Delegation with a budget** | The `task` tool gives one child agent a fresh history, a fixed step budget, and no way to spawn further children. |
-| **Scriptable when you need it** | `niki -n` answers once; `--output-format jsonl` streams a turn as events for your own tooling. |
 
 ## First five minutes
 
@@ -169,9 +176,7 @@ Setup details, gateway examples, and the full config key list are in
 
 Niki is usable today and still moving. Beta builds ship as GitHub
 pre-releases: they pass the same Rust test gate as a stable release but may
-change behaviour between builds.
-
-When one is available, pin it by its version (no leading `v`):
+change behaviour between builds. Pin one by its version (no leading `v`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \
@@ -182,7 +187,8 @@ Known gaps, the support matrix, and how to report a problem are on the
 [beta page](https://niki-docs.vercel.app/beta). Feedback belongs in the
 [beta feedback issue form](https://github.com/RavaniRoshan/niki-agent/issues/new?template=beta-feedback.yml);
 the [roadmap issue](https://github.com/RavaniRoshan/niki-agent/issues/114) lists
-what is shipped and what is next. Every release is written up in
+what is shipped and what is next. Every release is written up on the
+[changelog page](https://niki-site.vercel.app/changelog) and in
 [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Docs
@@ -207,9 +213,9 @@ cargo test -j 2 --workspace
 The workspace is split by responsibility: `niki-agent` owns the turn loop,
 `niki-provider` the wire clients, `niki-tools` the filesystem and shell tools,
 `niki-policy` the approval decisions, `niki-session` the SQLite history,
-`niki-mcp` the MCP clients, and `niki-tui*` the full-screen app. `rust/MAP.md`
-maps the crates. `libs/code` holds the earlier Python implementation; it is
-deprecated, reference-only, and not what a user installs.
+`niki-mcp` the MCP clients, and `niki-tui*` the full-screen app.
+[`docs/niki/ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md) maps the crates and the
+turn loop.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the checks CI runs, and
 commit conventions. Release steps are in [`.github/RELEASING.md`](.github/RELEASING.md).
@@ -222,5 +228,4 @@ are covered by `SHA256SUMS`, and both installers verify it before installing.
 
 ## License
 
-MIT. Third-party copyright notices are retained in [`NOTICE`](NOTICE), and every
-included directory carries its licence and a provenance note beside it.
+MIT. Third-party copyright notices are retained in [`NOTICE`](NOTICE).

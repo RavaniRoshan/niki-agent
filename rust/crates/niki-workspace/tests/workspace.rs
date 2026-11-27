@@ -85,7 +85,7 @@ fn gitignore_and_built_in_names_filter_the_index() {
         "x\n",
     );
     write(&root.join("target").join("debug").join("niki"), "x\n");
-    write(&root.join(".venv").join("bin").join("python"), "x\n");
+    write(&root.join(".venv").join("bin").join("activate"), "x\n");
     write(&root.join("__pycache__").join("mod.pyc"), "x\n");
     write(&root.join("dist").join("bundle.js"), "x\n");
 

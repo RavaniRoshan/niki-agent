@@ -1,10 +1,10 @@
 //! Model provider clients: OpenAI-compatible Chat Completions and Anthropic
 //! Messages, streamed over SSE.
 //!
-//! ADR-004: the Rust client talks to the same endpoints the Python product
-//! talks to, with the same request shapes, so a user's existing provider block
-//! works unchanged. Two adapters cover every built-in provider: everything
-//! except Anthropic speaks the OpenAI shape.
+//! ADR-004: the clients speak the endpoints and request shapes a user's
+//! existing provider block names, so it works unchanged. Two adapters cover
+//! every built-in provider: everything except Anthropic speaks the OpenAI
+//! shape.
 //!
 //! A turn is a stream of [`StreamEvent`]s. Tool calls arrive as fragments; the
 //! assembler in each adapter turns them back into one [`ToolCall`] because the

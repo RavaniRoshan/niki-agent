@@ -39,7 +39,7 @@ const FILE_LIST_LIMIT = 50;
 
 function isDocsTitle(title) {
   // Lowercase-only on purpose: this mirrors `_TITLE_RE` in
-  // .github/scripts/labeling/check_pr_scope_files.py, and pr_lint.yml enforces
+  // .github/scripts/labeling/check-pr-scope-files.mjs, and pr_lint.yml enforces
   // the Conventional Commit type list case-sensitively. "Docs: ..." is not a
   // valid title in this repo, so it must not earn the bypass either.
   return /^docs(?:\([^)]*\))?!?:\s/.test(title || "");

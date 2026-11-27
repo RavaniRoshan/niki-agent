@@ -167,11 +167,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     },
 ];
 
-/// Commands the earlier client had that this build does not answer yet.
+/// Commands that are planned but not answered yet.
 ///
-/// `parse` rejects these. The list exists so the help screen and
-/// `rust/PARITY.md` can say what is missing without promising it, and so a
-/// command moves out of here the day it is implemented.
+/// `parse` rejects these. The list exists so the help screen can say what is
+/// missing without promising it, and so a command moves out of here the day it
+/// is implemented.
 pub const ROADMAP: &[CommandInfo] = &[
     CommandInfo {
         name: "/agents",

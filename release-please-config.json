@@ -54,25 +54,9 @@
   ],
   "pull-request-title-pattern": "release(${component}): ${version}",
   "component-no-space": true,
-  "pull-request-header": "> [!NOTE]\n> Merging this PR bumps the package version and updates the changelog.\n\nRelease notes preview: keep this section in sync with `libs/code/CHANGELOG.md`.\n",
+  "pull-request-header": "> [!NOTE]\n> Merging this PR bumps the package version and updates the changelog.\n",
   "pull-request-footer": "\n_End release notes preview._\n",
-  "packages": {
-    "libs/code": {
-      "release-type": "python",
-      "package-name": "niki-agent",
-      "component": "niki-agent",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
-      "extra-files": [
-        "pyproject.toml",
-        "niki_agent/_version.py"
-      ],
-      "changelog-path": "CHANGELOG.md",
-      "exclude-paths": [
-        "libs/code/tests"
-      ]
-    }
-  },
+  "packages": {},
   "tag-separator": "==",
   "include-component-in-tag": true,
   "include-v-in-tag": false

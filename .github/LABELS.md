@@ -29,7 +29,7 @@ Rules that are easy to get wrong:
 
 ### `size:*` — `pr_labeler.yml`
 
-`size: XS` (<50 changed lines), `size: S` (<200), `size: M` (<500), `size: L` (<1000), `size: XL` (rest). Mutually exclusive; stale ones removed. Thresholds are `sizeThresholds` in [`scripts/labeling/pr-labeler-config.json`](./scripts/labeling/pr-labeler-config.json). `uv.lock` (`excludedFiles`) and `docs/` (`excludedPaths`) do not count.
+`size: XS` (<50 changed lines), `size: S` (<200), `size: M` (<500), `size: L` (<1000), `size: XL` (rest). Mutually exclusive; stale ones removed. Thresholds are `sizeThresholds` in [`scripts/labeling/pr-labeler-config.json`](./scripts/labeling/pr-labeler-config.json). `docs/` (`excludedPaths`) does not count.
 
 ### `package:*` — `pr_labeler.yml`, `sync_topic_labels.yml`
 
@@ -37,7 +37,6 @@ Rules that are easy to get wrong:
 
 | Label | Scopes | Paths |
 | --- | --- | --- |
-| `package:code` | `code`, `sdk`, `quickjs` | `libs/code/` |
 | `package:rust` | `rust` | `rust/` |
 | `package:infra` | `infra` | `install/` |
 | `package:docs` | `docs` | `docs/` |
@@ -49,16 +48,15 @@ Package labels are additive: title edits do not remove them. `pr_scope_file_chec
 
 `topic:async-subagents`, `topic:backends`, `topic:filesystem`, `topic:harness-profiles`, `topic:mcp`, `topic:memory`, `topic:middleware`, `topic:models`, `topic:multimodal`, `topic:performance`, `topic:prompts`, `topic:sandboxes`, `topic:skills`, `topic:streaming`, `topic:subagents`, `topic:tracing`. Any number may apply.
 
-Two signals feed them, both additive. A topic is never removed, so a maintainer's hand-applied topic survives. Issue classification runs on `opened` only, so a removed topic is not re-added by a later edit:
+One signal feeds them, and it is additive: a topic is never removed, so a maintainer's hand-applied topic survives. Classification runs on `opened` only, so a removed topic is not re-added by a later edit.
 
-- **Changed modules** (`topicFileRules`): a PR touching `middleware/subagents.py` gets `topic:subagents` (and `topic:middleware`, since the whole middleware dir maps too); `backends/sandbox.py` gets `topic:backends` and `topic:sandboxes`; `mcp_*.py` gets `topic:mcp`. Rules name a *module*, not a package, so the label means the diff actually touched that subject.
-- **Issue wording**: `openai/gpt-oss-20b`, an open-weight production model available on Groq's Developer plan, classifies an issue's title and body against the cached `.github/topic-labels.json` manifest. PRs receive automatic topic labels from changed modules only.
+- **Issue wording**: `openai/gpt-oss-20b`, an open-weight production model available on Groq's Developer plan, classifies an issue's title and body against the cached `.github/topic-labels.json` manifest.
 
-`topic:async-subagents` stays distinct from `topic:subagents` because async execution has its own implementation and operational concerns. Path rules distinguish the implementations; wording classifications come from the model.
+`topicFileRules` is empty by design: the crates are named after their subject, so a path adds no information a reader cannot see in the diff. A rule could be added back, but it would have to name a real path in this repository.
 
-A daily workflow adds newly discovered repository topics to `.github/topic-labels.json` and opens or refreshes a PR when it changes. Existing choices are preserved because labels are created on demand; a topic absent from the repository may simply not have been used yet. A response containing no topic labels fails the sync without changing the manifest. To retire a topic, remove it explicitly from the manifest, the repository labels, and any `topicFileRules` entries that could recreate it.
+A daily workflow adds newly discovered repository topics to `.github/topic-labels.json` and opens or refreshes a PR when it changes. Existing choices are preserved because labels are created on demand; a topic absent from the repository may simply not have been used yet. A response containing no topic labels fails the sync without changing the manifest. To retire a topic, remove it explicitly from the manifest and the repository labels.
 
-Runtime labeling reads the local manifest, so it makes no extra label-list API call. Add a `topicFileRules` entry only when deterministic path-based matching is also useful; model output is filtered against the manifest before labels are applied.
+Runtime labeling reads the local manifest, so it makes no extra label-list API call. Model output is filtered against the manifest before labels are applied.
 
 ### `org:*` — `pr_labeler.yml` (PRs), `tag-external-issues.yml` (issues)
 
@@ -149,7 +147,7 @@ Each unblocks a gate that is otherwise red. Every one is read-only and must be c
 
 ## Changing the taxonomy
 
-1. **New package**: add a `scopeToLabel` key and a `fileRules` prefix in `pr-labeler-config.json`, add the scope to `pr_lint.yml`, and add the issue form option plus its `mapping` entry in `.github/topic-labels.json` (read by `sync_topic_labels.yml`). Check `check_pr_scope_files.py`'s tests — it reads both maps as package identity.
+1. **New package**: add a `scopeToLabel` key and a `fileRules` prefix in `pr-labeler-config.json`, add the scope to `pr_lint.yml`, and add the issue form option plus its `mapping` entry in `.github/topic-labels.json` (read by `sync_topic_labels.yml`). Check `check-pr-scope-files.mjs`'s tests — it reads both maps as package identity.
 2. **New `ci:*` gate**: read the label from the live API in the gate workflow, create the label by hand, and add a row above.
 3. **Backfill**: use the manual dispatch on `sync_priority_labels.yml` for open PRs and on `tag-external-issues.yml` for open issues.
 

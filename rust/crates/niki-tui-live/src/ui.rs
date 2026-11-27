@@ -33,7 +33,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     .split(area);
     let [body, composer, completion, status] = [areas[0], areas[1], areas[2], areas[3]];
 
-    draw_transcript(frame, app, body);
+    draw_transcript_if_any(frame, app, body);
     let cursor = draw_composer(frame, app, composer);
     draw_completion(frame, app, completion);
     draw_status(frame, app, status);
@@ -57,6 +57,86 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
             frame.set_cursor_position(position);
         }
     }
+}
+
+fn draw_transcript_if_any(frame: &mut Frame, app: &mut App, area: Rect) {
+    if area.is_empty() {
+        return;
+    }
+    let height = usize::from(area.height);
+    app.page = height;
+    if app.transcript.rows().is_empty() && app.status.turn == crate::status::TurnState::Idle {
+        draw_welcome(frame, app, area);
+        return;
+    }
+    draw_transcript(frame, app, area);
+}
+
+/// The first screen in a fresh session: what this is, which model and mode are
+/// in force, where it is rooted, and the four commands worth knowing first.
+fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
+    let palette = app.palette;
+    let width = usize::from(area.width);
+    let mut lines: Vec<Line<'static>> = Vec::new();
+
+    lines.push(Line::default());
+    lines.push(Line::from(vec![
+        Span::styled(clip("NIKI AGENT", width).0, palette.accent_style()),
+        Span::styled(
+            clip(&format!("  v{}", env!("CARGO_PKG_VERSION")), width).0,
+            palette.muted_style(),
+        ),
+    ]));
+    lines.push(Line::from(Span::styled(
+        clip(
+            "one binary · sessions on your disk · an approval gate in front of every change",
+            width,
+        )
+        .0,
+        palette.muted_style(),
+    )));
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        clip(
+            &format!(
+                "{} · {} mode · {}",
+                app.status.model,
+                app.status.mode.label(),
+                app.status.cwd
+            ),
+            width,
+        )
+        .0,
+        palette.body_style(),
+    )));
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        clip("To get started", width).0,
+        palette.accent_style(),
+    )));
+    for (command, summary) in [
+        ("/init", "write an AGENTS.md for this repository"),
+        ("/status", "model, mode, session, and token usage"),
+        ("/theme", "pick a palette"),
+        ("/help", "every command and key binding"),
+    ] {
+        lines.push(Line::from(vec![
+            Span::styled(
+                clip(&format!("  {command:<9}"), width).0,
+                palette.accent_style(),
+            ),
+            Span::styled(clip(summary, width).0, palette.muted_style()),
+        ]));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        clip("Type a prompt to begin. Ctrl+D quits.", width).0,
+        palette.muted_style(),
+    )));
+
+    let height = usize::from(area.height);
+    lines.truncate(height);
+    frame.render_widget(Paragraph::new(lines).style(palette.canvas()), area);
 }
 
 fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect) {

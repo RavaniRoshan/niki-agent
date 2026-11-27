@@ -82,7 +82,7 @@ function creatableLabels() {
 test('rule-derived labels are actually reachable', () => {
   const { names } = creatableLabels();
   assert.ok(names.has('org:open-swe'), 'branchRules label not picked up');
-  assert.ok(names.has('package:code'), 'fileRules label not picked up');
+  assert.ok(names.has('package:rust'), 'fileRules label not picked up');
   assert.ok(names.size > 25, `expected the full taxonomy, got ${names.size}`);
 });
 
@@ -198,8 +198,8 @@ const typeCases = [
 
 for (const [type, label] of typeCases) {
   test(`${type} titles derive ${label} alongside package/integration labels`, () => {
-    const result = helpers().matchTitleLabels(`${type}(code,quickjs): update behavior`);
-    assert.deepEqual([...result.labels].sort(), [label, 'package:code'].sort());
+    const result = helpers().matchTitleLabels(`${type}(rust): update behavior`);
+    assert.deepEqual([...result.labels].sort(), [label, 'package:rust'].sort());
   });
 }
 
@@ -221,8 +221,8 @@ for (const title of ['feat!(sdk): incompatible change', 'feat!(sdk)!: incompatib
 }
 
 test('title edits remove obsolete classifications but preserve unrelated metadata', () => {
-  const stale = helpers().getStaleTitleLabels('fix(code): correct behavior', [
-    'type:feature', 'type:breaking', 'type:bug', 'package:code', 'priority:high',
+  const stale = helpers().getStaleTitleLabels('fix(rust): correct behavior', [
+    'type:feature', 'type:breaking', 'type:bug', 'package:rust', 'priority:high',
     'auto:release-pending', 'auto:release-tagged', 'type:spike',
   ]);
   assert.deepEqual(stale, ['type:feature', 'type:breaking']);
@@ -236,7 +236,7 @@ for (const title of ['', undefined, 'not a conventional title', 'unknown(sdk): c
   });
 }
 
-function labelerApi(title, labels, files = [{ filename: 'libs/code/example.py', additions: 1, deletions: 0 }]) {
+function labelerApi(title, labels, files = [{ filename: 'rust/example.rs', additions: 1, deletions: 0 }]) {
   const assigned = new Set(labels);
   const known = new Map(labels.map(name => [name, {}]));
   const pr = { number: 12, title, user: { login: 'contributor', type: 'User' }, head: { ref: 'feature-branch' } };
@@ -295,43 +295,47 @@ async function runLabeler(mode, api, {
 
 for (const action of ['opened', 'synchronize', 'reopened', 'edited']) {
   test(`live ${action} does not infer topics from PR text and preserves existing topics`, async () => {
-    const api = labelerApi('fix(code): reconnect MCP servers', ['topic:skills']);
+    const api = labelerApi('fix(rust): reconnect MCP servers', ['topic:skills']);
     api.pr.body = 'Fix memory and sandbox issues';
     await runLabeler('live', api, { action });
     assert.deepEqual([...api.assigned].filter(name => name.startsWith('topic:')), ['topic:skills']);
     assert.ok(api.assigned.has('type:bug'));
-    assert.ok(api.assigned.has('package:code'));
+    assert.ok(api.assigned.has('package:rust'));
   });
 }
 
 test('live title labels use the corrected title from scope renaming', async () => {
   const api = labelerApi('fix: reconnect MCP servers', []);
-  await runLabeler('live', api, { renamedTitle: 'fix(code): reconnect MCP servers' });
-  assert.ok(api.assigned.has('package:code'));
+  await runLabeler('live', api, { renamedTitle: 'fix(rust): reconnect MCP servers' });
+  assert.ok(api.assigned.has('package:rust'));
   assert.ok(api.assigned.has('type:bug'));
 });
 
-// `edited` skips the file block, so the path signal needs a push-like action.
-test('live topics come from the changed modules', async () => {
-  const api = labelerApi('fix(code): correct behavior', [], [
-    { filename: 'libs/code/niki_agent/mcp_tools.py', additions: 1, deletions: 0 },
+// No path rule is configured, so a changed file never adds a topic on its own;
+// topics come from the issue and PR wording instead.
+test('live topics ignore changed paths', async () => {
+  const api = labelerApi('fix(rust): correct behavior', [], [
+    { filename: 'rust/crates/niki-mcp/src/tool.rs', additions: 1, deletions: 0 },
   ]);
   await runLabeler('live', api, { action: 'synchronize' });
-  assert.ok(api.assigned.has('topic:mcp'), 'a touched module must contribute its topic');
-  assert.ok(api.known.has('topic:mcp'), 'a path topic is created before it is applied');
-  assert.ok(api.assigned.has('package:code'));
+  assert.deepEqual(
+    [...api.assigned].filter(name => name.startsWith('topic:')),
+    [],
+    'a changed path must not add a topic label',
+  );
+  assert.ok(api.assigned.has('package:rust'));
 });
 
 for (const mode of ['live', 'release helper']) {
   test(`${mode} replaces stale types and breaking labels after a title edit`, async () => {
-    const api = labelerApi('refactor(code): simplify the implementation', [
-      'type:feature', 'type:breaking', 'package:code', 'priority:high',
+    const api = labelerApi('refactor(rust): simplify the implementation', [
+      'type:feature', 'type:breaking', 'package:rust', 'priority:high',
     ]);
     await runLabeler(mode, api);
     assert.ok(api.assigned.has('type:refactor'));
     assert.ok(!api.assigned.has('type:feature'));
     assert.ok(!api.assigned.has('type:breaking'));
-    assert.ok(api.assigned.has('package:code'));
+    assert.ok(api.assigned.has('package:rust'));
     assert.ok(api.assigned.has('priority:high'));
     assert.ok(api.known.get('type:refactor').description);
   });
@@ -408,22 +412,11 @@ test('label-creating scripts resolve colors from the config', () => {
   );
 });
 
-test('topic labels come from the modules a PR touched', () => {
+test('no path contributes a topic when no rule is configured', () => {
   const h = helpers();
   const f = filename => ({ filename, additions: 1, deletions: 0 });
-  const cases = [
-    ['libs/code/niki_agent/sdk/middleware/subagents.py', ['topic:middleware', 'topic:subagents']],
-    ['libs/code/niki_agent/sdk/middleware/async_subagents.py', ['topic:async-subagents', 'topic:middleware']],
-    ['libs/code/niki_agent/sdk/backends/sandbox.py', ['topic:backends', 'topic:sandboxes']],
-    ['libs/code/niki_agent/mcp_tools.py', ['topic:mcp']],
-    ['libs/code/niki_agent/skills/index.py', ['topic:skills']],
-    ['rust/crates/niki-proto/src/lib.rs', []],
-    ['libs/code/niki_agent/_tracing.py', ['topic:tracing']],
-    ['README.md', []],
-    ['rust/Cargo.toml', []],
-  ];
-  for (const [file, expected] of cases) {
-    assert.deepEqual([...h.matchTopicFileLabels([f(file)])].sort(), expected, file);
+  for (const file of ['rust/crates/niki-mcp/src/tool.rs', 'rust/Cargo.toml', 'README.md']) {
+    assert.deepEqual([...h.matchTopicFileLabels([f(file)])], [], file);
   }
 });
 

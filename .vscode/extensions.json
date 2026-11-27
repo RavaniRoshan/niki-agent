@@ -1,8 +1,5 @@
 {
   "recommendations": [
-    "ms-python.python",
-    "charliermarsh.ruff",
-    "astral-sh.ty",
     "davidanson.vscode-markdownlint",
     "github.vscode-pull-request-github",
     "github.vscode-github-actions",

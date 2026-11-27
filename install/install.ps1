@@ -3,7 +3,7 @@
     Niki Agent installer for Windows.
 
 .DESCRIPTION
-    Installs a prebuilt, self-contained `niki.exe`. There is no Python runtime
+    Installs a prebuilt, self-contained `niki.exe`. There is no language runtime
     and no package resolution at install time: the release archive holds one
     executable, and the release's SHA256SUMS proves it before anything is
     written to the prefix.

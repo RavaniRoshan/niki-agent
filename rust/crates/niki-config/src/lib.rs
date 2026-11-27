@@ -1,13 +1,11 @@
-//! The user's `~/.niki/config.toml`, read the way the Python product reads it.
+//! The user's `~/.niki/config.toml`.
 //!
-//! ADR-005: one config file serves both binaries during the port. The table
-//! names are the ones the Python product already uses — `[providers.<name>]`
-//! for user providers (also accepted under `[models.providers.<name>]`),
-//! `[models].default` for the default model, `[ui].theme` for the theme,
-//! `[mcp_servers.<name>]` for MCP servers, and `[notify]` for the program run
-//! when a turn ends. Unknown keys are ignored, so a file
-//! written for a newer Python release still loads. This crate only reads
-//! `config.toml`; the Rust binary does not write it. [`instructions`] is the
+//! The table names are `[providers.<name>]` for user providers (also accepted
+//! under `[models.providers.<name>]`), `[models].default` for the default
+//! model, `[ui].theme` for the theme, `[mcp_servers.<name>]` for MCP servers,
+//! and `[notify]` for the program run when a turn ends. Unknown keys are
+//! ignored, so a file written for a newer release still loads. This crate only
+//! reads `config.toml`; the binary does not write it. [`instructions`] is the
 //! one part that writes a file, and only when `/init` asks it to.
 //!
 //! [`trust`] holds the persisted workspace trust decisions that gate project
@@ -40,14 +38,14 @@ pub enum Protocol {
 
 /// One `[providers.<name>]` block.
 ///
-/// Every field the Python product treats as optional stays optional here: a
-/// block may name only `base_url` and rely on the protocol defaults.
+/// Every optional field stays optional: a block may name only `base_url` and
+/// rely on the protocol defaults.
 #[derive(Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Provider {
     /// Human-readable name shown in the model picker.
     pub display_name: Option<String>,
-    /// Python class path, read as the protocol selector.
+    /// Provider class path, read as the protocol selector.
     pub class_path: Option<String>,
     /// Endpoint base URL.
     pub base_url: Option<String>,
@@ -146,10 +144,9 @@ pub struct McpServer {
 
 /// The transport a `[mcp_servers.<name>]` entry declares.
 ///
-/// The shape is the one the Python product accepts for `.mcp.json`: `command`
-/// plus `args` and `env` for stdio, `url` plus `headers` for HTTP. An entry
-/// without a `type` infers the transport from which of `url` and `command` it
-/// sets.
+/// The shape matches `.mcp.json`: `command` plus `args` and `env` for stdio,
+/// `url` plus `headers` for HTTP. An entry without a `type` infers the
+/// transport from which of `url` and `command` it sets.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum McpTransport {
     /// A child process speaking line-delimited JSON-RPC on stdin/stdout.
@@ -245,9 +242,9 @@ impl Config {
     /// The provider `name` resolves to: the user's block over the built-in one,
     /// field by field, or `None` when neither exists.
     ///
-    /// The Python product ships endpoints and key variables for its well-known
-    /// providers, so a config that only sets `[models].default` still runs. A
-    /// user block overrides whichever fields it sets and inherits the rest.
+    /// Built-in endpoints and key variables cover the well-known providers, so
+    /// a config that only sets `[models].default` still runs. A user block
+    /// overrides whichever fields it sets and inherits the rest.
     #[must_use]
     pub fn provider(&self, name: &str) -> Option<Provider> {
         let user = self.providers.get(name);
@@ -543,9 +540,9 @@ fn normalize_kind(kind: &str) -> String {
 impl RawConfig {
     fn into_config(self) -> Result<Config, ConfigError> {
         let mut providers = self.models.providers;
-        // The README documents `[providers.<name>]`; the Python reader also
-        // accepts `[models.providers.<name>]`. A name present in both resolves
-        // to the documented top-level block.
+        // The README documents `[providers.<name>]`; the reader also accepts
+        // `[models.providers.<name>]`. A name present in both resolves to the
+        // documented top-level block.
         providers.extend(self.providers);
 
         let mut mcp_servers = BTreeMap::new();

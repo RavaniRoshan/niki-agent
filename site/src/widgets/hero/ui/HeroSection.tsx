@@ -205,8 +205,8 @@ export function HeroSection({
           </h1>
 
           {/* Concise value-proposition subheadline for first-time visitors */}
-          <p className="hero-seq-headline mt-5 max-w-[580px] rounded-[2px] bg-background/75 backdrop-blur-sm border border-grid/70 px-4 py-2 text-[15px] sm:text-[16px] leading-[1.55] text-foreground/90 shadow-sm">
-            A terminal coding agent in one self-contained binary: four contrast-tested themes, session resume, and any model you already pay for. No account required.
+          <p className="hero-seq-headline mt-5 max-w-[620px] rounded-[2px] bg-background/75 backdrop-blur-sm border border-grid/70 px-4 py-2 text-[15px] sm:text-[16px] leading-[1.55] text-foreground/90 shadow-sm">
+            One native binary. Eleven providers and any OpenAI-compatible endpoint. An approval card in front of every write and command, and sessions that stay on your disk. No account, no telemetry, no subscription.
           </p>
 
           {/* 3. Centered Architectural Quick-Launch Command Bar */}

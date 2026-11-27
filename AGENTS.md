@@ -6,11 +6,9 @@ the policy, sessions, the MCP client, the ACP server, and the full-screen UI all
 live in that workspace. Installing the release archive gives you `niki`; nothing
 needs a language runtime.
 
-`libs/code` holds the earlier Python implementation. It is **deprecated and
-reference-only**: it still builds and its tests still run, but it installs no
-console script and is not what a user gets. Do not add features there. Read
-[`docs/niki/INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) for what "independent" means
-and [`rust/MAP.md`](rust/MAP.md) for the port plan and its status.
+Read [`docs/niki/INDEPENDENCE.md`](docs/niki/INDEPENDENCE.md) for what
+"independent" means and [`docs/niki/ARCHITECTURE.md`](docs/niki/ARCHITECTURE.md)
+for the crates and the turn loop.
 
 ## Layout
 
@@ -20,17 +18,16 @@ and [`rust/MAP.md`](rust/MAP.md) for the port plan and its status.
   `niki-mcp`, `niki-session`, `niki-acp`, `niki-tui-live`, `niki-tui`,
   `niki-render`, `niki-tui-themes`, `niki-engine-client` (the legacy HTTP/SSE
   front end), and the small protocol crates.
-- `libs/code` — the deprecated Python client: Textual TUI, headless mode, MCP,
-  skills, slash commands, the vendored SDK, and the vendored JS interpreter.
-  Its own guide is [`libs/code/AGENTS.md`](libs/code/AGENTS.md).
+- `libs/` — local scratch space for evaluation harnesses. Nothing here is
+  tracked by git and nothing here ships.
 - `install/` — the release installers, `install.sh` and `install.ps1`. They
   unpack a release archive and place the binary; they do not build anything.
 - `docs/niki` — architecture, independence, keymap, and provider guides.
 - `site/` — the marketing site (Vite + React + Tailwind, Bun toolchain).
-- `launch/` — Product Hunt copy and gallery images, regenerated from `intro.gif`
-  by `launch/render_gallery.py`. Nothing here ships in the binary.
+- `launch/` — Product Hunt copy and gallery images. The images are committed
+  assets, regenerated outside the repository; nothing here ships in the binary.
 - `docs-site/` — the VitePress documentation site, deployed as its own Vercel
-  project. It mirrors five repository documents; `npm run sync` refreshes the
+  project. It mirrors six repository documents; `npm run sync` refreshes the
   mirrors and `npm run check:brand` gates branding.
 - `SECURITY.md` — reporting, supported versions, and trust boundaries.
 - `CHANGELOG.md` — the release history readers see; the docs site has its own
@@ -53,14 +50,7 @@ provider:
 
 ```bash
 cargo build --release --locked -p niki --bin niki
-python3 ../.github/scripts/smoke_turn.py --niki rust/target/release/niki
-```
-
-The deprecated Python client still gates itself, and CI still runs it:
-
-```bash
-cd libs/code
-make check PYTEST_EXTRA="-n 2"
+cargo run -q -p niki-smoke -- --niki rust/target/release/niki
 ```
 
 ```bash
@@ -73,28 +63,18 @@ cd docs-site && npm run sync && npm run check:brand && npm run build
 - Fix what the task asks for. Do not refactor nearby code or add features.
 - Read a file before changing it. Do not propose changes to unread code.
 - Add tests only when they protect changed observable behavior.
-- Keep user-visible language Niki Agent. Attribution belongs in `NOTICE`,
-  `LICENSE`, and the vendored `PROVENANCE.md` files; the version line and help
-  screen do not credit another product.
+- Keep user-visible language Niki Agent. Attribution belongs in `NOTICE` and
+  `LICENSE`; the version line and help screen do not credit another product.
 - `niki` is the only shipped binary name. The older engine client builds as
   `niki-engine` and is not packaged. Do not add compatibility aliases for the
   pre-rename product names.
-- Do not edit the vendored trees for style. They are excluded from ruff and ty so
-  their diff against `PROVENANCE.md` stays auditable.
-
-## Suppressing ruff rules
-
-Applies to the deprecated Python client only. Use inline `# noqa: RULE` with a
-justification for individual exceptions. Reserve
-`[tool.ruff.lint.per-file-ignores]` for categorical policies. If you cannot
-justify a suppression, the code is probably the problem.
 
 ## Branches and commits
 
 - Branch names: `<github-username>/<scope>/<short-description>`.
 - Conventional Commits, with a scope. Allowed scopes are defined in
-  `.github/workflows/pr_lint.yml`: `ci`, `code`, `deps`, `docs`, `examples`,
-  `infra`, `quickjs`, `repo`, `rust`, `sdk`, `site`.
+  `.github/workflows/pr_lint.yml`: `ci`, `deps`, `docs`, `examples`, `infra`,
+  `repo`, `rust`, `site`.
 - Text after `type(scope):` starts lowercase unless it begins with a proper noun
   or a code entity. Wrap code identifiers in backticks.
 - Never create a `main` branch. The default branch is `niki-agent`.
@@ -110,13 +90,7 @@ on Linux and macOS arm64, and publishes a GitHub Release. See
 
 ## CI
 
-`.github/workflows/ci.yml` runs the `rust/` gate and `make check` in
-`libs/code`, and exposes the aggregate check **✅ CI Success**.
+`.github/workflows/ci.yml` runs the `rust/` gate and the helper-script tests,
+and exposes the aggregate check **✅ CI Success**.
 `.github/workflows/site.yml` typechecks, brand-checks, and builds `site/`;
 `docs-site.yml` does the same for `docs-site/`.
-
-## Scoped guide
-
-- [`libs/code/AGENTS.md`](libs/code/AGENTS.md) — the deprecated Python client:
-  Textual patterns, startup performance, slash commands, providers, and the
-  vendored SDK.

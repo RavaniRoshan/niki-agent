@@ -56,8 +56,10 @@ export function LandingPage() {
   const handleToggleColorMode = useCallback(() => {
     setColorMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
-  const handleOpenInstall = useCallback((customCommand?: string) => {
-    setActiveModal({ type: 'install', customCommand });
+  const handleOpenInstall = useCallback((_customCommand?: string) => {
+    // Every install affordance lands on the download page, where the archive,
+    // the one-line installer, and the checksum sit together.
+    window.location.assign('/download');
   }, []);
   const handleOpenChecklist = useCallback(() => {
     setActiveModal({ type: 'checklist' });

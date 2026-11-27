@@ -22,10 +22,10 @@ pub(crate) fn required_str<'a>(args: &'a Value, key: &str) -> Result<&'a str, To
 
 /// The first of `keys` present as a string.
 ///
-/// The product's wire vocabulary and the Python client both call the file
-/// argument `file_path` (and the edit strings `old_string`/`new_string`), while
-/// the Rust tools were written with `path`/`old`/`new`. Accept either spelling
-/// so an instruction, skill, or hook written for the product keeps working.
+/// The wire vocabulary calls the file argument `file_path` (and the edit
+/// strings `old_string`/`new_string`), while this crate's tools take
+/// `path`/`old`/`new`. Accept either spelling so an instruction, skill, or hook
+/// keeps working.
 pub(crate) fn required_str_any<'a>(args: &'a Value, keys: &[&str]) -> Result<&'a str, ToolError> {
     let map = object(args)?;
     for key in keys {

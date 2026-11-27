@@ -11,9 +11,6 @@ The version lives in `rust/Cargo.toml` under `[workspace.package] version`. Ever
 crate inherits it, and `niki --version` prints it. The release tag must match:
 tag `v2.0.0` publishes archives named `niki-2.0.0-…`.
 
-The Python package in `libs/code` keeps its last released version (1.1.2) and is
-not part of a release. It is the reference implementation and the fixture source.
-
 ## Cutting a release
 
 1. Bump `[workspace.package] version` in one commit: `release(rust): 2.0.0`.
@@ -50,7 +47,7 @@ instead of publishing a mislabelled archive. It stages the binary with
 and `CHANGELOG.md`, then:
 
 - runs the packaged installer into a scratch prefix and prints `niki --version`;
-- on Linux and macOS arm64, runs `.github/scripts/smoke_turn.py` against the
+- on Linux and macOS arm64, runs the `niki-smoke` workspace binary against the
   installed binary: one headless turn against a loopback mock provider,
   asserting that a `write_file` tool call wrote the file and the tool result
   reached the model. macOS arm64 gets the same gate because it is the archive
@@ -92,12 +89,10 @@ The installer downloads the archive for the host (`linux-x86_64`,
 - One archive per platform-architecture pair (`linux-x86_64`, `macos-aarch64`,
   `macos-x86_64`, `windows-x86_64`), each holding `niki`, both installers,
   `NOTICE`, `LICENSE`, and `README.md`.
-- `SHA256SUMS` covering every archive.
-- Release notes written for the person installing it, not a changelog of
-  merged pull requests.
-
-The Python tree stays in the repository. It is not packaged, not uploaded, and
-not installed by any release path.
+The release contains one archive per platform, `SHA256SUMS` covering every
+archive, and release notes written for the person installing it, not a changelog
+of merged pull requests. Nothing else ships: there is no package registry, no
+wheel, and no second artifact line.
 
 ## Rolling back
 

@@ -38,7 +38,7 @@ impl Rgb {
     }
 }
 
-/// Glyphs with an ASCII fallback, mirroring the Python `Glyphs` registry.
+/// Glyphs with an ASCII fallback.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Glyphs {
     pub user: &'static str,
@@ -242,8 +242,8 @@ impl TranscriptModel {
         }
         lines.extend(shown);
 
-        // Hints mirror the Python strings where they exist, and drop the parts
-        // a narrow frame cannot show rather than truncating mid-word.
+        // Hints drop the parts a narrow frame cannot show rather than
+        // truncating mid-word.
         let footer = if self.messages.is_empty() {
             if width >= 60 {
                 format!(

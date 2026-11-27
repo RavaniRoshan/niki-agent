@@ -18,6 +18,12 @@ use serde_json::{Value, json};
 /// How much of the final answer the payload carries.
 pub const ANSWER_LIMIT: usize = 2000;
 
+/// Attempts to start a program that reports `ETXTBSY`, and the pause between
+/// them. Fifty attempts at twenty milliseconds cover a second, which is far
+/// longer than a concurrent writer holds a script open.
+const BUSY_ATTEMPTS: u32 = 50;
+const BUSY_BACKOFF: Duration = Duration::from_millis(20);
+
 /// One finished turn, as the program sees it on stdin.
 #[derive(Debug, Clone, Copy)]
 pub struct TurnEnd<'a> {
@@ -118,22 +124,53 @@ impl Notify {
         }
 
         self.pending.begin();
-        let child = Command::new(&self.program)
-            .args(&self.args)
-            .current_dir(turn.cwd)
-            .stdin(Stdio::from(stdin))
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn();
-        let mut child = match child {
-            Ok(child) => child,
-            Err(error) => {
-                self.pending.finish();
-                warn(format!(
-                    "the notify program {} could not start: {error}",
-                    self.program.display()
-                ));
-                return;
+        let mut attempts = 0u32;
+        let mut child = loop {
+            // Every attempt needs its own descriptor positioned at the start of
+            // the payload: a spawned child consumes the handle it was given.
+            let input = match stdin.try_clone().and_then(|mut file| {
+                file.rewind()?;
+                Ok(file)
+            }) {
+                Ok(file) => file,
+                Err(error) => {
+                    self.pending.finish();
+                    warn(format!(
+                        "the notify program {} could not start: {error}",
+                        self.program.display()
+                    ));
+                    return;
+                }
+            };
+            let spawned = Command::new(&self.program)
+                .args(&self.args)
+                .current_dir(turn.cwd)
+                .stdin(Stdio::from(input))
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
+            match spawned {
+                Ok(child) => break child,
+                // A script written moments ago is briefly unexecutable: some
+                // other process still holds a write descriptor on it, and
+                // `exec` answers `ETXTBSY`. The holder is usually a shell that
+                // just created the file, or a fork that copied the descriptor;
+                // both are gone within milliseconds.
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::ExecutableFileBusy
+                        && attempts < BUSY_ATTEMPTS =>
+                {
+                    attempts += 1;
+                    std::thread::sleep(BUSY_BACKOFF);
+                }
+                Err(error) => {
+                    self.pending.finish();
+                    warn(format!(
+                        "the notify program {} could not start: {error}",
+                        self.program.display()
+                    ));
+                    return;
+                }
             }
         };
 
@@ -312,6 +349,44 @@ mod tests {
             serde_json::from_str(&std::fs::read_to_string(&out).expect("payload")).expect("json");
         assert_eq!(payload["session"], "");
         assert_eq!(payload["reason"], "error");
+    }
+
+    #[test]
+    fn a_script_held_open_for_writing_is_retried_rather_than_dropped() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let out = dir.path().join("payload.json");
+        let program = write_script(dir.path());
+        // A live write descriptor on a script makes `exec` answer `ETXTBSY`,
+        // which is what a shell that just created the file leaves behind.
+        let held = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&program)
+            .expect("open for writing");
+        let writer = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            drop(held);
+        });
+
+        let notify = Notify::from_program(
+            Some(&program.display().to_string()),
+            vec![out.display().to_string()],
+        )
+        .expect("notifier");
+        notify.fire(&TurnEnd {
+            session: None,
+            model: "mock:model",
+            cwd: dir.path(),
+            reason: "end_turn",
+            steps: 1,
+            tool_calls: 0,
+            answer: "",
+        });
+
+        assert!(notify.wait_for(Duration::from_secs(10)), "the program ran");
+        writer.join().expect("writer");
+        let payload: Value =
+            serde_json::from_str(&std::fs::read_to_string(&out).expect("payload")).expect("json");
+        assert_eq!(payload["reason"], "end_turn");
     }
 
     #[test]

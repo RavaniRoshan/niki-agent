@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::io_error;
 
-/// Directories a tree walk never enters, matching the Python search tools.
+/// Directories a tree walk never enters.
 pub(crate) const SKIPPED_DIRS: [&str; 5] =
     [".git", "target", "node_modules", ".venv", "__pycache__"];
 

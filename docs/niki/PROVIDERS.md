@@ -6,8 +6,7 @@ a key variable that ship with the binary — so naming one of them in
 `config.toml` is all an install needs. Any other endpoint that speaks one of the
 two protocols is a `[providers.<name>]` block.
 
-There is nothing to install and no Python package behind a provider: the client
-is compiled in.
+There is nothing to install behind a provider: the client is compiled in.
 
 The configuration file is `$NIKI_HOME/config.toml` when `NIKI_HOME` is set,
 otherwise `~/.niki/config.toml`. `--config <PATH>` selects another file.

@@ -16,7 +16,7 @@
 # any hook runs, so the script cannot see around these:
 #
 #   1. Multi-ref pushes are only partially checked. `_pre_push_ns`
-#      (pre_commit/commands/hook_impl.py, as of pre-commit 4.x) skips deletions
+#      (pre-commit's pre-push driver, as of 4.x) skips deletions
 #      and refs the remote already has, then returns on the first ref that does
 #      have new commits — so `PRE_COMMIT_REMOTE_BRANCH` names exactly one
 #      branch, and which one depends on stdin order rather than the order you
@@ -49,9 +49,9 @@ ALLOWED_PREFIX_RE='^(release-please--|dependabot/|copilot/|alpha/|beta/|rc/|dev/
 # Scopes mirror the allowed scopes in .github/workflows/pr_lint.yml exactly.
 # All three patterns above and below are duplicated in
 # .github/workflows/branch_name_check.yml; the `branch-scopes-sync` pre-commit
-# hook (.github/scripts/checks/check_branch_scopes_sync.py) fails the commit if
+# hook (.github/scripts/checks/check-branch-scopes-sync.mjs) fails the commit if
 # the copies drift, so edit them together.
-SCOPES_RE='(ci|code|deps|docs|examples|infra|quickjs|repo|rust|sdk)'
+SCOPES_RE='(ci|deps|docs|examples|infra|repo|rust|site)'
 
 # Kebab-case description: lowercase alphanumerics and hyphens, no leading or
 # trailing hyphen. The final group is optional so one-character descriptions are

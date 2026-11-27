@@ -1,9 +1,9 @@
 //! SQLite session store: transcripts, resume, and checkpoints.
 //!
 //! The store owns `~/.niki/sessions.db` (ADR-006). It reads and writes only its
-//! own schema; a Python session database is not imported in W1–W5. Timestamps
-//! are Unix seconds taken from [`std::time::SystemTime`], and message order is
-//! the autoincrement id, so a transcript replays in the order it was written.
+//! own schema and imports no other session store. Timestamps are Unix seconds
+//! taken from [`std::time::SystemTime`], and message order is the autoincrement
+//! id, so a transcript replays in the order it was written.
 
 use std::fmt;
 use std::io;

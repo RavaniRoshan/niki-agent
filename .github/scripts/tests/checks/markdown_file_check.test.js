@@ -183,7 +183,7 @@ test("recognizes only docs Conventional Commit titles", () => {
   assert.equal(isDocsTitle("docs: add a guide"), true);
   assert.equal(isDocsTitle("fix(docs): repair rendering"), false);
   assert.equal(isDocsTitle("documentation: add a guide"), false);
-  // Lowercase-only, matching _TITLE_RE in check_pr_scope_files.py.
+  // Lowercase-only, matching _TITLE_RE in check-pr-scope-files.mjs.
   assert.equal(isDocsTitle("Docs: add a guide"), false);
   assert.equal(isDocsTitle("DOCS: add a guide"), false);
   // The space after the colon is required by the Conventional Commit grammar.
@@ -444,7 +444,7 @@ test("blocks a PR imitating a release-please branch from a fork", async () => {
 
 test("passes and clears the sticky comment when no Markdown is added", async () => {
   const { github, calls } = makeGithub({
-    files: [{ filename: "main.py", status: "added" }],
+    files: [{ filename: "main.rs", status: "added" }],
     comments: [botComment({ id: 42 })],
   });
   const core = newCore();
@@ -522,8 +522,8 @@ test("the truncation guard compares live files against the live total", async ()
   const { github } = makeGithub({
     pr: { changed_files: 2 },
     files: [
-      { filename: "main.py", status: "modified" },
-      { filename: "other.py", status: "modified" },
+      { filename: "main.rs", status: "modified" },
+      { filename: "other.rs", status: "modified" },
     ],
   });
   const core = newCore();
@@ -555,7 +555,7 @@ test("fails closed when the live pull request cannot be read", async () => {
 test("fails closed when the changed-file list is truncated", async () => {
   const { github, calls } = makeGithub({
     pr: { changed_files: 3000 },
-    files: [{ filename: "main.py", status: "modified" }],
+    files: [{ filename: "main.rs", status: "modified" }],
   });
   const core = newCore();
 
@@ -716,7 +716,7 @@ test("the log fallback survives a job-summary failure", async () => {
 
 test("a failed cleanup notices rather than reddening a passing PR", async () => {
   const { github } = makeGithub({
-    files: [{ filename: "main.py", status: "modified" }],
+    files: [{ filename: "main.rs", status: "modified" }],
     comments: [botComment({ id: 3 })],
     deleteCommentError: httpError("gone", 404),
   });

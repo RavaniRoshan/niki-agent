@@ -1,10 +1,9 @@
 //! Palettes, glyph modes and motion preferences for the live terminal UI.
 //!
-//! ADR-004 keeps theme tokens as data: the Python product styles its widgets
-//! with CSS-like rules, which have no Rust counterpart, so every colour and
-//! marker the full-screen app paints is a constant here instead. The palettes
-//! are plain sRGB values rather than terminal colour names so the contrast gate
-//! below can compute a real WCAG ratio instead of trusting a magic number.
+//! ADR-004 keeps theme tokens as data: every colour and marker the full-screen
+//! app paints is a constant here. The palettes are plain sRGB values rather
+//! than terminal colour names so the contrast gate below can compute a real
+//! WCAG ratio instead of trusting a magic number.
 
 #![forbid(unsafe_code)]
 
@@ -280,7 +279,7 @@ pub const MONO: Palette = Palette {
 /// Every palette, in the order `/theme` cycles them.
 pub const PALETTES: [Palette; 4] = [NIKI, HIGH_CONTRAST, COLORBLIND, MONO];
 
-/// The palette `name` selects, accepting the aliases the Python client wrote.
+/// The palette `name` selects, accepting the documented aliases.
 #[must_use]
 pub fn palette(name: &str) -> Option<&'static Palette> {
     let wanted = name.trim().to_ascii_lowercase();

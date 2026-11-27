@@ -3,8 +3,7 @@ use niki_provider::ProviderError;
 /// Why a turn could not finish.
 ///
 /// A tool failure is not an error here: it becomes a tool result the model can
-/// react to, which is what the Python product does. Only failures that end the
-/// run surface as an `AgentError`.
+/// react to. Only failures that end the run surface as an `AgentError`.
 #[derive(Debug, thiserror::Error)]
 pub enum AgentError {
     /// The model request failed, or its stream broke mid-turn.

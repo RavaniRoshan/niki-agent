@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: fb7e156ab0e13b18a5b1aa7d8022af314aa47aa912180bc11c1888e3e5c95f05
+  source-sha256: 5ff4be28b4b651cd2abf58c051c3f223b500e575ba867a7938bdc7d01a69d51f
 -->
 # Security policy
 
@@ -34,8 +34,9 @@ Reporters are credited in the advisory unless they ask not to be.
 
 | Version | Supported |
 | --- | --- |
-| 2.1.x | Yes |
-| 2.0.x | Security fixes only |
+| 2.2.x | Yes |
+| 2.1.x | Security fixes only |
+| 2.0.x | No |
 | < 2.0 | No |
 
 ## What the agent can do

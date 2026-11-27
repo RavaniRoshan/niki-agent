@@ -29,8 +29,9 @@ Reporters are credited in the advisory unless they ask not to be.
 
 | Version | Supported |
 | --- | --- |
-| 2.1.x | Yes |
-| 2.0.x | Security fixes only |
+| 2.2.x | Yes |
+| 2.1.x | Security fixes only |
+| 2.0.x | No |
 | < 2.0 | No |
 
 ## What the agent can do

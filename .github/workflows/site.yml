@@ -1,8 +1,7 @@
 # Niki Agent marketing site CI.
 #
 # The site is a separate Bun toolchain (site/package.json), so it gets its own
-# job rather than riding along with `make check`: typecheck, the branding guard,
-# and a production build.
+# job: typecheck, the branding guard, and a production build.
 
 name: "🏗️ Site"
 
@@ -42,6 +41,9 @@ jobs:
 
       - name: "🏷️ Brand guard"
         run: bun run check:brand
+
+      - name: "🧾 Changelog is current"
+        run: bun run check:changelog
 
       - name: "🏗️ Build"
         run: bun run build

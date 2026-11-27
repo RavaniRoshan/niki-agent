@@ -117,8 +117,8 @@ jobs:
             // kind, not by the label. On a release PR the only producer of
             // these artifacts is the strict step's bypass path, which has no
             // timeout -- so claiming "took more than two minutes" there would
-            // be false. Matches `_test.yml`'s release-PR predicate; keep the
-            // two in step (`test_ci_workflow.py` asserts they agree).
+            // be false. Keep this predicate in step with the release-PR
+            // detection used by the CI workflows.
             const isReleasePullRequest =
               pullRequest.head.ref.startsWith('release-please--') ||
               pullRequest.title.startsWith('release(');
@@ -174,8 +174,8 @@ jobs:
               return;
             }
 
-            // Artifact names carry the package, OS, and Python version, so the
-            // comment can name the affected legs instead of hedging.
+            // Artifact names carry the affected leg, so the comment can name
+            // it instead of hedging.
             const legs = timeoutArtifacts
               .map(artifact => artifact.name.replace(/^ripgrep-timeout-/, ''))
               .sort();
@@ -205,7 +205,7 @@ jobs:
                   '',
                   ...legs.map(leg => `- \`${leg}\``),
                   '',
-                  'Those runners ran without ripgrep. The real-binary grep tests were skipped there, including the symlink containment check. `grep` on the filesystem backend used the Python fallback, which is slower and does not skip `.gitignore`d or hidden files, so some results differ.',
+                  'Those runners ran without ripgrep. The real-binary grep tests were skipped there, including the symlink containment check.',
                   '',
                   'Release PRs, merge-queue runs, and the release workflow do not use this timeout. They fail if ripgrep does not install.',
                   '',
