@@ -25,12 +25,23 @@ pub trait Tool: Send + Sync {
 
     /// Whether the approval policy must ask the person before this tool runs.
     ///
-    /// The default is `false`, which every built-in declares today: `shell` is
-    /// gated by its command instead. A tool that acts outside the workspace —
-    /// an MCP server, which may reach the network — overrides this so the agent
-    /// sends it through the same approval callback a gated command uses. A
-    /// server that declared the tool read-only keeps the default.
+    /// The default is `false`. The two built-in file mutators — `write_file`
+    /// and `edit_file` — answer `true`, so Manual asks before a file changes.
+    /// `shell` is gated by its command instead. A tool that acts outside the
+    /// workspace — an MCP server, which may reach the network — overrides this
+    /// so the agent sends it through the same approval callback a gated command
+    /// uses. A server that declared the tool read-only keeps the default.
     fn requires_approval(&self) -> bool {
+        false
+    }
+
+    /// Whether `Auto` may run this tool unattended when the path it names
+    /// resolves inside the workspace.
+    ///
+    /// Only the built-in file mutators answer `true`. An external tool keeps
+    /// the default even when its arguments happen to name a local file, because
+    /// a server may reach the network regardless of what it says it touches.
+    fn auto_allows_workspace_write(&self) -> bool {
         false
     }
 

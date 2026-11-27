@@ -12,6 +12,14 @@ impl Tool for WriteFile {
         "write_file"
     }
 
+    fn requires_approval(&self) -> bool {
+        true
+    }
+
+    fn auto_allows_workspace_write(&self) -> bool {
+        true
+    }
+
     fn description(&self) -> &str {
         "Write a text file in the workspace, creating parent directories. Overwrites an existing file."
     }

@@ -123,6 +123,10 @@ None of the modes is a sandbox: the agent runs on this machine with your user's
 permissions. The workspace path boundary keeps file tools inside the project
 unless the configuration widens it.
 
+A headless run (`-n`) has nobody to ask, so a gated action is reported back to
+the model as a refusal. Pass `--mode auto` to let it write inside the workspace,
+or `--mode yolo` to let it run unsupervised.
+
 ## Themes
 
 Four palettes, switchable at runtime with `/theme`:

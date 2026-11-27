@@ -125,9 +125,14 @@ fn tool_turn(id: &str, name: &str, arguments: &str) -> Vec<StreamEvent> {
 }
 
 fn app(root: &std::path::Path) -> App {
+    app_in(root, Mode::Manual)
+}
+
+/// The app with a chosen approval mode, for tests that let the worker act.
+fn app_in(root: &std::path::Path, mode: Mode) -> App {
     App::new(SessionInfo {
         model: "mock:mock-model".to_owned(),
-        mode: Mode::Manual,
+        mode,
         cwd: root.to_path_buf(),
     })
 }
@@ -341,7 +346,7 @@ fn a_tool_call_runs_in_the_workspace_and_the_result_reaches_the_screen() {
     let build_turns = Arc::clone(&turns);
     let ctx = ToolContext::new(workspace.path()).expect("workspace");
 
-    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+    let mut worker = WorkerHandle::spawn_with("mock:mock-model", Mode::Auto, move |parts| {
         Ok(Agent::new(
             Box::new(Scripted {
                 turns: Arc::clone(&build_turns),
@@ -355,7 +360,7 @@ fn a_tool_call_runs_in_the_workspace_and_the_result_reaches_the_screen() {
         .with_policy(parts.mode, AllowList::parse(""))
         .with_cancel(parts.cancel))
     });
-    let mut app = app(workspace.path());
+    let mut app = app_in(workspace.path(), Mode::Auto);
 
     send(&mut app, &mut worker, "write note.txt");
     pump(&mut app, &worker);
