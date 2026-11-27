@@ -747,3 +747,381 @@ fn an_unknown_resume_id_is_a_clear_failure() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("no saved session"), "{stderr}");
 }
+
+#[cfg(unix)]
+fn notify_program(dir: &Path, body: &str) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join("notify.sh");
+    std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("notify script");
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("executable");
+    path
+}
+
+/// The script used by the record-the-call tests: it appends its arguments and
+/// the stdin document to the file named by its first argument.
+#[cfg(unix)]
+const RECORDING_BODY: &str = "\
+out=\"$1\"; shift
+{
+  printf 'argc=%s\\n' \"$#\"
+  for arg in \"$@\"; do printf 'arg=%s\\n' \"$arg\"; done
+  cat
+  printf '\\nEND\\n'
+} >> \"$out\"";
+
+#[cfg(unix)]
+fn add_notify(config: &Path, program: &Path, args: &[String]) {
+    let mut text = std::fs::read_to_string(config).expect("config");
+    let args: Vec<String> = args.iter().map(|arg| format!("{arg:?}")).collect();
+    text.push_str(&format!(
+        "\n[notify]\nprogram = {:?}\nargs = [{}]\n",
+        program.display().to_string(),
+        args.join(", ")
+    ));
+    std::fs::write(config, text).expect("config with notify");
+}
+
+#[cfg(unix)]
+fn notify_documents(path: &Path) -> Vec<Value> {
+    std::fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .filter(|line| line.starts_with('{'))
+        .map(|line| serde_json::from_str(line).expect("JSON payload"))
+        .collect()
+}
+
+#[cfg(unix)]
+fn notify_batches(path: &Path) -> Vec<Vec<Value>> {
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    text.split("END")
+        .filter_map(|batch| {
+            let documents: Vec<Value> = batch
+                .lines()
+                .filter(|line| line.starts_with('{'))
+                .map(|line| serde_json::from_str(line).expect("JSON payload"))
+                .collect();
+            (!documents.is_empty()).then_some(documents)
+        })
+        .collect()
+}
+
+#[cfg(unix)]
+fn wait_for_notify(path: &Path) -> Vec<Value> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let documents = notify_documents(path);
+        if !documents.is_empty() {
+            return documents;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the notify program did not run"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[cfg(unix)]
+fn wait_for_batches(path: &Path, count: usize) -> Vec<Vec<Value>> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let batches = notify_batches(path);
+        if batches.len() >= count {
+            return batches;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the notify program ran {} time(s), expected {count}",
+            batches.len()
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[cfg(unix)]
+fn text_turn(text: &str) -> String {
+    sse(&[
+        json!({"choices": [{"delta": {"content": text}, "finish_reason": null}]}),
+        json!({"choices": [{"delta": {}, "finish_reason": "stop"}]}),
+        json!({"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 5}}),
+    ])
+}
+
+#[cfg(unix)]
+fn task_call_turn() -> String {
+    let arguments = json!({"description": "child job", "prompt": "do the child job"}).to_string();
+    sse(&[
+        json!({"choices": [{"delta": {"tool_calls": [{
+            "index": 0,
+            "id": "call_task",
+            "type": "function",
+            "function": {"name": "task", "arguments": arguments}
+        }]}, "finish_reason": null}]}),
+        json!({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]}),
+    ])
+}
+
+#[cfg(unix)]
+#[test]
+fn the_notify_program_runs_once_per_turn_with_the_documented_payload() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, _seen) = serve(vec![answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let log = config_dir.path().join("notify.log");
+    let script = notify_program(config_dir.path(), RECORDING_BODY);
+    add_notify(
+        &config,
+        &script,
+        &[
+            log.display().to_string(),
+            "--title".to_owned(),
+            "Niki".to_owned(),
+            "$(echo pwned)".to_owned(),
+        ],
+    );
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "say hello", "--output-format", "json", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "exit {:?}\nstdout: {stdout}\nstderr: {stderr}",
+        output.status.code()
+    );
+    let printed: Value = serde_json::from_str(stdout.trim()).expect("one JSON object");
+
+    let batches = wait_for_batches(&log, 1);
+    assert_eq!(batches.len(), 1, "the program runs once per turn");
+    let payload = &batches[0][0];
+    assert_eq!(payload["event"], "turn_end");
+    assert_eq!(payload["session"], printed["session"]);
+    assert_eq!(payload["model"], "mock:mock-model");
+    assert_eq!(
+        payload["cwd"],
+        workspace
+            .path()
+            .canonicalize()
+            .expect("canonical")
+            .display()
+            .to_string()
+    );
+    assert_eq!(payload["reason"], "end_turn");
+    assert_eq!(payload["steps"], 1);
+    assert_eq!(payload["tool_calls"], 0);
+    assert_eq!(payload["answer"], "Wrote hello.txt.");
+
+    let recorded = std::fs::read_to_string(&log).expect("log");
+    assert!(recorded.contains("argc=3\n"), "{recorded}");
+    let args: Vec<&str> = recorded
+        .lines()
+        .filter_map(|line| line.strip_prefix("arg="))
+        .collect();
+    assert_eq!(
+        args,
+        vec!["--title", "Niki", "$(echo pwned)"],
+        "arguments are passed verbatim"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_configured_program_without_a_program_spawns_nothing() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, _seen) = serve(vec![answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+    let mut text = std::fs::read_to_string(&config).expect("config");
+    text.push_str("\n[notify]\nargs = [\"--title\", \"Niki\"]\n");
+    std::fs::write(&config, text).expect("config");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "say hello", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "exit {:?}", output.status.code());
+    assert_eq!(stdout, "Wrote hello.txt.\n");
+    assert!(!stderr.contains("notify"), "{stderr}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failing_notify_program_warns_on_stderr_and_keeps_the_exit_code() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, _seen) = serve(vec![answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+    let script = notify_program(config_dir.path(), "exit 7");
+    add_notify(&config, &script, &[]);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "say hello", "--output-format", "json", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "a failing notifier does not change the exit code: {:?}",
+        output.status.code()
+    );
+    let printed: Value = serde_json::from_str(stdout.trim()).expect("stdout stays one JSON object");
+    assert_eq!(printed["answer"], "Wrote hello.txt.");
+    assert!(!stdout.contains("warning"), "stdout stays clean: {stdout}");
+    assert!(stderr.contains("niki: warning:"), "{stderr}");
+    assert!(stderr.contains("notify"), "{stderr}");
+    assert!(stderr.contains("exited with"), "{stderr}");
+    assert_eq!(
+        stderr
+            .lines()
+            .filter(|line| line.contains("niki: warning:"))
+            .count(),
+        1
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_missing_or_non_executable_program_is_a_warning_not_an_error() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, _seen) = serve(vec![answer_turn(), answer_turn()]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let base_config = std::fs::read_to_string(&config).expect("config");
+    let run = |program: &Path| {
+        std::fs::write(
+            &config,
+            format!(
+                "{base_config}\n[notify]\nprogram = {:?}\n",
+                program.display().to_string()
+            ),
+        )
+        .expect("config");
+        Command::new(env!("CARGO_BIN_EXE_niki"))
+            .args(["-n", "say hello", "--quiet"])
+            .arg("--config")
+            .arg(&config)
+            .arg("--root")
+            .arg(workspace.path())
+            .env("NIKI_TEST_KEY", "test-key")
+            .env("NIKI_HOME", home.path())
+            .output()
+            .expect("run niki")
+    };
+
+    let missing = run(Path::new("/nonexistent/niki-notify-test"));
+    let stderr = String::from_utf8_lossy(&missing.stderr);
+    assert!(
+        missing.status.success(),
+        "a missing notifier is not an error: {:?}",
+        missing.status.code()
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&missing.stdout),
+        "Wrote hello.txt.\n"
+    );
+    assert!(stderr.contains("could not start"), "{stderr}");
+
+    let not_executable = config_dir.path().join("plain.sh");
+    std::fs::write(&not_executable, "#!/bin/sh\nexit 0\n").expect("file");
+    let refused = run(&not_executable);
+    let stderr = String::from_utf8_lossy(&refused.stderr);
+    assert!(
+        refused.status.success(),
+        "a non-executable notifier is not an error: {:?}",
+        refused.status.code()
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&refused.stdout),
+        "Wrote hello.txt.\n"
+    );
+    assert!(stderr.contains("could not start"), "{stderr}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_subagent_turn_does_not_notify() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let config_dir = tempfile::tempdir().expect("config");
+    let home = tempfile::tempdir().expect("home");
+    let (base_url, seen) = serve(vec![
+        task_call_turn(),
+        text_turn("Child finished."),
+        text_turn("Parent done."),
+    ]);
+    let config = config_dir.path().join("config.toml");
+    write_config(&config, &base_url);
+
+    let log = config_dir.path().join("notify.log");
+    let script = notify_program(config_dir.path(), RECORDING_BODY);
+    add_notify(&config, &script, &[log.display().to_string()]);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_niki"))
+        .args(["-n", "delegate this", "--quiet"])
+        .arg("--config")
+        .arg(&config)
+        .arg("--root")
+        .arg(workspace.path())
+        .env("NIKI_TEST_KEY", "test-key")
+        .env("NIKI_HOME", home.path())
+        .output()
+        .expect("run niki");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "exit {:?}\nstdout: {stdout}\nstderr: {stderr}",
+        output.status.code()
+    );
+    assert_eq!(stdout, "Parent done.\n");
+    assert_eq!(seen.lock().expect("lock").len(), 3, "parent, child, parent");
+
+    let documents = wait_for_notify(&log);
+    assert_eq!(
+        documents.len(),
+        1,
+        "only the parent turn notifies: {documents:?}"
+    );
+    assert_eq!(documents[0]["answer"], "Parent done.");
+    assert_eq!(documents[0]["steps"], 2);
+    assert_eq!(documents[0]["tool_calls"], 1);
+}

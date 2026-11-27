@@ -4,7 +4,8 @@ use std::time::Instant;
 
 use futures_util::StreamExt;
 use niki_hooks::{
-    HookRunner, Outcome, PostToolUse, PreToolUse, ToolCall as HookToolCall, UserPrompt,
+    HookRunner, Notify, Outcome, PostToolUse, PreToolUse, ToolCall as HookToolCall, TurnEnd,
+    UserPrompt,
 };
 use niki_policy::{AllowList, Decision, Mode, decide};
 use niki_provider::openai::ToolCallAssembler;
@@ -71,6 +72,7 @@ pub struct Agent {
     approved: BTreeSet<String>,
     approver: Option<Approver>,
     hooks: Option<Arc<dyn HookRunner>>,
+    notify: Option<NotifyTarget>,
     session_id: Option<String>,
     cancel: CancelHandle,
     steering: Steering,
@@ -95,6 +97,7 @@ impl Agent {
             approved: BTreeSet::new(),
             approver: None,
             hooks: None,
+            notify: None,
             session_id: None,
             cancel: CancelHandle::new(),
             steering: Steering::new(),
@@ -158,6 +161,20 @@ impl Agent {
     #[must_use]
     pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
         self.session_id = Some(session_id.into());
+        self
+    }
+
+    /// Run `notify` once when this agent's turn ends.
+    ///
+    /// `model` is the `provider:model` spec the host runs, which the payload
+    /// carries as `model`. A child agent built without this method never
+    /// notifies, so a subagent's turn is not announced.
+    #[must_use]
+    pub fn with_notify(mut self, notify: Arc<Notify>, model: impl Into<String>) -> Self {
+        self.notify = Some(NotifyTarget {
+            notify,
+            model: model.into(),
+        });
         self
     }
 
@@ -332,10 +349,18 @@ impl Agent {
             let mut stop_reason = StopReason::EndTurn;
             let mut stream = self.provider.stream(request);
             while let Some(event) = stream.next().await {
-                let event = event.map_err(|source| AgentError::Provider {
-                    provider: self.provider.name().to_owned(),
-                    source,
-                })?;
+                let event = match event {
+                    Ok(event) => event,
+                    Err(source) => {
+                        // A failed turn is announced like a finished one, with
+                        // `error` as the reason.
+                        self.fire_turn_end("error", steps, tool_calls, &last_text);
+                        return Err(AgentError::Provider {
+                            provider: self.provider.name().to_owned(),
+                            source,
+                        });
+                    }
+                };
                 match event {
                     StreamEvent::TextDelta(delta) => {
                         turn_text.push_str(&delta);
@@ -413,6 +438,12 @@ impl Agent {
         // it in the history so the next turn reads it in the order it was typed.
         let _ = self.drain_steering();
         self.session.steps += steps;
+        // A run that was stopped before its first model turn (a prompt blocked
+        // by a hook, or a cancel that arrived immediately) is not a finished
+        // turn, so it is not announced.
+        if steps > 0 {
+            self.fire_turn_end(reason_label(&stop), steps, tool_calls, &last_text);
+        }
         Ok(RunOutcome {
             text: last_text,
             steps,
@@ -529,6 +560,22 @@ impl Agent {
             self.messages.push(Message::user(text));
         }
         came
+    }
+
+    /// Announce a finished turn to the configured notify program, if any.
+    fn fire_turn_end(&self, reason: &str, steps: u32, tool_calls: usize, answer: &str) {
+        let Some(target) = &self.notify else {
+            return;
+        };
+        target.notify.fire(&TurnEnd {
+            session: self.session_id.as_deref(),
+            model: &target.model,
+            cwd: &self.ctx.root,
+            reason,
+            steps,
+            tool_calls,
+            answer,
+        });
     }
 
     /// Run `UserPromptSubmit` and report what it asked for.
@@ -749,6 +796,24 @@ struct ToolRun {
     output: String,
     is_error: bool,
     notices: Vec<String>,
+}
+
+/// The notify program plus the model spec its payload names.
+struct NotifyTarget {
+    notify: Arc<Notify>,
+    model: String,
+}
+
+/// Why a turn ended, in the vocabulary the JSON output uses.
+fn reason_label(stop: &StopReason) -> &'static str {
+    match stop {
+        StopReason::EndTurn => "end_turn",
+        StopReason::ToolUse => "tool_use",
+        StopReason::MaxTokens => "max_tokens",
+        StopReason::Other(reason) if reason == "cancelled" => "cancelled",
+        StopReason::Other(reason) if reason.starts_with("step limit") => "step_limit",
+        StopReason::Other(_) => "other",
+    }
 }
 
 /// Emit a hook outcome's user-visible messages. A warning is prefixed so it

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
+use niki_hooks::Notify;
 use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
 use niki_tools::{Registry, Tool, ToolContext, ToolError, ToolOutput};
 use serde_json::{Value, json};
@@ -768,4 +769,180 @@ async fn rewinding_drops_the_last_prompt_and_its_answer() {
     assert!(agent.rewind_last_prompt());
     assert!(agent.messages().is_empty());
     assert!(!agent.rewind_last_prompt(), "there is nothing left to undo");
+}
+
+#[cfg(unix)]
+fn notify_script(dir: &std::path::Path) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join("notify.sh");
+    std::fs::write(&path, "#!/bin/sh\ncat >> \"$1\"\n").expect("script");
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("executable");
+    path
+}
+
+#[cfg(unix)]
+fn read_payloads(path: &std::path::Path) -> Vec<Value> {
+    std::fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str(line).expect("payload is JSON"))
+        .collect()
+}
+#[cfg(unix)]
+#[tokio::test]
+async fn a_finished_turn_runs_the_notify_program_once_with_the_documented_payload() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let out = dir.path().join("payload.jsonl");
+    let notify = Arc::new(
+        Notify::from_program(
+            Some(&notify_script(dir.path()).display().to_string()),
+            vec![out.display().to_string()],
+        )
+        .expect("notifier"),
+    );
+    let provider = Scripted::new(vec![text_turn("hello")]);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_notify(Arc::clone(&notify), "mock:model")
+        .with_session_id("session-9");
+
+    let outcome = agent.run("hi", &mut |_| {}).await.expect("run");
+    assert_eq!(outcome.steps, 1);
+    assert!(notify.wait_for(std::time::Duration::from_secs(10)));
+
+    let payloads = read_payloads(&out);
+    assert_eq!(payloads.len(), 1, "one program run per turn");
+    let payload = &payloads[0];
+    assert_eq!(payload["event"], "turn_end");
+    assert_eq!(payload["session"], "session-9");
+    assert_eq!(payload["model"], "mock:model");
+    assert_eq!(
+        payload["cwd"],
+        dir.path()
+            .canonicalize()
+            .expect("canonical")
+            .display()
+            .to_string()
+    );
+    assert_eq!(payload["reason"], "end_turn");
+    assert_eq!(payload["steps"], 1);
+    assert_eq!(payload["tool_calls"], 0);
+    assert_eq!(payload["answer"], "hello");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_provider_failure_is_announced_as_an_error() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let out = dir.path().join("payload.jsonl");
+    let notify = Arc::new(
+        Notify::from_program(
+            Some(&notify_script(dir.path()).display().to_string()),
+            vec![out.display().to_string()],
+        )
+        .expect("notifier"),
+    );
+    let mut agent = Agent::new(
+        Box::new(Failing),
+        ToolContext::new(dir.path()).expect("workspace"),
+        config(),
+    )
+    .with_notify(Arc::clone(&notify), "test");
+
+    let error = agent
+        .run("hi", &mut |_| {})
+        .await
+        .expect_err("the provider fails");
+    assert!(
+        error.to_string().contains("could not be reached"),
+        "{error}"
+    );
+    assert!(notify.wait_for(std::time::Duration::from_secs(10)));
+
+    let payloads = read_payloads(&out);
+    assert_eq!(payloads.len(), 1);
+    assert_eq!(payloads[0]["event"], "turn_end");
+    assert_eq!(payloads[0]["reason"], "error");
+    assert_eq!(payloads[0]["steps"], 1);
+    assert_eq!(payloads[0]["tool_calls"], 0);
+    assert_eq!(payloads[0]["answer"], "");
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_cancel_before_the_first_turn_is_not_announced() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let out = dir.path().join("payload.jsonl");
+    let notify = Arc::new(
+        Notify::from_program(
+            Some(&notify_script(dir.path()).display().to_string()),
+            vec![out.display().to_string()],
+        )
+        .expect("notifier"),
+    );
+    let cancel = CancelHandle::new();
+    cancel.cancel();
+    let provider = Scripted::new(vec![text_turn("never reached")]);
+    let mut agent = agent(provider, dir.path(), config())
+        .with_cancel(cancel)
+        .with_notify(Arc::clone(&notify), "test");
+
+    let outcome = agent.run("hi", &mut |_| {}).await.expect("run");
+    assert_eq!(outcome.steps, 0);
+    assert!(
+        notify.wait_for(std::time::Duration::from_millis(200)),
+        "nothing is pending"
+    );
+    assert!(
+        !out.exists(),
+        "an interrupted-before-first-turn run does not fire"
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn compaction_alone_does_not_notify() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let out = dir.path().join("payload.jsonl");
+    let notify = Arc::new(
+        Notify::from_program(
+            Some(&notify_script(dir.path()).display().to_string()),
+            vec![out.display().to_string()],
+        )
+        .expect("notifier"),
+    );
+    let provider = Scripted::new(Vec::new());
+    let mut agent = agent(provider, dir.path(), config())
+        .with_history(vec![
+            niki_provider::Message::user("old question"),
+            niki_provider::Message::assistant("old answer"),
+        ])
+        .with_notify(Arc::clone(&notify), "test");
+
+    let _ = agent.compact_without_model(0);
+    assert!(notify.wait_for(std::time::Duration::from_millis(200)));
+    assert!(!out.exists(), "compaction is not a turn");
+}
+
+/// A provider whose first request fails, for the failed-turn path.
+struct Failing;
+
+impl Provider for Failing {
+    fn name(&self) -> &str {
+        "failing"
+    }
+
+    fn stream(
+        &self,
+        _request: ChatRequest,
+    ) -> BoxStream<'static, Result<StreamEvent, ProviderError>> {
+        futures_util::stream::once(async {
+            Err(ProviderError::Transport {
+                provider: "failing".to_owned(),
+                detail: "down".to_owned(),
+            })
+        })
+        .boxed()
+    }
 }

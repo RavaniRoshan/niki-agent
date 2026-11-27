@@ -13,7 +13,7 @@ use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
 use niki_config::instructions::Instructions;
 use niki_config::{Config, Protocol, config_home};
-use niki_hooks::{HookRunner, Hooks, Loaded};
+use niki_hooks::{HookRunner, Hooks, Loaded, Notify};
 use niki_mcp::ToolBridge;
 use niki_provider::{
     AnthropicProvider, Message, OpenAiProvider, Provider, RetryPolicy, StopReason,
@@ -188,19 +188,26 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
         cancel: cancel.clone(),
     };
     let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
+    let notify = notifier(config);
     let mut agent = Agent::new(provider, ctx, settings)
         .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
         .with_policy(mode, allow)
         .with_hooks(hooks)
         .with_cancel(cancel.clone())
         .with_history(history);
+    if let Some(notify) = &notify {
+        agent = agent.with_notify(Arc::clone(notify), spec.clone());
+    }
+    if let Some(session) = &session {
+        agent = agent.with_session_id(session.as_str());
+    }
 
     let quiet = options.quiet;
     let json = options.output == OutputFormat::Json;
     let jsonl = options.output == OutputFormat::Jsonl;
     let mut stream = JsonlStream::new(&spec, session.as_ref().map(SessionId::as_str), &root);
     let saved_prompt = prompt.clone();
-    runtime.block_on(async move {
+    let code = runtime.block_on(async move {
         let signal = cancel.clone();
         tokio::spawn(async move {
             if tokio::signal::ctrl_c().await.is_ok() {
@@ -317,8 +324,15 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
                 outcome.usage.output_tokens,
             );
         }
-        Ok(exit_code(&outcome))
-    })
+        Ok::<i32, anyhow::Error>(exit_code(&outcome))
+    })?;
+    // A failing notifier is warned about from a background thread; give a fast
+    // one the moment it needs to reach stderr before the process closes it. A
+    // slow program is left behind rather than delaying the exit.
+    if let Some(notify) = &notify {
+        let _ = notify.wait_for(std::time::Duration::from_millis(250));
+    }
+    Ok(code)
 }
 
 /// `niki -n /diff` prints the working tree's diff instead of running a turn.
@@ -509,6 +523,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         env_value("NIKI_REDUCED_MOTION").as_deref(),
     ));
     attach_sessions(&mut app);
+    let session_id = app.session_id().map(str::to_owned);
     let hooks = install_hooks(Hooks::load(&ctx.root, &config_home()), &mut app);
     {
         let compose = Arc::clone(&compose);
@@ -532,6 +547,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     };
     app.set_tools(tool_names);
 
+    let notify = notifier(&config);
     let build_config = config;
     let compact_config = build_config.clone();
     let build_system = Arc::clone(&compose);
@@ -564,12 +580,19 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
                 cancel: parts.cancel.clone(),
             };
             let subagent = delegation.tool(&ctx, Arc::clone(&mcp_tools));
-            Ok(Agent::new(provider, ctx.clone(), settings)
+            let mut agent = Agent::new(provider, ctx.clone(), settings)
                 .with_registry(tool_registry(mcp_tools.as_slice(), Some(subagent)))
                 .with_policy(parts.mode, allow.clone())
                 .with_hooks(Arc::clone(&hooks))
                 .with_cancel(parts.cancel)
-                .with_approver(parts.approver))
+                .with_approver(parts.approver);
+            if let Some(notify) = &notify {
+                agent = agent.with_notify(Arc::clone(notify), parts.model.clone());
+            }
+            if let Some(session_id) = &session_id {
+                agent = agent.with_session_id(session_id.clone());
+            }
+            Ok(agent)
         },
         provider_builder,
     );
@@ -606,6 +629,7 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
     let mcp_tools = Arc::new(mcp_tools);
 
     let build_config = config;
+    let notify = notifier(&build_config);
     let factory_tools = Arc::clone(&mcp_tools);
     let factory = Box::new(
         move |seed: niki_acp::SessionSeed| -> Result<Agent, String> {
@@ -636,12 +660,18 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
                 cancel: seed.cancel.clone(),
             };
             let subagent = delegation.tool(&ctx, Arc::clone(&factory_tools));
-            Ok(Agent::new(provider, ctx, settings)
+            let session_id = seed.session_id.clone();
+            let mut agent = Agent::new(provider, ctx, settings)
                 .with_registry(tool_registry(factory_tools.as_slice(), Some(subagent)))
                 .with_policy(seed.mode, allow.clone())
                 .with_hooks(hooks)
                 .with_cancel(seed.cancel)
-                .with_approver(seed.approver))
+                .with_approver(seed.approver)
+                .with_session_id(session_id);
+            if let Some(notify) = &notify {
+                agent = agent.with_notify(Arc::clone(notify), spec.clone());
+            }
+            Ok(agent)
         },
     );
 
@@ -763,6 +793,13 @@ fn tool_registry(tools: &[ToolBridge], subagent: Option<SubagentTool>) -> Regist
         registry.register(subagent);
     }
     registry
+}
+
+/// The turn-end notifier, when `[notify].program` is configured.
+///
+/// An absent or blank program yields `None`, and nothing is spawned.
+fn notifier(config: &Config) -> Option<Arc<Notify>> {
+    Notify::from_program(config.notify.program.as_deref(), config.notify.args.clone()).map(Arc::new)
 }
 
 /// Load hooks from the workspace and the user configuration directory for the
