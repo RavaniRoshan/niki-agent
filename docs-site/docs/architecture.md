@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/ARCHITECTURE.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 80ceda5d97fa29f52a6ab1c40055f76367187793ed23f511ae24a7eed1c7de48
+  source-sha256: ac5429ad4ecec6b8b7f20ae656c04a60c2472f1c80c8abdd23e9c2ca6746e23c
 -->
 # How Niki Agent fits together
 
@@ -41,17 +41,18 @@ reached, or when the person cancels.
 | `niki` | The binary: `niki` opens the full-screen app, `niki -n` runs one prompt headlessly, `niki --acp` serves an editor. |
 | `niki-config` | `config.toml`: provider blocks, `[models].default`, `[ui].theme`, `[mcp_servers.<name>]`, and `NIKI_HOME`. |
 | `niki-provider` | One streaming turn against an OpenAI Chat Completions or Anthropic Messages endpoint, including retries and usage. |
-| `niki-agent` | The turn loop, the event callback, the approval callback, the step budget, hooks and cancellation. |
+| `niki-agent` | The turn loop, the event callback, the approval callback, the step budget, hooks, cancellation, token accounting and compaction. |
 | `niki-acp` | The Agent Client Protocol server over stdin/stdout: sessions, notifications, and the permission round-trip to an editor. |
 | `niki-tools` | `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, all rooted at the workspace. |
+| `niki-subagents` | The `task` tool: one child agent per call with a fresh history, a shared cancel handle and a bounded step budget. |
 | `niki-policy` | Manual/Auto/YOLO, the shell allow-list, and the workspace path boundary. |
 | `niki-workspace` | Root detection, ignore rules, and the file index. |
 | `niki-session` | The SQLite transcript store: create, append, list, load. |
 | `niki-mcp` | MCP handshake, `tools/list`, `tools/call` over stdio and streamable HTTP; tool bridges. |
 | `niki-hooks` | `hooks.json` loading, matcher selection, command handlers, and blocking verdicts. |
 | `niki-skills` | Skill discovery from the project, the user directory and the built-ins, and the system-prompt section. |
-| `niki-commands` | The slash command grammar the composer and help overlay read. |
-| `niki-render` | The transcript view model and the deterministic frame. |
+| `niki-commands` | The slash command grammar the composer and help overlay read, and the roadmap of commands not yet implemented. |
+| `niki-render` | The transcript view model, the deterministic frame, and the Markdown line renderer. |
 | `niki-tui` | The keymap, reader mode, and view state. |
 | `niki-tui-live` | The full-screen app: composer, transcript, status bar, worker, and session persistence. |
 | `niki-tui-modals` | The approval prompt, model picker, and help overlay. |
@@ -72,6 +73,23 @@ registered tool is dispatched through the same gate.
 - `Decision::Ask` goes to the approval callback the host installed. A headless
   run installs none, so the request is reported to the model as a refusal
   instead of silently running.
+
+### Delegation and context
+
+A `task` call runs a second agent inside the first. The child gets a registry
+derived from the session's with `task` removed, so it cannot delegate again; it
+starts with an empty history, shares the parent's cancel handle, and stops after
+20 model turns unless `NIKI_SUBAGENT_MAX_STEPS` says otherwise. The parent
+receives the child's answer and a one-line summary, not its exploration.
+
+`Agent` also counts what a session spends and weighs: `context_report()` gives
+the message count, an estimated token figure for the conversation, and the last
+reported input and output tokens; `context_audit()` splits the bill into the
+system prompt, the tool schemas and the messages; `compact(provider, keep_last)`
+folds the turns older than the last `keep_last` into one summary written by the
+model, and leaves the history untouched if the provider fails or answers
+nothing. The session store keeps every message either way, so `/resume`
+restores the transcript as it was written, not as it was compacted.
 
 ## Entry points
 
@@ -114,6 +132,7 @@ Everything Niki writes lives under `NIKI_HOME` when set, otherwise `~/.niki`:
   hooks.json             # user hooks
   skills/                # user skills
   sessions.db            # SQLite transcript store
+  history.jsonl          # prompts accepted in the full-screen app
 ```
 
 A project may also carry `.niki/hooks.json` and `.niki/skills/`. The workspace
