@@ -137,6 +137,7 @@ def gallery_2():
         "One binary. No runtime.",
         "The turn loop, providers, tools, policy, sessions, MCP client, and UI are one "
         "Rust executable. There is nothing to compile and nothing to resolve.",
+        width=540,
     )
     d.text((56, 420), "1", font=font(SANS_B, 120), fill=ACCENT)
     d.text((120, 470), "executable", font=font(MONO, 22), fill=BODY)
