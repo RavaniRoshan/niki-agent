@@ -24,6 +24,7 @@ const repoDir = resolve(siteDir, '..')
 const MIRRORS = [
   { source: 'docs/niki/PROVIDERS.md', target: 'docs/providers/index.md' },
   { source: 'docs/niki/KEYMAP.md', target: 'docs/keyboard.md' },
+  { source: 'docs/niki/UI.md', target: 'docs/ui.md' },
   { source: 'docs/niki/ARCHITECTURE.md', target: 'docs/architecture.md' },
   { source: 'docs/niki/INDEPENDENCE.md', target: 'docs/independence.md' },
   { source: 'SECURITY.md', target: 'docs/security.md' },

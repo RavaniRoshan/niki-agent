@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: fa40fc0803b725b25a1d78eb590ff9e256ac3e240c053ea4f5103a98d95365e2
+  source-sha256: 47370440e5636a2afe701fda92f9d0b814c6bb1072f34ee20caed741e3832321
 -->
 # Changelog
 
@@ -12,6 +12,29 @@ All notable changes to Niki Agent are recorded here. The format follows
 The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
+
+### Added
+
+- A second footer line: key hints before the first turn, then context and token
+  accounting once a turn has started. The state line no longer carries counts,
+  so a long session cannot push the working directory off the screen.
+- A terminal window title, `project — state`, with a marker that blinks while a
+  turn waits for an answer. It is cleared when the app leaves.
+- `[ui].motion` and the named switches `[ui].welcome`, `.progress`, `.shimmer`
+  and `.title`, so animation is a setting rather than a mood.
+- [`docs/niki/UI.md`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/docs/niki/UI.md),
+  the interface contract: regions, glyphs, the motion schedule, and the
+  settings.
+
+### Changed
+
+- A notice no longer hides the welcome block. A trust warning is drawn beneath
+  the first screen instead of replacing it.
+- The composer is one hairline rule with a `›` glyph, not a four-row frame.
+- The spinner runs at 100 ms per frame instead of 80 ms, and reduced motion
+  shows a static `◌` instead of nothing.
+- A tool call that is still running carries a `•`/`◦` activity marker, so a long
+  step reads as alive.
 
 ## [2.2.0] - 2026-11-27
 
