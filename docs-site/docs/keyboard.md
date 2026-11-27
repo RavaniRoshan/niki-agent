@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: ce778f448609ad3b9f0356710d48af4cd69e723b4d5472be8bf1342bdb71a090
+  source-sha256: 6cded58298057e87c3d3b5a2bba6d9801d6c1e8544cc6d181afad286b02a244a
 -->
 # Niki Agent -- Keymap
 
@@ -18,13 +18,15 @@ These apply when no dialog is open.
 | --- | --- |
 | `Enter` | Send the prompt. |
 | `Alt+Enter` or `Shift+Enter` | Insert a newline instead of sending. |
-| `Esc` | Clear a non-empty draft. With an empty draft, stop the running turn. |
+| `Tab` | Put the highlighted slash command in the draft, when the command list is open. |
+| `Esc` | Close the command list first; then clear a non-empty draft; with an empty draft, stop the running turn. |
 | `Ctrl+C` | Close an open dialog and stop the running turn. It does not leave the app. |
 | `Ctrl+D` | Leave the app. |
+| `Ctrl+Y` | Copy the newest answer to the terminal clipboard (OSC 52). `NIKI_NO_CLIPBOARD=1` turns it off. |
 | `Shift+Tab` | Cycle Manual, Auto and YOLO. |
 | `?` | Open the key list, when the composer is empty. |
 | `PageUp` / `PageDown` | Scroll the transcript one page. |
-| `Up` / `Down` | Move the cursor between lines in the composer. |
+| `Up` / `Down` | Move the command-list highlight while it is open, recall older prompts in an empty composer, and otherwise move the cursor between lines. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
 | `Backspace` / `Delete` | Delete the character before or after the cursor. |
 | Mouse wheel | Scroll the transcript. |
@@ -40,14 +42,20 @@ app).
 | `Enter` | Send the prompt. |
 | `Alt+Enter`, `Shift+Enter` | Insert a newline. |
 | `Left` / `Right` | Move the cursor one character. |
-| `Up` / `Down` | Move the cursor between lines. |
+| `Up` / `Down` | Move the cursor between lines, or recall an earlier prompt when the composer is empty. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
 | `Backspace` / `Delete` | Delete before or after the cursor. |
-| `Esc` | Clear the draft first; a second press stops the running turn. |
+| `Esc` | Close the command list if it is open; otherwise clear the draft first; a further press stops the running turn. |
+| `Ctrl+Y` | Copy the newest answer. |
 
 Bracketed paste is enabled, so a multi-line paste arrives as one paste and is
 inserted literally. A paste never sends the prompt. A line that starts with `/`
 is a slash command; it is submitted with `Enter` like any other line.
+
+Accepted prompts are appended to `$NIKI_HOME/history.jsonl` (falling back to
+`$HOME/.niki`), one JSON string per line; slash commands and blank prompts are
+not recorded, and a line that no longer parses is skipped. `Up` in an empty
+composer walks the file backwards, `Down` returns toward the draft.
 
 ## Approval prompt
 
