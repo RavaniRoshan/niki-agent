@@ -28,7 +28,7 @@ features:
   - title: A real approval gate
     details: Manual, Auto and YOLO modes, a shell allow-list, and a workspace path boundary that refuses a path outside the root. Mutating MCP tools are gated too.
   - title: Headless or editor-driven
-    details: niki -n runs one prompt, writes the answer to stdout and tool activity to stderr, and exits 0, 1 or 130. niki --acp serves the Agent Client Protocol on stdin/stdout so an editor can drive the same agent.
+    details: niki -n runs one prompt, writes the answer to stdout and tool activity to stderr, and exits 0, 1, 2, 124 or 130. niki --acp serves the Agent Client Protocol on stdin/stdout so an editor can drive the same agent.
   - title: Accessible by construction
     details: Four palettes with WCAG contrast measured in the test suite, an ASCII glyph mode, and a reduced-motion setting.
 ---
@@ -44,7 +44,7 @@ curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSI
 curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
 grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
 tar -xzf "niki-${VERSION}-linux-x86_64.tar.gz"
-bash "niki-${VERSION}-linux-x86_64/install/install.sh"
+bash "niki-${VERSION}-linux-x86_64/install.sh"
 ```
 
 Windows has a `.zip` archive that has not been exercised on Windows, so treat it
@@ -86,7 +86,7 @@ under a dedicated user account when you need a hard boundary, and read
 | [Your first turn](/getting-started/first-turn) | Flags, exit codes, keys, themes, and headless mode. |
 | [Providers](/providers/) | Eleven built-ins and any OpenAI-compatible endpoint. |
 | [Permissions](/permissions) | Manual, Auto, YOLO, the allow-list, MCP approval, and hooks. |
-| [Keyboard reference](/keyboard) | Every binding in the registry, and the four that are not wired yet. |
+| [Keyboard reference](/keyboard) | Every binding the app acts on, and the five that are not wired yet. |
 | [Extensions](/extensions/) | Skills, hooks, and MCP servers. |
 | [Architecture](/architecture) | The crates and the turn loop. |
 | [Independence](/independence) | Binary, state, and environment guarantees. |

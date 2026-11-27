@@ -22,7 +22,7 @@ OpenAI-compatible gateway is a `[providers.<name>]` block.
 Without a default model and without `--model`, Niki exits with:
 
 ```text
-no model selected: set [models].default in ~/.niki/config.toml or pass --model provider:model
+niki: no model selected: set [models].default in ~/.niki/config.toml or pass --model provider:model
 ```
 
 ## Start a session
@@ -43,7 +43,7 @@ Built-in file writes run without asking in this build; see
 stdout is not a terminal, use `-n`:
 
 ```text
-the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headlessly
+niki: the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headlessly
 ```
 
 ## Flags
@@ -99,6 +99,7 @@ Type these in the composer. `/help` lists the same set.
 | `/tools` | List the registered tools. |
 | `/version` | Show the version. |
 
+`/exit` is an alias for `/quit`, and `/keys` is an alias for `/help`.
 `/compact` only hides older rows; this build has no summarising model.
 
 ## Keys worth knowing
@@ -106,13 +107,14 @@ Type these in the composer. `/help` lists the same set.
 | Key | Action |
 | --- | --- |
 | <kbd>Enter</kbd> | Send the prompt. |
-| <kbd>Alt</kbd>+<kbd>Enter</kbd> | Insert a newline. |
+| <kbd>Alt</kbd>+<kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | Insert a newline. |
 | <kbd>Shift</kbd>+<kbd>Tab</kbd> | Cycle manual, auto and yolo. |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> | Start a slash command in the composer. |
-| <kbd>Esc</kbd> | Clear the draft, then stop the running turn. |
-| <kbd>?</kbd> | Show help. |
-| <kbd>y</kbd> / <kbd>n</kbd> | Allow or refuse the approval prompt. |
-| <kbd>Ctrl</kbd>+<kbd>C</kbd> | Stop the running turn; leave when nothing is running. |
+| <kbd>Esc</kbd> | Clear the draft; with an empty draft, stop the running turn. |
+| <kbd>?</kbd> | Open the key list when the composer is empty. |
+| <kbd>y</kbd> / <kbd>n</kbd> / <kbd>a</kbd> | In the approval prompt: allow once, refuse, always allow. |
+| <kbd>Ctrl</kbd>+<kbd>C</kbd> | Close a dialog and stop the running turn. It does not leave the app. |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Leave the app. |
+| <kbd>PageUp</kbd> / <kbd>PageDown</kbd> | Scroll the transcript one page. |
 
 Every binding is in the [keyboard reference](/keyboard).
 
@@ -161,10 +163,10 @@ niki -n "and only the first ten" --resume last
 ```
 
 `--continue` is the newest session for the current workspace; `--resume` takes
-a session id or `last`. Both apply to `-n` only — the full-screen app opens its
-own `/resume` picker instead. A `--resume` naming an unknown session fails with
-exit 1 rather than starting a new one. In the app, `/resume` switches
-conversation without restarting.
+a session id or `last`. Both apply to `-n` only — the full-screen app has its
+own `/resume` command instead. A `--resume` naming an unknown session fails
+with exit 1 rather than starting a new one. In the app, `/resume` lists the
+saved sessions and redraws one on screen without restarting.
 
 ## Editor protocol
 
@@ -174,7 +176,7 @@ the same agent, provider and workspace. The editor answers a gated action throug
 runs; warnings go to stderr. `--acp` cannot be combined with `-n`:
 
 ```text
---acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
+niki: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
 ```
 
 This build emits text and tool-call updates but no reasoning chunks, refuses
@@ -194,8 +196,8 @@ comes from the editor's session `cwd`, not from `--root`.
 ```
 
 `NIKI_HOME` moves the whole tree. The full-screen app opens `sessions.db` and
-writes every completed turn; `/resume` lists the saved sessions on the next
-launch. A project can also carry `.niki/hooks.json` and `.niki/skills/`.
+writes every completed turn; `/resume` lists the sessions it holds. A project
+can also carry `.niki/hooks.json` and `.niki/skills/`.
 
 Next: [Permissions](/permissions) explains what the three approval modes let
 through.

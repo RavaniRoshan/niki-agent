@@ -25,11 +25,14 @@ A missing entry or a mismatch is fatal: do not install an unverified archive.
 Then run the installer from the unpacked directory:
 
 ```bash
-bash "niki-${VERSION}-linux-x86_64/install/install.sh"
+bash "niki-${VERSION}-linux-x86_64/install.sh"
 ```
 
-The installer verifies the archive against `SHA256SUMS` and puts `niki` on your
-`PATH`. If you would rather place it yourself:
+The installer puts `niki` in `~/.local/niki/bin` and prints the `PATH` line to
+add; `NIKI_PREFIX` chooses another prefix. Run it with `NIKI_SHELL=1` to append
+that line to `~/.bashrc` and `~/.zshrc`. When the installer downloads an archive
+instead of using one beside it, it verifies the archive against `SHA256SUMS`
+first. If you would rather place it yourself:
 
 ```bash
 install -m 755 "niki-${VERSION}-linux-x86_64/niki" "$HOME/.local/bin/niki"
@@ -72,9 +75,6 @@ niki --version
 `niki --version` prints the version line and exits before a provider is built,
 so it proves the binary runs, not that a turn succeeds.
 
-On a build from before the 2.0 rename, the executable is named `niki-rs`; the
-options, exit codes and configuration are the same.
-
 ## `NIKI_HOME`
 
 Configuration, skills, hooks and the session store live under `~/.niki` by
@@ -97,8 +97,9 @@ older `config.toml` keeps loading: unknown keys are ignored and both
 ## Uninstall
 
 ```bash
-rm -f "$HOME/.local/bin/niki"   # the binary
-rm -rf "${NIKI_HOME:-$HOME/.niki}"   # configuration, skills, hooks, sessions
+rm -rf "${NIKI_PREFIX:-$HOME/.local/niki}"   # installer prefix
+rm -f "$HOME/.local/bin/niki"                # a binary placed by hand
+rm -rf "${NIKI_HOME:-$HOME/.niki}"           # configuration, skills, hooks, sessions
 ```
 
 ## From source for development

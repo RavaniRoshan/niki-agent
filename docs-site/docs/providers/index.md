@@ -1,148 +1,131 @@
 <!--
   Mirrored from docs/niki/PROVIDERS.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: bd163fa9361bd81aa222d3c8f2e0dc4b794ad9e64e84cbed356a7bb3fda9fc72
+  source-sha256: 2d1721a26ed36b86c4e7999c71bd90f90b749722bef7c0dc33d8029d22300414
 -->
 # Providers
 
-Niki Agent speaks two wire protocols: OpenAI Chat Completions and Anthropic
-Messages. Eleven providers have a built-in endpoint and key variable, so a
-configuration that only names a default model still runs. Every provider is a
-`[providers.<name>]` table in `config.toml`; the built-ins are defaults a user
-block overrides field by field.
+Niki Agent speaks two wire protocols: the OpenAI chat-completions API and the
+Anthropic messages API. Eleven providers have a built-in block — an endpoint and
+a key variable that ship with the binary — so naming one of them in
+`config.toml` is all an install needs. Any other endpoint that speaks one of the
+two protocols is a `[providers.<name>]` block.
+
+There is nothing to install and no Python package behind a provider: the client
+is compiled in.
 
 The configuration file is `$NIKI_HOME/config.toml` when `NIKI_HOME` is set,
 otherwise `~/.niki/config.toml`. `--config <PATH>` selects another file.
 
 ## Built-in providers
 
-| Table name | Protocol | Endpoint | Key environment variable |
-| --- | --- | --- | --- |
-| `anthropic` | Anthropic Messages | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
-| `openai` | OpenAI Chat Completions | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
-| `google_genai` | OpenAI Chat Completions | `https://generativelanguage.googleapis.com/v1beta/openai` | `GOOGLE_API_KEY` |
-| `ollama` | OpenAI Chat Completions | `http://localhost:11434/v1` | none; keyless |
-| `openrouter` | OpenAI Chat Completions | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
-| `nvidia` | OpenAI Chat Completions | `https://integrate.api.nvidia.com/v1` | `NVIDIA_API_KEY` |
-| `groq` | OpenAI Chat Completions | `https://api.groq.com/openai/v1` | `GROQ_API_KEY` |
-| `together` | OpenAI Chat Completions | `https://api.together.xyz/v1` | `TOGETHER_API_KEY` |
-| `deepseek` | OpenAI Chat Completions | `https://api.deepseek.com/v1` | `DEEPSEEK_API_KEY` |
-| `mistralai` | OpenAI Chat Completions | `https://api.mistral.ai/v1` | `MISTRAL_API_KEY` |
-| `xai` | OpenAI Chat Completions | `https://api.x.ai/v1` | `XAI_API_KEY` |
+| Name | Key environment variable | Endpoint |
+| --- | --- | --- |
+| `anthropic` | `ANTHROPIC_API_KEY` | `https://api.anthropic.com` (Anthropic messages) |
+| `openai` | `OPENAI_API_KEY` | `https://api.openai.com/v1` |
+| `google_genai` | `GOOGLE_API_KEY` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `ollama` | none | `http://localhost:11434/v1` |
+| `openrouter` | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` |
+| `nvidia` | `NVIDIA_API_KEY` | `https://integrate.api.nvidia.com/v1` |
+| `groq` | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` |
+| `together` | `TOGETHER_API_KEY` | `https://api.together.xyz/v1` |
+| `deepseek` | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` |
+| `mistralai` | `MISTRAL_API_KEY` | `https://api.mistral.ai/v1` |
+| `xai` | `XAI_API_KEY` | `https://api.x.ai/v1` |
 
-The key is read from the environment named by `api_key_env`. Niki reads it when
-it builds the provider for a turn; it never writes a key to disk.
+Every provider except Anthropic uses the OpenAI-compatible protocol; Anthropic
+uses its own messages API. Google Gemini is reached through the OpenAI-compatible
+surface of the Gemini API, so it needs no separate client.
 
-`google_genai` uses the OpenAI-compatible surface of the Gemini API, so it takes
-`GOOGLE_API_KEY` and the OpenAI request shape. `ollama` is keyless: it declares
-`OLLAMA_API_KEY`, but the local daemon ignores the credential and the value is
-optional. Niki talks to `http://localhost:11434/v1` unless `base_url` points
-somewhere else.
-
-## Select a model
-
-A model spec is `provider:model`. Set the default in the configuration, or pass
-one for a single run:
-
-```toml
-# ~/.niki/config.toml
-[models]
-default = "anthropic:my-model"
-```
+An environment variable is the only place a key is read from. Export it in the
+shell that starts `niki`:
 
 ```bash
-niki --model groq:llama-3.3-70b
+export ANTHROPIC_API_KEY=sk-ant-...
+niki --model anthropic:my-model -n "summarize this repo"
 ```
 
-Inside the full-screen app, `/model` opens a picker and `/model provider:model`
-switches directly. The picker offers `[models].default` first, then every
-`provider:model` pair listed in a user provider block's `models` array. A
-built-in provider has no model list of its own, so it runs from `--model` or
-`[models].default` even though the picker does not browse it.
+Ollama needs no key: it is a local daemon, and the client treats it as keyless.
+Set `base_url` in a `[providers.ollama]` block to point at a server on another
+machine.
 
-An unknown provider or a spec without a colon is an error. The unknown provider
-message lists every name the configuration can resolve.
+## Choosing a model
 
-## Provider block
+`--model <provider:model>` selects one for a run; `/model` picks in the app.
+Without either, `[models].default` decides:
 
-A `[providers.<name>]` table (also accepted at `[models.providers.<name>]`)
-accepts these keys. Every one is optional; a user block overrides the fields it
-sets and inherits the rest of a built-in block.
+```toml
+[models]
+default = "groq:llama-3.3-70b-versatile"
+```
 
-| Key | Read as |
-| --- | --- |
-| `display_name` | The label the model picker shows. Defaults to the table name. |
-| `models` | Model identifiers this provider offers, for the picker. |
-| `base_url` | Endpoint base URL. Defaults to the protocol's endpoint. |
-| `api_key_env` | Name of the environment variable that holds the key. |
-| `protocol` | `openai`, `openai-compatible`, `openai_compatible`, or `anthropic`. |
-| `class_path` | Read only to infer the protocol when `protocol` is absent: a value containing `anthropic` selects Anthropic Messages, anything else selects OpenAI Chat Completions. It is not imported or executed. |
-| `keyless` | `true` when the endpoint needs no credential. Built-in `ollama` sets it. |
+The picker reads `[models].default` first, then every `provider:model` pair in a
+provider block's `models` array:
 
-Unknown keys are ignored, so a file shared with another Niki surface loads
-without error. An explicit `protocol` this build does not recognise falls back
-to the `class_path` inference and then to OpenAI Chat Completions.
+```toml
+[providers.groq]
+models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct"]
+```
+
+A built-in provider has no model list of its own, so it runs from `--model` or
+the default but does not appear in the picker unless a block adds `models`.
 
 ## Any OpenAI-compatible endpoint
 
-A gateway that speaks OpenAI Chat Completions is a configuration block, not a
-code change:
+A gateway that speaks the chat-completions API is a configuration block, not a
+code change. Add it to `~/.niki/config.toml` and it appears in `/model`:
 
 ```toml
 [providers.kimi]
 display_name = "Kimi"
 base_url = "https://api.moonshot.ai/v1"
 api_key_env = "MOONSHOT_API_KEY"
-protocol = "openai"
 models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
 ```
 
-A gateway that serves the Anthropic Messages wire uses the other protocol:
+A gateway that serves the Anthropic messages wire instead sets the protocol:
 
 ```toml
 [providers.gateway]
-display_name = "Anthropic gateway"
-base_url = "https://gateway.example.com/anthropic"
-api_key_env = "GATEWAY_API_KEY"
+display_name = "Shared Gateway"
 protocol = "anthropic"
+base_url = "https://gateway.example/v1"
+api_key_env = "GATEWAY_API_KEY"
 models = ["anthropic-large", "anthropic-small"]
 ```
 
-A gateway that serves more than one wire protocol needs one block per protocol,
-because `protocol` picks the adapter. Keep the model IDs exactly as the gateway
-serves them; the picker only offers the IDs listed in `models`.
+`protocol` takes `openai` or `anthropic`; `openai-compatible` and
+`openai_compatible` are also accepted. Without it, the protocol is inferred from
+the block and defaults to OpenAI-compatible, which is right for most gateways.
 
-## Local models
+## The provider table
 
-Ollama is the shortest route:
+Every key in `[providers.<name>]` is optional except the ones a gateway needs.
 
-```bash
-ollama pull qwen3-coder
-export OLLAMA_HOST=http://localhost:11434   # only if the daemon is not local
+| Key | Meaning |
+| --- | --- |
+| `display_name` | The label shown in `/model`. |
+| `models` | The model IDs this provider offers. |
+| `base_url` | The API endpoint. |
+| `api_key_env` | The environment variable that holds the key. Names the variable, never the key. |
+| `protocol` | `openai` or `anthropic`. Overrides the inferred protocol. |
+| `keyless` | `true` for an endpoint that checks no credential, such as a local daemon. |
+
+Unknown keys are ignored, so a file written for a later release still loads.
+
+## When a key is missing
+
+A key is never written to disk by the client; it is read from the environment
+each run. Naming a provider whose key variable is unset fails before the request
+leaves the machine, with the variable to set:
+
+```text
+niki: groq needs an API key: set GROQ_API_KEY
 ```
 
-```toml
-[models]
-default = "ollama:qwen3-coder"
-```
-
-Any other local server that exposes an OpenAI-compatible API is a provider block
-with its host as `base_url`; set `keyless = true` if it accepts no credential.
-
-## Troubleshooting
-
-- **`unknown provider`** — the name in `--model` or `[models].default` is not a
-  built-in and has no `[providers.<name>]` block. The error lists every name
-  that resolves.
-- **`missing key`** — the variable named by that provider's `api_key_env` is
-  unset or empty. The error names both the variable and the provider.
-- **`401` or `403` from a gateway** — the key is wrong, or the endpoint expects
-  the other wire protocol. Change `protocol` and try again.
-- **A model ID is rejected** — add the exact ID your gateway serves to `models`,
-  and select it as `provider:model`.
-- **A built-in provider has no models in the picker** — the picker lists only
-  `[models].default` and user block `models`. Pass `--model provider:model` or
-  add a block with a `models` list.
+The exit status is 1. The picker does not check keys, so a provider with
+`models` still appears when its key is unset — starting a turn with it reports
+the same error.
 
 ---
 

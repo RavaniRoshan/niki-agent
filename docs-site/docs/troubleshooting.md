@@ -1,16 +1,50 @@
 # Troubleshooting
 
-Start with what the binary says about itself:
+Start with what Niki says about itself:
 
 ```bash
 niki --version   # the version line
 niki --help      # every option
 ```
 
+There are no subcommands: `niki` either opens the app, runs one prompt with
+`-n`, or serves an editor with `--acp`.
+
 A headless run prints failures as `niki: <message>` and warnings as
 `niki: warning: <message>` on stderr, so the answer on stdout stays clean. The
 full-screen app shows warnings as rows in the transcript and failures before the
 first frame.
+
+## `the full-screen app needs a terminal`
+
+A pipe or a non-interactive shell has no screen to draw. `niki` without `-n`
+requires a terminal:
+
+```text
+niki: the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headlessly
+```
+
+Run one prompt instead:
+
+```bash
+niki -n "summarize this repository"
+```
+
+## `unexpected argument`
+
+The prompt is never positional. Every value belongs to a flag, and the prompt
+goes after `-n`:
+
+```text
+niki: unexpected argument "fix the failing test"; the prompt is passed with -n
+```
+
+```bash
+niki -n "fix the failing test"        # right
+niki "fix the failing test"           # wrong: unexpected argument
+```
+
+An unknown option is `niki: unknown option <name>; run niki --help`.
 
 ## The configuration does not load
 
@@ -22,7 +56,7 @@ a failure.
 | --- | --- |
 | `cannot read <path>: …` | The file exists but permission or I/O stopped the read. |
 | `invalid TOML in <path>: …` | The parser names the line and column. A wrong type for a known key is this error too. |
-| `mcp server <name> in config.toml: …` | One `[mcp_servers.<name>]` entry is malformed. The message names the server and what it needs. |
+| ``mcp server `<name>` in config.toml: …`` | One `[mcp_servers.<name>]` entry is malformed. The message names the server and what it needs. |
 
 Unknown keys are ignored, so a configuration written for a different Niki
 surface still loads.
@@ -31,40 +65,43 @@ surface still loads.
 
 | Message | Fix |
 | --- | --- |
-| `no model selected: set [models].default in <path> or pass --model provider:model` | Add `[models].default`, or pass `--model`. |
-| `<spec> is not provider:model (for example groq:llama-3.3-70b)` | The spec needs a colon. |
-| `unknown provider "<name>"; this build resolves: …` | Use a name from the list, or add a `[providers.<name>]` block. |
+| `niki: no model selected: set [models].default in <path> or pass --model provider:model` | Add `[models].default`, or pass `--model`. |
+| `niki: model spec "<spec>" is not provider:model (for example groq:llama-3.3-70b)` | The spec needs a colon. |
+| `niki: unknown provider "<name>"; this build resolves: …` | Use a name from the list, or add a `[providers.<name>]` block. |
 
 The model picker lists `[models].default` and every `provider:model` in a user
 block's `models` array. A built-in provider with no block does not appear
 although it still runs from `--model` or the default.
 
+An unknown `--mode` is a warning, not a failure: the run continues in `manual`.
+
 ## A provider rejects the key
 
 | Message | Fix |
 | --- | --- |
-| `<provider> needs an API key: set <VAR>` | Export the variable named by that provider's `api_key_env`. |
-| `<provider> returned HTTP 401: …` | The key is wrong or expired. |
-| `<provider> returned HTTP 403: …` | The key lacks access to that model or endpoint. |
-| `<provider> sent a stream this client cannot read: …` | The endpoint speaks the other wire protocol; change `protocol`. |
+| `niki: <provider> needs an API key: set <VAR>` | Export the variable named by that provider's `api_key_env`. |
+| `niki: <provider> returned HTTP 401: …` | The key is wrong or expired. |
+| `niki: <provider> returned HTTP 403: …` | The key lacks access to that model or endpoint. |
+| `niki: <provider> sent a stream this client cannot read: …` | The endpoint speaks the other wire protocol; change `protocol`. |
 
 Niki reads keys only from the environment variable named in the provider block.
 It does not write a key to disk, so there is no stored-key fallback to check.
+The variable name for each provider is in [Providers](/providers/).
 
 ## The workspace will not open
 
-`open the workspace at <path>: …` means the root could not be canonicalised.
+`niki: open the workspace at <path>: …` means the root could not be canonicalised.
 The path must exist; `--root` does not create it. `niki` uses the current
 directory when `--root` is absent.
 
-A tool path outside the root is refused with a message naming the root and the
-path. Change the argument, or start Niki at a root that contains it. The shell
-tool's `cwd` is checked the same way.
+A tool path outside the root is refused with `<path> is outside the workspace
+root <root>`. Change the argument, or start Niki at a root that contains it. The
+shell tool's `cwd` is checked the same way.
 
 ## An MCP server times out
 
-```
-mcp server `name`: connect timed out after 10s
+```text
+mcp server `name`: initialize timed out after 10s
 ```
 
 Startup gives every server 10 seconds for the handshake, and connects them
@@ -78,16 +115,21 @@ export NIKI_MCP_STARTUP_TIMEOUT_SECS=30
 A failed server is a warning, not a failed start: the session keeps the tools of
 every server that answered. Later requests use a fixed one-minute budget; a
 per-server `timeout` key is not implemented. A message such as
-`mcp server <name>: … cannot run: the connection is closed (…)` means an
-earlier failure closed a stdio connection, so restart the session.
+``mcp server `name`: initialize cannot run: the connection is closed (…)`` means
+an earlier failure closed a stdio connection, so restart the session.
 
-`type = "sse"` is rejected at load. Use `type = "http"` (streamable HTTP) or the
-default inference from `url`.
+`type = "sse"` is rejected at load:
+
+```text
+mcp server `docs` in config.toml: unsupported transport `sse`; this build speaks `stdio` and `http`
+```
+
+Use `type = "http"` (streamable HTTP) or the default inference from `url`.
 
 ## A skill was skipped
 
-```
-warning: /repo/.niki/skills/release-notes/SKILL.md: the front matter has no description
+```text
+niki: warning: /repo/.niki/skills/release-notes/SKILL.md: the front matter has no description
 ```
 
 Discovery never fails the session; it skips the file and keeps the rest. Check:
@@ -113,46 +155,52 @@ a warning, and the turn continues.
 `.niki/hooks.json` from a repository is loaded without a trust prompt in this
 build, so review it before you run Niki in an unfamiliar repository.
 
-## The full-screen app will not start
+## `--acp` and `-n` cannot be combined
 
-```
-the full-screen app needs a terminal; pass -n <PROMPT> to run one prompt headlessly
-```
+They are two different entry points: `-n` runs one prompt and exits, `--acp`
+serves an editor until stdin closes. Pick one. The exit status is 2.
 
-`niki` without `-n` requires a terminal. In CI or a pipe, use `-n`.
-
-```
---acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
+```text
+niki: --acp and -n cannot be combined; --acp serves an editor on stdin/stdout and -n runs one prompt
 ```
 
-`--acp` and `-n` are two different entry points; choose one. The ACP server
-writes protocol frames to stdout, so a client that does not speak the protocol
-sees JSON, and warnings appear on stderr. A usage error of this kind exits `2`.
+The ACP server writes protocol frames to stdout, so a client that does not speak
+the protocol sees JSON, and warnings appear on stderr.
+
+## `no saved session` and unsaved sessions
+
+```text
+niki: no saved session "<id>" for <workspace>; run without --resume to start one
+```
+
+`--resume` names a session that is not in `sessions.db`, or `--continue` found
+no saved session for the current directory. Run without either to start a new
+one, or open the app and use `/resume` to list what exists.
+
+```text
+niki: warning: sessions are not saved: …
+```
+
+`sessions.db` could not be opened, so this turn runs but is not written down.
+The warning includes the reason — usually a permissions problem under `~/.niki`
+or a `NIKI_HOME` that points at a read-only path. The session still works; it
+just cannot be resumed.
 
 ## The turn stops early
 
-```
+```text
 niki: step limit of 40 reached
 ```
 
-One run may make 40 model turns by default. Raise it with `--max-steps <N>`.
+One run may make 40 model turns by default. Raise it with `--max-steps <N>`. The
+exit status is 124 when the budget runs out.
 
-```
+```text
 niki: cancelled
 ```
 
 The turn was cancelled with <kbd>Ctrl</kbd>+<kbd>C</kbd>. A headless run exits
 `130` in that case. The transcript keeps what the turn already produced.
-
-## Sessions are not saved
-
-```
-warning: sessions are not saved: …
-```
-
-The full-screen app could not create or open `sessions.db` under
-`$NIKI_HOME`/`~/.niki`. The session still works; it just cannot be resumed.
-Check that the directory is writable. `NIKI_HOME` moves the whole tree.
 
 ## A tool call is refused
 

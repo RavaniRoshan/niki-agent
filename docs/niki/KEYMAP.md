@@ -1,59 +1,101 @@
 # Niki Agent -- Keymap
 
-The keymap is the `BINDINGS` table in
-`rust/crates/niki-tui/src/lib.rs`; the help overlay draws the same table from
-`rust/crates/niki-tui-modals/src/help.rs`. A binding that is listed here and not
-acted on by the full-screen app is marked **not in this build** rather than
-described as working.
+These are the keys the shipped full-screen app acts on. The table is maintained
+by hand from the key handler in `rust/crates/niki-tui-live/src/app.rs`; a key
+that appears in the help overlay but does nothing in the app is listed at the
+end rather than described as working.
 
-## Ownership
+## App keys
 
-The composer and the app claim different keys:
+These apply when no dialog is open.
 
-- The composer claims characters, arrows, Home and End, Enter (send) and
-  Alt+Enter (newline).
-- The app claims Ctrl-C, Ctrl-D, PageUp and PageDown, Shift+Tab, and the wheel.
-- A modal claims every key while it is open, except Ctrl-C and Ctrl-D.
+| Key | Action |
+| --- | --- |
+| `Enter` | Send the prompt. |
+| `Alt+Enter` or `Shift+Enter` | Insert a newline instead of sending. |
+| `Esc` | Clear a non-empty draft. With an empty draft, stop the running turn. |
+| `Ctrl+C` | Close an open dialog and stop the running turn. It does not leave the app. |
+| `Ctrl+D` | Leave the app. |
+| `Shift+Tab` | Cycle Manual, Auto and YOLO. |
+| `?` | Open the key list, when the composer is empty. |
+| `PageUp` / `PageDown` | Scroll the transcript one page. |
+| `Up` / `Down` | Move the cursor between lines in the composer. |
+| `Home` / `End` | Move the cursor to the start or end of its line. |
+| `Backspace` / `Delete` | Delete the character before or after the cursor. |
+| Mouse wheel | Scroll the transcript. |
 
-## App bindings
-
-| Key | Action | What it does |
-| --- | --- | --- |
-| `ctrl+c` | `QuitOrInterrupt` | Stop the running turn; leaves when nothing is running |
-| `ctrl+d` | `Quit` | Leave the app |
-| `escape` | `Interrupt` | Clear the draft, then stop the running turn |
-| `ctrl+shift+p` | `CommandPalette` | Start a slash command in the composer |
-| `?` | `Help` | This list |
-| `shift+tab` | `ToggleAutoApprove` | Cycle manual, auto and yolo |
-| `ctrl+o` | `ToggleToolOutput` | Show or hide tool output (**not in this build**) |
-| `ctrl+t` | `ToggleSubagents` | Show or hide subagent activity (**not in this build**) |
-| `ctrl+n` | `OpenNotifications` | Show notifications (**not in this build**) |
-| `ctrl+g` | `OpenEditor` | Edit the prompt in your editor (**not in this build**) |
-| `up` | `ScrollUp` | Move the cursor up a line in the composer |
-| `down` | `ScrollDown` | Move the cursor down a line in the composer |
-| `pageup` | `PageUp` | Move the transcript back one page |
-| `pagedown` | `PageDown` | Move the transcript forward one page |
-| `home` | `ScrollHome` | Move the cursor to the start of its line |
-| `end` | `ScrollEnd` | Move the cursor to the end of its line |
-| `y` | `ApprovalYes` | Allow the command that is waiting |
-| `n` | `ApprovalNo` | Refuse the command that is waiting |
-
-The four keys marked **not in this build** are in the registry and the help
-overlay, but the live app does not act on them yet. Treat them as unbound until
-the overlay stops saying so.
+A modal is answered before the app keys: while a dialog is open, every key goes
+to it except `Ctrl+C` (close it and cancel the turn) and `Ctrl+D` (leave the
+app).
 
 ## Composer
 
 | Key | What it does |
 | --- | --- |
 | `Enter` | Send the prompt. |
-| `Alt+Enter` | Insert a newline instead of sending. |
+| `Alt+Enter`, `Shift+Enter` | Insert a newline. |
+| `Left` / `Right` | Move the cursor one character. |
 | `Up` / `Down` | Move the cursor between lines. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
-| `Esc` | Clear the draft, then stop the running turn. |
+| `Backspace` / `Delete` | Delete before or after the cursor. |
+| `Esc` | Clear the draft first; a second press stops the running turn. |
 
 Bracketed paste is enabled, so a multi-line paste arrives as one paste and is
-inserted literally. A paste never sends the prompt.
+inserted literally. A paste never sends the prompt. A line that starts with `/`
+is a slash command; it is submitted with `Enter` like any other line.
+
+## Approval prompt
+
+The prompt appears when the policy asks about a shell command or a gated MCP
+tool.
+
+| Key | Answer |
+| --- | --- |
+| `y` | Allow this once. |
+| `a` | Always allow: the exact command or the tool name is recorded for the rest of the session. |
+| `n` | Refuse. |
+| `Enter` | Choose the highlighted option. The first is "Allow this once". |
+| `Esc` | Refuse. There is no way to leave the prompt unanswered. |
+| `Up` / `Left` / `Shift+Tab` | Move the highlight up. |
+| `Down` / `Right` / `Tab` | Move the highlight down. |
+
+Closing the prompt without an answer counts as a refusal, so the turn never
+waits on a question nobody answered.
+
+## Help overlay
+
+Opened with `?` on an empty composer, or with `/help`.
+
+| Key | What it does |
+| --- | --- |
+| `Esc`, `?`, `q` | Close the overlay. |
+| `Up` / `Down` | Scroll one line. |
+| `PageUp` / `PageDown` | Scroll ten lines. |
+
+## Model picker
+
+Opened with `/model`.
+
+| Key | What it does |
+| --- | --- |
+| `Up`, `k` | Move the highlight up. |
+| `Down`, `j` | Move the highlight down. |
+| `Home` / `End` | Jump to the first or last model. |
+| `Enter` | Switch to the highlighted model. |
+| `Esc` | Close without changing the model. |
+
+## Keys the help overlay lists that do nothing
+
+The overlay is drawn from a registry that still carries five bindings the app
+does not act on. They are not shortcuts in this build:
+
+- `Ctrl+Shift+P` (it would start a slash command)
+- `Ctrl+O` (tool output)
+- `Ctrl+T` (subagent activity)
+- `Ctrl+N` (notifications)
+- `Ctrl+G` (open an editor)
+
+Those actions are unbuilt; the overlay marks them as such.
 
 ## Slash commands
 
@@ -61,19 +103,22 @@ Type these in the composer. `/help` lists the same set.
 
 | Command | What it does |
 | --- | --- |
-| `/clear` | Start a fresh session and empty the view |
-| `/compact` | Fold older rows out of the view; the session store keeps them |
-| `/help` | This list |
-| `/model` | Choose a model, or name one with `/model provider:model` |
-| `/quit` | Leave the app |
-| `/resume` | List saved sessions, or resume one by id or index |
-| `/skills` | List project and user skills |
-| `/theme` | Choose a palette, or cycle to the next one |
-| `/tools` | List the registered tools |
-| `/version` | Show the version |
+| `/clear` | Start a fresh session and empty the view. |
+| `/compact` | Fold older rows out of the view; the session store keeps them. |
+| `/help` | This list. `/keys` is an alias. |
+| `/model` | Choose a model, or name one with `/model provider:model`. |
+| `/quit` | Leave the app. `/exit` is an alias. |
+| `/resume` | List saved sessions, or resume one by id or one-based index. |
+| `/skills` | List the skills discovery found. |
+| `/theme` | Choose a palette, or cycle to the next one. |
+| `/tools` | List the registered tools. |
+| `/version` | Show the version. |
 
 `/compact` does not summarise: this build has no summarising model, so it only
 hides older rows. The session store keeps the full transcript.
+
+`/resume` redraws the selected session on screen. This build does not replay
+the resumed session into the model's context.
 
 ## Themes
 
