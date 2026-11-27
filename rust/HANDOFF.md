@@ -100,7 +100,8 @@ screen, arrives as one `Event::Paste`, and is inserted literally; a paste never
 sends the prompt, and a second prompt waits for the running turn so a turn can
 never be written to the store under another turn's rows. MCP startup is now
 concurrent and abandons a silent server after `NIKI_MCP_STARTUP_TIMEOUT_SECS`
-(default 10s), reporting the same per-server warning.
+(default 10s) or the server's own `timeout`, reporting the same per-server
+warning.
 
 `niki --acp` serves an editor on stdin/stdout; `--acp` with `-n` is a
 usage error and exits 2. The protocol is newline-delimited JSON-RPC 2.0 — one
@@ -249,8 +250,8 @@ startup wiring is covered without a network or a terminal.
 - **HTTP is streamable HTTP, not legacy SSE.** A POST is answered with a JSON
   body or an SSE body; both are parsed, and a stream that never closes fails as
   a timeout. `type = "sse"` (the long-lived GET transport) is rejected at load
-  with a message naming the server. The one-minute request budget is fixed for
-  this slice; a per-server `timeout` key is the next thing to add.
+  with a message naming the server. A server's own `timeout` bounds its
+  handshake and every request; without one the request budget is one minute.
 - **One request at a time per server.** stdio responses are matched by id but a
   lost response cannot be resynchronised, so the connection is serialised behind
   one async mutex and marked closed after a timeout, exit or malformed line.
@@ -293,11 +294,9 @@ headless surfaces (`-n`, `--output-format json` and `jsonl`, `--resume`,
 
 ## Known gaps
 
-- MCP startup now bounds the handshake, but a later request still uses the fixed
-  one-minute budget; a per-server `timeout` key is the next thing to add.
 - MCP: no OAuth (the Python client's `auth = "oauth"` has no Rust counterpart),
-  no `${VAR}` interpolation in `command`/`args`/`env`/`url`/`headers`, no
-  `tools/list` pagination (`nextCursor`), and no `DELETE` to end an HTTP session.
+  no `tools/list` pagination (`nextCursor`), and no `DELETE` to end an HTTP
+  session.
 - MCP HTTP has no integration test: a test server would need a listener. The SSE
   parser, batch matching, server-request replies and JSON-RPC error decoding are
   unit-tested; the six required protocol cases run against the stdio fixture.

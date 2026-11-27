@@ -108,16 +108,26 @@ mcp server `name`: initialize timed out after 10s
 ```
 
 Startup gives every server 10 seconds for the handshake, and connects them
-concurrently. One slow server does not hold the others. Raise the budget for a
-slow server:
+concurrently. One slow server does not hold the others. Raise the budget for
+every server:
 
 ```bash
 export NIKI_MCP_STARTUP_TIMEOUT_SECS=30
 ```
 
+or give one server its own budget in `config.toml`, in whole seconds:
+
+```toml
+[mcp_servers.name]
+command = "…"
+timeout = 30
+```
+
+A server's `timeout` wins over the environment variable and bounds every later
+request as well. Without one, later requests keep the one-minute default.
+
 A failed server is a warning, not a failed start: the session keeps the tools of
-every server that answered. Later requests use a fixed one-minute budget; a
-per-server `timeout` key is not implemented. A message such as
+every server that answered. A message such as
 ``mcp server `name`: initialize cannot run: the connection is closed (…)`` means
 an earlier failure closed a stdio connection, so restart the session.
 

@@ -74,21 +74,34 @@ cwd = "/tmp/work"
 
 [mcp_servers.docs]
 url = "https://example.com/mcp"
-headers = { Authorization = "Bearer token" }
+headers = { Authorization = "Bearer ${DOCS_TOKEN}" }
+timeout = 30
 ```
 
 An entry without `type` infers the transport: `url` selects HTTP, `command`
 selects stdio. `type = "stdio"` and `type = "http"` (or `streamable_http`) can
 state it explicitly. A legacy `type = "sse"` long-lived GET stream is rejected at
-load with a message naming the server. `${VAR}` interpolation in `command`,
-`args`, `env`, `url` and `headers` is not implemented; write the values
-literally.
+load with a message naming the server.
+
+`${VAR}` in `command`, each `args` element, `env` values, `url` and header
+values is replaced with the variable's value when the file is read. `$$` writes
+one literal `$`, and a `$` before anything else stays as written. An unset or
+non-UTF-8 variable, an empty `${}`, or an unterminated `${` fails the load with
+a message naming the server, the field and the variable. `cwd` is not
+interpolated.
+
+`timeout` is an optional per-server budget in whole seconds. It bounds the
+startup handshake and every later request, and takes precedence over
+`NIKI_MCP_STARTUP_TIMEOUT_SECS`. Zero and negative values are rejected at load.
+Without it the handshake uses the global startup budget and each request keeps
+the one-minute default.
 
 At startup both entry points connect every configured server, concurrently, and
 register each tool the server advertises as `mcp__<server>__<tool>`. A server
 that fails to start does not stop the session: it is a warning line and the
 remaining servers' tools are kept. The handshake budget is 10 seconds per
-server; set `NIKI_MCP_STARTUP_TIMEOUT_SECS` to change it for a slow server.
+server; set `NIKI_MCP_STARTUP_TIMEOUT_SECS` to change it for every server, or
+give one server its own `timeout`.
 
 A tool the server does not declare read-only is approval-gated; a read-only tool
 runs without asking. A headless run reports a gated call to the model as a

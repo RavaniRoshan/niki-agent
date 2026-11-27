@@ -88,8 +88,6 @@ flag in this build.
 - Loading `.niki/hooks.json` from a repository is not gated by a trust prompt.
 - MCP `permissionDecision` values other than `deny` are not implemented; the
   hook runner reports them as warnings.
-- A post-handshake MCP request uses a fixed one-minute budget; a per-server
-  `timeout` key is not implemented.
 
 ## Hardening checklist
 
