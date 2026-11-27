@@ -16,7 +16,7 @@ upstream project; the behaviour is the specification, not the source.
 | Slash commands | 47 public, plus aliases | 20, plus aliases; 20 more on `ROADMAP` (`niki-commands`) |
 | Tools | file, edit, shell, search, web, todo, subagent, memory | 8: `read_file`, `write_file`, `edit_file`, `list_dir`, `shell`, `grep`, `glob`, `task`; plus MCP |
 | Agent loop | multi-turn, compaction, subagents | multi-turn, hooks, skills, policy, cancel, delegation |
-| Sessions | SQLite, thread browser, resume | SQLite, `--resume` / `--continue`, `/resume` by index or id, `/threads` browser, `/rename` titles, `/export` to Markdown, `niki sessions list [--root] [--json]` outside the UI |
+| Sessions | SQLite, thread browser, resume | SQLite, `--resume` / `--continue`, `/resume` by index or id, `/threads` browser, `/rename` titles, `/export` to Markdown, `niki sessions list [--root] [--all] [--json]`, `fork` and `archive` outside the UI; archived sessions stay out of every implicit picker |
 | Context | token accounting, offload/summarize | `context_report`, `context_audit`, `/compact` through the provider, occupancy in the status line |
 | Editor protocol | ACP | ACP |
 | Headless | `-n`, JSON, exit codes | `-n`, JSON (usage, session totals, context audit), `--output-format jsonl` event stream, exit codes 0/1/2/124/130 |

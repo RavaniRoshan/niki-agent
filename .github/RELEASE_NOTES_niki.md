@@ -2,10 +2,10 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.1.2 adds the three-answer approval prompt, `niki doctor`, `/status`, session
-listing from the shell, `Ctrl+G` for your own editor, native macOS archives for
-Apple silicon and Intel, and memory bounds on the tools that read or capture
-output. The shipped product is still a single
+2.1.3 adds workspace trust, a session lifecycle from the shell, answers to the
+model's questions inside the app, `${VAR}` interpolation and per-server
+timeouts in the MCP configuration, and fixes the `Ctrl+T` help entry. The
+shipped product is still a single
 self-contained executable: there is no Python interpreter to
 install, no virtual environment to create, and no packages to resolve on first
 run. Linux and WSL share one archive, Windows has its own, and macOS has one for
@@ -40,6 +40,36 @@ niki
 No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
+
+## What changed in 2.1.3
+
+**A checkout has to be trusted before its code runs.** A repository can ship
+`.niki/hooks.json`, `.niki/skills/` and `AGENTS.md`, and the first two execute
+as you. `niki trust` records the canonical workspace path in
+`trusted_workspaces.toml`; until then every entry point loads user-level and
+built-in content only and prints one line naming the command. `niki untrust`
+withdraws the grant and `niki trust --list` shows what you allowed. The match is
+exact: a subdirectory does not inherit a parent's grant.
+
+**Sessions have a lifecycle.** `niki sessions fork <id>` copies a session's
+messages under a new id and prints it; `niki sessions archive <id>` hides one
+from the default list and `--undo` restores it. Archived sessions stay
+addressable by id but disappear from `--continue`, the `/resume` list, the
+`/threads` browser and `niki sessions list` unless `--all` is passed.
+
+**The model can ask you a question.** `request_user_input` opens a card with
+two to four options and an optional free-text row. `Up`/`Down`/`Tab` move,
+`Enter` answers, `Esc` cancels and the model is told the question was cancelled.
+A single choice is returned, so there is no multi-select.
+
+**MCP configuration takes the environment into account.** `${VAR}` in an MCP
+server entry expands from the environment at read time and `$$` is a literal
+`$`; an unset variable is an error that names the server, the field and the
+variable. A per-server `timeout` in whole seconds bounds the handshake and every
+later request, and beats `NIKI_MCP_STARTUP_TIMEOUT_SECS`.
+
+**The help overlay tells the truth.** The `Ctrl+T` entry now says it opens the
+whole conversation in a scrollable overlay, which is what the key does.
 
 ## What changed in 2.1.2
 
