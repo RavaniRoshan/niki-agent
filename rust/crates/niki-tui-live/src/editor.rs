@@ -18,7 +18,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Largest edited prompt read back, in bytes.
 ///
@@ -30,6 +30,12 @@ pub const MAX_EDITED_BYTES: u64 = 1024 * 1024;
 
 /// The editor used when neither variable names one.
 pub const FALLBACK_EDITOR: &str = if cfg!(windows) { "notepad" } else { "vi" };
+
+/// Attempts to start the editor across `ETXTBSY`, and the pause between them.
+/// Fifty attempts at twenty milliseconds cover a second, far longer than a
+/// concurrent writer holds a script open.
+const BUSY_ATTEMPTS: u32 = 50;
+const BUSY_BACKOFF: Duration = Duration::from_millis(20);
 
 /// One editor invocation: a program and the arguments that precede the file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,14 +143,32 @@ impl EditError {
 /// [`EditError::Spawn`] when the program cannot be started, and
 /// [`EditError::Status`] when it starts but exits unsuccessfully.
 pub fn run_editor(command: &EditorCommand, path: &Path) -> Result<(), EditError> {
-    let status = ProcessCommand::new(command.program())
-        .args(command.args())
-        .arg(path)
-        .status()
-        .map_err(|error| EditError::Spawn {
-            program: command.program().to_owned(),
-            message: error.to_string(),
-        })?;
+    let mut attempts = 0;
+    let status = loop {
+        match ProcessCommand::new(command.program())
+            .args(command.args())
+            .arg(path)
+            .status()
+        {
+            Ok(status) => break status,
+            // A script written moments ago is briefly unexecutable: some other
+            // process still holds a write descriptor on it, and `exec` answers
+            // `ETXTBSY`. The holder is gone within milliseconds.
+            Err(error)
+                if error.kind() == io::ErrorKind::ExecutableFileBusy
+                    && attempts < BUSY_ATTEMPTS =>
+            {
+                attempts += 1;
+                std::thread::sleep(BUSY_BACKOFF);
+            }
+            Err(error) => {
+                return Err(EditError::Spawn {
+                    program: command.program().to_owned(),
+                    message: error.to_string(),
+                });
+            }
+        }
+    };
     if status.success() {
         Ok(())
     } else {
@@ -361,6 +385,31 @@ mod tests {
         let command = EditorCommand::new(editor.display().to_string(), Vec::new());
         let text = edit_file(&command, &path).expect("the edited text");
         assert_eq!(text, "the edited prompt\n", "one newline is trimmed");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_editor_held_open_for_writing_is_retried_rather_than_failing() {
+        let (_scripts, editor) = script("#!/bin/sh\nprintf 'the edited prompt\\n\\n' > \"$1\"\n");
+        let working = tempfile::tempdir().expect("a working directory");
+        let path = working.path().join("prompt.md");
+        fs::write(&path, "the draft").expect("the draft");
+
+        // A live write descriptor on a script makes `exec` answer `ETXTBSY`,
+        // which is what a fork that copied the descriptor leaves behind.
+        let held = OpenOptions::new()
+            .append(true)
+            .open(&editor)
+            .expect("open for writing");
+        let writer = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            drop(held);
+        });
+
+        let command = EditorCommand::new(editor.display().to_string(), Vec::new());
+        let text = edit_file(&command, &path).expect("the edited text");
+        writer.join().expect("writer");
+        assert_eq!(text, "the edited prompt\n", "the retry ran the editor");
     }
 
     #[cfg(unix)]
