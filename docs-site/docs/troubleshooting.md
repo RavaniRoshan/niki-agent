@@ -3,12 +3,15 @@
 Start with what Niki says about itself:
 
 ```bash
+niki doctor      # nine checks: config, model, credential, store, skills, hooks, MCP
 niki --version   # the version line
 niki --help      # every option
 ```
 
-There are no subcommands: `niki` either opens the app, runs one prompt with
-`-n`, or serves an editor with `--acp`.
+`niki` either opens the app, runs one prompt with `-n`, serves an editor with
+`--acp`, or runs the read-only `doctor` report. `doctor` prints one `ok`, `warn`
+or `fail` line per check, never prints a credential value, and exits 1 when a
+turn could not run — it names the environment variable to set.
 
 A headless run prints failures as `niki: <message>` and warnings as
 `niki: warning: <message>` on stderr, so the answer on stdout stays clean. The
