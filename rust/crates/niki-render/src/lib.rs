@@ -8,6 +8,12 @@
 use niki_proto::{EventName, Frame, Transcript, message_content, message_role};
 use serde_json::Value;
 
+mod markdown;
+
+pub use markdown::{
+    HeadingLevel, LineKind, MarkdownTheme, RenderedLine, Span, SpanStyle, render_markdown,
+};
+
 /// Glyphs with an ASCII fallback, mirroring the Python `Glyphs` registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Glyphs {
