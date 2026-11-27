@@ -19,9 +19,11 @@ The screenshots come from the README recording, and the rendered results are
 committed assets. No gallery-rendering script is part of this repository:
 regenerate the images outside the tree from the committed `intro.gif`, then
 replace the files under `launch/gallery/`. Each slide is a 1270×760 canvas: the
-terminal frame in a bordered panel, and a kicker, headline and one-line caption
-under it. Frame and crop per slide: welcome at 2 s, prompt at 5 s, approval card
-at 8 s, test result and answer at 28 s.
+recording frame, full screen, inside a bordered card on the left at 760×474, and
+a kicker, headline and caption in the right column starting at x 860. Frame per
+slide: welcome at 2 s, the first approval card at 8 s, the shell approval at
+13 s, test result and answer at 28 s. The thumbnail is a 240×240 wordmark tile
+on the same background.
 
 ## Rules for this copy
 
