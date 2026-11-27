@@ -1,95 +1,127 @@
 # Install
 
-Two routes: the release installer, which needs only Python 3.12+ and a terminal,
-and a source checkout, which is for working on Niki itself.
+Two routes: the release archive, which requires no toolchain, and a source
+build, which is for macOS and for working on Niki itself.
 
-## From a release
+## From a release archive
 
-### Linux and macOS
+Each release publishes archives named `niki-<version>-<platform>-<arch>.tar.gz`
+(Windows: `.zip`) and a `SHA256SUMS` file that covers every archive. Download
+the archive and `SHA256SUMS` for the same release, verify the checksum, then
+either run the installer inside the archive or put the binary on `PATH`
+yourself.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
-```
-
-### Windows
-
-```powershell
-irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
-```
-
-### What the installer does
-
-- Creates an isolated environment under `~/.local/niki`
-  (`%LOCALAPPDATA%\niki` on Windows) and installs the release wheel into it.
-- Verifies the download against the release's `SHA256SUMS`. A missing entry or a
-  mismatch is fatal: an unverified archive is never installed.
-- Writes a `niki` launcher onto your `PATH`.
-- Leaves your shell profile alone. Re-run with `NIKI_SHELL=1` (Linux and macOS)
-  or `$env:NIKI_SHELL = '1'` (Windows) to append the `PATH` line.
-
-Choose a different location with `NIKI_PREFIX` on Linux and macOS, or `-Prefix`
-on Windows:
+### Linux x86_64
 
 ```bash
-NIKI_PREFIX="$HOME/.local/niki" bash install/install.sh
+VERSION=2.0.0
+curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
+curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
+grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
+tar -xzf "niki-${VERSION}-linux-x86_64.tar.gz"
 ```
+
+A missing entry or a mismatch is fatal: do not install an unverified archive.
+Then run the installer from the unpacked directory:
+
+```bash
+bash "niki-${VERSION}-linux-x86_64/install.sh"
+```
+
+The installer puts `niki` in `~/.local/niki/bin` and prints the `PATH` line to
+add; `NIKI_PREFIX` chooses another prefix. Run it with `NIKI_SHELL=1` to append
+that line to `~/.bashrc` and `~/.zshrc`. When the installer downloads an archive
+instead of using one beside it, it verifies the archive against `SHA256SUMS`
+first. If you would rather place it yourself:
+
+```bash
+install -m 755 "niki-${VERSION}-linux-x86_64/niki" "$HOME/.local/bin/niki"
+```
+
+### Windows x86_64
+
+The release publishes a `.zip` archive, but it has not been exercised on a
+Windows machine, so treat it as untested. Verify it against `SHA256SUMS`, then
+unpack it and put `niki.exe` on `PATH`:
 
 ```powershell
-.\install.ps1 -Prefix C:\Tools\niki
+$Version = "2.0.0"
+Invoke-WebRequest "https://github.com/RavaniRoshan/niki-agent/releases/download/v$Version/niki-$Version-windows-x86_64.zip" -OutFile "niki-$Version-windows-x86_64.zip"
+Invoke-WebRequest "https://github.com/RavaniRoshan/niki-agent/releases/download/v$Version/SHA256SUMS" -OutFile "SHA256SUMS"
+Get-FileHash "niki-$Version-windows-x86_64.zip" -Algorithm SHA256   # compare with SHA256SUMS
+Expand-Archive "niki-$Version-windows-x86_64.zip"
 ```
 
-Then confirm the binary:
+### macOS
+
+There is no prebuilt macOS archive. Build from source:
+
+```bash
+git clone https://github.com/RavaniRoshan/niki-agent.git
+cd niki-agent/rust
+cargo build --release -p niki --bin niki
+install -m 755 target/release/niki "$HOME/.local/bin/niki"
+```
+
+The source build needs Rust 1.85 or newer. `target/release/niki` is the whole
+product; nothing else has to be installed beside it.
+
+### Confirm the binary
 
 ```bash
 niki --version
 ```
 
-`niki --version` answers without importing the agent runtime, so it proves the
-package installed, not that a turn runs.
+`niki --version` prints the version line and exits before a provider is built,
+so it proves the binary runs, not that a turn succeeds.
 
-## From source
+## `NIKI_HOME`
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-git clone https://github.com/RavaniRoshan/niki-agent.git
-cd niki-agent/libs/code
-uv sync --all-extras
-uv run niki
-```
-
-`--all-extras` installs the provider and sandbox integrations. Install one
-provider's extra instead with, for example, `uv sync --extra anthropic`.
-
-`uv run` uses the project environment with the package installed editable, so a
-source change takes effect on the next launch.
-
-### Working on the source
-
-All commands run from `libs/code`:
+Configuration, skills, hooks and the session store live under `~/.niki` by
+default. Set `NIKI_HOME` to move the whole tree:
 
 ```bash
-make bootstrap     # dependencies plus the local git hooks
-make check         # lint, types, imports, tests, and repository gates
+export NIKI_HOME="$HOME/.config/niki"
 ```
 
-`make check` is the same gauntlet CI runs. See the repository's `AGENTS.md`
-files for contributor conventions.
+`--config <PATH>` selects a single configuration file without moving the rest of
+the tree.
 
 ## Upgrade
 
-Re-run the install command. The installer replaces the environment under
-`~/.local/niki` and leaves `~/.niki` — your configuration, sessions, and skills —
-untouched.
-
-Inside a session, `/update` checks for and installs updates. The `niki update`
-command does the same outside the UI.
+Download the new archive, verify it, and replace the binary. Your `NIKI_HOME`
+tree — configuration, skills, hooks, and `sessions.db` — is left untouched. An
+older `config.toml` keeps loading: unknown keys are ignored and both
+`[providers.<name>]` and `[models.providers.<name>]` are read.
 
 ## Uninstall
 
 ```bash
-rm -rf ~/.local/niki          # the application
-rm -rf ~/.niki                # configuration, sessions, and skills
+rm -rf "${NIKI_PREFIX:-$HOME/.local/niki}"   # installer prefix
+rm -f "$HOME/.local/bin/niki"                # a binary placed by hand
+rm -rf "${NIKI_HOME:-$HOME/.niki}"           # configuration, skills, hooks, sessions
 ```
 
-Remove the `PATH` line from your shell profile if you added one.
+## From source for development
+
+Requires Rust 1.85 or newer. All commands run from `rust/`:
+
+```bash
+git clone https://github.com/RavaniRoshan/niki-agent.git
+cd niki-agent/rust
+cargo build --release -p niki --bin niki
+cargo test --workspace
+```
+
+The workspace gates are:
+
+```bash
+cd rust
+cargo fmt --all
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+`cargo test --workspace` runs the unit tests and the headless gate that binds a
+mock provider on loopback and runs the binary as a child process. See the
+repository's `AGENTS.md` files for contributor conventions.

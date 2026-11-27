@@ -5,8 +5,8 @@ titleTemplate: false
 
 hero:
   name: Niki Agent
-  text: A terminal coding agent that stays quiet, starts fast, and runs on your machine
-  tagline: You say what you want; it reads your repository, edits files, runs commands, and shows you each step. It uses the model you already pay for, keeps its sessions on your own disk, and stops to ask before it changes anything.
+  text: A Rust terminal coding agent in one binary
+  tagline: You say what you want; it reads your repository, edits files, runs commands, and shows you each step. It uses the model you already pay for, keeps its sessions on your own disk, and asks before it runs a shell command.
   actions:
     - theme: brand
       text: Install
@@ -19,61 +19,80 @@ hero:
       link: /providers/
 
 features:
-  - title: A quiet interface
-    details: An idle session paints nothing, and a test asserts zero idle repaints. The composer is a single rule rather than a box, and a long transcript is mounted in a bounded window, so hour two of a session renders like minute one.
-  - title: A fast start
-    details: "niki --version is answered before the UI loads, and model setup is deferred until after the first frame, so the composer appears without waiting on a provider."
-  - title: Your files, your machine
-    details: Sessions, history, skills, and stored credentials live in ~/.niki. No account, no cloud sync, and no telemetry.
+  - title: One binary, no runtime
+    details: The turn loop, tool registry, approval policy, provider adapters, MCP client, hooks, skills, session store and terminal UI are Rust crates linked into one niki executable. There is no interpreter or package manager beside it.
   - title: Your model
-    details: Anthropic, OpenAI, and Google Gemini work immediately; eighteen more provider integrations are one /install away; any OpenAI-compatible endpoint is a configuration block.
+    details: Eleven providers have a built-in endpoint and key variable, including Anthropic, OpenAI, Google Gemini and Ollama. Any OpenAI-compatible gateway is a `[providers.<name>]` block in `config.toml`.
+  - title: Your files, your machine
+    details: Configuration, skills, hooks and the SQLite session store live under ~/.niki. NIKI_HOME moves the whole tree. No account, no cloud sync, and no telemetry.
   - title: A real approval gate
-    details: Manual, Auto, and YOLO modes, a shell allow-list, and sandbox backends for when you need a hard boundary.
-  - title: Accessible, not as an afterthought
-    details: Four themes with contrast measured by the test suite, reduced motion, an ASCII glyph set, a screen-reader mode, and snapshots checked at 40, 50, 80, 120, and 160 columns.
+    details: Manual, Auto and YOLO modes, a shell allow-list, and a workspace path boundary that refuses a path outside the root. Mutating MCP tools are gated too.
+  - title: Headless or editor-driven
+    details: niki -n runs one prompt, writes the answer to stdout and tool activity to stderr, and exits 0, 1, 2, 124 or 130. niki --acp serves the Agent Client Protocol on stdin/stdout so an editor can drive the same agent.
+  - title: Accessible by construction
+    details: Four palettes with WCAG contrast measured in the test suite, an ASCII glyph mode, and a reduced-motion setting.
 ---
 
 ## Install
 
-Linux and macOS:
+Linux x86_64 has a prebuilt release archive. Verify it against `SHA256SUMS`,
+then run the installer inside the archive or place the binary yourself:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash
+VERSION=2.0.0
+curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/niki-${VERSION}-linux-x86_64.tar.gz"
+curl -fLO "https://github.com/RavaniRoshan/niki-agent/releases/download/v${VERSION}/SHA256SUMS"
+grep "niki-${VERSION}-linux-x86_64.tar.gz" SHA256SUMS | sha256sum -c -
+tar -xzf "niki-${VERSION}-linux-x86_64.tar.gz"
+bash "niki-${VERSION}-linux-x86_64/install.sh"
 ```
 
-Windows (PowerShell):
+Windows has a `.zip` archive that has not been exercised on Windows, so treat it
+as untested. macOS builds from source:
 
-```powershell
-irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
+```bash
+cd niki-agent/rust
+cargo build --release -p niki --bin niki
 ```
 
-The installer creates an isolated environment under `~/.local/niki`
-(`%LOCALAPPDATA%\niki` on Windows), verifies the release checksum, and puts
-`niki` on your `PATH`. It does not edit your shell profile unless you ask with
-`NIKI_SHELL=1`.
+Then name a model in `~/.niki/config.toml` and export its key:
 
-No account and no API key are needed to look around: the first launch asks your
-name and leaves you at a working composer. Add a key when you want it to work:
+```toml
+[models]
+default = "anthropic:my-model"
+```
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 niki
 ```
 
-[Install in detail](/getting-started/install) · [Your first turn](/getting-started/first-turn) ·
+[Install in detail](/getting-started/install) ·
+[Your first turn](/getting-started/first-turn) ·
 [Every key binding](/keyboard) · [Provider setup](/providers/)
+
+## Honest gaps
+
+There is no sandbox and no classifier in this build: Auto asks like Manual, and
+built-in file writes run without an approval prompt. Run Niki in a container or
+under a dedicated user account when you need a hard boundary, and read
+[Permissions](/permissions) and [Security](/security) for the exact gate.
 
 ## Documentation
 
 | | |
 | --- | --- |
-| [Install](/getting-started/install) | Linux, macOS, Windows, and from source. |
-| [Your first turn](/getting-started/first-turn) | What the first launch asks, and how a turn looks. |
-| [Providers](/providers/) | The built-in three, eighteen more integrations one `/install` away, and any OpenAI-compatible endpoint. |
-| [Permissions and sandboxing](/permissions) | Manual, Auto, YOLO, the shell allow-list, and sandbox backends. |
-| [Keyboard reference](/keyboard) | Every binding, generated from the live registry. |
-| [Extensions and hooks](/extensions/) | Skills, plugins, lifecycle hooks, and Python extensions. |
-| [Architecture](/architecture) | How the agent, the UI, and the tools fit together. |
-| [Independence](/independence) | Package, state, and environment guarantees. |
-| [Security](/security) | Trust boundaries, reporting, and hardening. |
-| [Troubleshooting](/troubleshooting) | Where the logs are and what each symptom means. |
+| [Install](/getting-started/install) | Linux archive, Windows archive, and a macOS source build. |
+| [Your first turn](/getting-started/first-turn) | Flags, exit codes, keys, themes, and headless mode. |
+| [Providers](/providers/) | Eleven built-ins and any OpenAI-compatible endpoint. |
+| [Permissions](/permissions) | Manual, Auto, YOLO, the allow-list, MCP approval, and hooks. |
+| [Keyboard reference](/keyboard) | Every binding the app acts on, and the five that are not wired yet. |
+| [Extensions](/extensions/) | Skills, hooks, and MCP servers. |
+| [Architecture](/architecture) | The crates and the turn loop. |
+| [Independence](/independence) | Binary, state, and environment guarantees. |
+| [Security](/security) | Trust boundaries, known gaps, and hardening. |
+| [Troubleshooting](/troubleshooting) | What each failure message means. |
+
+The marketing site is at [niki-site.vercel.app](https://niki-site.vercel.app),
+and the repository is
+[github.com/RavaniRoshan/niki-agent](https://github.com/RavaniRoshan/niki-agent).

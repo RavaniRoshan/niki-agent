@@ -1,156 +1,123 @@
 # Providers
 
-Niki Agent talks to model providers through a small client integration per
-vendor. Anthropic, OpenAI, and Google Gemini are installed with the app; every
-other integration is an optional extra you enable when you need it.
+Niki Agent speaks two wire protocols: the OpenAI chat-completions API and the
+Anthropic messages API. Eleven providers have a built-in block — an endpoint and
+a key variable that ship with the binary — so naming one of them in
+`config.toml` is all an install needs. Any other endpoint that speaks one of the
+two protocols is a `[providers.<name>]` block.
 
-## Install an integration
+There is nothing to install and no Python package behind a provider: the client
+is compiled in.
 
-In an installed release, run `/install <extra>` inside a session:
+The configuration file is `$NIKI_HOME/config.toml` when `NIKI_HOME` is set,
+otherwise `~/.niki/config.toml`. `--config <PATH>` selects another file.
 
-```text
-/install ollama
-/install openrouter
-```
+## Built-in providers
 
-From a source checkout, extras are installed with uv instead:
+| Name | Key environment variable | Endpoint |
+| --- | --- | --- |
+| `anthropic` | `ANTHROPIC_API_KEY` | `https://api.anthropic.com` (Anthropic messages) |
+| `openai` | `OPENAI_API_KEY` | `https://api.openai.com/v1` |
+| `google_genai` | `GOOGLE_API_KEY` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `ollama` | none | `http://localhost:11434/v1` |
+| `openrouter` | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` |
+| `nvidia` | `NVIDIA_API_KEY` | `https://integrate.api.nvidia.com/v1` |
+| `groq` | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` |
+| `together` | `TOGETHER_API_KEY` | `https://api.together.xyz/v1` |
+| `deepseek` | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` |
+| `mistralai` | `MISTRAL_API_KEY` | `https://api.mistral.ai/v1` |
+| `xai` | `XAI_API_KEY` | `https://api.x.ai/v1` |
+
+Every provider except Anthropic uses the OpenAI-compatible protocol; Anthropic
+uses its own messages API. Google Gemini is reached through the OpenAI-compatible
+surface of the Gemini API, so it needs no separate client.
+
+An environment variable is the only place a key is read from. Export it in the
+shell that starts `niki`:
 
 ```bash
-cd libs/code
-uv sync --extra <name>          # one integration
-uv sync --all-extras            # providers and sandboxes
+export ANTHROPIC_API_KEY=sk-ant-...
+niki --model anthropic:my-model -n "summarize this repo"
 ```
 
-The three integrations above are installed with the app, so `/install` is not
-needed for them; their extra names are listed so a source checkout can enable
-the same integration with `uv sync --extra`. Every other row is an optional
-extra.
+Ollama needs no key: it is a local daemon, and the client treats it as keyless.
+Set `base_url` in a `[providers.ollama]` block to point at a server on another
+machine.
 
-| Provider | Extra | Key environment variable |
-| --- | --- | --- |
-| Anthropic | `anthropic` | `ANTHROPIC_API_KEY` |
-| OpenAI | `openai` | `OPENAI_API_KEY` |
-| Azure OpenAI | `openai` | `AZURE_OPENAI_API_KEY` |
-| Google Gemini | `google-genai` | `GOOGLE_API_KEY` |
-| Google Vertex AI | `vertex` | `GOOGLE_CLOUD_PROJECT` (Application Default Credentials) |
-| Amazon Bedrock | `bedrock` | AWS credentials |
-| Ollama | `ollama` | none; `OLLAMA_HOST` is optional |
-| OpenRouter | `openrouter` | `OPENROUTER_API_KEY` |
-| NVIDIA | `nvidia` | `NVIDIA_API_KEY` |
-| Groq | `groq` | `GROQ_API_KEY` |
-| Together AI | `together` | `TOGETHER_API_KEY` |
-| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` |
-| Mistral AI | `mistralai` | `MISTRAL_API_KEY` |
-| Cohere | `cohere` | `COHERE_API_KEY` |
-| xAI | `xai` | `XAI_API_KEY` |
-| Perplexity | `perplexity` | `PPLX_API_KEY` |
-| Fireworks | `fireworks` | `FIREWORKS_API_KEY` |
-| Hugging Face | `huggingface` | `HUGGINGFACEHUB_API_TOKEN` |
-| IBM watsonx | `ibm` | `WATSONX_APIKEY` |
-| Meta | `meta` | `MODEL_API_KEY` |
-| Baseten | `baseten` | `BASETEN_API_KEY` |
-| LiteLLM | `litellm` | `LITELLM_API_KEY` |
+## Choosing a model
 
-`/auth` in a session is the interactive path: it shows which providers are
-configured, stores a key when you paste one, and links to the provider's key
-page. A key you paste there is written to `~/.niki/.state/auth.json` (mode
-`0600`); an environment variable is never rewritten.
+`--model <provider:model>` selects one for a run; `/model` picks in the app.
+Without either, `[models].default` decides:
 
-Ollama needs no key. Niki looks for a local server at `http://localhost:11434`
-unless `OLLAMA_HOST` or `base_url` points somewhere else, and it discovers the
-models you have pulled.
+```toml
+[models]
+default = "groq:llama-3.3-70b-versatile"
+```
+
+The picker reads `[models].default` first, then every `provider:model` pair in a
+provider block's `models` array:
+
+```toml
+[providers.groq]
+models = ["llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct"]
+```
+
+A built-in provider has no model list of its own, so it runs from `--model` or
+the default but does not appear in the picker unless a block adds `models`.
 
 ## Any OpenAI-compatible endpoint
 
-A gateway that speaks the OpenAI chat-completions API is a configuration block,
-not a code change. Add it to `~/.niki/config.toml` and it appears in `/model`:
+A gateway that speaks the chat-completions API is a configuration block, not a
+code change. Add it to `~/.niki/config.toml` and it appears in `/model`:
 
 ```toml
-[models.providers.kimi]
+[providers.kimi]
 display_name = "Kimi"
-class_path = "langchain_openai:ChatOpenAI"
 base_url = "https://api.moonshot.ai/v1"
 api_key_env = "MOONSHOT_API_KEY"
 models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
 ```
 
-`class_path` is a Python class in `module.path:ClassName` form. Niki imports it
-and instantiates it, so it must be a chat-model class (a `BaseChatModel`
-subclass). The value is the literal string the field accepts — it names the
-installed client package that speaks the gateway's protocol, not a preference.
-`api_key_env` names the environment variable to read, never the key itself;
-`/auth` and the startup check use the same name.
-
-A gateway that serves more than one wire protocol needs one provider block per
-protocol, because `class_path` picks the protocol. Two more examples:
+A gateway that serves the Anthropic messages wire instead sets the protocol:
 
 ```toml
-[models.providers.kilo]
-display_name = "Kilo AI Gateway"
-class_path = "langchain_openrouter:ChatOpenRouter"
-base_url = "https://api.kilo.ai/api/gateway"
-api_key_env = "KILO_API_KEY"
-models = ["anthropic/claude-opus-4.7", "openai/gpt-5.4", "moonshotai/kimi-k2.5"]
-
-[models.providers.opencode_zen]
-display_name = "OpenCode Zen"
-class_path = "langchain_openai:ChatOpenAI"
-base_url = "https://opencode.ai/zen/v1"
-api_key_env = "OPENCODE_API_KEY"
-models = ["kimi-k3", "deepseek-v4-pro", "glm-5.3"]
+[providers.gateway]
+display_name = "Shared Gateway"
+protocol = "anthropic"
+base_url = "https://gateway.example/v1"
+api_key_env = "GATEWAY_API_KEY"
+models = ["anthropic-large", "anthropic-small"]
 ```
 
-The `opencode_zen` block reaches the OpenAI-shaped part of that catalog. Models
-served over the Anthropic messages wire would need a second entry using
-`langchain_anthropic:ChatAnthropic`.
+`protocol` takes `openai` or `anthropic`; `openai-compatible` and
+`openai_compatible` are also accepted. Without it, the protocol is inferred from
+the block and defaults to OpenAI-compatible, which is right for most gateways.
 
 ## The provider table
 
-Every key in `[models.providers.<name>]` is optional except the ones your
-gateway needs.
+Every key in `[providers.<name>]` is optional except the ones a gateway needs.
 
 | Key | Meaning |
 | --- | --- |
-| `display_name` | The label shown in `/model` and `/auth`. |
-| `short_name` | A shorter label for tight spaces; falls back to `display_name`. |
-| `enabled` | Set `false` to hide an installed provider and its models. |
+| `display_name` | The label shown in `/model`. |
 | `models` | The model IDs this provider offers. |
-| `class_path` | The chat-model class to instantiate, instead of the built-in provider path. |
 | `base_url` | The API endpoint. |
-| `base_url_env` | An environment variable that supplies the endpoint. |
-| `api_key_env` | The environment variable that holds the key. |
-| `api_key_url` | Where a user creates a key, linked from `/auth`. |
-| `params` | Extra constructor arguments, applied to every model. A model-keyed sub-table overrides one model. |
+| `api_key_env` | The environment variable that holds the key. Names the variable, never the key. |
+| `protocol` | `openai` or `anthropic`. Overrides the inferred protocol. |
+| `keyless` | `true` for an endpoint that checks no credential, such as a local daemon. |
 
-`class_path` imports code from your own configuration, so treat a config file
-from somewhere else the way you would treat a `pyproject.toml` build script.
+Unknown keys are ignored, so a file written for a later release still loads.
 
-## Local models
+## When a key is missing
 
-Ollama is the shortest route:
+A key is never written to disk by the client; it is read from the environment
+each run. Naming a provider whose key variable is unset fails before the request
+leaves the machine, with the variable to set:
 
-```bash
-ollama pull qwen3-coder
-uv sync --extra ollama
+```text
+niki: groq needs an API key: set GROQ_API_KEY
 ```
 
-Then pick the model in `/model`, or set the default in `~/.niki/config.toml`:
-
-```toml
-[models]
-default = "ollama:qwen3-coder"
-```
-
-For any other local server that exposes an OpenAI-compatible API, use the
-`class_path` block above with its host as `base_url`.
-
-## Troubleshooting
-
-- **A provider does not appear in `/model`** — its integration is not installed
-  (`/install <extra>`, or `uv sync --extra <name>` in a checkout), or it is
-  disabled with `enabled = false`.
-- **`401` or `403` from a gateway** — the environment variable named by
-  `api_key_env` is not set and `/auth` has no stored key for that provider, or
-  the endpoint expects a different wire protocol.
-- **A model ID is rejected** — add the exact ID your gateway serves to `models`.
-  The selector only offers IDs listed there.
+The exit status is 1. The picker does not check keys, so a provider with
+`models` still appears when its key is unset — starting a turn with it reports
+the same error.
