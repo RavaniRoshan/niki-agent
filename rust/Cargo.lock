@@ -853,6 +853,7 @@ dependencies = [
  "niki-render",
  "niki-session",
  "niki-skills",
+ "niki-subagents",
  "niki-tools",
  "niki-tui",
  "niki-tui-live",
@@ -1001,6 +1002,19 @@ version = "2.0.0"
 dependencies = [
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "niki-subagents"
+version = "2.0.0"
+dependencies = [
+ "futures-util",
+ "niki-agent",
+ "niki-provider",
+ "niki-tools",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

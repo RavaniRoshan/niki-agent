@@ -1,0 +1,19 @@
+[package]
+name = "niki-subagents"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "The task tool: delegate one self-contained job to a child agent"
+
+[dependencies]
+niki-agent = { path = "../niki-agent" }
+niki-tools = { path = "../niki-tools" }
+serde_json.workspace = true
+
+[dev-dependencies]
+futures-util.workspace = true
+niki-provider = { path = "../niki-provider" }
+tempfile.workspace = true
+tokio.workspace = true
