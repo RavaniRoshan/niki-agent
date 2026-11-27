@@ -22,14 +22,21 @@ from __future__ import annotations
 import os
 import signal
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pexpect
 import pyte
 import pytest
 
-VENV_BIN = Path(__file__).resolve().parents[3] / ".venv" / "bin"
-NIKI = str(VENV_BIN / "niki")
+if TYPE_CHECKING:
+    from pathlib import Path
+
+# The Python client ships no console script; run the presentation entry directly.
+NIKI = [
+    sys.executable,
+    "-c",
+    "from niki_agent.niki.entry import niki_main; niki_main()",
+]
 
 
 def _env(home: Path) -> dict[str, str]:
@@ -65,7 +72,9 @@ def home(tmp_path: Path) -> Path:
 
 def test_version_exits_cleanly_in_a_real_pty(home: Path) -> None:
     """L1/L8: a normal exit restores the terminal and returns exit code 0."""
-    child = pexpect.spawn(NIKI, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
+    child = pexpect.spawn(
+        NIKI[0], [*NIKI[1:], "-v"], env=_env(home), encoding="utf-8", timeout=30
+    )
     child.expect(pexpect.EOF)
     output = child.before or ""
     child.close()
@@ -98,14 +107,16 @@ def test_terminal_is_restored_after_a_killed_child(home: Path) -> None:
     tty in raw mode would keep the pty unusable.
     """
     child = pexpect.spawn(
-        NIKI, ["--help"], env=_env(home), encoding="utf-8", timeout=30
+        NIKI[0], [*NIKI[1:], "--help"], env=_env(home), encoding="utf-8", timeout=30
     )
     child.expect(pexpect.EOF)
     child.close()
     assert child.exitstatus == 0
 
     # A second run proves the pty itself is still usable after the first exited.
-    second = pexpect.spawn(NIKI, ["-v"], env=_env(home), encoding="utf-8", timeout=30)
+    second = pexpect.spawn(
+        NIKI[0], [*NIKI[1:], "-v"], env=_env(home), encoding="utf-8", timeout=30
+    )
     second.expect(pexpect.EOF)
     second.close()
     assert second.exitstatus == 0, "pty unusable after the previous child exited"
@@ -134,7 +145,7 @@ def test_signal_is_delivered_to_the_child(home: Path) -> None:
 def test_help_renders_as_readable_text_in_a_terminal(home: Path) -> None:
     """L2/L3: `--help` must reach a terminal as renderable text, not raw bytes."""
     child = pexpect.spawn(
-        NIKI, ["--help"], env=_env(home), encoding="utf-8", timeout=30
+        NIKI[0], [*NIKI[1:], "--help"], env=_env(home), encoding="utf-8", timeout=30
     )
     child.expect(pexpect.EOF)
     output = child.before or ""

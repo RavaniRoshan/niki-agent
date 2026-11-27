@@ -88,14 +88,15 @@ def test_niki_source_does_not_spell_upstream_names(name: str) -> None:
     )
 
 
-def test_niki_is_the_only_console_script() -> None:
-    """`niki` is the product's only entry point; the old aliases are gone."""
+def test_the_python_client_installs_no_console_script() -> None:
+    """The Rust binary is the product; `pip install` must not put `niki` on PATH."""
     import tomllib
 
     pyproject = PACKAGE_ROOT / "pyproject.toml"
-    scripts = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["scripts"]
+    project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
 
-    assert scripts == {"niki": "niki_agent.niki.entry:niki_main"}
+    assert "scripts" not in project
+    assert "gui-scripts" not in project
 
 
 @pytest.mark.parametrize(

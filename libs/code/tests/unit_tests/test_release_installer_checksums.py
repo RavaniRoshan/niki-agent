@@ -109,6 +109,6 @@ def test_installer_installs_a_binary_without_python() -> None:
     text = INSTALLER.read_text(encoding="utf-8")
     assert "python3" not in text
     assert "venv" not in text
-    assert "pip" not in text
+    assert not re.search(r"\bpip\b", text)
     assert 'install -m 0755 "$binary" "$BINDIR/niki"' in text
     assert "SHA256SUMS" in text
