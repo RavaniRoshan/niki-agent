@@ -2,13 +2,13 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.1.2 adds the three-answer approval prompt, `niki doctor`, native macOS
-archives for Apple silicon and Intel, and memory bounds on the tools that read
-or capture output. The shipped product is still a single self-contained
-executable: there is no Python interpreter to install, no virtual environment to
-create, and no packages to resolve on first run. Linux and WSL share one
-archive, Windows has its own, and macOS has one for Apple silicon and one for
-Intel.
+2.1.2 adds the three-answer approval prompt, `niki doctor`, `/status`, session
+listing from the shell, native macOS archives for Apple silicon and Intel, and
+memory bounds on the tools that read or capture output. The shipped product is
+still a single self-contained executable: there is no Python interpreter to
+install, no virtual environment to create, and no packages to resolve on first
+run. Linux and WSL share one archive, Windows has its own, and macOS has one for
+Apple silicon and one for Intel.
 
 ## Install
 
@@ -68,6 +68,19 @@ quarantine attribute, while a browser download may need the Gatekeeper prompt or
 each stream keeps its first 64 KiB and the header says the output was truncated.
 `grep` skips files above 32 MiB and `edit_file` refuses them with the size and
 the limit named, instead of loading a database or a core dump into memory.
+
+**`/status` answers where you are.** One read-only card, opened from the
+composer, shows the model and its provider, the approval mode, the session and
+whether it has been written yet, the workspace, the context the next request
+would carry, how many skills and MCP tools are loaded, and the client version.
+`Esc` or `q` closes it; it adds no transcript row.
+
+**The saved sessions are readable from the shell.** `niki sessions list` prints
+one line per session — id, stored time, title and message count, newest first —
+and `niki sessions list --json` gives the same rows as an array of `id`,
+`updated_at`, `title`, `messages` and `workspace`. `--root <dir>` narrows the
+list to one workspace. An empty or missing store prints `no saved sessions` and
+exits 0.
 
 ## What changed in 2.1.1
 

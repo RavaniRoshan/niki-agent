@@ -4,10 +4,10 @@
 
 *A terminal coding agent that stays quiet, starts fast, and runs on your machine.*
 
-<sub>Current release: <a href="https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.1">v2.1.1</a> · <a href="https://niki-docs.vercel.app">Documentation</a> · <a href="https://niki-site.vercel.app">Website</a></sub>
+<sub>Current release: <a href="https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.2">v2.1.2</a> · <a href="https://niki-docs.vercel.app">Documentation</a> · <a href="https://niki-site.vercel.app">Website</a></sub>
 
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
-[![Release](https://img.shields.io/badge/release-v2.1.1-blue?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![Release](https://img.shields.io/badge/release-v2.1.2-blue?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
 [Install](#install) · [First five minutes](#first-five-minutes) · [Approval modes](#approval-modes) ·
