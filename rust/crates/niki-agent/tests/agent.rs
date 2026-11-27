@@ -187,8 +187,28 @@ async fn manual_mode_refuses_a_shell_command_nobody_approved() {
 async fn an_allow_listed_command_runs_in_manual_mode() {
     let dir = tempfile::tempdir().expect("tempdir");
     let provider = Scripted::new(vec![
-        tool_turn("call-1", "shell", r#"{"command":"echo hi > ran.txt"}"#),
+        tool_turn("call-1", "shell", r#"{"command":"touch ran.txt"}"#),
         text_turn("done"),
+    ]);
+    let mut agent =
+        agent(provider, dir.path(), config()).with_policy(Mode::Manual, AllowList::parse("touch*"));
+
+    let outcome = agent.run("run it", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    assert!(dir.path().join("ran.txt").exists());
+}
+
+#[tokio::test]
+async fn a_chained_command_is_not_covered_by_a_prefix_entry() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "shell",
+            r#"{"command":"echo one; touch injected.txt"}"#,
+        ),
+        text_turn("understood"),
     ]);
     let mut agent =
         agent(provider, dir.path(), config()).with_policy(Mode::Manual, AllowList::parse("echo*"));
@@ -196,10 +216,12 @@ async fn an_allow_listed_command_runs_in_manual_mode() {
     let outcome = agent.run("run it", &mut |_| {}).await.expect("run");
 
     assert_eq!(outcome.tool_calls, 1);
-    assert_eq!(
-        std::fs::read_to_string(dir.path().join("ran.txt")).expect("file"),
-        "hi\n"
+    assert!(
+        !dir.path().join("injected.txt").exists(),
+        "the chained command must not run without approval"
     );
+    let refusal = agent.messages()[2].content.clone();
+    assert!(refusal.contains("refused"), "{refusal}");
 }
 
 #[tokio::test]

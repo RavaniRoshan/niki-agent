@@ -49,9 +49,11 @@ impl Mode {
 /// Patterns a shell command must match to run unchallenged.
 ///
 /// Parsed from comma- or newline-separated entries. An entry ending in `*` is a
-/// prefix match on the whole command; any other entry matches the command
-/// exactly. The entry `all` (any case) disables the check. An empty list
-/// permits nothing, so every gated command is asked about.
+/// prefix match on one whole command: the prefix must end at a word boundary,
+/// and the command may contain no unquoted operator that chains, redirects, or
+/// substitutes another command. Any other entry matches the command exactly.
+/// The entry `all` (any case) disables the check. An empty list permits
+/// nothing, so every gated command is asked about.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AllowList {
     all: bool,
@@ -89,9 +91,19 @@ impl AllowList {
             return false;
         }
         self.patterns.iter().any(|pattern| {
-            pattern
-                .strip_suffix('*')
-                .map_or_else(|| command == pattern, |prefix| command.starts_with(prefix))
+            pattern.strip_suffix('*').map_or_else(
+                || command == pattern,
+                |prefix| {
+                    let Some(rest) = command.strip_prefix(prefix) else {
+                        return false;
+                    };
+                    let word_boundary = prefix.is_empty()
+                        || prefix.ends_with(|character: char| character.is_whitespace())
+                        || rest.is_empty()
+                        || rest.starts_with(|character: char| character.is_whitespace());
+                    word_boundary && is_single_command(command)
+                },
+            )
         })
     }
 
@@ -122,6 +134,53 @@ impl From<&str> for AllowList {
     fn from(spec: &str) -> Self {
         Self::parse(spec)
     }
+}
+
+/// Whether `command` is one simple shell command.
+///
+/// Quoting is respected, so a semicolon inside quotes is an argument. An
+/// unquoted `;`, `|`, `&`, `(`, `)`, `<`, `>`, carriage return, newline,
+/// backtick, or `$(` is an operator that can chain, redirect, or substitute
+/// another command, and a prefix entry must not cover it.
+fn is_single_command(command: &str) -> bool {
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum Quote {
+        None,
+        Single,
+        Double,
+    }
+
+    let mut quote = Quote::None;
+    let mut characters = command.chars().peekable();
+    while let Some(character) = characters.next() {
+        match quote {
+            Quote::Single => {
+                if character == '\'' {
+                    quote = Quote::None;
+                }
+            }
+            Quote::Double => match character {
+                '"' => quote = Quote::None,
+                '\\' => {
+                    characters.next();
+                }
+                '`' => return false,
+                '$' if characters.peek() == Some(&'(') => return false,
+                _ => {}
+            },
+            Quote::None => match character {
+                '\'' => quote = Quote::Single,
+                '"' => quote = Quote::Double,
+                '\\' => {
+                    characters.next();
+                }
+                ';' | '|' | '&' | '(' | ')' | '<' | '>' | '\n' | '\r' | '`' => return false,
+                '$' if characters.peek() == Some(&'(') => return false,
+                _ => {}
+            },
+        }
+    }
+    true
 }
 
 /// What the policy says about one gated command.
@@ -354,6 +413,50 @@ mod tests {
         let star = AllowList::parse("*");
         assert!(star.permits("anything at all"));
         assert!(!star.permits(""));
+    }
+
+    #[test]
+    fn a_prefix_entry_does_not_permit_a_chained_command() {
+        let allow = AllowList::parse("git*");
+        assert!(allow.permits("git status"), "a plain command is covered");
+        assert!(
+            allow.permits("git commit -m \"a; b\""),
+            "a quoted semicolon is an argument, not a separator"
+        );
+        for command in [
+            "git status; rm -rf ~",
+            "git status && rm -rf ~",
+            "git status || rm -rf ~",
+            "git status | sh",
+            "git status\nrm -rf ~",
+            "git status & rm -rf ~",
+            "git $(rm -rf ~)",
+            "git `rm -rf ~`",
+            "git status > ~/.bashrc",
+            "git status < /etc/shadow",
+            "git status $(id)",
+        ] {
+            assert!(!allow.permits(command), "{command:?} must not be covered");
+        }
+    }
+
+    #[test]
+    fn a_prefix_entry_matches_a_word_boundary_not_a_longer_name() {
+        let allow = AllowList::parse("git*");
+        assert!(allow.permits("git"));
+        assert!(allow.permits("git status"));
+        assert!(!allow.permits("gitty"));
+        assert!(!allow.permits("github-cli status"));
+    }
+
+    #[test]
+    fn an_exact_entry_still_permits_the_command_the_user_listed() {
+        let allow = AllowList::parse("ls; pwd");
+        assert!(
+            allow.permits("ls; pwd"),
+            "an exact entry is the user's choice"
+        );
+        assert!(!allow.permits("ls; rm -rf ~"));
     }
 
     #[test]

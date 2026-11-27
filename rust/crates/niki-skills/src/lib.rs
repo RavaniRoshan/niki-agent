@@ -106,11 +106,18 @@ impl SkillCatalog {
     #[must_use]
     pub fn discover(workspace_root: &Path, user_skills: &Path) -> Self {
         let mut catalog = Self::default();
+        // A project skill comes from the repository, so it must not follow a
+        // symlink out of the workspace: a hostile checkout could otherwise make
+        // discovery read any file the person can read, or a device that never
+        // ends. The user's own skills directory may be a link into a shared
+        // profile, so it is deliberately not bounded.
+        let boundary = workspace_root.canonicalize().ok();
         catalog.load_dir(
             &workspace_root.join(".niki").join("skills"),
             Origin::Project,
+            boundary.as_deref(),
         );
-        catalog.load_dir(user_skills, Origin::User);
+        catalog.load_dir(user_skills, Origin::User, None);
         catalog.load_built_ins();
         catalog
     }
@@ -200,7 +207,28 @@ impl SkillCatalog {
     }
 
     /// Load every skill directory under `directory`.
-    fn load_dir(&mut self, directory: &Path, origin: Origin) {
+    ///
+    /// When `boundary` is set, the directory and every skill file must resolve
+    /// inside it; a symlink that leaves it is skipped with a warning.
+    fn load_dir(&mut self, directory: &Path, origin: Origin, boundary: Option<&Path>) {
+        if let Some(boundary) = boundary {
+            match directory.canonicalize() {
+                Ok(resolved) if resolved.starts_with(boundary) => {}
+                Ok(_) => {
+                    self.warn(
+                        directory,
+                        "the skills directory resolves outside the workspace",
+                    );
+                    return;
+                }
+                Err(error) if error.kind() == io::ErrorKind::NotFound => return,
+                Err(error) => {
+                    self.warn(directory, format!("cannot resolve: {error}"));
+                    return;
+                }
+            }
+        }
+
         let entries = match std::fs::read_dir(directory) {
             Ok(entries) => entries,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return,
@@ -215,9 +243,26 @@ impl SkillCatalog {
             match entry {
                 Ok(entry) => {
                     let path = entry.path();
-                    // Follow a symlink: a shared skills directory is linked into
-                    // the profile rather than copied there.
+                    // Follow a symlink only when the target is inside the
+                    // boundary: a shared skills directory is linked into the
+                    // profile rather than copied there.
                     if path.is_dir() {
+                        if let Some(boundary) = boundary {
+                            match path.canonicalize() {
+                                Ok(resolved) if resolved.starts_with(boundary) => {}
+                                Ok(_) => {
+                                    self.warn(
+                                        &path,
+                                        "the skill directory resolves outside the workspace",
+                                    );
+                                    continue;
+                                }
+                                Err(error) => {
+                                    self.warn(&path, format!("cannot resolve: {error}"));
+                                    continue;
+                                }
+                            }
+                        }
                         directories.push(path);
                     }
                 }
@@ -228,13 +273,27 @@ impl SkillCatalog {
         }
         directories.sort();
         for directory in directories {
-            self.load_skill(&directory, origin);
+            self.load_skill(&directory, origin, boundary);
         }
     }
 
     /// Load one skill directory, skipping it with a warning when it is broken.
-    fn load_skill(&mut self, directory: &Path, origin: Origin) {
+    fn load_skill(&mut self, directory: &Path, origin: Origin, boundary: Option<&Path>) {
         let file = directory.join(SKILL_FILE);
+        if let Some(boundary) = boundary {
+            match file.canonicalize() {
+                Ok(resolved) if resolved.starts_with(boundary) => {}
+                Ok(_) => {
+                    self.warn(&file, "the skill file resolves outside the workspace");
+                    return;
+                }
+                Err(error) if error.kind() == io::ErrorKind::NotFound => return,
+                Err(error) => {
+                    self.warn(&file, format!("cannot resolve: {error}"));
+                    return;
+                }
+            }
+        }
         let text = match std::fs::read_to_string(&file) {
             Ok(text) => text,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return,
@@ -689,6 +748,77 @@ mod tests {
             names,
             ["alpha", "zulu", "user-one", "commit", "review"],
             "sources are grouped, each alphabetical"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_project_skill_symlinked_out_of_the_workspace_is_not_read() {
+        use std::os::unix::fs::symlink;
+
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let outside = tempfile::tempdir().expect("outside");
+        std::fs::write(
+            outside.path().join("SKILL.md"),
+            described("leaked", "a secret from outside the workspace"),
+        )
+        .expect("outside skill");
+
+        let skills = project.path().join(".niki/skills");
+        std::fs::create_dir_all(&skills).expect("skills");
+        symlink(outside.path(), skills.join("directory-link")).expect("directory symlink");
+        let file_dir = skills.join("file-link");
+        std::fs::create_dir_all(&file_dir).expect("file link directory");
+        symlink(outside.path().join("SKILL.md"), file_dir.join(SKILL_FILE)).expect("file symlink");
+
+        let catalog = discovered(project.path(), user.path());
+        assert!(
+            catalog.list().iter().all(|skill| skill.name() != "leaked"),
+            "{:?}",
+            catalog.list().iter().map(Skill::name).collect::<Vec<_>>()
+        );
+        assert!(
+            catalog
+                .warnings()
+                .iter()
+                .any(|warning| warning.path.ends_with("directory-link")),
+            "{:?}",
+            catalog.warnings()
+        );
+        assert!(
+            catalog
+                .warnings()
+                .iter()
+                .any(|warning| warning.path.ends_with("file-link/SKILL.md")),
+            "{:?}",
+            catalog.warnings()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_project_skill_symlinked_inside_the_workspace_is_still_read() {
+        use std::os::unix::fs::symlink;
+
+        let project = tempfile::tempdir().expect("project");
+        let user = tempfile::tempdir().expect("user");
+        let target = project.path().join("shared/team");
+        write_skill(
+            project.path(),
+            "shared/team",
+            &described("deploy", "a shared project skill"),
+        );
+
+        let skills = project.path().join(".niki/skills");
+        std::fs::create_dir_all(&skills).expect("skills");
+        symlink(&target, skills.join("deploy")).expect("symlink");
+
+        let catalog = discovered(project.path(), user.path());
+        assert!(
+            catalog.list().iter().any(|skill| skill.name() == "deploy"),
+            "{:?}",
+            catalog.warnings()
         );
     }
 }
