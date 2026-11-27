@@ -156,6 +156,18 @@ fn pump(app: &mut App, worker: &WorkerHandle) -> Vec<AgentEvent> {
                 app.finish(result.map_err(|message| message.to_string()));
                 return seen;
             }
+            Some(WorkerEvent::Context {
+                report,
+                usage,
+                announce,
+            }) => {
+                if announce {
+                    app.show_context(report, usage);
+                } else {
+                    app.set_context(report, usage);
+                }
+            }
+            Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             Some(WorkerEvent::Approval { .. }) => panic!("this worker installs no approver"),
             None => panic!("the worker went quiet before the turn finished"),
         }
@@ -196,12 +208,123 @@ fn a_prompt_runs_on_the_worker_and_reaches_the_screen() {
     assert_eq!(rows[0].text, "say hello");
     assert_eq!(rows[1].text, "hello from the worker");
     assert_eq!(app.status.tokens.input_tokens, 12);
-    assert_eq!(app.status.token_label().as_deref(), Some("12 in / 5 out"));
+    assert_eq!(app.status.total_label().as_deref(), Some("17 tok"));
     assert_eq!(app.status.turn, TurnState::Idle);
     assert!(
         turns.lock().expect("lock").is_empty(),
         "one turn per prompt"
     );
+}
+
+#[test]
+fn compact_summarises_older_turns_through_the_agent() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        text_turn("first answer"),
+        text_turn("second answer"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let summary = Arc::new(Mutex::new(VecDeque::from(vec![text_turn("a summary")])));
+    let compact_turns = Arc::clone(&summary);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn_with_provider(
+        "mock:mock-model",
+        Mode::Manual,
+        move |parts| {
+            Ok(Agent::new(
+                Box::new(Scripted {
+                    turns: Arc::clone(&build_turns),
+                }),
+                ctx.clone(),
+                AgentConfig {
+                    model: "mock-model".to_owned(),
+                    ..AgentConfig::default()
+                },
+            )
+            .with_policy(parts.mode, AllowList::parse(""))
+            .with_cancel(parts.cancel))
+        },
+        move |_spec| {
+            Ok(Box::new(Scripted {
+                turns: Arc::clone(&compact_turns),
+            }) as Box<dyn Provider>)
+        },
+    );
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "first");
+    pump(&mut app, &worker);
+    send(&mut app, &mut worker, "second");
+    pump(&mut app, &worker);
+
+    assert!(worker.compact(1));
+    loop {
+        match worker
+            .recv_timeout(Duration::from_secs(10))
+            .expect("a compaction result")
+        {
+            WorkerEvent::Compacted { result, fallback } => {
+                assert!(!fallback, "the provider answered the summary");
+                let compaction = result.expect("the compaction");
+                assert_eq!(compaction.replaced, 2, "the two older messages");
+                assert!(compaction.summary_tokens > 0, "{compaction:?}");
+                break;
+            }
+            WorkerEvent::Context { report, .. } => {
+                assert_eq!(report.messages, 3, "summary plus the kept turn");
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn compact_without_a_provider_falls_back_and_says_so() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let turns = Arc::new(Mutex::new(VecDeque::from(vec![
+        text_turn("first answer"),
+        text_turn("second answer"),
+    ])));
+    let build_turns = Arc::clone(&turns);
+    let ctx = ToolContext::new(workspace.path()).expect("workspace");
+
+    let mut worker = WorkerHandle::spawn("mock:mock-model", move |parts| {
+        Ok(Agent::new(
+            Box::new(Scripted {
+                turns: Arc::clone(&build_turns),
+            }),
+            ctx.clone(),
+            AgentConfig {
+                model: "mock-model".to_owned(),
+                ..AgentConfig::default()
+            },
+        )
+        .with_policy(parts.mode, AllowList::parse(""))
+        .with_cancel(parts.cancel))
+    });
+    let mut app = app(workspace.path());
+
+    send(&mut app, &mut worker, "first");
+    pump(&mut app, &worker);
+    send(&mut app, &mut worker, "second");
+    pump(&mut app, &worker);
+
+    assert!(worker.compact(1));
+    loop {
+        match worker
+            .recv_timeout(Duration::from_secs(10))
+            .expect("a compaction result")
+        {
+            WorkerEvent::Compacted { result, fallback } => {
+                assert!(fallback, "there was no provider to summarise with");
+                assert_eq!(result.expect("the fallback compaction").replaced, 2);
+                break;
+            }
+            WorkerEvent::Context { .. } => {}
+            other => panic!("unexpected {other:?}"),
+        }
+    }
 }
 
 #[test]
@@ -313,6 +436,18 @@ fn cancelling_keeps_the_text_the_turn_already_wrote() {
                 app.finish(Ok(outcome));
                 break;
             }
+            WorkerEvent::Context {
+                report,
+                usage,
+                announce,
+            } => {
+                if announce {
+                    app.show_context(report, usage);
+                } else {
+                    app.set_context(report, usage);
+                }
+            }
+            WorkerEvent::Compacted { result, fallback } => app.compacted(result, fallback),
             WorkerEvent::Approval { .. } => panic!("this worker installs no approver"),
         }
     }
@@ -374,6 +509,18 @@ fn pump_answering(app: &mut App, worker: &WorkerHandle, keys: &[KeyCode]) -> Vec
                 app.finish(result.map_err(|message| message.to_string()));
                 return seen;
             }
+            Some(WorkerEvent::Context {
+                report,
+                usage,
+                announce,
+            }) => {
+                if announce {
+                    app.show_context(report, usage);
+                } else {
+                    app.set_context(report, usage);
+                }
+            }
+            Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             None => panic!("the worker went quiet before the turn finished"),
         }
     }

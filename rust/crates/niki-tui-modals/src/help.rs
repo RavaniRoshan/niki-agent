@@ -197,8 +197,14 @@ mod tests {
             .find(|(name, _)| *name == "/compact")
             .map(|(_, summary)| *summary)
             .expect("/compact is listed");
-        assert!(compact.contains("view"), "{compact}");
-        assert!(compact.contains("session store"), "{compact}");
+        assert!(compact.contains("conversation"), "{compact}");
+        assert!(compact.contains("context window"), "{compact}");
+        assert!(
+            entries
+                .iter()
+                .any(|(name, summary)| *name == "/context" && summary.contains("token")),
+            "{entries:?}"
+        );
     }
 
     #[test]

@@ -8,7 +8,10 @@
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use niki_agent::{AgentEvent, Approval, ApprovalRequest, RunOutcome, StopReason, Usage};
+use niki_agent::{
+    AgentEvent, Approval, ApprovalRequest, Compaction, ContextReport, RunOutcome, SessionUsage,
+    StopReason, Usage,
+};
 use niki_commands::SlashCommand;
 use niki_policy::Mode;
 use niki_render::Glyphs;
@@ -21,7 +24,7 @@ use crate::completion::Completion;
 use crate::composer::Composer;
 use crate::history::History;
 use crate::scroll::Scroll;
-use crate::status::{Status, TurnState};
+use crate::status::{Status, TurnState, describe_context};
 use crate::transcript::{Row, RowKind, Transcript};
 
 /// Spinner frames for a terminal that draws Unicode.
@@ -63,6 +66,10 @@ pub enum Command {
     Answer(Approval),
     /// The person chose a model spec.
     SelectModel(String),
+    /// Compact the agent's history through its provider.
+    Compact,
+    /// Ask the agent for its context report.
+    Context,
     /// Put this text on the terminal clipboard.
     Copy(String),
 }
@@ -716,8 +723,18 @@ impl App {
                 None
             }
             SlashCommand::Compact => {
-                self.compact();
-                None
+                if self.refuse_while_busy("/compact") {
+                    return None;
+                }
+                self.status.turn = TurnState::Working;
+                Some(Command::Compact)
+            }
+            SlashCommand::Context => {
+                if self.refuse_while_busy("/context") {
+                    return None;
+                }
+                self.status.turn = TurnState::Working;
+                Some(Command::Context)
             }
             SlashCommand::Resume(target) => {
                 self.resume(target.as_deref());
@@ -746,24 +763,39 @@ impl App {
         self.transcript.push_notice("started a fresh session");
     }
 
-    /// `/compact`: fold older rows out of the view, leaving the store alone.
+    /// Fold the view after the agent reported a real compaction.
     ///
-    /// This build has no summarising model, so compaction is a view-level fold:
-    /// the session store still holds every message and `/resume` brings the
-    /// whole transcript back.
-    fn compact(&mut self) {
-        if self.refuse_while_busy("/compact") {
-            return;
+    /// The view changes only when the agent replaced something. A provider
+    /// failure leaves every row in place and prints an error line.
+    pub fn compacted(&mut self, result: Result<Compaction, String>, fallback: bool) {
+        self.status.turn = TurnState::Idle;
+        match result {
+            Ok(compaction) if compaction.replaced > 0 => {
+                let dropped = self.transcript.fold(COMPACT_KEEP_ROWS);
+                self.scroll.reset();
+                let model = if fallback { " without a model" } else { "" };
+                self.transcript.push_notice(format!(
+                    "compacted {} messages{} into a {} token summary; folded {} earlier rows out of the view",
+                    compaction.replaced, model, compaction.summary_tokens, dropped
+                ));
+            }
+            Ok(_) => self.transcript.push_notice("nothing to compact"),
+            Err(error) => self
+                .transcript
+                .push_error(format!("compaction failed: {error}")),
         }
-        let dropped = self.transcript.fold(COMPACT_KEEP_ROWS);
-        if dropped == 0 {
-            self.transcript.push_notice("nothing to compact");
-            return;
-        }
-        self.scroll.reset();
-        self.transcript.push_notice(format!(
-            "folded {dropped} earlier rows out of the view; the session store keeps them"
-        ));
+    }
+
+    /// Remember the agent's context report without printing it.
+    pub fn set_context(&mut self, report: ContextReport, usage: SessionUsage) {
+        self.status.set_context(report, usage);
+    }
+
+    /// Print the report `/context` asked for and remember it.
+    pub fn show_context(&mut self, report: ContextReport, usage: SessionUsage) {
+        self.status.set_context(report, usage);
+        self.status.turn = TurnState::Idle;
+        self.transcript.push_notice(describe_context(report, usage));
     }
 
     /// `/resume`: list saved sessions, or rebuild one into the view.
@@ -1216,7 +1248,7 @@ mod tests {
         }));
         assert_eq!(app.status.tokens.input_tokens, 15);
         assert_eq!(app.status.tokens.output_tokens, 6);
-        assert!(app.status_line().contains("15 in / 6 out"));
+        assert!(app.status_line().contains("21 tok"));
 
         app.apply(AgentEvent::StepLimit { steps: 40 });
         let last = app.transcript.rows().last().expect("a notice");
@@ -1578,7 +1610,7 @@ mod tests {
     }
 
     #[test]
-    fn compact_folds_older_rows_and_leaves_the_store_alone() {
+    fn compact_folds_older_rows_after_the_agent_reports_a_compaction() {
         let temp = tempfile::tempdir().expect("tempdir");
         let mut app = app();
         app.attach_sessions(store(&temp));
@@ -1594,20 +1626,21 @@ mod tests {
             app.transcript.push_user(format!("row {index}"));
         }
 
-        type_text(&mut app, "/compact");
-        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        app.compacted(
+            Ok(Compaction {
+                replaced: 8,
+                summary_tokens: 42,
+            }),
+            false,
+        );
 
         let rows = app.transcript.rows();
         assert_eq!(rows.len(), COMPACT_KEEP_ROWS + 1, "kept rows and a notice");
         assert_eq!(rows[0].text, "row 8", "the oldest rows left the view");
         let last = rows.last().expect("notice");
         assert_eq!(last.kind, RowKind::Notice);
-        assert!(last.text.contains("folded 8 earlier rows"), "{}", last.text);
-        assert!(
-            last.text.contains("session store"),
-            "the notice says the store still has them: {}",
-            last.text
-        );
+        assert!(last.text.contains("compacted 8 messages"), "{}", last.text);
+        assert!(last.text.contains("42 token summary"), "{}", last.text);
         assert_eq!(
             app.sessions
                 .as_ref()
@@ -1621,15 +1654,105 @@ mod tests {
     }
 
     #[test]
-    fn compact_on_a_short_view_says_there_is_nothing_to_do() {
+    fn a_compaction_that_replaced_nothing_leaves_the_view_untouched() {
         let mut app = app();
-        app.transcript.push_user("one row");
-        type_text(&mut app, "/compact");
-        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        for index in 0..(COMPACT_KEEP_ROWS + 8) {
+            app.transcript.push_user(format!("row {index}"));
+        }
+        let before: Vec<String> = app
+            .transcript
+            .rows()
+            .iter()
+            .map(|row| row.text.clone())
+            .collect();
+
+        app.compacted(Ok(Compaction::default()), false);
+
+        let after: Vec<String> = app
+            .transcript
+            .rows()
+            .iter()
+            .map(|row| row.text.clone())
+            .collect();
+        assert_eq!(after[..before.len()], before[..], "no row moved");
         let last = app.transcript.rows().last().expect("notice");
         assert_eq!(last.kind, RowKind::Notice);
         assert!(last.text.contains("nothing to compact"), "{}", last.text);
-        assert_eq!(app.transcript.rows().len(), 2);
+    }
+
+    #[test]
+    fn a_provider_error_keeps_the_view_and_shows_the_error() {
+        let mut app = app();
+        for index in 0..(COMPACT_KEEP_ROWS + 8) {
+            app.transcript.push_user(format!("row {index}"));
+        }
+        let before = app.transcript.rows().len();
+
+        app.compacted(Err("provider scripted failed: 503".to_owned()), false);
+
+        assert_eq!(app.transcript.rows().len(), before + 1);
+        let last = app.transcript.rows().last().expect("error");
+        assert_eq!(last.kind, RowKind::Error);
+        assert!(last.text.contains("503"), "{}", last.text);
+    }
+
+    #[test]
+    fn a_fallback_compaction_says_it_had_no_model() {
+        let mut app = app();
+        for index in 0..(COMPACT_KEEP_ROWS + 2) {
+            app.transcript.push_user(format!("row {index}"));
+        }
+        app.compacted(
+            Ok(Compaction {
+                replaced: 4,
+                summary_tokens: 9,
+            }),
+            true,
+        );
+        let last = app.transcript.rows().last().expect("notice");
+        assert!(
+            last.text.contains("compacted 4 messages without a model"),
+            "{}",
+            last.text
+        );
+        assert!(last.text.contains("9 token summary"), "{}", last.text);
+    }
+
+    #[test]
+    fn the_context_command_asks_for_a_report_and_prints_it() {
+        let mut app = app();
+        type_text(&mut app, "/context");
+        assert_eq!(press(&mut app, KeyCode::Enter), Some(Command::Context));
+        assert_eq!(app.status.turn, TurnState::Working);
+
+        app.show_context(
+            ContextReport {
+                messages: 3,
+                estimated_tokens: 1_234,
+                last_input_tokens: 900,
+                last_output_tokens: 120,
+                steps: 2,
+            },
+            SessionUsage {
+                input_tokens: 1_000,
+                output_tokens: 234,
+                steps: 2,
+            },
+        );
+
+        assert_eq!(app.status.turn, TurnState::Idle);
+        let last = app.transcript.rows().last().expect("notice");
+        assert_eq!(last.kind, RowKind::Notice);
+        for expected in [
+            "3 messages",
+            "1,234 estimated tokens",
+            "2 steps",
+            "1,234 session tokens",
+        ] {
+            assert!(last.text.contains(expected), "{expected}: {}", last.text);
+        }
+        assert!(app.status_line().contains("ctx 1,234 tok"));
+        assert!(app.status_line().contains("1,234 tok"));
     }
 
     #[test]
@@ -1843,7 +1966,7 @@ mod tests {
     fn view_commands_wait_for_the_running_turn() {
         let mut app = app();
         app.status.turn = TurnState::Working;
-        for command in ["/clear", "/compact", "/resume"] {
+        for command in ["/clear", "/compact", "/context", "/resume"] {
             type_text(&mut app, command);
             assert_eq!(press(&mut app, KeyCode::Enter), None);
             let last = app.transcript.rows().last().expect("notice");

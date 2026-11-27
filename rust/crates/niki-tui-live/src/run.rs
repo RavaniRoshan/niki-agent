@@ -33,6 +33,8 @@ const BUSY_TICK: Duration = Duration::from_millis(80);
 /// A timeout redraws nothing: an idle session paints only when something
 /// changed.
 const IDLE_WAIT: Duration = Duration::from_secs(60);
+/// Turns `/compact` keeps verbatim when the agent summarises the rest.
+const COMPACT_KEEP_TURNS: usize = 6;
 
 /// Run the application until the person leaves it.
 ///
@@ -137,6 +139,18 @@ fn event_loop(
                     reply = None;
                     app.finish(result);
                 }
+                WorkerEvent::Context {
+                    report,
+                    usage,
+                    announce,
+                } => {
+                    if announce {
+                        app.show_context(report, usage);
+                    } else {
+                        app.set_context(report, usage);
+                    }
+                }
+                WorkerEvent::Compacted { result, fallback } => app.compacted(result, fallback),
             }
             changed = true;
         }
@@ -173,6 +187,12 @@ fn event_loop(
                 Some(Command::SelectModel(spec)) => {
                     app.status.model.clone_from(&spec);
                     worker.select_model(spec);
+                }
+                Some(Command::Compact) => {
+                    worker.compact(COMPACT_KEEP_TURNS);
+                }
+                Some(Command::Context) => {
+                    worker.context();
                 }
                 Some(Command::Copy(text)) => {
                     let mut out = io::stdout();
