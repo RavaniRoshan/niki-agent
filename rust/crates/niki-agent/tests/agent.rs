@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
-use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
+use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, ApprovalAction, CancelHandle, Mode};
 use niki_hooks::Notify;
 use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
 use niki_tools::{Registry, Tool, ToolContext, ToolError, ToolOutput};
@@ -486,6 +486,89 @@ async fn always_permits_the_same_command_without_asking_again() {
     );
 }
 
+#[tokio::test]
+async fn a_session_answer_covers_the_same_program_without_asking_again() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo one > a.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo two > b.txt"}"#),
+        tool_turn("call-3", "shell", r#"{"command":"touch c.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Always);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    let outcome = agent.run("three commands", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 3);
+    assert_eq!(
+        seen.lock().expect("lock").len(),
+        2,
+        "echo covers its second command; touch is a different program"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("a.txt")).expect("file"),
+        "one\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("b.txt")).expect("file"),
+        "two\n"
+    );
+}
+
+#[tokio::test]
+async fn clearing_session_approvals_makes_the_program_ask_again() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo one > a.txt"}"#),
+        text_turn("first"),
+        tool_turn("call-2", "shell", r#"{"command":"echo two > b.txt"}"#),
+        text_turn("second"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Always);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    agent.run("first", &mut |_| {}).await.expect("first run");
+    assert_eq!(seen.lock().expect("lock").len(), 1);
+
+    agent.clear_session_approvals();
+    agent.run("second", &mut |_| {}).await.expect("second run");
+    assert_eq!(
+        seen.lock().expect("lock").len(),
+        2,
+        "a new session must not inherit the allow-for-session rule"
+    );
+}
+
+#[tokio::test]
+async fn a_write_question_names_the_absolute_path_and_the_boundary() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "write_file",
+            r#"{"file_path":"../escape.txt","content":"nope"}"#,
+        ),
+        text_turn("understood"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Once);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    agent.run("write it", &mut |_| {}).await.expect("run");
+
+    let requests = seen.lock().expect("lock");
+    assert_eq!(requests.len(), 1);
+    match &requests[0].action {
+        ApprovalAction::Write { tool, path, inside } => {
+            assert_eq!(tool, "write_file");
+            assert!(path.is_absolute(), "{}", path.display());
+            assert!(path.ends_with("escape.txt"), "{}", path.display());
+            assert!(!inside, "the parent path escapes the workspace");
+        }
+        other => panic!("expected a write question, got {other:?}"),
+    }
+}
+
 /// A workspace with a `hooks.json` the real runner reads, so the test exercises
 /// the same parser and child process the binary uses.
 fn hooks_document(dir: &std::path::Path, document: &str) -> niki_hooks::Hooks {
@@ -595,7 +678,14 @@ async fn writing_a_file_asks_in_manual_mode() {
 
     let requests = seen.lock().expect("lock");
     assert_eq!(requests.len(), 1, "a write asks before it runs");
-    assert!(requests[0].command.starts_with("write_file"));
+    match &requests[0].action {
+        ApprovalAction::Write { tool, path, inside } => {
+            assert_eq!(tool, "write_file");
+            assert!(*inside, "asked.txt is inside the workspace");
+            assert!(path.ends_with("asked.txt"), "{}", path.display());
+        }
+        other => panic!("expected a write question, got {other:?}"),
+    }
     assert!(
         !dir.path().join("asked.txt").exists(),
         "a denied write does not touch the disk"

@@ -16,7 +16,7 @@ use niki_agent::{
     StopReason, Usage,
 };
 use niki_commands::SlashCommand;
-use niki_policy::{AllowList, Decision, Mode, decide};
+use niki_policy::{AllowList, Decision, Mode, ProgramAllow, decide};
 use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
@@ -79,6 +79,8 @@ pub enum Command {
     Mode(Mode),
     /// The person answered the approval prompt.
     Answer(Approval),
+    /// Start a new session: drop the in-memory "for this session" rules.
+    ClearApprovals,
     /// The person chose a model spec.
     SelectModel(String),
     /// Compact the agent's history through its provider.
@@ -135,6 +137,9 @@ pub struct App {
     queued: VecDeque<String>,
     /// Shell allow-list the live mode consults for a `!` line.
     allow: AllowList,
+    /// Programs allowed for the rest of this session by the approval dialog.
+    /// Cleared when a new session starts; never written to configuration.
+    session_allow: ProgramAllow,
     /// Whether the host can put a `!` command's question to the person.
     approver: bool,
     /// A `!` command waiting for its approval answer.
@@ -176,6 +181,7 @@ impl App {
             history: History::default(),
             queued: VecDeque::new(),
             allow: AllowList::default(),
+            session_allow: ProgramAllow::default(),
             approver: false,
             local_shell: None,
             last_escape: None,
@@ -825,12 +831,14 @@ impl App {
         }
         match decide(self.status.mode, &self.allow, &command) {
             Decision::Allow => Some(self.start_shell(command)),
+            Decision::Ask if self.session_allow.permits(&command) => {
+                Some(self.start_shell(command))
+            }
             Decision::Ask if self.approver => {
                 self.local_shell = Some(command.clone());
-                self.modal = Some(Modal::Approval(ApprovalModal::new(ApprovalRequest {
-                    command,
-                    mode: self.status.mode,
-                })));
+                self.modal = Some(Modal::Approval(ApprovalModal::new(
+                    ApprovalRequest::command(command, self.status.mode),
+                )));
                 None
             }
             Decision::Ask => {
@@ -872,7 +880,7 @@ impl App {
         match answer {
             Approval::Once => Some(self.start_shell(command)),
             Approval::Always => {
-                self.allow.add(&command);
+                self.session_allow.add(&command);
                 Some(self.start_shell(command))
             }
             Approval::Deny => {
@@ -1048,10 +1056,7 @@ impl App {
                     .as_ref()
                     .map(|refresh| Command::RefreshSystem(refresh()))
             }
-            SlashCommand::Clear => {
-                self.clear_session();
-                None
-            }
+            SlashCommand::Clear => self.clear_session(),
             SlashCommand::Compact => {
                 if self.refuse_while_busy("/compact") {
                     return None;
@@ -1131,9 +1136,9 @@ impl App {
     }
 
     /// `/clear`: empty the view and start a session of its own.
-    fn clear_session(&mut self) {
+    fn clear_session(&mut self) -> Option<Command> {
         if self.refuse_while_busy("/clear") {
-            return;
+            return None;
         }
         self.transcript.clear();
         self.scroll.reset();
@@ -1141,6 +1146,7 @@ impl App {
         self.queued.clear();
         self.new_session();
         self.transcript.push_notice("started a fresh session");
+        Some(Command::ClearApprovals)
     }
 
     /// Fold the view after the agent reported a real compaction.
@@ -1347,8 +1353,13 @@ impl App {
     }
 
     /// Create the session row a fresh view writes into.
+    ///
+    /// A new session also forgets the approvals granted "for this session": the
+    /// rules live only in memory and must not outlive the session they were
+    /// given in. The configured shell allow-list is untouched.
     fn new_session(&mut self) {
         self.session = None;
+        self.session_allow = ProgramAllow::default();
         let Some(store) = &self.sessions else {
             return;
         };
@@ -1792,10 +1803,7 @@ mod tests {
     #[test]
     fn an_approval_request_waits_for_the_person() {
         let mut app = app();
-        app.request_approval(ApprovalRequest {
-            command: "rm -rf build".to_owned(),
-            mode: Mode::Manual,
-        });
+        app.request_approval(ApprovalRequest::command("rm -rf build", Mode::Manual));
         assert_eq!(app.status.turn, TurnState::Waiting);
         assert_eq!(
             app.pending.as_ref().map(|request| request.command.as_str()),
@@ -1805,41 +1813,68 @@ mod tests {
     }
 
     #[test]
-    fn an_approval_request_opens_a_prompt_that_y_answers() {
+    fn an_approval_request_opens_a_prompt_that_y_and_a_answer_once() {
         let mut app = app();
-        app.request_approval(ApprovalRequest {
-            command: "cargo publish".to_owned(),
-            mode: Mode::Manual,
-        });
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
         assert!(matches!(app.modal, Some(Modal::Approval(_))));
         let command = press(&mut app, KeyCode::Char('y'));
         assert_eq!(command, Some(Command::Answer(Approval::Once)));
         assert!(app.modal.is_none());
         assert!(app.pending.is_none());
         assert_eq!(app.status.turn, TurnState::Working);
+
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
+        assert_eq!(
+            press(&mut app, KeyCode::Char('a')),
+            Some(Command::Answer(Approval::Once)),
+            "a is the other allow-once key"
+        );
     }
 
     #[test]
-    fn an_approval_prompt_can_be_refused_with_n_or_escape() {
+    fn s_allows_for_the_session() {
         let mut app = app();
-        app.request_approval(ApprovalRequest {
-            command: "rm -rf build".to_owned(),
-            mode: Mode::Auto,
-        });
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
         assert_eq!(
-            press(&mut app, KeyCode::Char('n')),
+            press(&mut app, KeyCode::Char('s')),
+            Some(Command::Answer(Approval::Always))
+        );
+        assert!(app.modal.is_none());
+        assert_eq!(app.status.turn, TurnState::Working);
+    }
+
+    #[test]
+    fn an_approval_prompt_can_be_refused_with_d_n_or_escape() {
+        for code in [KeyCode::Char('d'), KeyCode::Char('n'), KeyCode::Esc] {
+            let mut app = app();
+            app.request_approval(ApprovalRequest::command("rm -rf build", Mode::Auto));
+            assert_eq!(
+                press(&mut app, code),
+                Some(Command::Answer(Approval::Deny)),
+                "{code:?}"
+            );
+            assert!(app.modal.is_none());
+        }
+    }
+
+    #[test]
+    fn arrows_and_tab_move_the_highlight_and_enter_takes_it() {
+        let mut app = app();
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
+        assert_eq!(press(&mut app, KeyCode::Down), None);
+        assert_eq!(press(&mut app, KeyCode::Tab), None);
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
             Some(Command::Answer(Approval::Deny))
         );
 
-        app.request_approval(ApprovalRequest {
-            command: "rm -rf build".to_owned(),
-            mode: Mode::Auto,
-        });
+        let mut app = self::app();
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
+        assert_eq!(press(&mut app, KeyCode::Down), None);
         assert_eq!(
-            press(&mut app, KeyCode::Esc),
-            Some(Command::Answer(Approval::Deny))
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Answer(Approval::Always))
         );
-        assert!(app.modal.is_none());
     }
 
     #[test]
@@ -2043,10 +2078,7 @@ mod tests {
     #[test]
     fn cancelling_closes_a_prompt_without_leaving_the_turn_waiting() {
         let mut app = app();
-        app.request_approval(ApprovalRequest {
-            command: "cargo publish".to_owned(),
-            mode: Mode::Manual,
-        });
+        app.request_approval(ApprovalRequest::command("cargo publish", Mode::Manual));
         let cancel = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
         assert_eq!(app.handle_key(cancel), Some(Command::Cancel));
         assert!(app.modal.is_none());
@@ -2122,7 +2154,10 @@ mod tests {
             .expect("append");
 
         type_text(&mut app, "/clear");
-        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::ClearApprovals)
+        );
 
         let second = app.session_id().expect("second session").to_owned();
         assert_ne!(first, second, "a new session id");
@@ -2372,7 +2407,10 @@ mod tests {
         assert_eq!(earlier.finish(Ok(outcome())), None);
 
         type_text(&mut earlier, "/clear");
-        assert_eq!(press(&mut earlier, KeyCode::Enter), None);
+        assert_eq!(
+            press(&mut earlier, KeyCode::Enter),
+            Some(Command::ClearApprovals)
+        );
         let parser = earlier.session_id().expect("second session").to_owned();
         type_text(&mut earlier, "fix the parser");
         assert_eq!(
@@ -2635,7 +2673,10 @@ mod tests {
         assert_eq!(app.queued().len(), 1, "a failed turn keeps the queue");
 
         type_text(&mut app, "/clear");
-        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::ClearApprovals)
+        );
         assert!(app.queued().is_empty());
     }
 
@@ -2808,6 +2849,58 @@ mod tests {
         let rows = app.transcript.rows();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].kind, RowKind::ToolCall);
+    }
+
+    #[test]
+    fn a_session_answer_covers_the_program_until_clear() {
+        let mut app = app();
+        app.set_approver(true);
+        type_text(&mut app, "!cargo publish");
+        assert_eq!(press(&mut app, KeyCode::Enter), None, "manual asks first");
+        assert_eq!(
+            press(&mut app, KeyCode::Char('s')),
+            Some(Command::Shell("cargo publish".to_owned()))
+        );
+
+        type_text(&mut app, "!cargo test");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Shell("cargo test".to_owned())),
+            "the same program does not ask again"
+        );
+        assert!(app.modal.is_none());
+        assert!(
+            !app.allow.permits("cargo test"),
+            "the session rule never reaches the configured allow-list"
+        );
+
+        type_text(&mut app, "!git status");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(
+            matches!(app.modal, Some(Modal::Approval(_))),
+            "a different program still asks"
+        );
+        assert_eq!(press(&mut app, KeyCode::Char('d')), None);
+        assert!(app.modal.is_none());
+        assert!(
+            app.transcript
+                .rows()
+                .last()
+                .is_some_and(|row| row.kind == RowKind::Error && row.text.contains("not approved")),
+            "the denial is recorded like any refused `!` line"
+        );
+
+        type_text(&mut app, "/clear");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::ClearApprovals)
+        );
+        type_text(&mut app, "!cargo publish");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(
+            matches!(app.modal, Some(Modal::Approval(_))),
+            "/clear forgets the session rule"
+        );
     }
 
     #[test]

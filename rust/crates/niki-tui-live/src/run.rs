@@ -208,6 +208,9 @@ fn event_loop(
                 Some(Command::RefreshSystem(system)) => {
                     worker.set_system(system);
                 }
+                Some(Command::ClearApprovals) => {
+                    worker.clear_approvals();
+                }
                 Some(Command::Copy(text)) => {
                     let mut out = io::stdout();
                     let _ = clipboard::copy(&mut out, &text);

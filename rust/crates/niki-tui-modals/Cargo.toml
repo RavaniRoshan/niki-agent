@@ -12,6 +12,7 @@ crossterm.workspace = true
 niki-agent = { path = "../niki-agent" }
 niki-commands = { path = "../niki-commands" }
 niki-config = { path = "../niki-config" }
+niki-render = { path = "../niki-render" }
 niki-tui = { path = "../niki-tui" }
 niki-tui-themes = { path = "../niki-tui-themes" }
 ratatui.workspace = true

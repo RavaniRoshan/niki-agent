@@ -51,7 +51,7 @@ mod event;
 mod steering;
 mod turn;
 
-pub use approval::{Approval, ApprovalRequest, Approver};
+pub use approval::{Approval, ApprovalAction, ApprovalRequest, Approver};
 pub use cancel::CancelHandle;
 pub use context::{
     Compaction, ContextAudit, ContextReport, SessionUsage, audit_context, estimate_tokens,

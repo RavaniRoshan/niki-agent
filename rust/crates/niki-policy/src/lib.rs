@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -128,6 +129,46 @@ impl AllowList {
             self.patterns.push(entry.to_owned());
         }
     }
+}
+
+/// Programs the person allowed for the rest of one session.
+///
+/// A rule is the first token of the command that was approved: `git` covers
+/// every later `git …` command in the same workspace and no other program. The
+/// holder is one session and one workspace; nothing here is written to
+/// configuration, and a new session starts empty.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ProgramAllow {
+    programs: BTreeSet<String>,
+}
+
+impl ProgramAllow {
+    /// Add the program `command` starts with. Returns whether a rule was added.
+    pub fn add(&mut self, command: &str) -> bool {
+        program(command).is_some_and(|program| self.programs.insert(program.to_owned()))
+    }
+
+    /// Whether `command` starts with an allowed program.
+    #[must_use]
+    pub fn permits(&self, command: &str) -> bool {
+        program(command).is_some_and(|program| self.programs.contains(program))
+    }
+
+    /// Whether no program is allowed.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.programs.is_empty()
+    }
+}
+
+/// The program a shell command starts with: its first whitespace-separated
+/// word.
+///
+/// This is what "allow for this session" scopes a shell rule to. The empty
+/// command has no program.
+#[must_use]
+pub fn program(command: &str) -> Option<&str> {
+    command.split_whitespace().next()
 }
 
 impl From<&str> for AllowList {
@@ -632,5 +673,32 @@ mod allow_list_add_tests {
         allow.add("ALL");
         assert!(allow.is_all());
         assert!(allow.permits("rm -rf /"));
+    }
+
+    #[test]
+    fn a_program_rule_covers_every_command_of_that_program() {
+        let mut allow = ProgramAllow::default();
+        assert!(!allow.permits("git status"), "nothing is allowed yet");
+        assert!(allow.add("git status"));
+        assert!(allow.permits("git status"));
+        assert!(allow.permits("git log --oneline"));
+        assert!(
+            allow.permits("git status; rm -rf ~"),
+            "the rule is the program, as the dialog promised"
+        );
+        assert!(
+            !allow.permits("cargo test"),
+            "a different program still asks"
+        );
+        assert!(!allow.add("   "), "nothing to scope a rule to");
+        assert!(!allow.permits(""));
+    }
+
+    #[test]
+    fn the_program_is_the_first_word() {
+        assert_eq!(program("  cargo test --all"), Some("cargo"));
+        assert_eq!(program("/usr/bin/git log"), Some("/usr/bin/git"));
+        assert_eq!(program(""), None);
+        assert_eq!(program(" \n\t"), None);
     }
 }

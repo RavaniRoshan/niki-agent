@@ -128,6 +128,7 @@ enum Request {
     Compact(usize),
     Context,
     System(String),
+    ClearApprovals,
     Stop,
 }
 
@@ -262,6 +263,11 @@ impl WorkerHandle {
                     Request::System(system) => {
                         if let Some(agent) = agent.as_mut() {
                             agent.set_system(system);
+                        }
+                    }
+                    Request::ClearApprovals => {
+                        if let Some(agent) = agent.as_mut() {
+                            agent.clear_session_approvals();
                         }
                     }
                     Request::Prompt(prompt) => {
@@ -411,6 +417,14 @@ impl WorkerHandle {
     /// prompt when the first turn builds one.
     pub fn set_system(&self, system: impl Into<String>) -> bool {
         self.requests.send(Request::System(system.into())).is_ok()
+    }
+
+    /// Drop the "allow for this session" rules the agent remembers.
+    ///
+    /// `/clear` calls this: the rules are in memory only, and a fresh session
+    /// must not inherit them. A worker with no agent yet has none to drop.
+    pub fn clear_approvals(&self) -> bool {
+        self.requests.send(Request::ClearApprovals).is_ok()
     }
 
     /// Stop the running turn; the transcript it already produced is kept.

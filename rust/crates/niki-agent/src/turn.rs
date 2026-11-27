@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -7,7 +8,7 @@ use niki_hooks::{
     HookRunner, Notify, Outcome, PostToolUse, PreToolUse, ToolCall as HookToolCall, TurnEnd,
     UserPrompt,
 };
-use niki_policy::{AllowList, Decision, Mode, decide};
+use niki_policy::{AllowList, Decision, Mode, ProgramAllow, decide};
 use niki_provider::openai::ToolCallAssembler;
 use niki_provider::{
     ChatRequest, Message, Provider, Role, StopReason, StreamEvent, ToolCall, ToolSpec, Usage,
@@ -67,9 +68,9 @@ pub struct Agent {
     config: AgentConfig,
     mode: Mode,
     allow: AllowList,
-    /// Tools the person chose "always allow" for. The shell allow-list does not
-    /// apply to them; this is the equivalent record for external tools.
-    approved: BTreeSet<String>,
+    /// Actions the person allowed for the rest of this session. Cleared by
+    /// [`Agent::clear_session_approvals`], never written to configuration.
+    session_allow: SessionAllow,
     approver: Option<Approver>,
     hooks: Option<Arc<dyn HookRunner>>,
     notify: Option<NotifyTarget>,
@@ -94,7 +95,7 @@ impl Agent {
             config,
             mode: Mode::default(),
             allow: AllowList::parse(""),
-            approved: BTreeSet::new(),
+            session_allow: SessionAllow::default(),
             approver: None,
             hooks: None,
             notify: None,
@@ -184,11 +185,20 @@ impl Agent {
         self.mode = mode;
     }
 
+    /// Drop every "allow for this session" rule.
+    ///
+    /// `/clear` and a new session call this. The shell allow-list parsed from
+    /// configuration is left alone; only the rules the person added from the
+    /// approval dialog go away.
+    pub fn clear_session_approvals(&mut self) {
+        self.session_allow = SessionAllow::default();
+    }
+
     /// Replace the system prompt without touching the conversation.
     ///
-    /// The next request carries it; history, usage and the approved tools stay
-    /// as they were. `/init` uses this after writing `AGENTS.md`, so the model
-    /// reads the new file without the session restarting.
+    /// The next request carries it; history, usage and the session approvals
+    /// stay as they were. `/init` uses this after writing `AGENTS.md`, so the
+    /// model reads the new file without the session restarting.
     pub fn set_system(&mut self, system: impl Into<String>) {
         self.config.system = system.into();
     }
@@ -692,12 +702,14 @@ impl Agent {
     /// `shell` keeps its command-level allow-list. Any other tool that declares
     /// [`Tool::requires_approval`](niki_tools::Tool::requires_approval) — the
     /// built-in file mutators and every mutating MCP tool — takes the same
-    /// callback: `Always` records the tool name so a later call of the same tool
-    /// does not ask again. `Auto` asks as `Manual` does, with one exception: a
-    /// built-in file mutator whose target resolves inside the workspace runs
-    /// unattended, which is what the mode promises. A [`Decision::Ask`] goes to
-    /// the installed [`Approver`] and waits for the person's answer. A run with
-    /// no approver — a headless one — reports the request to the model as a
+    /// callback. `Always` records a rule for the rest of the session: a shell
+    /// command records its program, a file mutator records its name but still
+    /// asks for any target outside the workspace, and another tool records its
+    /// name. `Auto` asks as `Manual` does, with one exception: a built-in file
+    /// mutator whose target resolves inside the workspace runs unattended,
+    /// which is what the mode promises. A [`Decision::Ask`] goes to the
+    /// installed [`Approver`] and waits for the person's answer. A run with no
+    /// approver — a headless one — reports the request to the model as a
     /// refusal rather than silently allowing it.
     async fn gate(&mut self, name: &str, args: &Value) -> Result<(), String> {
         if name == "shell" {
@@ -711,17 +723,17 @@ impl Agent {
             .registry
             .get(name)
             .is_some_and(|tool| tool.requires_approval());
-        if !gated || self.approved.contains(name) || self.mode == Mode::Yolo {
+        if !gated || self.mode == Mode::Yolo {
+            return Ok(());
+        }
+        if self.session_allow.tools.contains(name) && self.session_tool_covers(name, args) {
             return Ok(());
         }
         if self.mode == Mode::Auto && self.auto_write_inside(name, args) {
             return Ok(());
         }
 
-        let request = ApprovalRequest {
-            command: describe_call(name, args),
-            mode: self.mode,
-        };
+        let request = self.approval_request(name, args);
         match self.ask(request).await {
             None => Err(format!(
                 "refused: `{name}` needs approval and this run has nobody to ask (mode: {}). \
@@ -730,24 +742,63 @@ impl Agent {
             )),
             Some(Approval::Once) => Ok(()),
             Some(Approval::Always) => {
-                self.approved.insert(name.to_owned());
+                self.session_allow.tools.insert(name.to_owned());
                 Ok(())
             }
             Some(Approval::Deny) => Err(format!("refused: `{name}` was not approved")),
         }
     }
 
+    /// The question to put for one gated tool call.
+    ///
+    /// A file mutator names the absolute target and whether it resolves inside
+    /// the workspace; any other tool names itself and summarises its arguments.
+    fn approval_request(&self, name: &str, args: &Value) -> ApprovalRequest {
+        if self.is_write_tool(name) {
+            if let Some(raw) = ["file_path", "path"]
+                .iter()
+                .find_map(|key| args.get(key).and_then(Value::as_str))
+            {
+                let candidate = Path::new(raw);
+                let path = if candidate.is_absolute() {
+                    candidate.to_path_buf()
+                } else {
+                    self.ctx.root.join(candidate)
+                };
+                return ApprovalRequest::write(
+                    name,
+                    path,
+                    self.ctx.resolve(raw).is_ok(),
+                    self.mode,
+                );
+            }
+        }
+        ApprovalRequest::tool(name, describe_arguments(args), self.mode)
+    }
+
+    /// Whether a tool is one of the built-in file mutators.
+    fn is_write_tool(&self, name: &str) -> bool {
+        self.registry
+            .get(name)
+            .is_some_and(|tool| tool.auto_allows_workspace_write())
+    }
+
+    /// Whether a session allowance covers this call: a write allowance only
+    /// covers a target inside the workspace, every other allowance covers the
+    /// tool itself.
+    fn session_tool_covers(&self, name: &str, args: &Value) -> bool {
+        !self.is_write_tool(name) || self.write_inside(args)
+    }
+
     /// Whether `Auto` may run this call unattended: the tool is a built-in file
     /// mutator and the path it names resolves inside the workspace. A path that
     /// escapes fails the resolution, so the call falls through to the approver.
     fn auto_write_inside(&self, name: &str, args: &Value) -> bool {
-        let mutator = self
-            .registry
-            .get(name)
-            .is_some_and(|tool| tool.auto_allows_workspace_write());
-        if !mutator {
-            return false;
-        }
+        self.is_write_tool(name) && self.write_inside(args)
+    }
+
+    /// Whether the target a write tool names resolves inside the workspace.
+    fn write_inside(&self, args: &Value) -> bool {
         ["file_path", "path"]
             .iter()
             .find_map(|key| args.get(key).and_then(Value::as_str))
@@ -757,11 +808,9 @@ impl Agent {
     async fn gate_command(&mut self, command: &str) -> Result<(), String> {
         match decide(self.mode, &self.allow, command) {
             Decision::Allow => Ok(()),
+            Decision::Ask if self.session_allow.commands.permits(command) => Ok(()),
             Decision::Ask => {
-                let request = ApprovalRequest {
-                    command: command.to_owned(),
-                    mode: self.mode,
-                };
+                let request = ApprovalRequest::command(command, self.mode);
                 match self.ask(request).await {
                     None => Err(format!(
                         "refused: `{command}` needs approval and this run has nobody to ask \
@@ -771,7 +820,7 @@ impl Agent {
                     )),
                     Some(Approval::Once) => Ok(()),
                     Some(Approval::Always) => {
-                        self.allow.add(command);
+                        self.session_allow.commands.add(command);
                         Ok(())
                     }
                     Some(Approval::Deny) => Err(format!("refused: `{command}` was not approved")),
@@ -796,6 +845,19 @@ struct ToolRun {
     output: String,
     is_error: bool,
     notices: Vec<String>,
+}
+
+/// Rules chosen with "allow for this session".
+///
+/// Kept only in memory and scoped to this agent's workspace: command rules name
+/// a program, and tool rules name a mutating tool, so a later action of the same
+/// class does not ask again. [`Agent::clear_session_approvals`] drops them.
+#[derive(Debug, Default)]
+struct SessionAllow {
+    /// Programs permitted for every later command of the same program.
+    commands: ProgramAllow,
+    /// Gated tool names permitted again in this session.
+    tools: BTreeSet<String>,
 }
 
 /// The notify program plus the model spec its payload names.
@@ -860,14 +922,9 @@ fn append_context(output: &mut String, context: &[String]) {
     output.push_str(&context.join("\n\n"));
 }
 
-/// A one-line description of an external tool call for the approval prompt.
-fn describe_call(name: &str, args: &Value) -> String {
-    let rendered = serde_json::to_string(args).unwrap_or_else(|_| "{}".to_owned());
-    let mut text = format!("{name} {rendered}");
-    if text.chars().count() > 160 {
-        text = text.chars().take(157).collect::<String>() + "...";
-    }
-    text
+/// A one-line summary of a tool call's arguments for the approval prompt.
+fn describe_arguments(args: &Value) -> String {
+    serde_json::to_string(args).unwrap_or_else(|_| "{}".to_owned())
 }
 
 /// The tool array for a request, read back from the registry's JSON form.

@@ -638,11 +638,11 @@ fn an_approval_answer_lets_the_gated_command_run() {
 }
 
 #[test]
-fn always_answers_the_next_identical_command_without_asking() {
+fn a_session_answer_covers_the_next_command_of_the_same_program() {
     let workspace = tempfile::tempdir().expect("workspace");
     let turns = Arc::new(Mutex::new(VecDeque::from(vec![
         tool_turn("call-1", "shell", r#"{"command":"echo once > twice.txt"}"#),
-        tool_turn("call-2", "shell", r#"{"command":"echo once > twice.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo twice > twice.txt"}"#),
         text_turn("done"),
     ])));
     let build_turns = Arc::clone(&turns);
@@ -667,12 +667,12 @@ fn always_answers_the_next_identical_command_without_asking() {
 
     send(&mut app, &mut worker, "twice");
 
-    // One key only: the second identical command must not ask again.
-    pump_answering(&mut app, &mut worker, &[KeyCode::Char('a')]);
+    // One key only: the second command of the same program must not ask again.
+    pump_answering(&mut app, &mut worker, &[KeyCode::Char('s')]);
 
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("twice.txt")).expect("file"),
-        "once\n"
+        "twice\n"
     );
     assert_eq!(app.status.turn, TurnState::Idle);
 }
