@@ -182,7 +182,7 @@ export const PARALLAX_CHAPTERS: ParallaxChapter[] = [
     indexLabel: '04',
     title: 'A gate in front of every tool',
     summary:
-      'Manual, Auto, and YOLO modes cycle on Shift+Tab. Auto only skips the prompt for commands on your shell allow-list — there is no classifier — and a workspace path boundary refuses anything outside the root. A repository\'s own hooks, skills and instruction files do not load until `niki trust` records that workspace.',
+      'Manual, Auto, and YOLO modes cycle on Shift+Tab. Auto skips the prompt for commands on your shell allow-list and for file writes whose target stays inside the workspace — there is no classifier — and a workspace path boundary refuses anything outside the root. A repository\'s own hooks, skills and instruction files do not load until `niki trust` records that workspace.',
     metricValue: '3 modes',
     metricLabel: 'manual · auto · yolo',
     detailId: 'agent-loop',
@@ -627,7 +627,7 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
       'Niki reads the repository, edits files, runs commands, and shows you each step. Shell commands, writes, deletes, and MCP tools pass through an approval policy you control.',
     capabilities: [
       'Manual, Auto, and YOLO modes cycle on Shift+Tab; the status bar names the active mode',
-      'Auto skips the prompt only for commands on your shell allow-list — there is no classifier',
+      'Auto skips the prompt for allow-listed commands and for writes that stay inside the workspace — there is no classifier',
       'write_file and edit_file ask first; Auto runs them unattended only when the path stays inside the workspace',
       'A workspace path boundary refuses any path that resolves outside the root',
       'AGENTS.md is read from the workspace root down to the working directory, user-level file first, inside one 32 KiB budget',

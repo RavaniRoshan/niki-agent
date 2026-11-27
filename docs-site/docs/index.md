@@ -73,8 +73,9 @@ niki
 ## Honest gaps
 
 There is no sandbox and no classifier in this build. Approval modes decide what
-asks: Manual asks for every gated command, Auto runs what the allow-list matches
-and asks for the rest, and YOLO runs everything the policy allows. Run Niki in a
+asks: Manual asks for every gated action, Auto runs what the allow-list matches
+and writes inside the workspace unattended, and YOLO runs everything the policy
+allows. Run Niki in a
 container or under a dedicated user account when you need a hard boundary.
 [Permissions](/permissions) and [Security](/security) describe the exact gate,
 and [Beta builds](/beta) lists the known gaps.

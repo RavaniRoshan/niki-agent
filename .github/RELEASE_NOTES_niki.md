@@ -2,14 +2,14 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.1.3 adds workspace trust, a session lifecycle from the shell, answers to the
-model's questions inside the app, `${VAR}` interpolation and per-server
-timeouts in the MCP configuration, and fixes the `Ctrl+T` help entry. The
-shipped product is still a single
-self-contained executable: there is no Python interpreter to
-install, no virtual environment to create, and no packages to resolve on first
-run. Linux and WSL share one archive, Windows has its own, and macOS has one for
-Apple silicon and one for Intel.
+Niki is an independent terminal coding agent written in Rust: one native
+executable that runs a real agent loop, edits your files, runs commands, and puts
+an approval card in front of every change. Sessions live on your disk, eleven
+providers are built in, and any OpenAI-compatible endpoint works. There is no
+Python interpreter to install, no virtual environment to create, and no packages
+to resolve on first run. Linux and WSL share one archive, Windows has its own,
+and macOS has one for Apple silicon and one for Intel. Each release's changes are
+listed under **What changed** below.
 
 ## Install
 

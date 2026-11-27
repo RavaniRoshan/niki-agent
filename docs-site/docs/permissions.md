@@ -6,10 +6,10 @@ boundary and the approval callback decide how much of that it may do without
 asking.
 
 ::: warning
-There is no sandbox in this build, and no classifier. Auto asks exactly like
-Manual. A built-in file write is not gated yet. Run Niki in a container or under
-a dedicated user account when you need a hard boundary; see
-[Security](/security).
+There is no sandbox in this build, and no classifier. Every built-in file write
+asks before it runs; Auto only skips the prompt when the target resolves inside
+the workspace. Run Niki in a container or under a dedicated user account when
+you need a hard boundary; see [Security](/security).
 :::
 
 ## The three modes
@@ -20,7 +20,7 @@ bar names the active mode. `--mode manual|auto|yolo` selects the startup mode.
 | Mode | Shell commands that run without asking |
 | --- | --- |
 | Manual | Only commands on the allow-list. Everything else asks. |
-| Auto | The same as Manual. There is no classifier in this build, so Auto only changes the label. |
+| Auto | The same as Manual, plus a built-in file write whose target resolves inside the workspace runs unattended. There is no classifier in this build. |
 | YOLO | Every command the policy does not deny. Nothing asks. |
 
 Manual is the default. An unknown `--mode` value prints a warning and starts in
