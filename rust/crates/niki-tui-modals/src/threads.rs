@@ -15,7 +15,7 @@ pub const MAX_ROWS: usize = 12;
 pub struct ThreadEntry {
     /// Session id, the value `/resume <id>` takes.
     pub id: String,
-    /// First line of the first prompt, or [`NO_PROMPT`].
+    /// First line of the session's title or first prompt, or [`NO_PROMPT`].
     pub preview: String,
     /// Stored messages, of every role.
     pub messages: i64,
@@ -26,17 +26,18 @@ pub struct ThreadEntry {
 impl ThreadEntry {
     /// Build a row from a session summary.
     ///
-    /// Only the first line of the prompt is a preview: a row is one line, and a
-    /// multi-line prompt would otherwise push every later row off the box.
+    /// Only the first line of the name is a preview: a row is one line, and a
+    /// multi-line title or prompt would otherwise push every later row off the
+    /// box.
     #[must_use]
     pub fn new(
         id: impl Into<String>,
-        first_prompt: Option<&str>,
+        name: Option<&str>,
         messages: i64,
         cwd: impl Into<String>,
     ) -> Self {
-        let preview = first_prompt
-            .and_then(|prompt| prompt.lines().next())
+        let preview = name
+            .and_then(|name| name.lines().next())
             .map(str::trim)
             .filter(|line| !line.is_empty())
             .unwrap_or(NO_PROMPT)

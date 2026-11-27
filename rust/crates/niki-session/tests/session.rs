@@ -204,3 +204,120 @@ fn a_summary_previews_the_first_user_prompt() {
         Some("plan the port".to_owned())
     );
 }
+
+#[test]
+fn a_title_round_trips_through_list_find_and_latest_for() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let cwd = temp.path().join("project");
+    let session = store.create(&cwd).unwrap();
+
+    assert_eq!(store.title(&session).unwrap(), None);
+    assert_eq!(
+        store.set_title(&session, Some("  deploy notes  ")).unwrap(),
+        Some("deploy notes".to_owned()),
+        "a title is trimmed"
+    );
+    assert_eq!(
+        store.title(&session).unwrap().as_deref(),
+        Some("deploy notes")
+    );
+    assert_eq!(
+        store.list().unwrap()[0].title.as_deref(),
+        Some("deploy notes")
+    );
+    assert_eq!(
+        store
+            .find(session.as_str())
+            .unwrap()
+            .unwrap()
+            .title
+            .as_deref(),
+        Some("deploy notes")
+    );
+    assert_eq!(
+        store.latest_for(&cwd).unwrap().unwrap().title.as_deref(),
+        Some("deploy notes")
+    );
+}
+
+#[test]
+fn an_empty_title_clears_it() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let session = store.create(temp.path()).unwrap();
+
+    store.set_title(&session, Some("named")).unwrap();
+    assert_eq!(store.set_title(&session, Some("   ")).unwrap(), None);
+    assert_eq!(store.list().unwrap()[0].title, None);
+    assert_eq!(store.title(&session).unwrap(), None);
+
+    store.set_title(&session, Some("named again")).unwrap();
+    assert_eq!(store.set_title(&session, None).unwrap(), None);
+    assert_eq!(store.title(&session).unwrap(), None);
+}
+
+#[test]
+fn a_fresh_database_has_the_title_column() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let session = store.create(temp.path()).unwrap();
+
+    assert_eq!(store.title(&session).unwrap(), None);
+    store.set_title(&session, Some("fresh")).unwrap();
+    assert_eq!(store.title(&session).unwrap().as_deref(), Some("fresh"));
+}
+
+#[test]
+fn a_database_created_before_the_title_column_gains_it() {
+    let temp = TempDir::new().unwrap();
+    let path = scratch(&temp);
+    {
+        let connection = rusqlite::Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE sessions (
+                     id TEXT PRIMARY KEY,
+                     created_at INTEGER NOT NULL,
+                     cwd TEXT NOT NULL
+                 );
+                 CREATE TABLE messages (
+                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                     session_id TEXT NOT NULL REFERENCES sessions(id),
+                     role TEXT NOT NULL,
+                     content TEXT NOT NULL,
+                     created_at INTEGER NOT NULL
+                 );
+                 CREATE INDEX messages_session ON messages(session_id, id);
+                 CREATE TABLE checkpoints (
+                     session_id TEXT NOT NULL REFERENCES sessions(id),
+                     label TEXT NOT NULL,
+                     message_id INTEGER NOT NULL,
+                     created_at INTEGER NOT NULL,
+                     PRIMARY KEY (session_id, label)
+                 );
+                 INSERT INTO sessions (id, created_at, cwd)
+                 VALUES ('older-session', 1, '/work');",
+            )
+            .unwrap();
+    }
+
+    let store = open(&path);
+    let listed = store.list().unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].title, None, "the migrated column starts empty");
+
+    let session = listed[0].id.clone();
+    store.set_title(&session, Some("migrated")).unwrap();
+    assert_eq!(
+        store
+            .find(session.as_str())
+            .unwrap()
+            .unwrap()
+            .title
+            .as_deref(),
+        Some("migrated")
+    );
+    store.append(&session, "user", "still writes").unwrap();
+    assert_eq!(store.load(&session).unwrap().len(), 1);
+}

@@ -128,6 +128,12 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
     if prompt.split_whitespace().next() == Some("/init") {
         return init(&options);
     }
+    if prompt.split_whitespace().next() == Some("/rename") {
+        return rename(&options, remainder(&prompt).as_deref());
+    }
+    if prompt.split_whitespace().next() == Some("/export") {
+        return export(&options, remainder(&prompt).as_deref());
+    }
 
     let spec = model_spec(&options, config, config_path)?;
     let (provider_name, _) = split_spec(&spec)?;
@@ -973,6 +979,128 @@ fn init(options: &Options) -> Result<i32> {
     }
 }
 
+/// `/rename` in a headless run: name the current session and print one line.
+///
+/// Without `--resume`/`--continue` the newest session for the workspace is the
+/// current one, and a workspace with none gets a session to name, the way the
+/// screen creates one at startup.
+fn rename(options: &Options, title: Option<&str>) -> Result<i32> {
+    let root = workspace_root(options)?;
+    rename_in(&config_home(), &root, options, title)
+}
+
+fn rename_in(home: &Path, root: &Path, options: &Options, title: Option<&str>) -> Result<i32> {
+    let (store, session) = current_or_new_session(home, root, options)?;
+    match title {
+        Some(raw) => match store.set_title(&session, Some(raw)) {
+            Ok(Some(title)) => println!("renamed to {title}"),
+            Ok(None) => println!("title cleared"),
+            Err(error) => {
+                eprintln!("niki: could not rename the session: {error}");
+                return Ok(1);
+            }
+        },
+        None => match store.title(&session) {
+            Ok(Some(title)) => println!("{title}"),
+            Ok(None) => println!("untitled"),
+            Err(error) => {
+                eprintln!("niki: could not read the session title: {error}");
+                return Ok(1);
+            }
+        },
+    }
+    Ok(0)
+}
+
+/// `/export` in a headless run: write the current session and print its path.
+fn export(options: &Options, path: Option<&str>) -> Result<i32> {
+    let root = workspace_root(options)?;
+    export_in(&config_home(), &root, options, path)
+}
+
+fn export_in(home: &Path, root: &Path, options: &Options, path: Option<&str>) -> Result<i32> {
+    let Some((store, session)) = named_session(home, root, options, false)? else {
+        eprintln!(
+            "niki: no saved session for {}; run a prompt first",
+            root.display()
+        );
+        return Ok(1);
+    };
+    match niki_session::export::write(&store, &session, root, path) {
+        Ok(written) => {
+            println!("{}", written.display());
+            Ok(0)
+        }
+        Err(error) => {
+            eprintln!("niki: {error}");
+            Ok(1)
+        }
+    }
+}
+
+/// The session a headless command names: `--resume`/`--continue` when given,
+/// else the newest one for the workspace.
+///
+/// `create` lets a command that would name a session make one when the
+/// workspace has none; an export never writes into a session it invented.
+fn named_session(
+    home: &Path,
+    root: &Path,
+    options: &Options,
+    create: bool,
+) -> Result<Option<(SessionStore, SessionId)>> {
+    let store = open_store(home)?;
+    if options.continue_session {
+        let latest = store.latest_for(root).context("list the saved sessions")?;
+        if let Some(summary) = latest {
+            return Ok(Some((store, summary.id)));
+        }
+        return if create {
+            let id = store.create(root).context("create a session")?;
+            Ok(Some((store, id)))
+        } else {
+            Ok(None)
+        };
+    }
+    if let Some(id) = &options.resume {
+        let summary = store
+            .find(id)
+            .context("look up the saved session")?
+            .with_context(|| {
+                format!(
+                    "no saved session {id:?} for {}; run without --resume to start one",
+                    root.display()
+                )
+            })?;
+        return Ok(Some((store, summary.id)));
+    }
+    let latest = store.latest_for(root).context("list the saved sessions")?;
+    if let Some(summary) = latest {
+        return Ok(Some((store, summary.id)));
+    }
+    if create {
+        let id = store.create(root).context("create a session")?;
+        return Ok(Some((store, id)));
+    }
+    Ok(None)
+}
+
+fn current_or_new_session(
+    home: &Path,
+    root: &Path,
+    options: &Options,
+) -> Result<(SessionStore, SessionId)> {
+    named_session(home, root, options, true)?.context("create a session")
+}
+
+/// Everything after the command word, trimmed, when anything is left.
+fn remainder(text: &str) -> Option<String> {
+    let mut words = text.trim_start().splitn(2, char::is_whitespace);
+    let _name = words.next();
+    let rest = words.next().unwrap_or_default().trim();
+    (!rest.is_empty()).then(|| rest.to_owned())
+}
+
 fn mode(raw: Option<&str>) -> Mode {
     match raw.map(str::trim).map(str::to_ascii_lowercase).as_deref() {
         Some("auto") => Mode::Auto,
@@ -1389,6 +1517,114 @@ mod tests {
             std::fs::read_to_string(root.join("AGENTS.md")).expect("kept"),
             "hand written"
         );
+    }
+
+    #[test]
+    fn rename_headless_names_and_clears_the_current_session() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join(".niki");
+        let root = temp.path().join("workspace");
+        std::fs::create_dir_all(&root).expect("workspace");
+
+        assert_eq!(
+            rename_in(&home, &root, &Options::default(), Some("  plan the port  "))
+                .expect("rename"),
+            0
+        );
+        let store = SessionStore::open(home.join("sessions.db")).expect("store");
+        let summary = store.latest_for(&root).expect("list").expect("a session");
+        assert_eq!(summary.title.as_deref(), Some("plan the port"));
+
+        assert_eq!(
+            rename_in(&home, &root, &Options::default(), None).expect("show"),
+            0,
+            "no argument prints the title rather than changing it"
+        );
+        assert_eq!(
+            rename_in(&home, &root, &Options::default(), Some("   ")).expect("clear"),
+            0
+        );
+        let summary = store.latest_for(&root).expect("list").expect("a session");
+        assert_eq!(summary.title, None, "an empty title clears it");
+    }
+
+    #[test]
+    fn export_headless_writes_the_session_without_overwriting() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join(".niki");
+        let root = temp.path().join("workspace");
+        std::fs::create_dir_all(&root).expect("workspace");
+
+        assert_eq!(
+            rename_in(&home, &root, &Options::default(), Some("export me")).expect("rename"),
+            0
+        );
+        {
+            let store = SessionStore::open(home.join("sessions.db")).expect("store");
+            let session = store
+                .latest_for(&root)
+                .expect("list")
+                .expect("a session")
+                .id;
+            store.append(&session, "user", "hello").expect("prompt");
+            store.append(&session, "assistant", "hi").expect("answer");
+        }
+
+        assert_eq!(
+            export_in(&home, &root, &Options::default(), None).expect("first export"),
+            0
+        );
+        assert_eq!(
+            export_in(&home, &root, &Options::default(), None).expect("second export"),
+            0
+        );
+
+        let mut names: Vec<String> = std::fs::read_dir(&root)
+            .expect("workspace")
+            .map(|entry| {
+                entry
+                    .expect("entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        names.sort();
+        assert_eq!(names.len(), 2, "{names:?}");
+        assert!(
+            names.iter().any(|name| name.ends_with("-2.md")),
+            "{names:?}"
+        );
+        assert!(
+            names.iter().any(|name| !name.contains("-2.md")),
+            "{names:?}"
+        );
+
+        let second = names
+            .iter()
+            .find(|name| name.ends_with("-2.md"))
+            .expect("the second file");
+        let text = std::fs::read_to_string(root.join(second)).expect("markdown");
+        assert!(text.starts_with("# export me\n"), "{text}");
+        assert!(text.contains("## You\n\nhello"), "{text}");
+    }
+
+    #[test]
+    fn export_headless_refuses_a_path_outside_the_workspace() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let home = temp.path().join(".niki");
+        let root = temp.path().join("workspace");
+        std::fs::create_dir_all(&root).expect("workspace");
+
+        assert_eq!(
+            rename_in(&home, &root, &Options::default(), Some("keep me")).expect("rename"),
+            0
+        );
+        assert_eq!(
+            export_in(&home, &root, &Options::default(), Some("../outside.md")).expect("export"),
+            1
+        );
+        assert!(!temp.path().join("outside.md").exists());
     }
 
     #[test]
