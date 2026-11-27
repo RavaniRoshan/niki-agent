@@ -112,3 +112,19 @@ def test_installer_installs_a_binary_without_python() -> None:
     assert not re.search(r"\bpip\b", text)
     assert 'install -m 0755 "$binary" "$BINDIR/niki"' in text
     assert "SHA256SUMS" in text
+
+
+def test_windows_installer_copies_a_sibling_binary_instead_of_unpacking_it() -> None:
+    """An extracted archive holds `niki.exe` beside `install.ps1`.
+
+    The release workflow runs the packaged installer exactly that way, so the
+    installer must copy the sibling executable rather than hand it to
+    `Expand-Archive`, which only accepts `.zip`.
+    """
+    text = (Path(__file__).parents[4] / "install" / "install.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "if ($archive -match '\\.exe$')" in text
+    copy_at = text.index("Copy-Item -Path $archive")
+    expand_at = text.index("Expand-Archive -Path $archive")
+    assert copy_at < expand_at, "the sibling binary is copied before any unzip"
