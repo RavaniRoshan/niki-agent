@@ -463,7 +463,7 @@ mod tests {
     const README_PROVIDER: &str = r#"
 [providers.kimi]
 display_name = "Kimi"
-class_path = "langchain_openai:ChatOpenAI"
+class_path = "openai:Chat"
 base_url = "https://api.moonshot.ai/v1"
 api_key_env = "MOONSHOT_API_KEY"
 models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
@@ -492,7 +492,7 @@ models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
         let config = Config::from_str(README_PROVIDER)?;
         let expected = Provider {
             display_name: Some("Kimi".to_owned()),
-            class_path: Some("langchain_openai:ChatOpenAI".to_owned()),
+            class_path: Some("openai:Chat".to_owned()),
             base_url: Some("https://api.moonshot.ai/v1".to_owned()),
             api_key_env: Some("MOONSHOT_API_KEY".to_owned()),
             models: vec![
@@ -549,7 +549,7 @@ anything = "goes"
         let config = Config::from_str(
             r#"
 [models.providers.legacy]
-class_path = "langchain_openai:ChatOpenAI"
+class_path = "openai:Chat"
 
 [models.providers.shared]
 display_name = "Read from the models table"
@@ -687,11 +687,11 @@ command = "server"
     #[test]
     fn protocol_is_inferred_from_class_path() {
         assert_eq!(
-            provider(Some("langchain_openai:ChatOpenAI"), None).protocol(),
+            provider(Some("openai:Chat"), None).protocol(),
             Protocol::OpenAi
         );
         assert_eq!(
-            provider(Some("langchain_anthropic:ChatAnthropic"), None).protocol(),
+            provider(Some("anthropic:Chat"), None).protocol(),
             Protocol::Anthropic
         );
         assert_eq!(provider(None, None).protocol(), Protocol::OpenAi);
@@ -704,15 +704,15 @@ command = "server"
     #[test]
     fn an_explicit_protocol_key_overrides_the_class_path() {
         assert_eq!(
-            provider(Some("langchain_openai:ChatOpenAI"), Some("anthropic")).protocol(),
+            provider(Some("openai:Chat"), Some("anthropic")).protocol(),
             Protocol::Anthropic
         );
         assert_eq!(
-            provider(Some("langchain_anthropic:ChatAnthropic"), Some("openai")).protocol(),
+            provider(Some("anthropic:Chat"), Some("openai")).protocol(),
             Protocol::OpenAi
         );
         assert_eq!(
-            provider(Some("langchain_openai:ChatOpenAI"), Some("nonsense")).protocol(),
+            provider(Some("openai:Chat"), Some("nonsense")).protocol(),
             Protocol::OpenAi
         );
     }

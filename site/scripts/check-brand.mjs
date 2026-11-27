@@ -1,5 +1,4 @@
-// Ban lineage branding. Exception: `langchain*` is allowed only inside a `class_path` value
-// (e.g. `class_path = "langchain_openai:ChatOpenAI"`), a literal config.toml value the product requires.
+// Ban lineage branding: no page copy or asset may name an upstream project.
 import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, relative, extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -17,19 +16,10 @@ const BANNED = [
   {name: 'LangChain', pattern: /langchain/gi},
 ];
 
-const CLASS_PATH_SPAN = /class_path\s*[:=]\s*["'][^"']*["']/g;
-const CLASS_PATH_VALUE = /langchain_[a-z0-9_]+:[A-Za-z0-9_]+/g;
-
 function walk(path) {
   const stats = statSync(path);
   if (stats.isFile()) return [path];
   return readdirSync(path).flatMap((entry) => walk(join(path, entry)));
-}
-
-function maskClassPaths(line) {
-  return line
-    .replace(CLASS_PATH_SPAN, (span) => span.replace(/[^\s]/g, ' '))
-    .replace(CLASS_PATH_VALUE, (span) => span.replace(/[^\s]/g, ' '));
 }
 
 const files = TARGETS.flatMap((target) => walk(join(ROOT, target))).filter((file) =>
@@ -40,9 +30,8 @@ const hits = [];
 for (const file of files) {
   const lines = readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, index) => {
-    const inspected = maskClassPaths(line);
     for (const {name, pattern} of BANNED) {
-      const matches = inspected.match(pattern);
+      const matches = line.match(pattern);
       if (matches) {
         hits.push({
           location: `${relative(ROOT, file)}:${index + 1}`,
