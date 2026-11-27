@@ -12,10 +12,19 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 const ORIGIN = 'https://niki-site.vercel.app';
 const OG_IMAGE = `${ORIGIN}/og.png`;
+// `rust/Cargo.toml` is authoritative, but Vercel builds this project with only
+// `site/` on disk, so the committed constant is the fallback.
 const VERSION = (() => {
-  const manifest = fs.readFileSync(path.join(ROOT, '..', 'rust', 'Cargo.toml'), 'utf8');
-  const match = manifest.match(/^version = "([^"]+)"/m);
-  return match ? match[1] : '';
+  const manifest = path.join(ROOT, '..', 'rust', 'Cargo.toml');
+  if (fs.existsSync(manifest)) {
+    const match = fs.readFileSync(manifest, 'utf8').match(/^version = "([^"]+)"/m);
+    if (match) return match[1];
+  }
+  const constant = fs
+    .readFileSync(path.join(ROOT, 'src', 'shared', 'version.ts'), 'utf8')
+    .match(/VERSION = '([^']+)'/);
+  if (!constant) throw new Error('prerender cannot find a version');
+  return constant[1];
 })();
 
 /** Title, description, and path for each route the app answers. */

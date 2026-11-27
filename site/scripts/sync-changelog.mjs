@@ -90,7 +90,21 @@ export const CHANGELOG: ChangelogRelease[] = ${JSON.stringify(releases, null, 2)
 `;
 }
 
-const markdown = await readFile(sourcePath, 'utf8');
+// Vercel builds this project with only `site/` on disk, so the repository file
+// can be absent. `--check` still fails there; the write path keeps the committed
+// module, which CI has already compared against the source.
+let markdown;
+try {
+  markdown = await readFile(sourcePath, 'utf8');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  if (process.argv.includes('--check')) {
+    console.error(`[changelog] cannot read ${sourcePath}`);
+    process.exit(1);
+  }
+  console.log('[changelog] no repository CHANGELOG.md here; keeping the committed copy');
+  process.exit(0);
+}
 const next = render(parseChangelog(markdown));
 
 if (process.argv.includes('--check')) {
