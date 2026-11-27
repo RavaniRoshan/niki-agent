@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ChevronDown, Download, Terminal } from 'lucide-react';
 import { BTN, CARD, CopyButton } from '../../../shared';
+import { VERSION as FALLBACK_VERSION } from '../../../shared/version';
 import { PageShell } from '../../../widgets/page-shell';
 import { INSTALL_COMMAND, WINDOWS_INSTALL_COMMAND } from '../../../entities/niki';
 import { CHANGELOG } from '../../changelog/changelog.generated';
@@ -10,7 +11,7 @@ const DOCS_URL = 'https://niki-docs.vercel.app';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
 
 const latestRelease = CHANGELOG.find((release) => !release.unreleased);
-const VERSION = latestRelease?.version ?? '2.1.4';
+const VERSION = latestRelease?.version ?? FALLBACK_VERSION;
 const RELEASED = latestRelease?.date ?? null;
 
 type PlatformId = 'linux' | 'macos-arm64' | 'macos-x64' | 'windows';
