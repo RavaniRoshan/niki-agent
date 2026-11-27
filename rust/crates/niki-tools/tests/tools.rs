@@ -197,6 +197,45 @@ async fn shell_timeout_kills_a_long_command() {
 }
 
 #[tokio::test]
+async fn shell_finishes_and_stays_bounded_when_a_command_floods_output() {
+    let dir = TempDir::new().expect("temp dir");
+    let ctx = context(&dir);
+    let shell = Shell::with_timeout(Duration::from_secs(30));
+
+    let started = Instant::now();
+    let result = Tool::run(
+        &shell,
+        json!({"command": "yes niki | head -c 4000000"}),
+        &ctx,
+    )
+    .await;
+    let elapsed = started.elapsed();
+
+    let output = result.expect("a flooding command still finishes");
+    assert!(
+        output.truncated,
+        "the captured text is reported as cut: {} bytes",
+        output.text.len()
+    );
+    assert!(
+        output.text.len() <= MAX_OUTPUT_BYTES + 128,
+        "captured text stays at the cap: {} bytes",
+        output.text.len()
+    );
+    assert!(
+        output
+            .text
+            .contains("--- stdout (truncated, first 65536 bytes) ---"),
+        "the truncation is visible: {:?}",
+        &output.text[..output.text.len().min(200)]
+    );
+    assert!(
+        elapsed < Duration::from_secs(20),
+        "the flood was drained promptly: {elapsed:?}"
+    );
+}
+
+#[tokio::test]
 async fn grep_finds_matches_and_skips_noise_directories() {
     let dir = TempDir::new().expect("temp dir");
     let root = dir.path();
