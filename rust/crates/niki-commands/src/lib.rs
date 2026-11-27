@@ -41,49 +41,189 @@ pub struct CommandInfo {
     pub name: &'static str,
     /// One line for the help overlay.
     pub summary: &'static str,
+    /// Other spellings that reach the same handler.
+    pub aliases: &'static [&'static str],
 }
 
-/// Every non-alias command, in a stable order for help.
+/// Every command the parser accepts, in a stable order for help.
 pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/clear",
         summary: "Start a fresh session and empty the view",
+        aliases: &[],
     },
     CommandInfo {
         name: "/compact",
         summary: "Fold older rows out of the view; the session store keeps them",
+        aliases: &[],
     },
     CommandInfo {
         name: "/help",
         summary: "This list",
+        aliases: &["/keys"],
     },
     CommandInfo {
         name: "/model",
         summary: "Choose a model, or name one with /model provider:model",
+        aliases: &[],
     },
     CommandInfo {
         name: "/quit",
         summary: "Leave the app",
+        aliases: &["/exit", "/q"],
     },
     CommandInfo {
         name: "/resume",
         summary: "List saved sessions, or resume one by id or index",
+        aliases: &[],
     },
     CommandInfo {
         name: "/skills",
         summary: "List project and user skills",
+        aliases: &[],
     },
     CommandInfo {
         name: "/theme",
         summary: "Choose a palette, or cycle to the next one",
+        aliases: &[],
     },
     CommandInfo {
         name: "/tools",
         summary: "List the registered tools",
+        aliases: &[],
     },
     CommandInfo {
         name: "/version",
         summary: "Show the version",
+        aliases: &["/about"],
+    },
+];
+
+/// Commands the earlier client had that this build does not answer yet.
+///
+/// `parse` rejects these. The list exists so the help screen and
+/// `rust/PARITY.md` can say what is missing without promising it, and so a
+/// command moves out of here the day it is implemented.
+pub const ROADMAP: &[CommandInfo] = &[
+    CommandInfo {
+        name: "/agents",
+        summary: "Browse and switch between agents",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/auth",
+        summary: "Store and check provider credentials",
+        aliases: &["/connect"],
+    },
+    CommandInfo {
+        name: "/auto",
+        summary: "Switch to Auto approval mode",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/btw",
+        summary: "Ask a side question without changing the conversation",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/context",
+        summary: "Show how much of the context window is in use",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/copy",
+        summary: "Copy the latest answer",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/cost",
+        summary: "Show the token cost of this session",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/docs",
+        summary: "Open the documentation",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/editor",
+        summary: "Compose the prompt in $EDITOR",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/effort",
+        summary: "Set reasoning effort for the current model",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/feedback",
+        summary: "Open the issue tracker",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/goal",
+        summary: "Set a persistent objective with a finish line",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/line-numbers",
+        summary: "Show or hide line numbers in diffs",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/manual",
+        summary: "Switch to Manual approval mode",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/mcp",
+        summary: "List MCP servers and their state",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/plugins",
+        summary: "Manage plugins",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/prompts",
+        summary: "Search and reuse an earlier prompt",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/remember",
+        summary: "Save useful context as a skill or note",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/scrollbar",
+        summary: "Show or hide the transcript scrollbar",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/threads",
+        summary: "Browse and resume earlier sessions",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/timestamps",
+        summary: "Show or hide message timestamps",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/tokens",
+        summary: "Show token usage for this session",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/update",
+        summary: "Check for and install an update",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/yolo",
+        summary: "Switch to YOLO approval mode",
+        aliases: &[],
     },
 ];
 
@@ -128,7 +268,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
     let name = words.next().unwrap_or_default();
     let argument = words.next().map(str::to_owned);
     let command = match name {
-        "/quit" | "/exit" => SlashCommand::Quit,
+        "/quit" | "/exit" | "/q" => SlashCommand::Quit,
         "/help" | "/keys" => SlashCommand::Help,
         "/theme" => SlashCommand::Theme(argument),
         "/model" => SlashCommand::Model(argument),
@@ -137,7 +277,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/resume" => SlashCommand::Resume(argument),
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
-        "/version" => SlashCommand::Version,
+        "/version" | "/about" => SlashCommand::Version,
         other => {
             return Err(UnknownCommand {
                 name: other.to_owned(),
@@ -187,7 +327,46 @@ mod tests {
     #[test]
     fn the_aliases_keep_working() {
         assert_eq!(parse("/exit"), Ok(SlashCommand::Quit));
+        assert_eq!(parse("/q"), Ok(SlashCommand::Quit));
         assert_eq!(parse("/keys"), Ok(SlashCommand::Help));
+        assert_eq!(parse("/about"), Ok(SlashCommand::Version));
+    }
+
+    #[test]
+    fn every_alias_is_listed_with_its_command_and_parses_to_it() {
+        for info in COMMANDS {
+            let canonical = parse(info.name).expect("listed command parses");
+            for alias in info.aliases {
+                assert_eq!(
+                    parse(alias),
+                    Ok(canonical.clone()),
+                    "{alias} should reach {}",
+                    info.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_roadmap_names_nothing_the_parser_answers_and_nothing_twice() {
+        for info in ROADMAP {
+            assert!(
+                parse(info.name).is_err(),
+                "{} is on the roadmap but parses today; move it to COMMANDS",
+                info.name
+            );
+            assert!(!info.summary.is_empty(), "{} has no summary", info.name);
+        }
+        for (index, info) in ROADMAP.iter().enumerate() {
+            assert!(
+                !COMMANDS.iter().any(|done| done.name == info.name),
+                "{} is both implemented and planned",
+                info.name
+            );
+            for other in ROADMAP.iter().skip(index + 1) {
+                assert_ne!(info.name, other.name, "duplicate roadmap name");
+            }
+        }
     }
 
     #[test]
