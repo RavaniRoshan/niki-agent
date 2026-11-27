@@ -116,8 +116,8 @@ mode.
 
 | Mode | What runs without asking first |
 | --- | --- |
-| Manual | Nothing. Shell commands, writes, edits, and deletes all ask. |
-| Auto | Shell commands on the allow-list and paths inside the workspace run; everything else asks. |
+| Manual | Every gated action asks, except shell commands on the allow-list. |
+| Auto | Allow-listed shell commands and writes inside the workspace run; everything else asks. |
 | YOLO | Everything the policy allows runs unsupervised. |
 
 None of the modes is a sandbox: Niki runs with your user's permissions. The

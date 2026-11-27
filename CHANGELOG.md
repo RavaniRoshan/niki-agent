@@ -24,6 +24,9 @@ client became that binary; `1.x` was the earlier Python implementation.
 - The README was rebuilt around install, proof, and the approval gate, and its
   demo recording was replaced with a session recorded from the shipped binary.
   The archive now also carries `CHANGELOG.md`.
+- `SECURITY.md` now describes the shipped gate: writes and edits are
+  approval-gated, and Auto differs from Manual. The supported versions are
+  2.1.x, with security fixes for 2.0.x.
 - The binary behaves as it did in 2.1.3; the only change is the version string.
 
 ## [2.1.3] - 2026-11-27

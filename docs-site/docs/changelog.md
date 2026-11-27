@@ -21,6 +21,9 @@ client became that binary; `1.x` was the earlier Python implementation.
   questions. Release archives now carry `CHANGELOG.md`.
 - A hyphenated tag such as `v2.2.0-beta.1` publishes a GitHub pre-release, so
   `latest` stays on the newest stable release.
+- `SECURITY.md` now describes the shipped gate — writes and edits are
+  approval-gated, and Auto differs from Manual — and supported versions are
+  2.1.x, with security fixes for 2.0.x.
 - The binary behaves as it did in 2.1.3; the only change is the version string.
 
 [Release notes](https://github.com/RavaniRoshan/niki-agent/releases/tag/v2.1.4)
