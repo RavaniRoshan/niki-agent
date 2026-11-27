@@ -134,30 +134,54 @@ impl AllowList {
 /// Programs the person allowed for the rest of one session.
 ///
 /// A rule is the first token of the command that was approved: `git` covers
-/// every later `git …` command in the same workspace and no other program. The
-/// holder is one session and one workspace; nothing here is written to
+/// every later simple `git …` command in the same workspace and no other
+/// program. The exact command line that was approved is covered too, whatever
+/// it contains, so approving `echo one > a.txt` does not ask about that same
+/// line again. A command that chains, redirects, or substitutes another command
+/// is never covered by the program rule alone — approving `echo one > a.txt`
+/// must not silently run `echo two > ~/.bashrc`.
+///
+/// The holder is one session and one workspace; nothing here is written to
 /// configuration, and a new session starts empty.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProgramAllow {
     programs: BTreeSet<String>,
+    commands: BTreeSet<String>,
 }
 
 impl ProgramAllow {
-    /// Add the program `command` starts with. Returns whether a rule was added.
+    /// Add the program and the exact command line `command` names. Returns
+    /// whether anything new was recorded.
     pub fn add(&mut self, command: &str) -> bool {
-        program(command).is_some_and(|program| self.programs.insert(program.to_owned()))
+        let command = command.trim();
+        if command.is_empty() {
+            return false;
+        }
+        let program =
+            program(command).is_some_and(|program| self.programs.insert(program.to_owned()));
+        let exact = self.commands.insert(command.to_owned());
+        program || exact
     }
 
-    /// Whether `command` starts with an allowed program.
+    /// Whether `command` is covered: the same line was approved, or it starts
+    /// with an allowed program and is a single command.
     #[must_use]
     pub fn permits(&self, command: &str) -> bool {
+        let command = command.trim();
+        if command.is_empty() {
+            return false;
+        }
+        if self.commands.contains(command) {
+            return true;
+        }
         program(command).is_some_and(|program| self.programs.contains(program))
+            && is_single_command(command)
     }
 
     /// Whether no program is allowed.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.programs.is_empty()
+        self.programs.is_empty() && self.commands.is_empty()
     }
 }
 
@@ -682,16 +706,50 @@ mod allow_list_add_tests {
         assert!(allow.add("git status"));
         assert!(allow.permits("git status"));
         assert!(allow.permits("git log --oneline"));
-        assert!(
-            allow.permits("git status; rm -rf ~"),
-            "the rule is the program, as the dialog promised"
-        );
+        for command in [
+            "git status; rm -rf ~",
+            "git status && rm -rf ~",
+            "git status | sh",
+            "git status > ~/.bashrc",
+            "git $(rm -rf ~)",
+            "git `rm -rf ~`",
+            "git status\nrm -rf ~",
+        ] {
+            assert!(
+                !allow.permits(command),
+                "{command:?} chains another command and must ask"
+            );
+        }
         assert!(
             !allow.permits("cargo test"),
             "a different program still asks"
         );
         assert!(!allow.add("   "), "nothing to scope a rule to");
         assert!(!allow.permits(""));
+    }
+
+    #[test]
+    fn the_approved_line_is_covered_even_when_it_redirects() {
+        let mut allow = ProgramAllow::default();
+        assert!(allow.add("echo one > a.txt"));
+
+        assert!(
+            allow.permits("echo one > a.txt"),
+            "the exact approved line never asks twice"
+        );
+        assert!(
+            allow.permits("echo two"),
+            "a simple command of the program is covered"
+        );
+        assert!(
+            !allow.permits("echo two > b.txt"),
+            "another redirect needs its own approval"
+        );
+        assert!(
+            !allow.permits("echo two; rm -rf ~"),
+            "a chained command needs its own approval"
+        );
+        assert!(!allow.is_empty());
     }
 
     #[test]

@@ -490,8 +490,8 @@ async fn always_permits_the_same_command_without_asking_again() {
 async fn a_session_answer_covers_the_same_program_without_asking_again() {
     let dir = tempfile::tempdir().expect("tempdir");
     let provider = Scripted::new(vec![
-        tool_turn("call-1", "shell", r#"{"command":"echo one > a.txt"}"#),
-        tool_turn("call-2", "shell", r#"{"command":"echo two > b.txt"}"#),
+        tool_turn("call-1", "shell", r#"{"command":"echo one"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo two"}"#),
         tool_turn("call-3", "shell", r#"{"command":"touch c.txt"}"#),
         text_turn("done"),
     ]);
@@ -506,9 +506,27 @@ async fn a_session_answer_covers_the_same_program_without_asking_again() {
         2,
         "echo covers its second command; touch is a different program"
     );
+    assert!(dir.path().join("c.txt").exists(), "touch c.txt ran");
+}
+
+#[tokio::test]
+async fn a_session_answer_does_not_cover_a_redirected_command() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn("call-1", "shell", r#"{"command":"echo one > a.txt"}"#),
+        tool_turn("call-2", "shell", r#"{"command":"echo two > b.txt"}"#),
+        text_turn("done"),
+    ]);
+    let (approver, seen) = approver(niki_agent::Approval::Always);
+    let mut agent = agent(provider, dir.path(), config()).with_approver(approver);
+
+    let outcome = agent.run("two redirects", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 2);
     assert_eq!(
-        std::fs::read_to_string(dir.path().join("a.txt")).expect("file"),
-        "one\n"
+        seen.lock().expect("lock").len(),
+        2,
+        "a redirect is not covered by allowing the program once"
     );
     assert_eq!(
         std::fs::read_to_string(dir.path().join("b.txt")).expect("file"),
