@@ -13,7 +13,7 @@ use crossterm::event::{
 };
 use crossterm::execute;
 use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+    EnterAlternateScreen, LeaveAlternateScreen, SetTitle, disable_raw_mode, enable_raw_mode,
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -81,6 +81,8 @@ impl Screen {
         let _ = disable_raw_mode();
         let _ = disable_modes(self.terminal.backend_mut());
         let _ = self.terminal.show_cursor();
+        // Leave the shell with no title rather than a stale turn state.
+        let _ = execute!(io::stdout(), SetTitle(""));
         let _ = io::stdout().flush();
     }
 
@@ -161,7 +163,10 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
     // an answer makes the tool report a dismissal, which is the safe way to
     // leave a question nobody answered.
     let mut question_reply: Option<std::sync::mpsc::Sender<Result<AskAnswer, AskError>>> = None;
+    // The title last written, so an idle frame costs no terminal write.
+    let mut title = String::new();
     screen.terminal.draw(|frame| ui::draw(frame, app))?;
+    show_title(app, &mut title);
     loop {
         let mut changed = false;
         while let Some(message) = worker.try_recv() {
@@ -211,6 +216,7 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
         }
         if changed {
             screen.terminal.draw(|frame| ui::draw(frame, app))?;
+            show_title(app, &mut title);
         }
 
         if !event::poll(if busy {
@@ -280,7 +286,11 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                     let mut out = io::stdout();
                     let _ = clipboard::copy(&mut out, &text);
                 }
-                Some(Command::EditPrompt) => edit_prompt(screen, app),
+                Some(Command::EditPrompt) => {
+                    edit_prompt(screen, app);
+                    // The editor owned the terminal; rewrite the title next draw.
+                    title.clear();
+                }
                 Some(Command::Quit) => return Ok(exit_code(app)),
                 None => {}
             },
@@ -293,6 +303,24 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
             _ => {}
         }
         screen.terminal.draw(|frame| ui::draw(frame, app))?;
+        show_title(app, &mut title);
+    }
+}
+
+/// Write the window title, when the effect is on and it has changed.
+///
+/// An idle session rewrites nothing: the title is compared against the last
+/// one written, so a quiet frame costs no terminal write.
+fn show_title(app: &App, last: &mut String) {
+    if !app.effects.title {
+        return;
+    }
+    let next = app.title();
+    if next == *last {
+        return;
+    }
+    if execute!(io::stdout(), SetTitle(next.clone())).is_ok() {
+        *last = next;
     }
 }
 

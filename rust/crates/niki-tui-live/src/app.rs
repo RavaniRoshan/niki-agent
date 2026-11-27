@@ -458,6 +458,50 @@ impl App {
         self.spinner = self.spinner.wrapping_add(1);
     }
 
+    /// The terminal window title: the project, then what the turn is doing.
+    ///
+    /// A terminal the person is not looking at still says whether the turn is
+    /// working, and while it waits for an answer the marker blinks every half
+    /// second. Reduced motion or the `title` effect off makes it static; ASCII
+    /// mode uses ` - ` and `*`/`o`. Control characters are stripped so a path
+    /// cannot inject a terminal escape.
+    #[must_use]
+    pub fn title(&self) -> String {
+        let project = Path::new(&self.status.cwd)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+            .unwrap_or("niki");
+        let separator = if self.glyphs.is_ascii() {
+            " - "
+        } else {
+            " — "
+        };
+        let (state, marker) = match self.status.turn {
+            TurnState::Idle => ("idle", None),
+            TurnState::Working => ("working", None),
+            TurnState::Waiting => {
+                let (on, off) = if self.glyphs.is_ascii() {
+                    ('*', 'o')
+                } else {
+                    ('●', '○')
+                };
+                let lit = !self.motion.allows_spinner() || (self.spinner / 5) % 2 == 0;
+                ("needs you", Some(if lit { on } else { off }))
+            }
+            TurnState::Cancelled => ("cancelled", None),
+            TurnState::Failed => ("failed", None),
+        };
+        let title = match marker {
+            Some(marker) => format!("{marker} {project}{separator}{state}"),
+            None => format!("{project}{separator}{state}"),
+        };
+        title
+            .chars()
+            .filter(|character| !character.is_control())
+            .collect()
+    }
+
     /// Rows the composer block needs: its text plus the rule above it.
     #[must_use]
     pub fn composer_height(&self) -> u16 {
@@ -2588,6 +2632,45 @@ mod tests {
         let mut app = app();
         app.apply(AgentEvent::Notice("warning: not trusted".to_owned()));
         assert!(!app.started());
+    }
+
+    #[test]
+    fn the_title_names_the_project_and_the_state() {
+        let mut app = App::new(SessionInfo {
+            model: "mock:mock-model".to_owned(),
+            mode: Mode::Manual,
+            cwd: PathBuf::from("/work/demo"),
+        });
+        assert_eq!(app.title(), "demo — idle");
+        app.status.turn = TurnState::Working;
+        assert_eq!(app.title(), "demo — working");
+
+        app.status.turn = TurnState::Waiting;
+        assert_eq!(app.title(), "● demo — needs you");
+        for _ in 0..5 {
+            app.tick();
+        }
+        assert_eq!(app.title(), "○ demo — needs you", "the marker blinks");
+
+        app.set_motion(Motion::Reduced);
+        assert_eq!(
+            app.title(),
+            "● demo — needs you",
+            "reduced motion holds the marker lit"
+        );
+        app.set_glyphs(GlyphMode::Ascii);
+        assert_eq!(app.title(), "* demo - needs you");
+    }
+
+    #[test]
+    fn the_title_strips_control_characters_from_the_path() {
+        let app = App::new(SessionInfo {
+            model: "mock:mock-model".to_owned(),
+            mode: Mode::Manual,
+            cwd: PathBuf::from("/work/bad\u{1b}]0;pwned\u{7}"),
+        });
+        assert!(!app.title().contains('\u{1b}'), "{:?}", app.title());
+        assert!(!app.title().contains('\u{7}'), "{:?}", app.title());
     }
 
     #[test]
