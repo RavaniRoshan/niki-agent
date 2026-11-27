@@ -12,7 +12,7 @@ use niki_provider::openai::ToolCallAssembler;
 use niki_provider::{
     ChatRequest, Message, Provider, Role, StopReason, StreamEvent, ToolCall, ToolSpec, Usage,
 };
-use niki_tools::{Registry, ToolContext};
+use niki_tools::{Asker, Registry, ToolContext};
 use serde_json::{Map, Value};
 
 use crate::context::{
@@ -122,6 +122,16 @@ impl Agent {
     pub fn with_policy(mut self, mode: Mode, allow: AllowList) -> Self {
         self.mode = mode;
         self.allow = allow;
+        self
+    }
+
+    /// Install the channel `request_user_input` uses to reach the person.
+    ///
+    /// Without one the tool reports to the model that no interactive user is
+    /// attached and lists the options, so a headless run never waits.
+    #[must_use]
+    pub fn with_asker(mut self, asker: Arc<dyn Asker + Send + Sync>) -> Self {
+        self.ctx = self.ctx.with_asker(asker);
         self
     }
 

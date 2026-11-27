@@ -6,7 +6,7 @@ use futures_util::stream::BoxStream;
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode};
 use niki_hooks::Notify;
 use niki_provider::{ChatRequest, Provider, ProviderError, Role, StopReason, StreamEvent, Usage};
-use niki_tools::{Registry, Tool, ToolContext, ToolError, ToolOutput};
+use niki_tools::{AskAnswer, Registry, ScriptedAsker, Tool, ToolContext, ToolError, ToolOutput};
 use serde_json::{Value, json};
 
 /// A provider that replays one scripted turn per request and records what it
@@ -292,6 +292,58 @@ async fn an_unknown_tool_becomes_a_result_the_model_can_read() {
         "{}",
         message.content
     );
+}
+
+#[tokio::test]
+async fn an_installed_asker_answers_request_user_input() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "request_user_input",
+            r#"{"question":"Which store?","options":[{"label":"SQLite"},{"label":"JSON"}],"allow_freeform":true}"#,
+        ),
+        text_turn("storing in SQLite"),
+    ]);
+    let asker = Arc::new(ScriptedAsker::new([AskAnswer::Freeform(
+        "SQLite, with WAL".to_owned(),
+    )]));
+    let mut agent = agent(provider, dir.path(), config()).with_asker(asker.clone());
+
+    let outcome = agent.run("ask me", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.text, "storing in SQLite");
+    assert_eq!(agent.messages()[2].content, "SQLite, with WAL");
+    let requests = asker.requests();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].question, "Which store?");
+    assert!(requests[0].allow_freeform);
+    assert_eq!(requests[0].options[1].label, "JSON");
+}
+
+#[tokio::test]
+async fn without_an_asker_request_user_input_tells_the_model_nobody_is_attached() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let provider = Scripted::new(vec![
+        tool_turn(
+            "call-1",
+            "request_user_input",
+            r#"{"question":"Which store?","options":[{"label":"SQLite"},{"label":"JSON"}]}"#,
+        ),
+        text_turn("I will pick one and say why"),
+    ]);
+    let mut agent = agent(provider, dir.path(), config());
+
+    let outcome = agent.run("ask me", &mut |_| {}).await.expect("run");
+
+    assert_eq!(outcome.tool_calls, 1);
+    let result = &agent.messages()[2].content;
+    assert!(
+        result.contains("No interactive user is attached"),
+        "{result}"
+    );
+    assert!(result.contains("SQLite"), "{result}");
+    assert!(result.contains("JSON"), "{result}");
 }
 
 /// An approver that records every request and answers with `answer`.

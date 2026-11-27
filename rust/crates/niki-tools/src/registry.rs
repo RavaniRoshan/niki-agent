@@ -1,7 +1,7 @@
 use serde_json::{Value, json};
 
 use crate::tool::ToolFuture;
-use crate::tools::{EditFile, Glob, Grep, ListDir, ReadFile, Shell, WriteFile};
+use crate::tools::{EditFile, Glob, Grep, ListDir, ReadFile, RequestUserInput, Shell, WriteFile};
 use crate::{Tool, ToolContext};
 
 /// Object-safe view of a [`Tool`], used only to let the registry hold tools of
@@ -96,6 +96,7 @@ impl Registry {
             Box::new(Shell::new()),
             Box::new(Grep),
             Box::new(Glob),
+            Box::new(RequestUserInput),
         ];
         tools.sort_by(|left, right| left.name().cmp(right.name()));
         Self { tools }

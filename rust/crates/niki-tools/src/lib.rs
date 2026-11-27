@@ -11,6 +11,7 @@
 //! tool call through [`Registry::get`].
 
 mod args;
+mod ask;
 mod context;
 mod error;
 mod output;
@@ -19,12 +20,13 @@ mod tool;
 mod tools;
 mod walk;
 
+pub use ask::{AskAnswer, AskError, AskOption, AskRequest, Asker, ScriptedAsker};
 pub use context::ToolContext;
 pub use error::ToolError;
 pub use output::{MAX_OUTPUT_BYTES, MAX_OUTPUT_LINES, ToolOutput};
 pub use registry::{Registry, ToolHandle};
 pub use tool::{Tool, ToolFuture};
-pub use tools::{EditFile, Glob, Grep, ListDir, ReadFile, Shell, WriteFile};
+pub use tools::{EditFile, Glob, Grep, ListDir, ReadFile, RequestUserInput, Shell, WriteFile};
 
 use std::io;
 
