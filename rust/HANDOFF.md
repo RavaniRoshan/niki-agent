@@ -91,8 +91,10 @@ opens `~/.niki/sessions.db`, creates a session row immediately and appends every
 completed turn as `user`, `assistant`, `tool_call`, `tool_result`, `tool_error`
 or `error` messages, so `/resume` lists and rebuilds sessions on the next
 launch. `/clear` starts a new session without deleting the old one, `/compact`
-folds older rows out of the view only — this build has no summarising model, and
-the help overlay says so — `/tools` lists the registry including `mcp__` names,
+sends the turns before the newest six to the provider with a fixed instruction
+and replaces them with one `Summary of the earlier conversation:` message — the
+saved rows are untouched and the transcript folds to the newest twelve rows —
+`/tools` lists the registry including `mcp__` names,
 and `/version` names Niki Agent. Bracketed paste is enabled with the alternate
 screen, arrives as one `Event::Paste`, and is inserted literally; a paste never
 sends the prompt, and a second prompt waits for the running turn so a turn can
@@ -155,7 +157,7 @@ transcript and either surface can read the other's sessions.
 cd rust
 cargo fmt --all
 cargo clippy -j 2 --workspace --all-targets -- -D warnings
-cargo test -j 2 --workspace        # 642 tests, 0 failures
+cargo test -j 2 --workspace        # 653 tests, 0 failures
 ```
 
 `crates/niki-acp` contributes 27 of them: 14 unit tests for framing, the
@@ -301,9 +303,11 @@ headless surfaces (`-n`, `--output-format json` and `jsonl`, `--resume`,
   unit-tested; the six required protocol cases run against the stdio fixture.
 - No streaming cancel inside a provider request beyond the per-event check.
 - The composer has no mouse selection.
-- `Ctrl+O`, `Ctrl+N`, `Ctrl+G` are in `BINDINGS` but not implemented in
-  the live app; the help overlay says so. (`Ctrl+T` is implemented: it opens the
-  full transcript overlay.)
+- `Ctrl+O` (tool output) and `Ctrl+N` (notifications) are in `BINDINGS` but not
+  implemented in the live app; the help overlay says so. `Ctrl+G` hands the
+  composer to `$EDITOR`, `Ctrl+T` opens the transcript overlay, and the help
+  entry for `Ctrl+T` still reads "subagent activity" — that label is wrong and
+  is the next one-line fix.
 - ratatui 0.29 pulls crossterm 0.28 alongside the workspace's 0.29. Both are
   small and the ANSI output agrees, but a single version would be tidier at
   cutover.

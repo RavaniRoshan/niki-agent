@@ -18,7 +18,7 @@ pub fn describe(action: Action) -> &'static str {
         Action::ToggleToolOutput => "Show or hide tool output (not in this build)",
         Action::ToggleSubagents => "Show or hide subagent activity (not in this build)",
         Action::OpenNotifications => "Show notifications (not in this build)",
-        Action::OpenEditor => "Edit the prompt in your editor (not in this build)",
+        Action::OpenEditor => "Edit the prompt in your editor ($VISUAL, then $EDITOR)",
         Action::ScrollUp => "Move the cursor up a line in the composer",
         Action::ScrollDown => "Move the cursor down a line in the composer",
         Action::PageUp => "Move the transcript back one page",
@@ -167,6 +167,21 @@ mod tests {
             assert!(
                 entries.iter().any(|(entry, _)| *entry == chord),
                 "{chord} is not listed"
+            );
+        }
+    }
+
+    #[test]
+    fn only_the_keys_that_are_missing_say_so() {
+        assert!(!describe(Action::OpenEditor).contains("not in this build"));
+        for action in [
+            Action::ToggleToolOutput,
+            Action::ToggleSubagents,
+            Action::OpenNotifications,
+        ] {
+            assert!(
+                describe(action).contains("not in this build"),
+                "{action:?} still has no implementation and must say so"
             );
         }
     }
