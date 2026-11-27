@@ -2,11 +2,11 @@
 
 **One binary. No runtime. A terminal coding agent that starts instantly.**
 
-2.0.0 is a new implementation of Niki Agent in Rust. The shipped product is a
-single self-contained executable: there is no Python interpreter to install, no
-virtual environment to create, and no packages to resolve on first run. Linux
-and WSL share one archive, Windows has its own, and macOS builds from source in
-two commands.
+2.1.0 adds the composer and session features below to the 2.0.0 Rust base. The
+shipped product is still a single self-contained executable: there is no Python
+interpreter to install, no virtual environment to create, and no packages to
+resolve on first run. Linux and WSL share one archive, Windows has its own, and
+macOS builds from source in two commands.
 
 ## Install
 
@@ -45,6 +45,44 @@ niki
 No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
+
+## What changed in 2.1.0
+
+**The composer keeps up with the turn.** Press Enter while a turn is running and
+the message is queued — a dim `queued:` row and `queued N` in the status bar —
+then submitted when the turn ends. Alt+Enter or Ctrl+Enter steers the running
+turn instead. Esc-Esc, twice within two seconds on an empty composer, restores
+the last message and truncates the whole turn from the view and the history. A
+line beginning with `!` runs locally through the same allow-list, costs no
+tokens, and is not written to the session.
+
+**The working tree is visible from the composer.** `/diff [staged|unstaged|untracked]`
+runs `git` directly — no shell — and renders the result inside the transcript,
+capped at 20 files and 400 lines with the withheld amount reported. Untracked
+files are shown as additions; an empty tree says `no changes`.
+
+**Sessions are inspectable.** `/threads` browses saved sessions with a first-prompt
+preview and a filter, and restores the chosen one. `/context` shows what the
+window is holding and `/compact` actually rewrites the running history.
+
+**Instructions are files.** `AGENTS.md` and `.niki/AGENTS.md` are read from the
+repository root down to the working directory, with the user-level file first,
+under a 32 KiB budget that truncates by line and says so. Symbolic links that
+leave the workspace are skipped. `/init` writes a starter file only when one is
+missing.
+
+**Every built-in write asks.** `write_file` and `edit_file` are now gated like a
+shell command: Manual asks, Auto asks unless the target resolves inside the
+workspace, YOLO runs. Shell commands keep the allow-list rule, and a chained
+command is no longer allowed by a prefix match.
+
+**Modes are a command too.** `/manual`, `/auto`, and `/yolo` switch modes
+mid-session — the same three states Shift+Tab cycles.
+
+**Headless output can be parsed.** `--output-format jsonl` (also `--output`)
+streams `start`, `text`, `tool_call`, `tool_result`, `usage`, and exactly one
+`end` event per turn. Tool arguments that failed to parse are passed through as
+raw text; tool results are truncated at 4 KiB with `"truncated": true`.
 
 ## What changed in 2.0.0
 
