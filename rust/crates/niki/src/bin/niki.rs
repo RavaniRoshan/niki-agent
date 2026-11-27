@@ -274,18 +274,17 @@ fn list_sessions(options: &Options) -> Result<i32> {
         Ok(_) => {
             let store = SessionStore::open(&database)
                 .with_context(|| format!("open the session store in {}", home.display()))?;
-            let mut summaries = match options.root.as_deref() {
-                Some(root) => store.list_for(root),
-                None => store.list(),
+            let mut summaries = match (options.root.as_deref(), options.sessions_all) {
+                (Some(root), true) => store.list_for(root),
+                (Some(root), false) => store.list_for_active(root),
+                (None, true) => store.list(),
+                (None, false) => store.list_active(),
             }
             .with_context(|| format!("list the sessions in {}", database.display()))?;
             // `list` orders by creation; a resumed session can be written
             // later, so the command's "newest" is the last stored write. The
             // sort is stable, keeping the store's order for a tie.
             summaries.sort_by_key(|summary| std::cmp::Reverse(summary.updated_at));
-            if !options.sessions_all {
-                summaries.retain(|summary| !summary.archived);
-            }
             summaries
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
@@ -642,9 +641,9 @@ struct Resumed {
 /// Open the session store and pick the conversation this run appends to.
 ///
 /// Without `--resume` or `--continue` a new session is created. With either,
-/// the named session (or the newest one for this workspace) supplies its user
-/// and assistant turns as history; tool rows stay in the store but are not
-/// resent, because a stored row carries no tool-call id to answer.
+/// the named session (or the newest live one for this workspace) supplies its
+/// user and assistant turns as history; tool rows stay in the store but are
+/// not resent, because a stored row carries no tool-call id to answer.
 fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
     let home = config_home();
     let store = match open_store(&home) {
@@ -680,7 +679,9 @@ fn open_session(options: &Options, root: &Path) -> Result<Resumed> {
     };
 
     let summary = if wanted == "last" {
-        store.latest_for(root).context("list the saved sessions")?
+        store
+            .latest_active(root)
+            .context("list the saved sessions")?
     } else {
         store.find(&wanted).context("look up the saved session")?
     };
@@ -1332,9 +1333,9 @@ fn init(options: &Options) -> Result<i32> {
 
 /// `/rename` in a headless run: name the current session and print one line.
 ///
-/// Without `--resume`/`--continue` the newest session for the workspace is the
-/// current one, and a workspace with none gets a session to name, the way the
-/// screen creates one at startup.
+/// Without `--resume`/`--continue` the newest live session for the workspace
+/// is the current one, and a workspace with none gets a session to name, the
+/// way the screen creates one at startup.
 fn rename(options: &Options, title: Option<&str>) -> Result<i32> {
     let root = workspace_root(options)?;
     rename_in(&config_home(), &root, options, title)
@@ -1390,7 +1391,7 @@ fn export_in(home: &Path, root: &Path, options: &Options, path: Option<&str>) ->
 }
 
 /// The session a headless command names: `--resume`/`--continue` when given,
-/// else the newest one for the workspace.
+/// else the newest live one for the workspace.
 ///
 /// `create` lets a command that would name a session make one when the
 /// workspace has none; an export never writes into a session it invented.
@@ -1402,7 +1403,9 @@ fn named_session(
 ) -> Result<Option<(SessionStore, SessionId)>> {
     let store = open_store(home)?;
     if options.continue_session {
-        let latest = store.latest_for(root).context("list the saved sessions")?;
+        let latest = store
+            .latest_active(root)
+            .context("list the saved sessions")?;
         if let Some(summary) = latest {
             return Ok(Some((store, summary.id)));
         }
@@ -1425,7 +1428,9 @@ fn named_session(
             })?;
         return Ok(Some((store, summary.id)));
     }
-    let latest = store.latest_for(root).context("list the saved sessions")?;
+    let latest = store
+        .latest_active(root)
+        .context("list the saved sessions")?;
     if let Some(summary) = latest {
         return Ok(Some((store, summary.id)));
     }
@@ -1883,7 +1888,10 @@ mod tests {
             0
         );
         let store = SessionStore::open(home.join("sessions.db")).expect("store");
-        let summary = store.latest_for(&root).expect("list").expect("a session");
+        let summary = store
+            .latest_active(&root)
+            .expect("list")
+            .expect("a session");
         assert_eq!(summary.title.as_deref(), Some("plan the port"));
 
         assert_eq!(
@@ -1895,7 +1903,10 @@ mod tests {
             rename_in(&home, &root, &Options::default(), Some("   ")).expect("clear"),
             0
         );
-        let summary = store.latest_for(&root).expect("list").expect("a session");
+        let summary = store
+            .latest_active(&root)
+            .expect("list")
+            .expect("a session");
         assert_eq!(summary.title, None, "an empty title clears it");
     }
 
@@ -1913,7 +1924,7 @@ mod tests {
         {
             let store = SessionStore::open(home.join("sessions.db")).expect("store");
             let session = store
-                .latest_for(&root)
+                .latest_active(&root)
                 .expect("list")
                 .expect("a session")
                 .id;

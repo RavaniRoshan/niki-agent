@@ -659,10 +659,11 @@ impl App {
         self.modal = Some(Modal::Models(self.models.clone()));
     }
 
-    /// Open the session browser over the sessions the store holds.
+    /// Open the session browser over the live sessions the store holds.
     ///
     /// The rows come from the same listing `/resume` prints, so choosing one
-    /// takes the same path `/resume <id>` does.
+    /// takes the same path `/resume <id>` does. Archived sessions are left
+    /// out; an archived id still opens through `/resume <id>`.
     pub fn open_threads(&mut self) {
         if self.refuse_while_busy("/threads") {
             return;
@@ -672,7 +673,7 @@ impl App {
                 .push_notice("no sessions are saved in this build");
             return;
         };
-        let summaries = match store.list() {
+        let summaries = match store.list_active() {
             Ok(summaries) => summaries,
             Err(error) => {
                 self.transcript
@@ -1304,7 +1305,10 @@ impl App {
         self.transcript.push_notice(describe_context(report, usage));
     }
 
-    /// `/resume`: list saved sessions, or rebuild one into the view.
+    /// `/resume`: list live saved sessions, or rebuild one into the view.
+    ///
+    /// The list leaves archived sessions out, but a full id still opens one,
+    /// because the person named it rather than picking it from the list.
     fn resume(&mut self, target: Option<&str>) {
         if self.refuse_while_busy("/resume") {
             return;
@@ -1314,7 +1318,7 @@ impl App {
                 .push_notice("no sessions are saved in this build");
             return;
         };
-        let summaries = match store.list() {
+        let summaries = match store.list_active() {
             Ok(summaries) => summaries,
             Err(error) => {
                 self.transcript
@@ -1331,11 +1335,20 @@ impl App {
                 .checked_sub(1)
                 .and_then(|index| summaries.get(index))
                 .map(|summary| summary.id.clone())
+        } else if let Some(summary) = summaries
+            .iter()
+            .find(|summary| summary.id.as_str().starts_with(target))
+        {
+            Some(summary.id.clone())
         } else {
-            summaries
-                .iter()
-                .find(|summary| summary.id.as_str().starts_with(target))
-                .map(|summary| summary.id.clone())
+            match store.find(target) {
+                Ok(summary) => summary.map(|summary| summary.id),
+                Err(error) => {
+                    self.transcript
+                        .push_notice(format!("could not look up the session: {error}"));
+                    return;
+                }
+            }
         };
         let Some(id) = chosen else {
             self.transcript.push_notice(format!(
@@ -2636,6 +2649,67 @@ mod tests {
             rows.iter()
                 .any(|row| row.kind == RowKind::Assistant && row.text == "done"),
             "{rows:?}"
+        );
+    }
+
+    #[test]
+    fn archived_sessions_are_hidden_from_the_pickers_but_resume_by_id_still_works() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut app = app();
+        app.attach_sessions(store(&temp));
+        let own = app.session_id().expect("session").to_owned();
+
+        let archived = {
+            let store = store(&temp);
+            let archived = store.create("/work").expect("session");
+            store.append(&archived, "user", "old news").expect("append");
+            store.set_archived(&archived, true).expect("archive");
+            archived
+        };
+
+        type_text(&mut app, "/threads");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let entries = match &app.modal {
+            Some(Modal::Threads(picker)) => picker.entries().to_vec(),
+            other => panic!("expected the session browser, got {other:?}"),
+        };
+        assert_eq!(
+            entries.len(),
+            1,
+            "only the live session is offered: {entries:?}"
+        );
+        assert!(entries.iter().any(|entry| entry.id == own));
+        assert!(!entries.iter().any(|entry| entry.id == archived.as_str()));
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+
+        type_text(&mut app, "/resume");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        let notices: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .filter(|row| row.kind == RowKind::Notice)
+            .map(|row| row.text.as_str())
+            .collect();
+        assert!(
+            notices.iter().any(|text| text.contains(&own)),
+            "{notices:?}"
+        );
+        assert!(
+            !notices.iter().any(|text| text.contains(archived.as_str())),
+            "{notices:?}"
+        );
+
+        type_text(&mut app, &format!("/resume {archived}"));
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.session_id(), Some(archived.as_str()));
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .any(|row| row.kind == RowKind::User && row.text == "old news"),
+            "{:?}",
+            app.transcript.rows()
         );
     }
 

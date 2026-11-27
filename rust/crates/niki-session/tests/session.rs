@@ -162,6 +162,71 @@ fn list_for_keeps_only_the_named_workspace() {
 }
 
 #[test]
+fn archived_sessions_are_left_out_of_the_active_lists_but_found_by_id() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let cwd = temp.path().join("project");
+    let older = store.create(&cwd).unwrap();
+    let newer = store.create(&cwd).unwrap();
+    store.append(&newer, "user", "old news").unwrap();
+    store.set_archived(&newer, true).unwrap();
+
+    let active = store.list_active().unwrap();
+    assert_eq!(active.len(), 1);
+    assert_eq!(active[0].id, older);
+    assert_eq!(store.list_for_active(&cwd).unwrap().len(), 1);
+    assert_eq!(store.list_for_active(&cwd).unwrap()[0].id, older);
+    assert_eq!(
+        store.latest_active(&cwd).unwrap().unwrap().id,
+        older,
+        "the newest live session stands in for the workspace"
+    );
+
+    let all = store.list().unwrap();
+    assert_eq!(
+        all.len(),
+        2,
+        "the archived session is still listed by --all"
+    );
+    assert!(
+        all.iter()
+            .any(|summary| summary.id == newer && summary.archived)
+    );
+    assert_eq!(store.list_for(&cwd).unwrap().len(), 2);
+
+    let found = store.find(newer.as_str()).unwrap().expect("found by id");
+    assert!(found.archived);
+    assert_eq!(
+        store.load(&newer).unwrap().len(),
+        1,
+        "its transcript is intact"
+    );
+
+    store.set_archived(&newer, false).unwrap();
+    assert_eq!(store.latest_active(&cwd).unwrap().unwrap().id, newer);
+}
+
+#[test]
+fn a_workspace_with_only_archived_sessions_has_no_latest_active() {
+    let temp = TempDir::new().unwrap();
+    let store = open(&scratch(&temp));
+    let cwd = temp.path().join("project");
+    let only = store.create(&cwd).unwrap();
+    let elsewhere = store.create(temp.path().join("elsewhere")).unwrap();
+
+    store.set_archived(&only, true).unwrap();
+
+    assert!(store.latest_active(&cwd).unwrap().is_none());
+    assert!(store.list_for_active(&cwd).unwrap().is_empty());
+    assert_eq!(
+        store.list_active().unwrap()[0].id,
+        elsewhere,
+        "another workspace's live session is not drawn in"
+    );
+    assert_eq!(store.list().unwrap().len(), 2);
+}
+
+#[test]
 fn updated_at_is_the_latest_stored_write() {
     let temp = TempDir::new().unwrap();
     let path = scratch(&temp);
@@ -192,7 +257,11 @@ fn updated_at_is_the_latest_stored_write() {
         400
     );
     assert_eq!(
-        store.latest_for(temp.path()).unwrap().unwrap().updated_at,
+        store
+            .latest_active(temp.path())
+            .unwrap()
+            .unwrap()
+            .updated_at,
         400
     );
 
@@ -272,13 +341,17 @@ fn a_summary_previews_the_first_user_prompt() {
         Some("plan the port".to_owned())
     );
     assert_eq!(
-        store.latest_for(temp.path()).unwrap().unwrap().first_prompt,
+        store
+            .latest_active(temp.path())
+            .unwrap()
+            .unwrap()
+            .first_prompt,
         Some("plan the port".to_owned())
     );
 }
 
 #[test]
-fn a_title_round_trips_through_list_find_and_latest_for() {
+fn a_title_round_trips_through_list_find_and_latest_active() {
     let temp = TempDir::new().unwrap();
     let store = open(&scratch(&temp));
     let cwd = temp.path().join("project");
@@ -308,7 +381,7 @@ fn a_title_round_trips_through_list_find_and_latest_for() {
         Some("deploy notes")
     );
     assert_eq!(
-        store.latest_for(&cwd).unwrap().unwrap().title.as_deref(),
+        store.latest_active(&cwd).unwrap().unwrap().title.as_deref(),
         Some("deploy notes")
     );
 }
