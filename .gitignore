@@ -26,7 +26,6 @@ env.local
 *.jks
 credentials.json
 token.json
-**/.deepagents/mcp-tokens/
 Cookies
 Cookies.db
 cookies.sqlite

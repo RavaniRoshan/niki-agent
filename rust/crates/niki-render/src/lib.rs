@@ -473,7 +473,7 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_transcript_shows_the_python_placeholder() {
+    fn an_empty_transcript_shows_the_composer_placeholder() {
         let model = TranscriptModel::default();
         let frame = model.render(80, 24, UNICODE_GLYPHS);
         let text = frame.to_text();
