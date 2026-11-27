@@ -68,9 +68,26 @@ fn the_list_puts_prefix_matches_before_substring_matches() {
     type_text(&mut app, "/t");
     assert_eq!(
         names(&app),
-        ["/theme", "/tools", "/compact", "/context", "/quit"]
+        [
+            "/theme", "/threads", "/tools", "/auto", "/compact", "/context"
+        ]
     );
-    assert_eq!(highlighted(&app), "/theme");
+    assert_eq!(
+        highlighted(&app),
+        "/theme",
+        "a list opened from `/` starts on its first row, and the narrowed list does too"
+    );
+
+    let mut kept = self::app();
+    type_text(&mut kept, "/t");
+    stroke(&mut kept, KeyCode::Down);
+    assert_eq!(highlighted(&kept), "/threads");
+    type_text(&mut kept, "h");
+    assert_eq!(
+        highlighted(&kept),
+        "/threads",
+        "a highlight the person moved stays on its command while it is listed"
+    );
 }
 
 #[test]
@@ -79,7 +96,9 @@ fn the_list_is_capped_at_six_commands_in_registry_order() {
     type_text(&mut app, "/");
     assert_eq!(
         names(&app),
-        ["/clear", "/compact", "/context", "/help", "/model", "/quit"]
+        [
+            "/auto", "/clear", "/compact", "/context", "/help", "/manual"
+        ]
     );
     assert_eq!(app.completion_height(), 7, "six names and the description");
 }
@@ -129,14 +148,14 @@ fn the_arrows_move_the_highlight_while_the_list_is_open() {
     let mut app = app();
     type_text(&mut app, "/");
     stroke(&mut app, KeyCode::Up);
-    assert_eq!(highlighted(&app), "/clear", "the first row is the top");
+    assert_eq!(highlighted(&app), "/auto", "the first row is the top");
 
     stroke(&mut app, KeyCode::Down);
-    assert_eq!(highlighted(&app), "/compact");
+    assert_eq!(highlighted(&app), "/clear");
     for _ in 0..10 {
         stroke(&mut app, KeyCode::Down);
     }
-    assert_eq!(highlighted(&app), "/quit", "the last row is the bottom");
+    assert_eq!(highlighted(&app), "/manual", "the last row is the bottom");
     assert_eq!(app.composer.text(), "/", "the draft is untouched");
 }
 

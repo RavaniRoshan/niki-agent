@@ -17,7 +17,9 @@ use niki_policy::Mode;
 use niki_render::Glyphs;
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
-use niki_tui_modals::{ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome};
+use niki_tui_modals::{
+    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, ThreadEntry, ThreadPicker,
+};
 use niki_tui_themes::{GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
 use crate::completion::Completion;
@@ -463,6 +465,35 @@ impl App {
         self.modal = Some(Modal::Models(self.models.clone()));
     }
 
+    /// Open the session browser over the sessions the store holds.
+    ///
+    /// The rows come from the same listing `/resume` prints, so choosing one
+    /// takes the same path `/resume <id>` does.
+    pub fn open_threads(&mut self) {
+        if self.refuse_while_busy("/threads") {
+            return;
+        }
+        let Some(store) = &self.sessions else {
+            self.transcript
+                .push_notice("no sessions are saved in this build");
+            return;
+        };
+        let summaries = match store.list() {
+            Ok(summaries) => summaries,
+            Err(error) => {
+                self.transcript
+                    .push_notice(format!("could not list the sessions: {error}"));
+                return;
+            }
+        };
+        if summaries.is_empty() {
+            self.transcript.push_notice("no sessions are saved yet");
+            return;
+        }
+        let entries = summaries.iter().map(thread_entry).collect();
+        self.modal = Some(Modal::Threads(ThreadPicker::new(entries)));
+    }
+
     fn modal_key(&mut self, key: KeyEvent) -> Option<Command> {
         let outcome = self.modal.as_mut()?.handle_key(key);
         match outcome {
@@ -481,6 +512,11 @@ impl App {
             Outcome::Model(spec) => {
                 self.modal = None;
                 Some(Command::SelectModel(spec))
+            }
+            Outcome::Session(id) => {
+                self.modal = None;
+                self.resume(Some(&id));
+                None
             }
         }
     }
@@ -646,8 +682,13 @@ impl App {
         }
     }
 
-    /// Recompute the command list from the draft, keeping the highlight on the
-    /// command it was on when that one is still listed.
+    /// Recompute the command list from the draft, keeping a highlight the
+    /// person moved on the command it is on while that one is still listed.
+    ///
+    /// A highlight on the first row is the list's default rather than a
+    /// choice, so when the first row changes the narrowed list starts on its
+    /// own first row instead of pinning a command that is merely still
+    /// matched.
     fn refresh_completion(&mut self) {
         let draft = self.composer.text();
         if self.completion_closed.as_deref() == Some(draft) {
@@ -658,6 +699,7 @@ impl App {
         let selected = self
             .completion
             .as_ref()
+            .filter(|completion| completion.selected_index() > 0)
             .map(|completion| completion.selected().name);
         self.completion = Completion::of(draft);
         if let (Some(completion), Some(name)) = (self.completion.as_mut(), selected) {
@@ -700,6 +742,12 @@ impl App {
             }
         };
         match command {
+            SlashCommand::Mode(mode) => {
+                self.status.mode = mode;
+                self.transcript
+                    .push_notice(format!("approval mode: {}", mode.label()));
+                Some(Command::Mode(mode))
+            }
             SlashCommand::Quit => Some(Command::Quit),
             SlashCommand::Help => {
                 self.open_help();
@@ -738,6 +786,10 @@ impl App {
             }
             SlashCommand::Resume(target) => {
                 self.resume(target.as_deref());
+                None
+            }
+            SlashCommand::Threads => {
+                self.open_threads();
                 None
             }
             SlashCommand::Tools => {
@@ -1017,6 +1069,16 @@ fn split_record(content: &str) -> (&str, &str) {
     content.split_once('\n').unwrap_or((content, ""))
 }
 
+/// One session browser row from a store summary.
+fn thread_entry(summary: &Summary) -> ThreadEntry {
+    ThreadEntry::new(
+        summary.id.as_str(),
+        summary.first_prompt.as_deref(),
+        summary.messages,
+        summary.cwd.as_str(),
+    )
+}
+
 fn plural(count: usize, noun: &str) -> String {
     if count == 1 {
         format!("{count} {noun}")
@@ -1176,6 +1238,31 @@ mod tests {
             press(&mut app, KeyCode::BackTab),
             Some(Command::Mode(Mode::Manual))
         );
+    }
+
+    #[test]
+    fn the_mode_commands_set_the_status_line_and_reach_the_host() {
+        let mut app = app();
+        for (command, mode) in [
+            ("/auto", Mode::Auto),
+            ("/yolo", Mode::Yolo),
+            ("/manual", Mode::Manual),
+        ] {
+            type_text(&mut app, command);
+            assert_eq!(
+                press(&mut app, KeyCode::Enter),
+                Some(Command::Mode(mode)),
+                "{command}"
+            );
+            assert_eq!(app.status.mode, mode, "{command}");
+            assert!(
+                app.status_line().contains(mode.label()),
+                "{command}: {}",
+                app.status_line()
+            );
+            assert!(app.composer.is_empty());
+            assert_eq!(app.status.turn, TurnState::Idle, "a mode is not a turn");
+        }
     }
 
     #[test]
@@ -1826,6 +1913,82 @@ mod tests {
     }
 
     #[test]
+    fn threads_browses_filters_and_resumes_the_chosen_session() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut earlier = app();
+        earlier.attach_sessions(store(&temp));
+
+        let deploy = earlier.session_id().expect("session").to_owned();
+        type_text(&mut earlier, "deploy the site");
+        assert_eq!(
+            press(&mut earlier, KeyCode::Enter),
+            Some(Command::Submit("deploy the site".to_owned()))
+        );
+        earlier.apply(AgentEvent::Text("done".to_owned()));
+        earlier.finish(Ok(outcome()));
+
+        type_text(&mut earlier, "/clear");
+        assert_eq!(press(&mut earlier, KeyCode::Enter), None);
+        let parser = earlier.session_id().expect("second session").to_owned();
+        type_text(&mut earlier, "fix the parser");
+        assert_eq!(
+            press(&mut earlier, KeyCode::Enter),
+            Some(Command::Submit("fix the parser".to_owned()))
+        );
+        earlier.apply(AgentEvent::Text("patched".to_owned()));
+        earlier.finish(Ok(outcome()));
+
+        let mut next = app();
+        next.attach_sessions(store(&temp));
+        let own = next.session_id().expect("own session").to_owned();
+
+        type_text(&mut next, "/threads");
+        assert_eq!(press(&mut next, KeyCode::Enter), None);
+        let entries = match &next.modal {
+            Some(Modal::Threads(picker)) => picker.entries().to_vec(),
+            other => panic!("expected the session browser, got {other:?}"),
+        };
+        assert_eq!(entries.len(), 3, "the own session and the two earlier ones");
+        let row = entries
+            .iter()
+            .find(|entry| entry.id == deploy)
+            .expect("the deploy session");
+        assert_eq!(row.preview, "deploy the site");
+        assert_eq!(row.message_label(), "2 messages");
+        assert_eq!(row.cwd, "/work");
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry.id == own && entry.preview == niki_tui_modals::NO_PROMPT),
+            "a session with no prompt shows the placeholder: {entries:?}"
+        );
+        assert!(entries.iter().any(|entry| entry.id == parser));
+
+        assert_eq!(press(&mut next, KeyCode::Esc), None);
+        assert!(next.modal.is_none(), "escape closes without choosing");
+        assert_eq!(next.session_id(), Some(own.as_str()));
+
+        type_text(&mut next, "/threads");
+        assert_eq!(press(&mut next, KeyCode::Enter), None);
+        type_text(&mut next, "DePlOy");
+        assert_eq!(press(&mut next, KeyCode::Enter), None);
+
+        assert!(next.modal.is_none());
+        assert_eq!(next.session_id(), Some(deploy.as_str()));
+        let rows = next.transcript.rows();
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == RowKind::User && row.text == "deploy the site"),
+            "{rows:?}"
+        );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == RowKind::Assistant && row.text == "done"),
+            "{rows:?}"
+        );
+    }
+
+    #[test]
     fn tools_lists_every_registered_name() {
         let mut app = app();
         app.set_tools(vec![
@@ -1966,7 +2129,7 @@ mod tests {
     fn view_commands_wait_for_the_running_turn() {
         let mut app = app();
         app.status.turn = TurnState::Working;
-        for command in ["/clear", "/compact", "/context", "/resume"] {
+        for command in ["/clear", "/compact", "/context", "/resume", "/threads"] {
             type_text(&mut app, command);
             assert_eq!(press(&mut app, KeyCode::Enter), None);
             let last = app.transcript.rows().last().expect("notice");

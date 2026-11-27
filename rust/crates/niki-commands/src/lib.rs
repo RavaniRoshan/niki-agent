@@ -9,9 +9,13 @@
 
 use std::fmt;
 
+use niki_policy::Mode;
+
 /// One command the shell understands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashCommand {
+    /// Switch to this approval mode for the running session.
+    Mode(Mode),
     /// Leave the application.
     Quit,
     /// Show the key and command list.
@@ -28,6 +32,8 @@ pub enum SlashCommand {
     Context,
     /// List saved sessions, or resume one by id or one-based index.
     Resume(Option<String>),
+    /// Browse saved sessions and preview their first prompt.
+    Threads,
     /// List the registered tools.
     Tools,
     /// List the skills discovery found.
@@ -50,6 +56,11 @@ pub struct CommandInfo {
 /// Every command the parser accepts, in a stable order for help.
 pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
+        name: "/auto",
+        summary: "Switch to Auto approval mode",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/clear",
         summary: "Start a fresh session and empty the view",
         aliases: &[],
@@ -68,6 +79,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "/help",
         summary: "This list",
         aliases: &["/keys"],
+    },
+    CommandInfo {
+        name: "/manual",
+        summary: "Switch to Manual approval mode",
+        aliases: &[],
     },
     CommandInfo {
         name: "/model",
@@ -95,6 +111,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/threads",
+        summary: "Browse saved sessions and preview their first prompt",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/tools",
         summary: "List the registered tools",
         aliases: &[],
@@ -103,6 +124,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "/version",
         summary: "Show the version",
         aliases: &["/about"],
+    },
+    CommandInfo {
+        name: "/yolo",
+        summary: "Switch to YOLO approval mode",
+        aliases: &[],
     },
 ];
 
@@ -121,11 +147,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         name: "/auth",
         summary: "Store and check provider credentials",
         aliases: &["/connect"],
-    },
-    CommandInfo {
-        name: "/auto",
-        summary: "Switch to Auto approval mode",
-        aliases: &[],
     },
     CommandInfo {
         name: "/btw",
@@ -178,11 +199,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/manual",
-        summary: "Switch to Manual approval mode",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/mcp",
         summary: "List MCP servers and their state",
         aliases: &[],
@@ -208,11 +224,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/threads",
-        summary: "Browse and resume earlier sessions",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/timestamps",
         summary: "Show or hide message timestamps",
         aliases: &[],
@@ -225,11 +236,6 @@ pub const ROADMAP: &[CommandInfo] = &[
     CommandInfo {
         name: "/update",
         summary: "Check for and install an update",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/yolo",
-        summary: "Switch to YOLO approval mode",
         aliases: &[],
     },
 ];
@@ -275,6 +281,9 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
     let name = words.next().unwrap_or_default();
     let argument = words.next().map(str::to_owned);
     let command = match name {
+        "/manual" => SlashCommand::Mode(Mode::Manual),
+        "/auto" => SlashCommand::Mode(Mode::Auto),
+        "/yolo" => SlashCommand::Mode(Mode::Yolo),
         "/quit" | "/exit" | "/q" => SlashCommand::Quit,
         "/help" | "/keys" => SlashCommand::Help,
         "/theme" => SlashCommand::Theme(argument),
@@ -283,6 +292,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/compact" => SlashCommand::Compact,
         "/context" => SlashCommand::Context,
         "/resume" => SlashCommand::Resume(argument),
+        "/threads" => SlashCommand::Threads,
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
         "/version" | "/about" => SlashCommand::Version,
@@ -302,17 +312,21 @@ mod tests {
     #[test]
     fn every_listed_command_parses_to_its_own_variant() {
         let commands: Vec<(SlashCommand, &str)> = vec![
+            (SlashCommand::Mode(Mode::Auto), "/auto"),
             (SlashCommand::Clear, "/clear"),
             (SlashCommand::Compact, "/compact"),
             (SlashCommand::Context, "/context"),
             (SlashCommand::Help, "/help"),
+            (SlashCommand::Mode(Mode::Manual), "/manual"),
             (SlashCommand::Model(None), "/model"),
             (SlashCommand::Quit, "/quit"),
             (SlashCommand::Resume(None), "/resume"),
             (SlashCommand::Theme(None), "/theme"),
+            (SlashCommand::Threads, "/threads"),
             (SlashCommand::Tools, "/tools"),
             (SlashCommand::Skills, "/skills"),
             (SlashCommand::Version, "/version"),
+            (SlashCommand::Mode(Mode::Yolo), "/yolo"),
         ];
         for (expected, name) in commands {
             assert_eq!(parse(name), Ok(expected), "{name}");
@@ -322,7 +336,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 11);
+        assert_eq!(listed.len(), 15);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -343,6 +357,34 @@ mod tests {
         let mut sorted = names.clone();
         sorted.sort_unstable();
         assert_eq!(names, sorted, "COMMANDS stays sorted for the help overlay");
+    }
+
+    #[test]
+    fn the_mode_commands_parse_to_the_mode_they_name() {
+        assert_eq!(parse("/manual"), Ok(SlashCommand::Mode(Mode::Manual)));
+        assert_eq!(parse("/auto"), Ok(SlashCommand::Mode(Mode::Auto)));
+        assert_eq!(parse("/yolo"), Ok(SlashCommand::Mode(Mode::Yolo)));
+        assert_eq!(
+            parse("/auto now"),
+            Ok(SlashCommand::Mode(Mode::Auto)),
+            "a mode command takes no argument"
+        );
+        for (name, mode) in [
+            ("/manual", Mode::Manual),
+            ("/auto", Mode::Auto),
+            ("/yolo", Mode::Yolo),
+        ] {
+            assert!(COMMANDS.iter().any(|info| info.name == name), "{name}");
+            assert!(!ROADMAP.iter().any(|info| info.name == name), "{name}");
+            assert_eq!(parse(name), Ok(SlashCommand::Mode(mode)), "{name}");
+        }
+    }
+
+    #[test]
+    fn threads_parses_and_is_no_longer_planned() {
+        assert_eq!(parse("/threads"), Ok(SlashCommand::Threads));
+        assert!(COMMANDS.iter().any(|info| info.name == "/threads"));
+        assert!(!ROADMAP.iter().any(|info| info.name == "/threads"));
     }
 
     #[test]

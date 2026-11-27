@@ -898,6 +898,9 @@ dependencies = [
 [[package]]
 name = "niki-commands"
 version = "2.0.0"
+dependencies = [
+ "niki-policy",
+]
 
 [[package]]
 name = "niki-config"

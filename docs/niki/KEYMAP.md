@@ -92,6 +92,23 @@ Opened with `/model`.
 | `Enter` | Switch to the highlighted model. |
 | `Esc` | Close without changing the model. |
 
+## Session browser
+
+Opened with `/threads`.
+
+| Key | What it does |
+| --- | --- |
+| `Up`, `k` | Move the highlight up. |
+| `Down`, `j` | Move the highlight down. |
+| `Home` / `End` | Jump to the first or last session. |
+| `Backspace` | Remove the last filter character. |
+| `Enter` | Resume the highlighted session, as `/resume <id>` does. |
+| `Esc` | Close without changing anything. |
+
+Typing filters the list case-insensitively by preview, cwd or id. Because `j`
+and `k` move the highlight, type `J` or `K` to filter for those letters. A
+session with no prompt previews as `(no prompt)`.
+
 ## Keys the help overlay lists that do nothing
 
 The overlay is drawn from a registry that still carries five bindings the app
@@ -111,16 +128,21 @@ Type these in the composer. `/help` lists the same set.
 
 | Command | What it does |
 | --- | --- |
+| `/auto` | Switch to Auto approval mode without restarting. |
 | `/clear` | Start a fresh session and empty the view. |
 | `/compact` | Fold older rows out of the view; the session store keeps them. |
+| `/context` | Show the conversation's size and the session's token total. |
 | `/help` | This list. `/keys` is an alias. |
+| `/manual` | Switch to Manual approval mode without restarting. |
 | `/model` | Choose a model, or name one with `/model provider:model`. |
 | `/quit` | Leave the app. `/exit` is an alias. |
 | `/resume` | List saved sessions, or resume one by id or one-based index. |
 | `/skills` | List the skills discovery found. |
 | `/theme` | Choose a palette, or cycle to the next one. |
+| `/threads` | Browse saved sessions and resume the one you choose. |
 | `/tools` | List the registered tools. |
 | `/version` | Show the version. |
+| `/yolo` | Switch to YOLO approval mode without restarting. |
 
 `/compact` does not summarise: this build has no summarising model, so it only
 hides older rows. The session store keeps the full transcript.

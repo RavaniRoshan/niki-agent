@@ -272,6 +272,40 @@ fn the_model_picker_lists_the_configured_models() {
 }
 
 #[test]
+fn the_session_browser_lists_a_preview_count_and_cwd() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let store =
+        niki_session::SessionStore::open(temp.path().join("sessions.db")).expect("session store");
+    let session = store.create("/work").expect("session");
+    store
+        .append(&session, "user", "deploy the site")
+        .expect("append");
+    store.append(&session, "assistant", "done").expect("append");
+
+    let mut app = app();
+    app.attach_sessions(store);
+    app.open_threads();
+
+    let first = text(&render(&mut app, 80, 20));
+    assert!(first.contains("Sessions"), "{first}");
+    assert!(
+        first.contains("(no prompt)"),
+        "the session the launch opened has no prompt: {first}"
+    );
+
+    type_text(&mut app, "DEPLOY");
+    let screen = text(&render(&mut app, 80, 20));
+    assert!(screen.contains("filter: DEPLOY"), "{screen}");
+    assert!(screen.contains("> deploy the site"), "{screen}");
+    assert!(screen.contains("2 messages"), "{screen}");
+    assert!(screen.contains("/work"), "{screen}");
+    assert!(
+        !screen.contains("(no prompt)"),
+        "the filter leaves the prompted session: {screen}"
+    );
+}
+
+#[test]
 fn an_ascii_terminal_draws_the_overlay_without_box_drawing() {
     let mut app = app();
     app.set_glyphs(GlyphMode::Ascii);
@@ -288,7 +322,7 @@ fn the_command_list_is_drawn_under_the_composer() {
     type_text(&mut app, "/t");
     let buffer = render(&mut app, 60, 20);
     let screen = text(&buffer);
-    for name in ["/theme", "/tools", "/compact", "/quit"] {
+    for name in ["/theme", "/threads", "/tools", "/compact", "/context"] {
         assert!(screen.contains(name), "{name} missing from {screen}");
     }
     assert!(
