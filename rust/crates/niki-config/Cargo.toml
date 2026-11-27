@@ -11,3 +11,6 @@ description = "User configuration, provider blocks, and protocol selection for N
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

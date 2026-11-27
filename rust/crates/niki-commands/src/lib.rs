@@ -38,6 +38,8 @@ pub enum SlashCommand {
     Tools,
     /// List the skills discovery found.
     Skills,
+    /// Write an `AGENTS.md` template when the workspace has none.
+    Init,
     /// Show the version line.
     Version,
 }
@@ -79,6 +81,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         name: "/help",
         summary: "This list",
         aliases: &["/keys"],
+    },
+    CommandInfo {
+        name: "/init",
+        summary: "Write an AGENTS.md template when the workspace has none",
+        aliases: &[],
     },
     CommandInfo {
         name: "/manual",
@@ -295,6 +302,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/threads" => SlashCommand::Threads,
         "/tools" => SlashCommand::Tools,
         "/skills" => SlashCommand::Skills,
+        "/init" => SlashCommand::Init,
         "/version" | "/about" => SlashCommand::Version,
         other => {
             return Err(UnknownCommand {
@@ -325,6 +333,7 @@ mod tests {
             (SlashCommand::Threads, "/threads"),
             (SlashCommand::Tools, "/tools"),
             (SlashCommand::Skills, "/skills"),
+            (SlashCommand::Init, "/init"),
             (SlashCommand::Version, "/version"),
             (SlashCommand::Mode(Mode::Yolo), "/yolo"),
         ];
@@ -336,7 +345,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 15);
+        assert_eq!(listed.len(), 16);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -357,6 +366,13 @@ mod tests {
         let mut sorted = names.clone();
         sorted.sort_unstable();
         assert_eq!(names, sorted, "COMMANDS stays sorted for the help overlay");
+    }
+
+    #[test]
+    fn init_parses_and_is_listed_once() {
+        assert_eq!(parse("/init"), Ok(SlashCommand::Init));
+        assert!(COMMANDS.iter().any(|info| info.name == "/init"));
+        assert!(!ROADMAP.iter().any(|info| info.name == "/init"));
     }
 
     #[test]

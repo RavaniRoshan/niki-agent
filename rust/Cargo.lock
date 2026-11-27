@@ -907,6 +907,7 @@ name = "niki-config"
 version = "2.0.0"
 dependencies = [
  "serde",
+ "tempfile",
  "thiserror",
  "toml",
 ]

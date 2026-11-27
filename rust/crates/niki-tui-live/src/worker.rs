@@ -118,6 +118,7 @@ enum Request {
     Mode(Mode),
     Compact(usize),
     Context,
+    System(String),
     Stop,
 }
 
@@ -234,6 +235,11 @@ impl WorkerHandle {
                         // does not know fails then, with a prompt to blame.
                         agent = None;
                     }
+                    Request::System(system) => {
+                        if let Some(agent) = agent.as_mut() {
+                            agent.set_system(system);
+                        }
+                    }
                     Request::Prompt(prompt) => {
                         if agent.is_none() {
                             match build(SessionParts {
@@ -339,6 +345,15 @@ impl WorkerHandle {
     /// Ask for the agent's [`ContextReport`] and [`SessionUsage`].
     pub fn context(&self) -> bool {
         self.requests.send(Request::Context).is_ok()
+    }
+
+    /// Replace the system prompt the running agent sends.
+    ///
+    /// `/init` calls this after writing a file. A worker with no agent yet
+    /// keeps the value in the host's build closure, which recomposes the
+    /// prompt when the first turn builds one.
+    pub fn set_system(&self, system: impl Into<String>) -> bool {
+        self.requests.send(Request::System(system.into())).is_ok()
     }
 
     /// Stop the running turn; the transcript it already produced is kept.

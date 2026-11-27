@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
+use niki_config::instructions::Instructions;
 use niki_config::{Config, Protocol, config_home};
 use niki_hooks::{HookRunner, Hooks, Loaded};
 use niki_mcp::ToolBridge;
@@ -117,6 +118,10 @@ fn run(args: Vec<String>) -> Result<i32> {
 /// One turn, answering on stdout. This is the W1 entry point and stays as it
 /// was: a script that ran `niki -n …` before still does.
 fn headless(options: Options, config: &Config, config_path: &Path, prompt: String) -> Result<i32> {
+    if prompt.split_whitespace().next() == Some("/init") {
+        return init(&options);
+    }
+
     let spec = model_spec(&options, config, config_path)?;
     let (provider_name, _) = split_spec(&spec)?;
     let provider = build_provider(config, provider_name)?;
@@ -133,9 +138,18 @@ fn headless(options: Options, config: &Config, config_path: &Path, prompt: Strin
         eprintln!("niki: warning: {}", sanitize_terminal(&warning.to_string()));
     }
 
+    let instructions = instructions_for(&ctx.root);
+    if !instructions.is_empty() {
+        eprintln!(
+            "niki: {} instruction file(s) loaded ({} bytes)",
+            instructions.len(),
+            instructions.bytes(),
+        );
+    }
+
     let mode = mode(options.mode.as_deref());
     let allow = AllowList::parse(options.allow.as_deref().unwrap_or(""));
-    let settings = agent_config(&options, &spec, &skills)?;
+    let settings = agent_config(&options, &spec, &skills, &instructions)?;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -402,8 +416,22 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     let max_steps = options.max_steps.unwrap_or(40);
     let skills = skill_catalog(&ctx.root);
     // The model cannot use a skill it was never told about, so `--system`
-    // replaces the base text and the skills section is appended to it.
-    let system = system_prompt(&options, &skills);
+    // replaces the base text, the project instruction chain follows it and the
+    // skills section is appended last. The closure recomposes the prompt, so
+    // `/init` can hand the worker a fresh one without a restart.
+    let base_system = options
+        .system
+        .clone()
+        .unwrap_or_else(|| AgentConfig::default().system);
+    let compose: Arc<dyn Fn() -> String + Send + Sync> = {
+        let base = base_system;
+        let skills = skills.clone();
+        let root = ctx.root.clone();
+        Arc::new(move || {
+            let instructions = instructions_for(&root);
+            skills.inject_into(&instructions.inject_into(&base))
+        })
+    };
 
     let mut app = App::new(SessionInfo {
         model: spec.clone(),
@@ -419,6 +447,10 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     ));
     attach_sessions(&mut app);
     let hooks = install_hooks(Hooks::load(&ctx.root, &config_home()), &mut app);
+    {
+        let compose = Arc::clone(&compose);
+        app.set_system_refresh(move || compose());
+    }
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -439,6 +471,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
 
     let build_config = config;
     let compact_config = build_config.clone();
+    let build_system = Arc::clone(&compose);
     let provider_builder = move |spec: &str| -> Result<Box<dyn Provider>, String> {
         let (provider_name, _model) = split_spec(spec).map_err(|error| format!("{error:#}"))?;
         build_provider(&compact_config, provider_name).map_err(|error| format!("{error:#}"))
@@ -454,14 +487,14 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
                 .map_err(|error| format!("{error:#}"))?;
             let settings = AgentConfig {
                 model: model.to_owned(),
-                system: system.clone(),
+                system: build_system(),
                 max_steps,
                 ..AgentConfig::default()
             };
             let delegation = Delegation {
                 config: build_config.clone(),
                 spec: parts.model.clone(),
-                system: system.clone(),
+                system: build_system(),
                 mode: parts.mode,
                 allow: allow.clone(),
                 hooks: Arc::clone(&hooks),
@@ -521,7 +554,8 @@ fn acp(options: Options, config: Config, config_path: PathBuf) -> Result<i32> {
             for warning in skills.warnings() {
                 eprintln!("niki: warning: {}", sanitize_terminal(&warning.to_string()));
             }
-            let system = skills.inject_into(&base_system);
+            let instructions = instructions_for(&ctx.root);
+            let system = skills.inject_into(&instructions.inject_into(&base_system));
             let settings = AgentConfig {
                 model: model.to_owned(),
                 system: system.clone(),
@@ -821,23 +855,54 @@ fn skill_catalog(root: &Path) -> SkillCatalog {
     SkillCatalog::discover(root, &config_home().join("skills"))
 }
 
-fn agent_config(options: &Options, spec: &str, skills: &SkillCatalog) -> Result<AgentConfig> {
+fn agent_config(
+    options: &Options,
+    spec: &str,
+    skills: &SkillCatalog,
+    instructions: &Instructions,
+) -> Result<AgentConfig> {
     let (_, model) = split_spec(spec)?;
     Ok(AgentConfig {
         model: model.trim().to_owned(),
-        system: system_prompt(options, skills),
+        system: system_prompt(options, skills, instructions),
         max_steps: options.max_steps.unwrap_or(40),
         ..AgentConfig::default()
     })
 }
 
-/// The system prompt one turn is sent with: the base text plus the skills.
-fn system_prompt(options: &Options, skills: &SkillCatalog) -> String {
+/// The instruction chain for this workspace and the directory the agent runs
+/// from.
+fn instructions_for(root: &Path) -> Instructions {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| root.to_path_buf());
+    Instructions::discover(root, &cwd, &config_home())
+}
+
+/// The system prompt one turn is sent with: the base text, the project
+/// instruction chain and the closing line, then the skills.
+fn system_prompt(options: &Options, skills: &SkillCatalog, instructions: &Instructions) -> String {
     let base = options
         .system
         .clone()
         .unwrap_or_else(|| AgentConfig::default().system);
-    skills.inject_into(&base)
+    skills.inject_into(&instructions.inject_into(&base))
+}
+
+/// `/init` in a headless run: scaffold `AGENTS.md` and print one line.
+fn init(options: &Options) -> Result<i32> {
+    let root = workspace_root(options)?;
+    match niki_config::instructions::write_scaffold(&root) {
+        Ok(outcome) => {
+            println!("{}", outcome.message());
+            Ok(0)
+        }
+        Err(error) => {
+            eprintln!(
+                "niki: could not write {}: {error}",
+                root.join("AGENTS.md").display()
+            );
+            Ok(1)
+        }
+    }
 }
 
 fn mode(raw: Option<&str>) -> Mode {
@@ -1020,8 +1085,14 @@ mod tests {
         .expect("skill");
 
         let skills = SkillCatalog::discover(project.path(), user.path());
-        let settings =
-            agent_config(&Options::default(), "mock:mock-model", &skills).expect("config");
+        let instructions = Instructions::default();
+        let settings = agent_config(
+            &Options::default(),
+            "mock:mock-model",
+            &skills,
+            &instructions,
+        )
+        .expect("config");
         assert!(settings.system.contains("## Skills"), "{}", settings.system);
         assert!(settings.system.contains("deploy"));
         assert!(settings.system.contains("Ship a release safely."));
@@ -1031,13 +1102,83 @@ mod tests {
             system: Some("custom base".to_owned()),
             ..Options::default()
         };
-        let settings = agent_config(&custom, "mock:mock-model", &skills).expect("config");
+        let settings =
+            agent_config(&custom, "mock:mock-model", &skills, &instructions).expect("config");
         assert!(
             settings.system.starts_with("custom base"),
             "{}",
             settings.system
         );
         assert!(settings.system.contains("deploy/SKILL.md"));
+    }
+
+    #[test]
+    fn project_instructions_follow_the_built_in_prompt_and_precede_the_skills() {
+        let project = tempfile::tempdir().expect("project");
+        let user_home = tempfile::tempdir().expect("user home");
+        std::fs::write(project.path().join("AGENTS.md"), "REPO-INSTRUCTIONS\n")
+            .expect("instructions");
+        let directory = project.path().join(".niki/skills/deploy");
+        std::fs::create_dir_all(&directory).expect("skill directory");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            "---\nname: deploy\ndescription: Ship a release safely.\n---\nbody\n",
+        )
+        .expect("skill");
+
+        let skills = SkillCatalog::discover(project.path(), user_home.path());
+        let instructions = Instructions::discover(project.path(), project.path(), user_home.path());
+        let system = system_prompt(&Options::default(), &skills, &instructions);
+
+        let built_in = system
+            .find(niki_agent::DEFAULT_SYSTEM_PROMPT)
+            .expect("the built-in prompt");
+        let body = system.find("REPO-INSTRUCTIONS").expect("the file body");
+        let skills_section = system.find("## Skills").expect("the skills section");
+        assert_eq!(built_in, 0, "the built-in prompt stays first");
+        assert!(body < skills_section, "{system}");
+        assert!(
+            system.contains(niki_config::instructions::CLOSING),
+            "{system}"
+        );
+    }
+
+    #[test]
+    fn init_headless_writes_the_scaffold_and_keeps_it_on_the_second_run() {
+        let directory = tempfile::tempdir().expect("tempdir");
+        let config = directory.path().join("config.toml");
+        let root = directory.path().join("workspace");
+        std::fs::create_dir_all(&root).expect("workspace");
+        let args = vec![
+            "-n".to_owned(),
+            "/init".to_owned(),
+            "--root".to_owned(),
+            root.display().to_string(),
+            "--config".to_owned(),
+            config.display().to_string(),
+        ];
+
+        assert_eq!(run(args.clone()).expect("first run"), 0);
+        assert_eq!(
+            std::fs::read_to_string(root.join("AGENTS.md")).expect("scaffold"),
+            niki_config::instructions::SCAFFOLD
+        );
+
+        std::fs::write(root.join("AGENTS.md"), "hand written").expect("edit");
+        assert_eq!(run(args).expect("second run"), 0);
+        assert_eq!(
+            std::fs::read_to_string(root.join("AGENTS.md")).expect("kept"),
+            "hand written"
+        );
+    }
+
+    #[test]
+    fn a_workspace_without_instruction_files_keeps_the_old_prompt_exactly() {
+        let project = tempfile::tempdir().expect("project");
+        let user_home = tempfile::tempdir().expect("user home");
+        let instructions = Instructions::discover(project.path(), project.path(), user_home.path());
+        let system = system_prompt(&Options::default(), &SkillCatalog::default(), &instructions);
+        assert_eq!(system, niki_agent::DEFAULT_SYSTEM_PROMPT);
     }
 
     #[test]
