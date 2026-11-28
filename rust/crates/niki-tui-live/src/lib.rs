@@ -35,7 +35,7 @@ pub use niki_tui_modals::{
 };
 pub use run::run;
 pub use scroll::Scroll;
-pub use status::{Status, TurnState};
+pub use status::{Status, TurnResult, TurnState, TurnSummary};
 pub use transcript::{Row, RowKind, Transcript};
 pub use transcript_overlay::TranscriptOverlay;
 pub use ui::{PLACEHOLDER, draw};

@@ -287,6 +287,20 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
             }
             continue;
         }
+        // The closing line of a turn is one row, always: it is a report, not
+        // prose, so a narrow screen elides it instead of spilling it over two.
+        if matches!(row.kind, RowKind::Summary | RowKind::SummaryFailed) {
+            if !lines.is_empty() {
+                lines.push(Line::default());
+            }
+            let style = if row.kind == RowKind::SummaryFailed {
+                palette.error_style()
+            } else {
+                palette.muted_style()
+            };
+            lines.push(Line::from(Span::styled(clip(&row.text, width).0, style)));
+            continue;
+        }
         let (marker, style) = match row.kind {
             RowKind::User => (format!("{} ", marks.user), palette.accent_style()),
             RowKind::Assistant => (format!("{} ", marks.assistant), palette.body_style()),
@@ -304,6 +318,7 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
             RowKind::ToolResult => (format!("{} ", marks.ok), palette.ok_style()),
             RowKind::Error => (format!("{} ", marks.failed), palette.error_style()),
             RowKind::Notice => ("- ".to_owned(), palette.muted_style()),
+            RowKind::Summary | RowKind::SummaryFailed => continue,
             RowKind::Diff => continue,
         };
         let indent = " ".repeat(niki_render::display_width(&marker));

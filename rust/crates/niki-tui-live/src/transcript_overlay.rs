@@ -253,6 +253,8 @@ fn push_plain(
         }
         RowKind::Error => ("! ".to_owned(), palette.error_style()),
         RowKind::Notice => ("- ".to_owned(), palette.muted_style()),
+        RowKind::Summary => ("".to_owned(), palette.muted_style()),
+        RowKind::SummaryFailed => ("".to_owned(), palette.error_style()),
         RowKind::Assistant | RowKind::Diff => return,
     };
     let indent = " ".repeat(display_width(&marker));

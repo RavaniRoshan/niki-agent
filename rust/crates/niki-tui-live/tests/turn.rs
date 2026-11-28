@@ -258,9 +258,11 @@ fn a_prompt_runs_on_the_worker_and_reaches_the_screen() {
 
     assert!(events.contains(&AgentEvent::Text("hello from the worker".to_owned())));
     let rows = app.transcript.rows();
-    assert_eq!(rows.len(), 2);
+    assert_eq!(rows.len(), 3, "the prompt, the answer and the closing line");
     assert_eq!(rows[0].text, "say hello");
     assert_eq!(rows[1].text, "hello from the worker");
+    assert_eq!(rows[2].kind, RowKind::Summary);
+    assert!(rows[2].text.starts_with("done"), "{}", rows[2].text);
     assert_eq!(app.status.tokens.input_tokens, 12);
     assert_eq!(app.status.total_label().as_deref(), Some("17 tok"));
     assert_eq!(app.status.turn, TurnState::Idle);
