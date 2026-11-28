@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: d453fc2d1a5b106185441ef2f5d09d13811f2849ad75db6983f6ba7f92b5ade2
+  source-sha256: fc0b7c6d91ac849db05649dd5dcdaa26e92cfc5bd33247ceab1d81c079ad0609
 -->
 # Changelog
 
@@ -58,6 +58,17 @@ The product is a single Rust binary, distributed as one archive per platform.
   screen no longer says `working` twice, one line apart.
 - The key overlay's way out is pinned to its last row, so it stays readable when
   the command list is taller than the terminal.
+
+### Fixed
+
+- A narrow terminal wrapped nothing: the welcome sentence, a command summary and
+  the state line were cut mid-word at the right edge. The sentence now wraps at
+  word boundaries and the other two end in `…` when they do not fit; the help
+  overlay's closing hint falls back to `? or escape closes` instead of being
+  cut. The key map keeps its three-column, two-column and one-column shapes.
+- `--root .` showed up as a literal `.` on the first screen and the state line.
+  The workspace root is canonicalised at start-up, so the directory reads as the
+  path it is.
 
 ## [2.2.0] - 2026-11-27
 

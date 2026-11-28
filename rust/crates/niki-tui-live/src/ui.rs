@@ -12,6 +12,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph};
 
 use niki_render::{RenderedLine, SpanStyle};
+use niki_tui_modals::ellipsize;
 
 use crate::app::App;
 use crate::transcript::RowKind;
@@ -159,16 +160,23 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     lines.push(Line::default());
+    // The three title spans share the width in order, so a narrow terminal
+    // loses the version before it loses the name.
+    let mark = ellipsize("  >_ ", width);
+    let name = ellipsize(
+        "NIKI AGENT",
+        width.saturating_sub(niki_render::display_width(&mark)),
+    );
+    let version = format!(" (v{})", env!("CARGO_PKG_VERSION"));
+    let used = niki_render::display_width(&mark) + niki_render::display_width(&name);
+    let version = ellipsize(&version, width.saturating_sub(used));
     lines.push(Line::from(vec![
-        Span::styled(clip("  >_ ", width).0, palette.accent_style()),
-        Span::styled(clip("NIKI AGENT", width).0, palette.body_style()),
-        Span::styled(
-            clip(&format!(" (v{})", env!("CARGO_PKG_VERSION")), width).0,
-            palette.muted_style(),
-        ),
+        Span::styled(mark, palette.accent_style()),
+        Span::styled(name, palette.body_style()),
+        Span::styled(version, palette.muted_style()),
     ]));
     lines.push(Line::from(Span::styled(
-        clip(&format!("     {}", display_dir(&app.status.cwd)), width).0,
+        ellipsize(&format!("     {}", display_dir(&app.status.cwd)), width),
         palette.muted_style(),
     )));
     if app.status.mode == niki_policy::Mode::Yolo {
@@ -178,14 +186,17 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
         ]));
     }
     lines.push(Line::default());
-    lines.push(Line::from(Span::styled(
-        clip(
-            "  To get started, describe a task or try one of these commands:",
-            width,
-        )
-        .0,
-        palette.muted_style(),
-    )));
+    // The sentence wraps at word boundaries: a terminal too narrow for it shows
+    // every word rather than a line cut mid-word at the right edge.
+    for chunk in niki_render::wrap(
+        "To get started, describe a task or try one of these commands:",
+        width.saturating_sub(2).max(1),
+    ) {
+        lines.push(Line::from(Span::styled(
+            format!("  {chunk}"),
+            palette.muted_style(),
+        )));
+    }
     lines.push(Line::default());
     for (command, summary) in [
         ("/init", "write an AGENTS.md for this repository"),
@@ -194,13 +205,12 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
         ("/theme", "choose a palette"),
         ("/help", "every command and key binding"),
     ] {
+        let key = format!("  {command}");
+        let room = width.saturating_sub(niki_render::display_width(&key));
         lines.push(Line::from(vec![
+            Span::styled(key, palette.accent_style()),
             Span::styled(
-                clip(&format!("  {command}"), width).0,
-                palette.accent_style(),
-            ),
-            Span::styled(
-                clip(&format!(" - {summary}"), width).0,
+                ellipsize(&format!(" - {summary}"), room),
                 palette.muted_style(),
             ),
         ]));
@@ -517,7 +527,11 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Block::default().style(app.palette.panel_style()), area);
     let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
 
-    let state = Line::from(Span::styled(app.status_line(), app.palette.panel_style()));
+    let width = usize::from(area.width);
+    let state = Line::from(Span::styled(
+        ellipsize(&app.status_line(), width),
+        app.palette.panel_style(),
+    ));
     frame.render_widget(Paragraph::new(state), rows[0]);
 
     let width = usize::from(rows[1].width);

@@ -47,10 +47,10 @@ not a README: the tagline belongs to the site, and prose here pushes the command
 list off a 24-row terminal. The directory is shown relative to `$HOME` so a deep
 checkout still fits on one line.
 
-On the first screen — before any prompt has been sent — the transcript region
-holds the welcome block. A notice such as a trust warning is drawn *beneath* the
-welcome rather than replacing it, so the first thing a new person sees is never
-a warning and blank space.
+A narrow terminal gets the same block, not a cropped one: the sentence wraps at
+word boundaries, a command summary with no room left ends in `…`, and a state
+line wider than the footer is ellipsized the same way. A footer hint that does
+not fit is dropped whole, never cut mid-word.
 
 ## The footer
 
@@ -58,7 +58,7 @@ Line one is the state contract and never carries counts:
 
 ```text
 model · approval mode · branch · turn state · working directory
-```text
+```
 
 The branch field appears only inside a repository, and never for a detached
 HEAD. While a turn waits for an answer the state field carries the spinner; a

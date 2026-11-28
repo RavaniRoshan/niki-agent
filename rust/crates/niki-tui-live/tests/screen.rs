@@ -115,6 +115,37 @@ fn a_fresh_session_shows_the_welcome_block() {
 }
 
 #[test]
+fn a_narrow_terminal_keeps_whole_words() {
+    let mut app = app();
+    let buffer = render(&mut app, 40, 20);
+    let screen = text(&buffer);
+    // The intro wraps at word boundaries, so the closing word survives instead
+    // of the line being cut mid-word at the right edge.
+    assert!(screen.contains("commands:"), "{screen}");
+    // A command summary that cannot fit ends in an ellipsis, not mid-word.
+    let summary = (0..buffer.area.height)
+        .map(|y| row(&buffer, y))
+        .find(|line| line.starts_with("  /status"))
+        .expect("/status row");
+    assert!(summary.ends_with('…'), "{summary:?}");
+}
+
+#[test]
+fn the_same_app_redraws_at_a_new_size() {
+    let mut app = app();
+    let wide = render(&mut app, 80, 24);
+    assert!(
+        text(&wide).contains("/help - every command and key binding"),
+        "{}",
+        text(&wide)
+    );
+    let narrow = render(&mut app, 40, 14);
+    let screen = text(&narrow);
+    assert!(screen.contains("NIKI AGENT"), "{screen}");
+    assert!(screen.contains(&format!("› {PLACEHOLDER}")), "{screen}");
+}
+
+#[test]
 fn the_welcome_block_yields_to_the_first_prompt() {
     let mut app = app();
     type_text(&mut app, "hi");
