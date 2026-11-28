@@ -489,8 +489,15 @@ impl App {
             ("ctrl+d", "quit"),
         ];
         let separator = self.separator();
+        let mut items: Vec<(&str, &str)> = Vec::with_capacity(HINTS.len() + 1);
+        // What is waiting behind the running turn is the most useful thing the
+        // footer can name, so it comes first and survives a narrow width.
+        if !self.queued.is_empty() {
+            items.push(("↑", "takes one back"));
+        }
+        items.extend(HINTS);
         let mut line = String::new();
-        for (index, (key, action)) in HINTS.iter().enumerate() {
+        for (index, (key, action)) in items.iter().enumerate() {
             let hint = format!("{key} {action}");
             let candidate = if index == 0 {
                 hint
@@ -1409,6 +1416,15 @@ impl App {
         if let Some(completion) = self.completion.as_mut() {
             completion.up();
             return;
+        }
+        // A draft over the composer is never replaced: what is waiting behind
+        // the turn is only taken back into an empty one.
+        if self.composer.is_empty() {
+            if let Some(prompt) = self.queued.pop_back() {
+                self.set_draft(&prompt);
+                self.history.reset();
+                return;
+            }
         }
         let browsing = self.history.is_browsing();
         let single_line = self.composer.line_count() == 1;
@@ -4394,6 +4410,68 @@ mod tests {
         app.transcript.push_failed_summary("failed · 12s");
         assert!(persisted(&app.transcript.rows()[1]).is_none());
         assert!(persisted(&app.transcript.rows()[2]).is_none());
+    }
+
+    #[test]
+    fn up_takes_a_queued_prompt_back_out_of_the_queue() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "first queued");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        type_text(&mut app, "second queued");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert_eq!(app.queued().len(), 2);
+
+        stroke(&mut app, KeyCode::Up);
+        assert_eq!(
+            app.composer.text(),
+            "second queued",
+            "the newest comes back"
+        );
+        assert_eq!(app.queued().len(), 1);
+        assert_eq!(app.queued()[0], "first queued");
+
+        stroke(&mut app, KeyCode::Up);
+        assert_eq!(app.queued().len(), 1, "a draft is not taken back over");
+    }
+
+    #[test]
+    fn the_footer_offers_the_take_back_once_something_is_queued() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        assert!(!app.status_line().contains("queued"), "nothing queued yet");
+        type_text(&mut app, "waiting");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(
+            app.status_line().contains("queued 1"),
+            "{}",
+            app.status_line()
+        );
+        assert!(
+            app.hints(80).contains("takes one back"),
+            "{}",
+            app.hints(80)
+        );
+
+        stroke(&mut app, KeyCode::Up);
+        assert!(
+            !app.hints(80).contains("takes one back"),
+            "the queue is empty again: {}",
+            app.hints(80)
+        );
+    }
+
+    #[test]
+    fn the_take_back_hint_survives_a_narrow_footer() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        type_text(&mut app, "waiting");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(
+            app.hints(16).contains("takes one back"),
+            "{}",
+            app.hints(16)
+        );
     }
 
     #[test]
