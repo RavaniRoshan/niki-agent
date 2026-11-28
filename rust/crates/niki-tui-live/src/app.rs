@@ -5,7 +5,7 @@
 //! prompt, feed [`AgentEvent`]s and assert exactly what the screen would draw
 //! (RULES.md 8, 4).
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -35,7 +35,9 @@ use crate::diff_source::{self, DiffSection};
 use crate::history::History;
 use crate::motion;
 use crate::scroll::Scroll;
-use crate::status::{Status, TurnState, context_percentage, describe_context, format_tokens};
+use crate::status::{
+    Status, TurnResult, TurnState, TurnSummary, context_percentage, describe_context, format_tokens,
+};
 use crate::transcript::{Row, RowKind, Transcript};
 use crate::transcript_overlay::TranscriptOverlay;
 
@@ -159,6 +161,11 @@ pub struct App {
     session: Option<SessionId>,
     /// First transcript row of the turn in flight, so only that turn is saved.
     turn_start: Option<usize>,
+    /// Files a successful tool call wrote or edited during the turn in flight,
+    /// so the closing line counts each one once.
+    turn_files: BTreeSet<String>,
+    /// The path the tool call now running will write, if it is one of those.
+    pending_file: Option<String>,
     /// The file the session store writes, when the host named it.
     session_file: Option<PathBuf>,
     /// Whether any turn has been written to the store yet.
@@ -218,6 +225,8 @@ impl App {
             sessions: None,
             session: None,
             turn_start: None,
+            turn_files: BTreeSet::new(),
+            pending_file: None,
             session_file: None,
             saved_turn: false,
             tools: Vec::new(),
@@ -1050,13 +1059,21 @@ impl App {
                 }
             }
             AgentEvent::ToolStart { name, arguments } => {
+                self.pending_file = written_path(&name, &arguments);
                 self.transcript.push_tool_call(&name, &arguments);
             }
             AgentEvent::ToolEnd {
                 name,
                 output,
                 is_error,
-            } => self.transcript.push_tool_result(&name, &output, is_error),
+            } => {
+                if is_error {
+                    self.pending_file = None;
+                } else if let Some(path) = self.pending_file.take() {
+                    self.turn_files.insert(path);
+                }
+                self.transcript.push_tool_result(&name, &output, is_error);
+            }
             AgentEvent::Usage(usage) => add_usage(&mut self.status.tokens, usage),
             AgentEvent::Notice(text) => self.transcript.push_notice(text),
             AgentEvent::StepLimit { steps } => self
@@ -1096,18 +1113,29 @@ impl App {
         self.pending = None;
         self.question = None;
         self.transcript.end_stream();
-        match result {
+        let elapsed = self.turn_clock.take().map(|at| at.elapsed());
+        let ran = self.turn_start.is_some();
+        let closing = match &result {
+            Ok(outcome) if is_cancelled(&outcome.stop) => {
+                self.status.turn = TurnState::Cancelled;
+                self.closing_line(TurnResult::Stopped, elapsed, Some(outcome), None)
+            }
             Ok(outcome) => {
-                self.status.turn = if is_cancelled(&outcome.stop) {
-                    TurnState::Cancelled
-                } else {
-                    TurnState::Idle
-                };
+                self.status.turn = TurnState::Idle;
+                self.closing_line(TurnResult::Done, elapsed, Some(outcome), None)
             }
             Err(message) => {
                 self.transcript
                     .push_error(format!("the turn failed: {message}"));
                 self.status.turn = TurnState::Failed;
+                self.closing_line(TurnResult::Failed, elapsed, None, Some(message))
+            }
+        };
+        if ran {
+            if matches!(result, Err(_)) {
+                self.transcript.push_failed_summary(closing);
+            } else {
+                self.transcript.push_summary(closing);
             }
         }
         self.persist_turn();
@@ -1117,6 +1145,25 @@ impl App {
             }
         }
         None
+    }
+
+    /// The words that close a turn, from what the run reported.
+    fn closing_line(
+        &self,
+        result: TurnResult,
+        elapsed: Option<Duration>,
+        outcome: Option<&RunOutcome>,
+        failure: Option<&String>,
+    ) -> String {
+        TurnSummary {
+            result,
+            elapsed,
+            output_tokens: outcome.map_or(0, |outcome| outcome.usage.output_tokens),
+            files: self.turn_files.len(),
+            tool_calls: outcome.map_or(0, |outcome| outcome.tool_calls),
+            failure: failure.cloned(),
+        }
+        .line(self.separator())
     }
 
     /// Enter and its modifiers: send, queue, add a line, or steer.
@@ -1338,6 +1385,8 @@ impl App {
         self.composer.clear();
         self.last_escape = None;
         self.turn_start = Some(self.transcript.rows().len());
+        self.turn_files.clear();
+        self.pending_file = None;
         self.transcript.push_user(text.clone());
         self.scroll.reset();
         self.status.turn = TurnState::Working;
@@ -2152,6 +2201,18 @@ fn add_usage(total: &mut Usage, usage: Usage) {
 
 fn is_cancelled(stop: &StopReason) -> bool {
     matches!(stop, StopReason::Other(reason) if reason == "cancelled")
+}
+
+/// The file a successful `write_file` or `edit_file` call will have changed.
+fn written_path(name: &str, arguments: &str) -> Option<String> {
+    if name != "write_file" && name != "edit_file" {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_str(arguments).ok()?;
+    ["file_path", "path"]
+        .iter()
+        .find_map(|key| value.get(key).and_then(|path| path.as_str()))
+        .map(str::to_owned)
 }
 
 /// A name for a custom provider that no table already uses.
@@ -3819,11 +3880,11 @@ mod tests {
         );
         app.apply(AgentEvent::Text("patched".to_owned()));
         assert_eq!(app.finish(Ok(outcome())), None);
-        assert_eq!(app.transcript.rows().len(), 2);
+        assert_eq!(app.transcript.rows().len(), 3, "prompt, answer and summary");
 
         assert_eq!(press(&mut app, KeyCode::Esc), None, "the first one arms it");
         assert!(app.composer.is_empty());
-        assert_eq!(app.transcript.rows().len(), 2, "one press changes nothing");
+        assert_eq!(app.transcript.rows().len(), 3, "one press changes nothing");
 
         assert_eq!(press(&mut app, KeyCode::Esc), Some(Command::Rewind));
         assert_eq!(app.composer.text(), "fix the parser");
@@ -3854,8 +3915,8 @@ mod tests {
         assert!(app.composer.is_empty(), "the draft stays empty");
         assert_eq!(
             app.transcript.rows().len(),
-            1,
-            "the row is still there: {:?}",
+            2,
+            "the prompt and the summary: {:?}",
             app.transcript.rows()
         );
     }
@@ -4162,6 +4223,155 @@ mod tests {
         assert_eq!(value(&fields, "tokens"), Some("not measured yet"));
         assert_eq!(value(&fields, "session"), Some("not saved"));
         assert_eq!(value(&fields, "session file"), Some("unknown"));
+    }
+
+    #[test]
+    fn a_finished_turn_closes_with_one_summary_row() {
+        let mut app = app();
+        type_text(&mut app, "fix the parser");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("fix the parser".to_owned()))
+        );
+        app.apply(AgentEvent::Text("patched".to_owned()));
+        let mut outcome = outcome();
+        outcome.usage = Usage {
+            input_tokens: 12,
+            output_tokens: 2_800,
+        };
+        assert_eq!(app.finish(Ok(outcome)), None);
+
+        let last = app.transcript.rows().last().expect("a summary");
+        assert_eq!(last.kind, RowKind::Summary);
+        assert!(last.text.starts_with("done"), "{}", last.text);
+        assert!(last.text.contains("2.8k out"), "{}", last.text);
+        assert!(
+            !last.text.contains("file changed"),
+            "no file was written: {}",
+            last.text
+        );
+    }
+
+    #[test]
+    fn a_stopped_turn_closes_with_a_stopped_summary() {
+        let mut app = app();
+        type_text(&mut app, "write something long");
+        let _ = press(&mut app, KeyCode::Enter);
+        app.apply(AgentEvent::Text("half an answer".to_owned()));
+        app.apply(AgentEvent::Cancelled);
+        let mut cancelled = outcome();
+        cancelled.stop = StopReason::Other("cancelled".to_owned());
+        assert_eq!(app.finish(Ok(cancelled)), None);
+
+        let rows = app.transcript.rows();
+        assert_eq!(rows[rows.len() - 2].text, "cancelled", "the notice stays");
+        assert_eq!(rows[rows.len() - 1].kind, RowKind::Summary);
+        assert!(rows[rows.len() - 1].text.starts_with("stopped"));
+
+        let closing = rows.len();
+        assert_eq!(app.finish(Ok(outcome())), None);
+        assert_eq!(
+            app.transcript.rows().len(),
+            closing,
+            "a turn is summarised once: {:?}",
+            app.transcript.rows()
+        );
+    }
+
+    #[test]
+    fn a_failed_turn_closes_with_a_failed_summary_after_the_error() {
+        let mut app = app();
+        type_text(&mut app, "do the thing");
+        let _ = press(&mut app, KeyCode::Enter);
+        app.apply(AgentEvent::Text("part of an answer".to_owned()));
+        assert_eq!(
+            app.finish(Err("provider mock failed: 503".to_owned())),
+            None
+        );
+
+        let rows = app.transcript.rows();
+        let last = rows.last().expect("a summary");
+        assert_eq!(last.kind, RowKind::SummaryFailed);
+        assert!(last.text.starts_with("failed"), "{}", last.text);
+        assert!(last.text.contains("503"), "{}", last.text);
+        assert!(
+            last.text.contains("send a new prompt to continue"),
+            "{}",
+            last.text
+        );
+        assert!(
+            rows.iter()
+                .any(|row| row.kind == RowKind::Error && row.text.contains("503")),
+            "the full message stays in the transcript"
+        );
+    }
+
+    #[test]
+    fn no_turn_ran_so_no_summary_is_written() {
+        let mut app = app();
+        assert_eq!(app.finish(Ok(outcome())), None);
+        assert!(
+            app.transcript.rows().is_empty(),
+            "{:?}",
+            app.transcript.rows()
+        );
+    }
+
+    #[test]
+    fn each_file_written_in_a_turn_counts_once() {
+        let mut app = app();
+        type_text(&mut app, "write it twice");
+        let _ = press(&mut app, KeyCode::Enter);
+        for _ in 0..2 {
+            app.apply(AgentEvent::ToolStart {
+                name: "write_file".to_owned(),
+                arguments: r#"{"file_path":"src/a.rs","content":"x"}"#.to_owned(),
+            });
+            app.apply(AgentEvent::ToolEnd {
+                name: "write_file".to_owned(),
+                output: "wrote src/a.rs".to_owned(),
+                is_error: false,
+            });
+        }
+        app.apply(AgentEvent::ToolStart {
+            name: "edit_file".to_owned(),
+            arguments: r#"{"path":"src/b.rs","old_text":"a","new_text":"b"}"#.to_owned(),
+        });
+        app.apply(AgentEvent::ToolEnd {
+            name: "edit_file".to_owned(),
+            output: "edited src/b.rs".to_owned(),
+            is_error: false,
+        });
+        let mut outcome = outcome();
+        outcome.tool_calls = 3;
+        assert_eq!(app.finish(Ok(outcome)), None);
+
+        let text = app.transcript.rows().last().expect("a summary").text.clone();
+        assert!(text.contains("2 files changed"), "{text}");
+        assert!(text.contains("3 tool calls"), "{text}");
+    }
+
+    #[test]
+    fn a_failed_write_does_not_count_as_a_changed_file() {
+        let mut app = app();
+        type_text(&mut app, "try to write");
+        let _ = press(&mut app, KeyCode::Enter);
+        app.apply(AgentEvent::ToolStart {
+            name: "write_file".to_owned(),
+            arguments: r#"{"file_path":"/etc/passwd","content":"x"}"#.to_owned(),
+        });
+        app.apply(AgentEvent::ToolEnd {
+            name: "write_file".to_owned(),
+            output: "refused: outside the workspace".to_owned(),
+            is_error: true,
+        });
+        let mut outcome = outcome();
+        outcome.tool_calls = 1;
+        assert_eq!(app.finish(Ok(outcome)), None);
+
+        let text = app.transcript.rows().last().expect("a summary").text.clone();
+        assert!(!text.contains("file changed"), "{text}");
+        assert!(text.contains("1 tool call"), "{text}");
     }
 
     #[test]
