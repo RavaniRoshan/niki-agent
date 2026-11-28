@@ -62,6 +62,12 @@ pub enum SlashCommand {
     Editor,
     /// Show what the session has spent.
     Cost,
+    /// Print where the documentation lives.
+    Docs,
+    /// Print where to file an issue.
+    Feedback,
+    /// Print the command that updates the binary.
+    Update,
     /// Show the version line.
     Version,
 }
@@ -97,7 +103,7 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/connect",
         summary: "Add a provider: pick one, store its key and choose a model",
-        aliases: &[],
+        aliases: &["/auth"],
     },
     CommandInfo {
         name: "/context",
@@ -112,11 +118,16 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/cost",
         summary: "Show the session's token totals",
-        aliases: &[],
+        aliases: &["/tokens"],
     },
     CommandInfo {
         name: "/diff",
         summary: "Show the working tree's staged, unstaged and untracked changes",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/docs",
+        summary: "Print where the documentation lives",
         aliases: &[],
     },
     CommandInfo {
@@ -127,6 +138,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/export",
         summary: "Write the session to Markdown",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/feedback",
+        summary: "Print where to file an issue",
         aliases: &[],
     },
     CommandInfo {
@@ -205,6 +221,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/update",
+        summary: "Print the command that updates the binary",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/version",
         summary: "Show the version",
         aliases: &["/about"],
@@ -228,11 +249,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/auth",
-        summary: "Store and check provider credentials",
-        aliases: &["/connect"],
-    },
-    CommandInfo {
         name: "/btw",
         summary: "Ask a side question without changing the conversation",
         aliases: &[],
@@ -243,18 +259,8 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/docs",
-        summary: "Open the documentation",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/effort",
         summary: "Set reasoning effort for the current model",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/feedback",
-        summary: "Open the issue tracker",
         aliases: &[],
     },
     CommandInfo {
@@ -290,16 +296,6 @@ pub const ROADMAP: &[CommandInfo] = &[
     CommandInfo {
         name: "/timestamps",
         summary: "Show or hide message timestamps",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/tokens",
-        summary: "Show token usage for this session",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/update",
-        summary: "Check for and install an update",
         aliases: &[],
     },
 ];
@@ -359,16 +355,21 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/new" => SlashCommand::New,
         "/compact" => SlashCommand::Compact,
         "/connect" => SlashCommand::Connect,
+        "/auth" => SlashCommand::Connect,
         "/copy" => SlashCommand::Copy,
         "/cost" => SlashCommand::Cost,
         "/editor" => SlashCommand::Editor,
         "/context" => SlashCommand::Context,
         "/diff" => SlashCommand::Diff(argument),
+        "/docs" => SlashCommand::Docs,
+        "/feedback" => SlashCommand::Feedback,
         "/resume" => SlashCommand::Resume(argument),
         "/threads" => SlashCommand::Threads,
         "/export" => SlashCommand::Export(remainder(text)),
         "/rename" => SlashCommand::Rename(remainder(text)),
+        "/tokens" => SlashCommand::Cost,
         "/tools" => SlashCommand::Tools,
+        "/update" => SlashCommand::Update,
         "/skills" => SlashCommand::Skills,
         "/settings" => SlashCommand::Settings,
         "/status" => SlashCommand::Status,
@@ -404,9 +405,12 @@ mod tests {
             (SlashCommand::Connect, "/connect"),
             (SlashCommand::Copy, "/copy"),
             (SlashCommand::Cost, "/cost"),
+            (SlashCommand::Cost, "/tokens"),
             (SlashCommand::Context, "/context"),
             (SlashCommand::Diff(None), "/diff"),
             (SlashCommand::Editor, "/editor"),
+            (SlashCommand::Docs, "/docs"),
+            (SlashCommand::Feedback, "/feedback"),
             (SlashCommand::Export(None), "/export"),
             (SlashCommand::Help, "/help"),
             (SlashCommand::Init, "/init"),
@@ -420,6 +424,7 @@ mod tests {
             (SlashCommand::Theme(None), "/theme"),
             (SlashCommand::Threads, "/threads"),
             (SlashCommand::Tools, "/tools"),
+            (SlashCommand::Update, "/update"),
             (SlashCommand::Skills, "/skills"),
             (SlashCommand::Settings, "/settings"),
             (SlashCommand::Status, "/status"),
@@ -435,7 +440,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 27);
+        assert_eq!(listed.len(), 30);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
@@ -444,6 +449,12 @@ mod tests {
                 assert_ne!(info.summary, other.summary, "duplicate summary");
             }
         }
+    }
+
+    #[test]
+    fn the_alias_names_reach_their_commands() {
+        assert_eq!(parse("/auth"), Ok(SlashCommand::Connect));
+        assert_eq!(parse("/tokens"), Ok(SlashCommand::Cost));
     }
 
     #[test]

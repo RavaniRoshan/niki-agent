@@ -1607,6 +1607,23 @@ impl App {
                 self.list_mcp();
                 None
             }
+            SlashCommand::Docs => {
+                self.transcript.push_notice(
+                    "documentation: https://github.com/RavaniRoshan/niki-agent/tree/niki-agent/docs/niki",
+                );
+                None
+            }
+            SlashCommand::Feedback => {
+                self.transcript
+                    .push_notice("issues: https://github.com/RavaniRoshan/niki-agent/issues");
+                None
+            }
+            SlashCommand::Update => {
+                self.transcript.push_notice(
+                    "update: curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh | bash",
+                );
+                None
+            }
             SlashCommand::Copy => self.copy(),
             SlashCommand::Editor => Some(Command::EditPrompt),
             SlashCommand::Cost => {

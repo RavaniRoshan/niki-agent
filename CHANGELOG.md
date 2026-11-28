@@ -26,6 +26,9 @@ The product is a single Rust binary, distributed as one archive per platform.
   answer to the clipboard, the draft in `$EDITOR`, and the session's token
   totals. `/cost` prints tokens only — a built-in price table would be wrong
   the day a provider changed it.
+- `/docs`, `/feedback` and `/update` print the documentation URL, the issue
+  tracker and the installer line. `/auth` and `/tokens` now reach `/connect`
+  and `/cost` instead of being refused.
 - `/mcp` lists every configured MCP server with its transport and what became
   of it: the tool count it advertised, or the error that stopped it.
 - `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
