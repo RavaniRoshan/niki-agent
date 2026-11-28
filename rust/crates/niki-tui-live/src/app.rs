@@ -51,6 +51,10 @@ const COMPACT_KEEP_ROWS: usize = 12;
 const RESUME_LIMIT: usize = 20;
 /// How long after one Esc a second one restores the last prompt.
 const BACKTRACK_WINDOW: Duration = Duration::from_secs(2);
+/// Longest paste kept in the composer as text, in characters.
+const PASTE_LIMIT_CHARS: usize = 400;
+/// Most lines a paste may have before it collapses to a chip.
+const PASTE_LIMIT_LINES: usize = 8;
 
 /// One configured MCP server and what became of it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,6 +195,8 @@ pub struct App {
     completion: Option<Completion>,
     /// The draft whose command list Esc closed, until the draft changes.
     completion_closed: Option<String>,
+    /// Pastes too long for the composer, in the order their chips were placed.
+    pastes: Vec<String>,
     /// Whether `Ctrl+Y` may write the clipboard escape.
     clipboard: bool,
     spinner: usize,
@@ -239,6 +245,7 @@ impl App {
             last_escape: None,
             completion: None,
             completion_closed: None,
+            pastes: Vec::new(),
             clipboard: !clipboard_disabled(),
             spinner: 0,
             turn_clock: None,
@@ -364,11 +371,22 @@ impl App {
     /// A bracketed paste is text, not keys: newlines and colons stay in the
     /// draft and only Enter sends it. While a modal is open the modal owns the
     /// keyboard, so the paste is dropped rather than reaching the composer.
+    ///
+    /// A paste too long to read in the composer collapses to a numbered chip,
+    /// `[pasted #1, 42 lines]`. The text is kept whole and is put back when the
+    /// draft is sent, so a twenty-thousand-character paste never becomes
+    /// twenty-thousand characters of composer row.
     pub fn handle_paste(&mut self, text: &str) {
         if self.modal.is_some() || self.transcript_overlay.is_some() {
             return;
         }
-        self.composer.insert_str(text);
+        if text.chars().count() > PASTE_LIMIT_CHARS || text.lines().count() > PASTE_LIMIT_LINES {
+            self.pastes.push(text.to_owned());
+            let chip = paste_chip(self.pastes.len(), text);
+            self.composer.insert_str(&chip);
+        } else {
+            self.composer.insert_str(text);
+        }
         self.history.reset();
         self.refresh_completion();
     }
@@ -1205,6 +1223,7 @@ impl App {
         }
         if !self.composer.is_empty() {
             self.composer.clear();
+            self.pastes.clear();
             self.history.reset();
             self.last_escape = None;
             return None;
@@ -1273,6 +1292,7 @@ impl App {
     }
 
     fn submit(&mut self) -> Option<Command> {
+        self.expand_pastes();
         if self.clean_draft() {
             return None;
         }
@@ -1293,6 +1313,22 @@ impl App {
         }
         self.history.record(&text);
         Some(self.begin_turn(text))
+    }
+
+    /// Put collapsed pastes back into the draft, in the order their chips sit.
+    fn expand_pastes(&mut self) {
+        if self.pastes.is_empty() {
+            return;
+        }
+        let mut text = self.composer.text().to_owned();
+        for (index, pasted) in self.pastes.iter().enumerate() {
+            let chip = paste_chip(index + 1, pasted);
+            if text.contains(&chip) {
+                text = text.replacen(&chip, pasted, 1);
+            }
+        }
+        self.pastes.clear();
+        self.set_draft(&text);
     }
 
     /// Strip invisible characters from the draft before it can be sent.
@@ -1327,6 +1363,7 @@ impl App {
 
     /// Hand the draft to the running turn, without starting another one.
     fn steer(&mut self) -> Option<Command> {
+        self.expand_pastes();
         if self.clean_draft() {
             return None;
         }
@@ -1815,6 +1852,7 @@ impl App {
             return None;
         }
         self.transcript.clear();
+        self.pastes.clear();
         self.scroll.reset();
         self.turn_start = None;
         self.queued.clear();
@@ -2227,6 +2265,12 @@ fn thread_entry(summary: &Summary) -> ThreadEntry {
 /// The argument string a shell call shows in its transcript row.
 fn shell_arguments(command: &str) -> String {
     serde_json::json!({ "command": command }).to_string()
+}
+
+/// The chip that stands in for a long paste in the composer.
+fn paste_chip(number: usize, text: &str) -> String {
+    let lines = text.lines().count().max(1);
+    format!("[pasted #{number}, {}]", plural(lines, "line"))
 }
 
 fn plural(count: usize, noun: &str) -> String {
@@ -3759,6 +3803,72 @@ mod tests {
                 ("tool_call", "shell\n{\"command\":\"ls\"}"),
                 ("tool_result", "shell\na.txt"),
             ]
+        );
+    }
+
+    #[test]
+    fn a_long_paste_collapses_to_a_chip_and_is_put_back_on_send() {
+        let mut app = app();
+        let pasted = "x".repeat(2_000);
+        app.handle_paste(&pasted);
+        assert_eq!(app.composer.text(), "[pasted #1, 1 line]");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit(pasted.clone())),
+            "the model receives the whole paste"
+        );
+    }
+
+    #[test]
+    fn a_multi_line_paste_collapses_and_keeps_its_line_count() {
+        let mut app = app();
+        let pasted = (0..40)
+            .map(|n| format!("line {n}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        app.handle_paste(&pasted);
+        assert_eq!(app.composer.text(), "[pasted #1, 40 lines]");
+    }
+
+    #[test]
+    fn two_pastes_are_two_chips_and_expand_in_place() {
+        let mut app = app();
+        let first = "a".repeat(500);
+        let second = "b".repeat(500);
+        app.handle_paste(&first);
+        type_text(&mut app, " and ");
+        app.handle_paste(&second);
+        assert_eq!(
+            app.composer.text(),
+            "[pasted #1, 1 line] and [pasted #2, 1 line]".to_owned()
+        );
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit(format!("{first} and {second}")))
+        );
+    }
+
+    #[test]
+    fn a_cleared_composer_forgets_its_pastes_and_numbers_from_one() {
+        let mut app = app();
+        app.handle_paste(&"x".repeat(500));
+        assert_eq!(app.composer.text(), "[pasted #1, 1 line]");
+        stroke(&mut app, KeyCode::Esc);
+        assert!(app.composer.is_empty());
+        app.handle_paste(&"y".repeat(500));
+        assert_eq!(app.composer.text(), "[pasted #1, 1 line]");
+    }
+
+    #[test]
+    fn a_chip_the_person_edited_is_sent_as_written() {
+        let mut app = app();
+        app.handle_paste(&"x".repeat(500));
+        app.composer.clear();
+        type_text(&mut app, "keep this");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("keep this".to_owned())),
+            "nothing matches, so nothing is expanded"
         );
     }
 
