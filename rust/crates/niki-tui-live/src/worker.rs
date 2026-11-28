@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use futures_util::future::BoxFuture;
 use niki_agent::{
-    Agent, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, Compaction,
+    Agent, AgentEvent, Approval, ApprovalRequest, Approver, CancelHandle, Compaction, ContextAudit,
     ContextReport, Provider, RunOutcome, SessionUsage, Steering,
 };
 use niki_policy::Mode;
@@ -66,6 +66,9 @@ pub enum WorkerEvent {
         /// Whether `/context` asked for this and it should be printed.
         announce: bool,
     },
+    /// The split of what the next request would inject, for
+    /// `/context-doctor`.
+    Audit(niki_agent::ContextAudit),
     /// A `/compact` finished, through the provider or without one.
     Compacted {
         /// What the agent replaced, or the provider failure.
@@ -95,6 +98,7 @@ impl std::fmt::Debug for WorkerEvent {
                 .field("usage", usage)
                 .field("announce", announce)
                 .finish(),
+            Self::Audit(audit) => f.debug_tuple("Audit").field(audit).finish(),
             Self::Compacted { result, fallback } => f
                 .debug_struct("Compacted")
                 .field(
@@ -136,6 +140,7 @@ enum Request {
     Mode(Mode),
     Compact(usize),
     Context,
+    Audit,
     System(String),
     ClearApprovals,
     Stop,
@@ -335,6 +340,12 @@ impl WorkerHandle {
                         send_context(&event_tx, agent.as_ref());
                         let _ = event_tx.send(WorkerEvent::Compacted { result, fallback });
                     }
+                    Request::Audit => {
+                        let audit = agent
+                            .as_ref()
+                            .map_or_else(ContextAudit::default, |running| running.context_audit());
+                        let _ = event_tx.send(WorkerEvent::Audit(audit));
+                    }
                     Request::Context => {
                         let (report, usage) = agent.as_ref().map_or_else(
                             || (ContextReport::default(), SessionUsage::default()),
@@ -424,6 +435,11 @@ impl WorkerHandle {
     /// Ask for the agent's [`ContextReport`] and [`SessionUsage`].
     pub fn context(&self) -> bool {
         self.requests.send(Request::Context).is_ok()
+    }
+
+    /// Ask for the split of the next request's tokens.
+    pub fn audit(&self) -> bool {
+        self.requests.send(Request::Audit).is_ok()
     }
 
     /// Replace the system prompt the running agent sends.

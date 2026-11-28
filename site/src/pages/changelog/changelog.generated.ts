@@ -27,6 +27,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           "`/new` and `Ctrl+N` start a fresh session, the same reset `/clear` performs under the name people reach for. `Ctrl+R` opens the session browser without typing `/threads`.",
           "The command list matches loosely: prefix, then substring, then letters in order, so `/cmpct` reaches `/compact`.",
           "`/copy`, `/editor` and `/cost` are commands as well as chords: the newest answer to the clipboard, the draft in `$EDITOR`, and the session's token totals. `/cost` prints tokens only — a built-in price table would be wrong the day a provider changed it.",
+          "`/context-doctor` splits what the next request would inject: the system prompt, the tool schemas and the conversation, with the tool count.",
           "`/docs`, `/feedback` and `/update` print the documentation URL, the issue tracker and the installer line. `/auth` and `/tokens` now reach `/connect` and `/cost` instead of being refused.",
           "`/mcp` lists every configured MCP server with its transport and what became of it: the tool count it advertised, or the error that stopped it.",
           "`/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer and title — and changes them from the app. Each row applies live and is written back to `config.toml`.",
