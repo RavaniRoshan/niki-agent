@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/UI.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 157a8992a0caff5412a1f6007090917101c31084048f99768c768ab8238a2112
+  source-sha256: c17487fc21242ec8f1c9833e53ee923d54bb084b41258b43fd118c36bbe0ad97
 -->
 # Niki Agent — the interface
 
@@ -14,7 +14,7 @@ claim here is covered by a `TestBackend` buffer test in
 ## The screen
 
 ```text
-  >_ NIKI AGENT (v2.2.0)
+  >_ NIKI AGENT (v2.3.0)
      ~/project
 
   To get started, describe a task or try one of these commands:
