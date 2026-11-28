@@ -100,8 +100,8 @@ descriptions are a future improvement, not a launch blocker.
 - Route bodies are client-rendered; only the `<head>` is prerendered. Crawlers
   that execute JavaScript see the full page, and every route has correct
   metadata regardless.
-- Git history still contains commits from before 2.0. History is not rewritten;
-  the tree at `niki-agent` contains no remnants.
+- The repository history begins at the 2.2.0 tree. Earlier development trees are
+  not published, and no published commit contains a file from them.
 - `libs/` holds about 1.2 GB of local evaluation scratch. It is untracked and
   not shipped.
 - The docs site uses one shared meta description for every page.
