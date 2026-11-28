@@ -25,8 +25,23 @@ use std::{env, fs};
 use serde::Deserialize;
 
 mod builtin;
+pub mod credentials;
+pub mod edit;
 pub mod instructions;
 pub mod trust;
+
+/// The providers the product ships, in picker order.
+///
+/// Each entry carries the endpoint, the protocol and the key variable a
+/// `[providers.*]` block would otherwise have to repeat. The connect screen
+/// lists these, so the catalog and the resolver cannot disagree.
+#[must_use]
+pub fn builtin_providers() -> Vec<(&'static str, Provider)> {
+    builtin::BUILTIN_NAMES
+        .iter()
+        .filter_map(|name| builtin::builtin(name).map(|provider| (*name, provider)))
+        .collect()
+}
 
 /// The wire protocol a provider speaks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +76,12 @@ pub struct Provider {
     /// Unset follows the built-in default: `true` for a local endpoint, `false`
     /// for every hosted one. A user block may set it either way.
     pub keyless: Option<bool>,
+    /// The credential itself, when one was stored beside `config.toml`.
+    ///
+    /// Never written to `config.toml`: the reader fills it from
+    /// `credentials.toml`, and the model client prefers it over the
+    /// environment variable. `Debug` masks it.
+    pub api_key: Option<String>,
 }
 
 impl Provider {
@@ -112,6 +133,7 @@ impl fmt::Debug for Provider {
             .field("base_url", &self.base_url)
             .field("api_key_env", &self.api_key_env)
             .field("api_key_env_set", &self.api_key_env_set())
+            .field("api_key", &self.api_key.as_deref().map(|_| "<stored>"))
             .field("models", &self.models)
             .field("protocol", &self.protocol())
             .field("keyless", &self.keyless())
@@ -200,6 +222,11 @@ pub struct Config {
     pub mcp_servers: BTreeMap<String, McpServer>,
     /// `[notify]`, the turn-end program.
     pub notify: Notify,
+    /// Provider API keys read from `credentials.toml`, keyed by provider name.
+    ///
+    /// Filled by [`Config::load`] from the file beside the configuration; an
+    /// in-memory config built from text has none.
+    pub credentials: BTreeMap<String, String>,
 }
 
 /// The per-effect switches under `[ui]`, each absent meaning on.
@@ -240,21 +267,25 @@ impl Config {
     /// being absent, [`ConfigError::ParseFile`] when the file is not valid
     /// TOML, and [`ConfigError::McpServer`] when one MCP entry is malformed.
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
-        match fs::read_to_string(path) {
+        let mut config = match fs::read_to_string(path) {
             Ok(text) => {
                 let raw: RawConfig =
                     toml::from_str(&text).map_err(|source| ConfigError::ParseFile {
                         path: path.to_path_buf(),
                         source,
                     })?;
-                raw.into_config()
+                raw.into_config()?
             }
-            Err(source) if source.kind() == ErrorKind::NotFound => Ok(Self::default()),
-            Err(source) => Err(ConfigError::Read {
-                path: path.to_path_buf(),
-                source,
-            }),
-        }
+            Err(source) if source.kind() == ErrorKind::NotFound => Self::default(),
+            Err(source) => {
+                return Err(ConfigError::Read {
+                    path: path.to_path_buf(),
+                    source,
+                });
+            }
+        };
+        config.credentials = credentials::load(&credentials::path_for(path));
+        Ok(config)
     }
 
     /// The provider `name` resolves to: the user's block over the built-in one,
@@ -266,8 +297,8 @@ impl Config {
     #[must_use]
     pub fn provider(&self, name: &str) -> Option<Provider> {
         let user = self.providers.get(name);
-        match (user, builtin::builtin(name)) {
-            (Some(user), Some(base)) => Some(Provider {
+        let mut resolved = match (user, builtin::builtin(name)) {
+            (Some(user), Some(base)) => Provider {
                 display_name: user.display_name.clone().or(base.display_name),
                 class_path: user.class_path.clone().or(base.class_path),
                 base_url: user.base_url.clone().or(base.base_url),
@@ -279,11 +310,16 @@ impl Config {
                 },
                 protocol: user.protocol.clone().or(base.protocol),
                 keyless: user.keyless.or(base.keyless),
-            }),
-            (Some(user), None) => Some(user.clone()),
-            (None, Some(base)) => Some(base),
-            (None, None) => None,
+                api_key: user.api_key.clone().or(base.api_key),
+            },
+            (Some(user), None) => user.clone(),
+            (None, Some(base)) => base,
+            (None, None) => return None,
+        };
+        if resolved.api_key.is_none() {
+            resolved.api_key = self.credentials.get(name).cloned();
         }
+        Some(resolved)
     }
 
     /// Every provider name this config can resolve: user blocks first, then the
@@ -596,6 +632,7 @@ impl RawConfig {
             },
             mcp_servers,
             notify: self.notify,
+            credentials: BTreeMap::new(),
         })
     }
 }
@@ -646,6 +683,7 @@ models = ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6"]
             ],
             protocol: None,
             keyless: None,
+            api_key: None,
         };
         assert_eq!(config.providers.get("kimi"), Some(&expected));
         assert_eq!(config.providers.len(), 1);

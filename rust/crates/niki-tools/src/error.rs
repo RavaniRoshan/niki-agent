@@ -46,6 +46,10 @@ pub enum ToolError {
     #[error("{0}")]
     Mcp(String),
 
+    /// A request to the network failed or answered with an error status.
+    #[error("{0}")]
+    Network(String),
+
     /// A delegated child agent could not be built or did not finish.
     #[error("subagent failed: {0}")]
     Subagent(String),

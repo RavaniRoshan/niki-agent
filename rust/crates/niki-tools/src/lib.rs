@@ -26,7 +26,10 @@ pub use error::ToolError;
 pub use output::{MAX_OUTPUT_BYTES, MAX_OUTPUT_LINES, ToolOutput};
 pub use registry::{Registry, ToolHandle};
 pub use tool::{Tool, ToolFuture};
-pub use tools::{EditFile, Glob, Grep, ListDir, ReadFile, RequestUserInput, Shell, WriteFile};
+pub use tools::{
+    EditFile, Glob, Grep, ListDir, ReadFile, RequestUserInput, Shell, WebFetch, WebSearch,
+    WriteFile,
+};
 
 use std::io;
 

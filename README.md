@@ -58,11 +58,12 @@ what a long session actually costs you: attention, trust, and startup time.
 | --- | --- |
 | **The gate is the product** | Every gated action arrives as a card that names the command or the absolute path, says whether it resolves inside the workspace, offers *allow once / allow for this session / refuse*, and keeps the conversation on screen behind it. |
 | **One binary, no runtime** | The turn loop, providers, tools, policy, sessions, MCP, and UI compile into a single executable. The release archive is about 5 MiB and needs nothing else installed. |
-| **Open providers, no proxy** | Eleven providers are built in — Anthropic, OpenAI, Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, Ollama — plus any OpenAI-compatible endpoint by config. You pay your provider directly; there is no billing layer in between. |
+| **Open providers, no proxy** | Eleven providers are built in — Anthropic, OpenAI, Gemini, Groq, OpenRouter, Together, DeepSeek, NVIDIA, Mistral, xAI, Ollama — plus any OpenAI-compatible endpoint by config. `/connect` picks one, stores the key, and switches the session without leaving the terminal. You pay your provider directly; there is no billing layer in between. |
 | **Local by conviction** | Sessions, skills, credentials, and the trust store live in `~/.niki`. No account, no cloud sync, no update check, no remote config. |
 | **Starts in milliseconds** | `niki --version` returns in 1.8 ms on a Ryzen 7 4800H (mean of 20 runs after 5 warm-ups); there is no interpreter to boot and no import graph to warm. |
 | **Quiet by default** | An idle session draws a welcome block and one composer rule, not a box. Tool output collapses to a row you can open. |
 | **Delegation with a budget** | The `task` tool gives one child agent a fresh history, a fixed step budget, and no way to spawn further children. |
+| **Reaches the web, with consent** | `web_search` and `web_fetch` are built-in; the first call goes through the same approval card as a shell command, so nothing leaves the machine unasked. |
 | **Scriptable when you need it** | `niki -n` answers once on stdout; `--output-format jsonl` streams a turn as events for your own tooling. |
 
 ## Install

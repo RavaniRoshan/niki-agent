@@ -31,13 +31,26 @@ Every provider except Anthropic uses the OpenAI-compatible protocol; Anthropic
 uses its own messages API. Google Gemini is reached through the OpenAI-compatible
 surface of the Gemini API, so it needs no separate client.
 
-An environment variable is the only place a key is read from. Export it in the
-shell that starts `niki`:
+An environment variable is the only place a key is read from, unless one was
+stored with `/connect`. That flow writes the key to `credentials.toml` beside
+`config.toml`, owner-readable only, and a stored key outranks the variable.
+Export it in the shell that starts `niki`, or store it once in the app:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 niki --model anthropic:my-model -n "summarize this repo"
 ```
+
+In the full-screen app, `/connect` lists the eleven built-ins and one custom
+row, asks for the key, then for a model, and switches the session over:
+
+```text
+/connect
+```
+
+`Enter` on an empty key field means "use the environment variable". The key is
+never echoed: the field draws asterisks, and the value never reaches
+`config.toml`.
 
 Ollama needs no key: it is a local daemon, and the client treats it as keyless.
 Set `base_url` in a `[providers.ollama]` block to point at a server on another

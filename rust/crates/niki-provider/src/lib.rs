@@ -213,6 +213,16 @@ pub fn base_url(provider: &niki_config::Provider, default: &str) -> String {
 /// Returns [`ProviderError::MissingKey`] when the variable is unset or empty,
 /// naming both the variable and the provider so the user can fix the shell.
 pub fn api_key(provider: &niki_config::Provider, name: &str) -> Result<String, ProviderError> {
+    // A key pasted in the connect screen outranks the environment: the person
+    // just stored it, and a stale variable should not shadow it.
+    if let Some(stored) = provider
+        .api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+    {
+        return Ok(stored.to_owned());
+    }
     // A local daemon ignores the credential it is sent. If the user named a
     // variable and set it anyway (a proxy in front of the daemon), use it.
     if provider.keyless() {

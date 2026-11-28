@@ -11,6 +11,7 @@
 #![forbid(unsafe_code)]
 
 mod approval;
+mod connect;
 mod help;
 mod model;
 mod overlay;
@@ -19,6 +20,7 @@ mod status;
 mod threads;
 
 pub use approval::{ApprovalModal, ellipsize};
+pub use connect::{CatalogEntry, ConnectModal, ConnectRequest, Stage};
 pub use help::{HelpOverlay, describe};
 pub use model::{ModelChoice, ModelPicker};
 pub use question::{QuestionModal, QuestionReply, QuestionRow};
@@ -40,6 +42,8 @@ pub enum Modal {
     Question(QuestionModal),
     /// The models the configuration offers.
     Models(ModelPicker),
+    /// The provider catalog and the key and model walk.
+    Connect(ConnectModal),
     /// The saved sessions, filterable, to resume one.
     Threads(ThreadPicker),
     /// The keymap.
@@ -61,6 +65,8 @@ pub enum Outcome {
     Question(QuestionReply),
     /// The person chose a model spec.
     Model(String),
+    /// The person finished the provider walk.
+    Connected(ConnectRequest),
     /// The person chose a session to resume.
     Session(String),
 }
@@ -73,6 +79,7 @@ impl Modal {
             Self::Approval(_) => "Approve a command",
             Self::Question(_) => "Question",
             Self::Models(_) => "Model",
+            Self::Connect(_) => "Connect a provider",
             Self::Threads(_) => "Sessions",
             Self::Help(_) => "Keys",
             Self::Status(_) => "Status",
@@ -85,6 +92,7 @@ impl Modal {
             Self::Approval(modal) => modal.handle_key(key),
             Self::Question(modal) => modal.handle_key(key),
             Self::Models(modal) => modal.handle_key(key),
+            Self::Connect(modal) => modal.handle_key(key),
             Self::Threads(modal) => modal.handle_key(key),
             Self::Help(modal) => modal.handle_key(key),
             Self::Status(modal) => modal.handle_key(key),
@@ -97,6 +105,7 @@ impl Modal {
             Self::Approval(modal) => overlay::approval(frame, area, modal, palette, glyphs),
             Self::Question(modal) => overlay::question(frame, area, modal, palette, glyphs),
             Self::Models(modal) => overlay::models(frame, area, modal, palette, glyphs),
+            Self::Connect(modal) => overlay::connect(frame, area, modal, palette, glyphs),
             Self::Threads(modal) => overlay::threads(frame, area, modal, palette, glyphs),
             Self::Help(modal) => overlay::help(frame, area, modal, palette, glyphs),
             Self::Status(modal) => overlay::status(frame, area, modal, palette, glyphs),

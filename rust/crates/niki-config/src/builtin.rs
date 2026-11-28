@@ -75,6 +75,7 @@ pub(crate) fn builtin(name: &str) -> Option<Provider> {
         protocol: Some(protocol_name(protocol).to_owned()),
         // A local daemon does not check the key it is sent.
         keyless: (name == "ollama").then_some(true),
+        api_key: None,
     })
 }
 

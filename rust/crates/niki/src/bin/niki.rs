@@ -865,6 +865,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     app.set_skills(skills);
     app.set_palette(palette_or_default(config.theme.as_deref()));
     app.set_models(ModelPicker::from_config(&config));
+    app.set_config(config.clone(), config_path.clone());
     app.set_glyphs(GlyphMode::from_value(env_value("NIKI_ASCII").as_deref()));
     app.set_motion(Motion::resolve(
         config.motion.as_deref(),

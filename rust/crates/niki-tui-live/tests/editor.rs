@@ -69,7 +69,7 @@ fn the_list_puts_prefix_matches_before_substring_matches() {
     assert_eq!(
         names(&app),
         [
-            "/theme", "/threads", "/tools", "/auto", "/compact", "/context"
+            "/theme", "/threads", "/tools", "/auto", "/compact", "/connect"
         ]
     );
     assert_eq!(
@@ -97,7 +97,7 @@ fn the_list_is_capped_at_six_commands_in_registry_order() {
     assert_eq!(
         names(&app),
         [
-            "/auto", "/clear", "/compact", "/context", "/diff", "/export"
+            "/auto", "/clear", "/compact", "/connect", "/context", "/diff"
         ]
     );
     assert_eq!(app.completion_height(), 7, "six names and the description");
@@ -107,11 +107,34 @@ fn the_list_is_capped_at_six_commands_in_registry_order() {
 fn matching_ignores_the_slash_and_the_case_of_the_draft() {
     let mut app = app();
     type_text(&mut app, "/HE");
-    assert_eq!(names(&app), ["/help", "/theme"]);
+    assert_eq!(names(&app), ["/help", "/theme", "/threads"]);
 
     let mut app = self::app();
     type_text(&mut app, "/le");
     assert_eq!(names(&app), ["/clear"]);
+}
+
+#[test]
+fn enter_runs_the_command_the_list_highlights() {
+    let mut app = app();
+    type_text(&mut app, "/vers");
+    assert_eq!(press(&mut app, KeyCode::Enter), None);
+    assert_eq!(
+        app.composer.text(),
+        "",
+        "the command ran rather than being sent"
+    );
+    let last = app.transcript.rows().last().expect("a notice");
+    assert!(
+        last.text.starts_with("Niki Agent "),
+        "the version line ran: {}",
+        last.text
+    );
+
+    let mut app = self::app();
+    type_text(&mut app, "/hel");
+    assert_eq!(press(&mut app, KeyCode::Enter), None);
+    assert!(matches!(app.modal, Some(niki_tui_live::Modal::Help(_))));
 }
 
 #[test]
@@ -155,7 +178,7 @@ fn the_arrows_move_the_highlight_while_the_list_is_open() {
     for _ in 0..10 {
         stroke(&mut app, KeyCode::Down);
     }
-    assert_eq!(highlighted(&app), "/export", "the last row is the bottom");
+    assert_eq!(highlighted(&app), "/diff", "the last row is the bottom");
     assert_eq!(app.composer.text(), "/", "the draft is untouched");
 }
 
@@ -183,13 +206,14 @@ fn escape_closes_the_list_and_keeps_the_draft() {
 #[test]
 fn enter_submits_the_draft_as_typed() {
     let mut app = app();
-    type_text(&mut app, "/c");
+    // A word the list cannot match is sent as typed and reported.
+    type_text(&mut app, "/zzz");
+    assert!(app.completion().is_none());
     assert_eq!(press(&mut app, KeyCode::Enter), None);
     assert!(app.composer.is_empty());
-    assert!(app.completion().is_none());
     let last = app.transcript.rows().last().expect("a notice");
     assert_eq!(last.kind, RowKind::Notice);
-    assert!(last.text.contains("/c"), "{}", last.text);
+    assert!(last.text.contains("/zzz"), "{}", last.text);
 
     let mut app = self::app();
     type_text(&mut app, "/help");
