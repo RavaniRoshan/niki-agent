@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 0c30cb0cae592cf7f825418a0e4cda39a4e0f3ac4bd53e0d3848d7b4a77fa34d
+  source-sha256: 83b3724b804b726b75b025836348d4329cf4b283d85547a0c690b9c0a076a8ca
 -->
 # Changelog
 
@@ -27,6 +27,8 @@ The product is a single Rust binary, distributed as one archive per platform.
   typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
+- `/mcp` lists every configured MCP server with its transport and what became
+  of it: the tool count it advertised, or the error that stopped it.
 - `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
   and title — and changes them from the app. Each row applies live and is
   written back to `config.toml`.

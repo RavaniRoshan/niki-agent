@@ -22,6 +22,8 @@ The product is a single Rust binary, distributed as one archive per platform.
   typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
+- `/mcp` lists every configured MCP server with its transport and what became
+  of it: the tool count it advertised, or the error that stopped it.
 - `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
   and title — and changes them from the app. Each row applies live and is
   written back to `config.toml`.

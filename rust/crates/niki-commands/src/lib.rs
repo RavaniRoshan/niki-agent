@@ -44,6 +44,8 @@ pub enum SlashCommand {
     Export(Option<String>),
     /// Name the current session, or show its title.
     Rename(Option<String>),
+    /// List the configured MCP servers and their state.
+    Mcp,
     /// List the registered tools.
     Tools,
     /// List the skills discovery found.
@@ -119,6 +121,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/manual",
         summary: "Switch to Manual approval mode",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/mcp",
+        summary: "List MCP servers, their transport and their state",
         aliases: &[],
     },
     CommandInfo {
@@ -255,11 +262,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/mcp",
-        summary: "List MCP servers and their state",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/plugins",
         summary: "Manage plugins",
         aliases: &[],
@@ -345,6 +347,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/quit" | "/exit" | "/q" => SlashCommand::Quit,
         "/help" | "/keys" => SlashCommand::Help,
         "/theme" => SlashCommand::Theme(argument),
+        "/mcp" => SlashCommand::Mcp,
         "/model" => SlashCommand::Model(argument),
         "/clear" => SlashCommand::Clear,
         "/new" => SlashCommand::New,
@@ -396,6 +399,7 @@ mod tests {
             (SlashCommand::Help, "/help"),
             (SlashCommand::Init, "/init"),
             (SlashCommand::Mode(Mode::Manual), "/manual"),
+            (SlashCommand::Mcp, "/mcp"),
             (SlashCommand::Model(None), "/model"),
             (SlashCommand::New, "/new"),
             (SlashCommand::Quit, "/quit"),
@@ -419,7 +423,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 23);
+        assert_eq!(listed.len(), 24);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
