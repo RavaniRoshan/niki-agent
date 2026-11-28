@@ -32,6 +32,51 @@ pub fn describe(action: Action) -> &'static str {
     }
 }
 
+/// One column of the key map: a title and the chords worth learning by name.
+///
+/// Short labels on purpose. This is a map, not documentation: the long-form
+/// description of each binding lives in [`describe`] and in the command list.
+pub struct ShortcutGroup {
+    /// The column heading.
+    pub title: &'static str,
+    /// The chords and a label short enough for three columns.
+    pub entries: &'static [(&'static str, &'static str)],
+}
+
+/// The three columns the `?` overlay opens with.
+pub const GROUPS: [ShortcutGroup; 3] = [
+    ShortcutGroup {
+        title: "Compose",
+        entries: &[
+            ("/", "Commands"),
+            ("tab", "Complete a command"),
+            ("enter", "Send or queue"),
+            ("alt+enter", "New line; steers"),
+            ("escape escape", "Restore last prompt"),
+            ("ctrl+g", "Edit in $EDITOR"),
+            ("ctrl+y", "Copy answer"),
+        ],
+    },
+    ShortcutGroup {
+        title: "Session",
+        entries: &[
+            ("shift+tab", "Cycle mode"),
+            ("ctrl+shift+p", "Slash command"),
+            ("?", "This list"),
+            ("ctrl+c", "Stop, then quit"),
+            ("ctrl+d", "Quit"),
+        ],
+    },
+    ShortcutGroup {
+        title: "Transcript",
+        entries: &[
+            ("ctrl+t", "Open transcript"),
+            ("pgup pgdn", "Scroll a page"),
+            ("up down", "Move in composer"),
+        ],
+    },
+];
+
 /// The keymap, and the lines it is drawn as.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HelpOverlay {
@@ -43,6 +88,12 @@ impl HelpOverlay {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The three columns the overlay opens with.
+    #[must_use]
+    pub fn groups() -> &'static [ShortcutGroup] {
+        &GROUPS
     }
 
     /// Every binding as `chord` and description, in keymap order.

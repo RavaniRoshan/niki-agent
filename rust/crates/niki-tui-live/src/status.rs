@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use niki_agent::{ContextReport, SessionUsage, Usage};
 use niki_policy::Mode;
 
@@ -53,6 +55,8 @@ pub struct Status {
     pub usage: Option<SessionUsage>,
     /// The model's context window, when the host knows one.
     pub context_window: Option<usize>,
+    /// The checked-out branch, when the workspace is a repository.
+    pub git_branch: Option<String>,
     /// Working directory the tools are rooted at.
     pub cwd: String,
 }
@@ -69,8 +73,14 @@ impl Status {
             context: None,
             usage: None,
             context_window: None,
+            git_branch: None,
             cwd: cwd.into(),
         }
+    }
+
+    /// Name the checked-out branch, if the workspace has one.
+    pub fn set_branch(&mut self, branch: Option<String>) {
+        self.git_branch = branch.filter(|branch| !branch.is_empty() && branch != "HEAD");
     }
 
     /// Remember the agent's context report and session usage.
@@ -106,12 +116,23 @@ impl Status {
     #[must_use]
     pub fn state_line(&self, separator: &str, spinner: Option<char>) -> String {
         let mut fields = vec![self.model.clone(), self.mode.label().to_owned()];
+        fields.extend(self.git_branch.clone());
         let mut state = self.turn.label().to_owned();
         if let Some(spinner) = spinner {
             state.push(' ');
             state.push(spinner);
         }
         fields.push(state);
+        fields.push(self.cwd.clone());
+        fields.join(separator)
+    }
+
+    /// The state line without the turn field: everything that is true for the
+    /// whole session.
+    #[must_use]
+    pub fn context_line(&self, separator: &str) -> String {
+        let mut fields = vec![self.model.clone(), self.mode.label().to_owned()];
+        fields.extend(self.git_branch.clone());
         fields.push(self.cwd.clone());
         fields.join(separator)
     }
@@ -160,6 +181,27 @@ pub fn context_percentage(tokens: usize, window: usize) -> Option<u32> {
     u32::try_from(percent).ok()
 }
 
+/// The elapsed seconds of a running turn, in the shortest readable form.
+///
+/// `12s`, `1m 05s`, `1h 00m 05s` — the same shape the reference client uses so
+/// two clock readings a minute apart are comparable at a glance.
+#[must_use]
+pub fn format_elapsed(elapsed: Duration) -> String {
+    let seconds = elapsed.as_secs();
+    if seconds < 60 {
+        return format!("{seconds}s");
+    }
+    if seconds < 3_600 {
+        return format!("{}m {:02}s", seconds / 60, seconds % 60);
+    }
+    format!(
+        "{}h {:02}m {:02}s",
+        seconds / 3_600,
+        (seconds % 3_600) / 60,
+        seconds % 60
+    )
+}
+
 /// `count` with a comma between each group of three digits.
 #[must_use]
 pub fn format_tokens(count: u64) -> String {
@@ -194,6 +236,41 @@ mod tests {
 
     fn status() -> Status {
         Status::new("mock:mock-model", Mode::Manual, "/work")
+    }
+
+    #[test]
+    fn a_known_branch_sits_between_the_mode_and_the_turn() {
+        let mut status = status();
+        status.set_branch(Some("niki-agent".to_owned()));
+        assert_eq!(
+            status.state_line(" · ", None),
+            "mock:mock-model · manual · niki-agent · idle · /work"
+        );
+        assert_eq!(
+            status.context_line(" · "),
+            "mock:mock-model · manual · niki-agent · /work"
+        );
+    }
+
+    #[test]
+    fn a_detached_head_is_not_a_branch() {
+        let mut status = status();
+        status.set_branch(Some("HEAD".to_owned()));
+        assert_eq!(status.git_branch, None);
+        status.set_branch(Some(String::new()));
+        assert_eq!(status.git_branch, None);
+        status.set_branch(None);
+        assert_eq!(status.git_branch, None);
+    }
+
+    #[test]
+    fn the_context_line_leaves_the_turn_out() {
+        let mut status = status();
+        status.turn = TurnState::Working;
+        assert_eq!(
+            status.context_line(" · "),
+            "mock:mock-model · manual · /work"
+        );
     }
 
     #[test]
@@ -285,6 +362,17 @@ mod tests {
         assert_eq!(context_percentage(15, 16), Some(94));
         assert_eq!(context_percentage(150, 100), Some(150));
         assert_eq!(context_percentage(1, 0), None);
+    }
+
+    #[test]
+    fn elapsed_reads_as_seconds_then_minutes_then_hours() {
+        assert_eq!(format_elapsed(Duration::from_secs(0)), "0s");
+        assert_eq!(format_elapsed(Duration::from_secs(59)), "59s");
+        assert_eq!(format_elapsed(Duration::from_secs(60)), "1m 00s");
+        assert_eq!(format_elapsed(Duration::from_secs(65)), "1m 05s");
+        assert_eq!(format_elapsed(Duration::from_secs(3_599)), "59m 59s");
+        assert_eq!(format_elapsed(Duration::from_secs(3_600)), "1h 00m 00s");
+        assert_eq!(format_elapsed(Duration::from_secs(7_389)), "2h 03m 09s");
     }
 
     #[test]

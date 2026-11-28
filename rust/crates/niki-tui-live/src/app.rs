@@ -164,6 +164,8 @@ pub struct App {
     /// Whether `Ctrl+Y` may write the clipboard escape.
     clipboard: bool,
     spinner: usize,
+    /// When the running turn was first seen, for the clock on the busy row.
+    turn_clock: Option<Instant>,
 }
 
 impl App {
@@ -204,6 +206,7 @@ impl App {
             completion_closed: None,
             clipboard: !clipboard_disabled(),
             spinner: 0,
+            turn_clock: None,
         }
     }
 
@@ -220,6 +223,11 @@ impl App {
     /// Offer the skills discovery found, which `/skills` prints.
     pub fn set_skills(&mut self, skills: SkillCatalog) {
         self.skills = skills;
+    }
+
+    /// Name the checked-out branch, which the state line shows next to the mode.
+    pub fn set_branch(&mut self, branch: Option<String>) {
+        self.status.set_branch(branch);
     }
 
     /// Let `/init` recompose the system prompt once it has written a file.
@@ -356,7 +364,14 @@ impl App {
     /// scrolls off a long session.
     #[must_use]
     pub fn status_line(&self) -> String {
-        let line = self.status.state_line(self.separator(), self.spinner());
+        // While a turn runs the live row above the composer already carries the
+        // spinner and the state word; repeating them here would say "working"
+        // twice, one line apart.
+        let line = if self.status.turn == TurnState::Working {
+            self.status.context_line(self.separator())
+        } else {
+            self.status.state_line(self.separator(), self.spinner())
+        };
         if self.queued.is_empty() {
             line
         } else {
@@ -370,11 +385,42 @@ impl App {
         self.status.accounting(self.separator())
     }
 
+    /// Start the clock the first time a busy turn is drawn, and clear it once
+    /// the turn ends.
+    ///
+    /// Called from the draw path so every transition — submit, steer, approve,
+    /// cancel, fail — is covered without each one having to remember.
+    pub fn sync_turn_clock(&mut self) {
+        if !self.status.turn.is_busy() {
+            self.turn_clock = None;
+        } else if self.turn_clock.is_none() {
+            self.turn_clock = Some(Instant::now());
+        }
+    }
+
+    /// The live row above the composer while a turn runs.
+    ///
+    /// An elapsed clock is the difference between "something is happening" and
+    /// "something happened two hundred seconds ago and may be wedged". The
+    /// interrupt key is named here rather than only in the key list because
+    /// this is the moment a person looks for it.
+    #[must_use]
+    pub fn working_line(&self) -> Option<String> {
+        let started = self
+            .turn_clock
+            .filter(|_| self.status.turn == TurnState::Working)?;
+        let elapsed = Instant::now().saturating_duration_since(started);
+        Some(format!(
+            "{} Working ({}{}esc to interrupt)",
+            self.activity_glyph(),
+            crate::status::format_elapsed(elapsed),
+            self.separator()
+        ))
+    }
+
     /// Whether anything real has happened: a prompt, a turn, or a token count.
     ///
-    /// Until then the footer teaches keys; after it, the second line yields to
-    /// the accounting. A notice — a trust warning, a theme change — is not a
-    /// start.
+    /// A notice — a trust warning, a theme change — is not a start.
     #[must_use]
     pub fn started(&self) -> bool {
         self.transcript.has_conversation()
@@ -2514,7 +2560,9 @@ mod tests {
     #[test]
     fn the_spinner_animates_only_when_it_may() {
         let mut app = app();
-        app.status.turn = TurnState::Working;
+        // A waiting turn keeps the state word and the spinner in the footer; a
+        // working one hands both to the live row above the composer.
+        app.status.turn = TurnState::Waiting;
         let first = app.spinner().expect("a frame while working");
         assert!(app.status_line().contains(first));
         app.tick();
@@ -2541,13 +2589,13 @@ mod tests {
     #[test]
     fn the_progress_effect_can_switch_the_spinner_off() {
         let mut app = app();
-        app.status.turn = TurnState::Working;
+        app.status.turn = TurnState::Waiting;
         app.set_effects(Effects {
             progress: false,
             ..Effects::ALL
         });
         assert_eq!(app.spinner(), None);
-        assert!(app.status_line().contains("working"), "the state remains");
+        assert!(app.status_line().contains("waiting"), "the state remains");
     }
 
     #[test]

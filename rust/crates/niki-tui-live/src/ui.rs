@@ -17,23 +17,59 @@ use crate::app::App;
 use crate::transcript::RowKind;
 
 /// The composer's hint when nothing has been typed.
-pub const PLACEHOLDER: &str = "Type a prompt; / for commands, ctrl+d to quit";
+///
+/// One short sentence with no key list: the keys live on the footer's hint row,
+/// one line down, where they are legible at every width.
+pub const PLACEHOLDER: &str = "Ask Niki to do anything";
+
+/// `cwd` with the home directory collapsed to `~`.
+///
+/// The welcome block prints this instead of the absolute path so a checkout six
+/// directories deep still leaves the command list on one screen.
+fn display_dir(cwd: &str) -> String {
+    display_dir_in(cwd, std::env::var("HOME").ok().as_deref())
+}
+
+/// [`display_dir`] with the home directory passed in, so a test does not have
+/// to move the process environment.
+fn display_dir_in(cwd: &str, home: Option<&str>) -> String {
+    let path = std::path::Path::new(cwd);
+    let Some(home) = home else {
+        return cwd.to_owned();
+    };
+    let Ok(rest) = path.strip_prefix(home) else {
+        return cwd.to_owned();
+    };
+    let rest = rest.display().to_string();
+    if rest.is_empty() {
+        "~".to_owned()
+    } else {
+        format!("~{}{rest}", std::path::MAIN_SEPARATOR)
+    }
+}
 
 /// Paint the whole screen.
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     frame.render_widget(Block::default().style(app.palette.canvas()), area);
+    app.sync_turn_clock();
 
+    let working = app.working_line();
     let areas = Layout::vertical([
         Constraint::Min(1),
+        Constraint::Length(u16::from(working.is_some())),
         Constraint::Length(app.composer_height()),
         Constraint::Length(app.completion_height()),
         Constraint::Length(2),
     ])
     .split(area);
-    let [body, composer, completion, footer] = [areas[0], areas[1], areas[2], areas[3]];
+    let [body, live, composer, completion, footer] =
+        [areas[0], areas[1], areas[2], areas[3], areas[4]];
 
     draw_transcript_if_any(frame, app, body);
+    if let Some(line) = working {
+        draw_working(frame, app, live, &line);
+    }
     let cursor = draw_composer(frame, app, composer);
     draw_completion(frame, app, completion);
     draw_footer(frame, app, footer);
@@ -59,6 +95,33 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     }
 }
 
+/// The live turn row: an animated bullet, the heading, the clock and the way
+/// out.
+///
+/// It sits directly above the composer, so the two things a person reaches for
+/// while a turn runs — reading that it is alive and stopping it — are the same
+/// place they are looking.
+fn draw_working(frame: &mut Frame, app: &App, area: Rect, line: &str) {
+    if area.is_empty() {
+        return;
+    }
+    let palette = app.palette;
+    let width = usize::from(area.width);
+    let (glyph, rest) = line.split_at(line.chars().next().map_or(0, char::len_utf8));
+    let (heading, clock) = match rest.split_once('(') {
+        Some((heading, tail)) => (heading, Some(format!("({tail}"))),
+        None => (rest, None),
+    };
+    let mut spans = vec![
+        Span::styled(clip(glyph, width).0, palette.accent_style()),
+        Span::styled(clip(heading, width).0, palette.body_style()),
+    ];
+    if let Some(clock) = clock {
+        spans.push(Span::styled(clip(&clock, width).0, palette.muted_style()));
+    }
+    frame.render_widget(Paragraph::new(Line::from(spans)), area);
+}
+
 fn draw_transcript_if_any(frame: &mut Frame, app: &mut App, area: Rect) {
     if area.is_empty() {
         return;
@@ -72,8 +135,14 @@ fn draw_transcript_if_any(frame: &mut Frame, app: &mut App, area: Rect) {
     draw_transcript(frame, app, area);
 }
 
-/// The first screen in a fresh session: what this is, which model and mode are
-/// in force, where it is rooted, and the four commands worth knowing first.
+/// The first screen in a fresh session: what this is, where it is rooted, and
+/// the commands worth knowing first.
+///
+/// The shape is the one a person already knows from other terminal agents: a
+/// `>_` mark, the product and its version, the home-relative directory, then a
+/// single sentence introducing the command list. No tagline — the footer and
+/// the site carry the positioning, and prose there would push the commands off
+/// a small screen.
 ///
 /// Notices — a trust warning, say — are drawn beneath the welcome instead of
 /// replacing it. With the `welcome` effect off the notices stand alone; the
@@ -91,58 +160,51 @@ fn draw_welcome(frame: &mut Frame, app: &App, area: Rect) {
 
     lines.push(Line::default());
     lines.push(Line::from(vec![
-        Span::styled(clip("NIKI AGENT", width).0, palette.accent_style()),
+        Span::styled(clip("  >_ ", width).0, palette.accent_style()),
+        Span::styled(clip("NIKI AGENT", width).0, palette.body_style()),
         Span::styled(
-            clip(&format!("  v{}", env!("CARGO_PKG_VERSION")), width).0,
+            clip(&format!(" (v{})", env!("CARGO_PKG_VERSION")), width).0,
             palette.muted_style(),
         ),
     ]));
     lines.push(Line::from(Span::styled(
-        clip(
-            "one binary · sessions on your disk · an approval gate in front of every change",
-            width,
-        )
-        .0,
+        clip(&format!("     {}", display_dir(&app.status.cwd)), width).0,
         palette.muted_style(),
     )));
-    lines.push(Line::default());
-    lines.push(Line::from(Span::styled(
-        clip(
-            &format!(
-                "{} · {} mode · {}",
-                app.status.model,
-                app.status.mode.label(),
-                app.status.cwd
-            ),
-            width,
-        )
-        .0,
-        palette.body_style(),
-    )));
-    lines.push(Line::default());
-    lines.push(Line::from(Span::styled(
-        clip("To get started", width).0,
-        palette.accent_style(),
-    )));
-    for (command, summary) in [
-        ("/init", "write an AGENTS.md for this repository"),
-        ("/status", "model, mode, session, and token usage"),
-        ("/theme", "pick a palette"),
-        ("/help", "every command and key binding"),
-    ] {
+    if app.status.mode == niki_policy::Mode::Yolo {
         lines.push(Line::from(vec![
-            Span::styled(
-                clip(&format!("  {command:<9}"), width).0,
-                palette.accent_style(),
-            ),
-            Span::styled(clip(summary, width).0, palette.muted_style()),
+            Span::styled(clip("  permissions: ", width).0, palette.muted_style()),
+            Span::styled(clip("YOLO mode", width).0, palette.error_style()),
         ]));
     }
     lines.push(Line::default());
     lines.push(Line::from(Span::styled(
-        clip("Type a prompt to begin. Ctrl+D quits.", width).0,
+        clip(
+            "  To get started, describe a task or try one of these commands:",
+            width,
+        )
+        .0,
         palette.muted_style(),
     )));
+    lines.push(Line::default());
+    for (command, summary) in [
+        ("/init", "write an AGENTS.md for this repository"),
+        ("/status", "model, mode, session and token usage"),
+        ("/model", "choose a model"),
+        ("/theme", "choose a palette"),
+        ("/help", "every command and key binding"),
+    ] {
+        lines.push(Line::from(vec![
+            Span::styled(
+                clip(&format!("  {command}"), width).0,
+                palette.accent_style(),
+            ),
+            Span::styled(
+                clip(&format!(" - {summary}"), width).0,
+                palette.muted_style(),
+            ),
+        ]));
+    }
 
     // A notice is the app talking, not the person, so it sits under the welcome
     // rather than replacing it: a trust warning must not be the first screen.
@@ -229,8 +291,8 @@ fn transcript_lines(app: &App, width: usize) -> Vec<Line<'static>> {
                 };
                 (format!("{glyph} "), palette.muted_style())
             }
-            RowKind::ToolResult => (format!("{} ", marks.tool), palette.muted_style()),
-            RowKind::Error => ("! ".to_owned(), palette.error_style()),
+            RowKind::ToolResult => (format!("{} ", marks.ok), palette.ok_style()),
+            RowKind::Error => (format!("{} ", marks.failed), palette.error_style()),
             RowKind::Notice => ("- ".to_owned(), palette.muted_style()),
             RowKind::Diff => continue,
         };
@@ -440,12 +502,14 @@ fn draw_completion(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-/// The footer: the state line, then whichever second line the session has
-/// earned.
+/// The footer: the state line, then keys on the left and counts on the right.
 ///
-/// Before anything happens the second line teaches keys; once a turn has
-/// started it yields to the context and token accounting. Both rows share the
-/// panel colour so the footer reads as one band.
+/// The hint row never goes away. A person who has run a hundred turns still
+/// forgets a chord, and the row costs nothing once the counts are right-aligned
+/// beside it. The two groups degrade independently: the hints drop whole
+/// entries until they fit, and if even one entry will not share the row the
+/// counts get it alone. Both rows share the panel colour so the footer reads as
+/// one band.
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     if area.is_empty() {
         return;
@@ -456,13 +520,50 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let state = Line::from(Span::styled(app.status_line(), app.palette.panel_style()));
     frame.render_widget(Paragraph::new(state), rows[0]);
 
-    let second = if app.started() {
-        app.accounting_line().unwrap_or_default()
+    let width = usize::from(rows[1].width);
+    let accounting = app.accounting_line().unwrap_or_default();
+    let accounting_width = niki_render::display_width(&accounting);
+    // One blank column between the groups, and at least a dozen for keys: below
+    // that the counts are the more useful half and take the row alone.
+    let room = width.saturating_sub(accounting_width + 1);
+    let hints = if accounting.is_empty() {
+        app.hints(width)
+    } else if room >= 12 {
+        app.hints(room)
     } else {
-        app.hints(usize::from(area.width))
+        String::new()
     };
-    if !second.is_empty() {
-        let line = Line::from(Span::styled(second, app.palette.muted_style()));
-        frame.render_widget(Paragraph::new(line), rows[1]);
+
+    let mut spans = Vec::new();
+    if !hints.is_empty() {
+        spans.push(Span::styled(hints.clone(), app.palette.muted_style()));
+    }
+    if !accounting.is_empty() {
+        let pad = width.saturating_sub(
+            niki_render::display_width(&hints) + niki_render::display_width(&accounting),
+        );
+        if pad > 0 {
+            spans.push(Span::raw(" ".repeat(pad)));
+        }
+        spans.push(Span::styled(accounting, app.palette.muted_style()));
+    }
+    if !spans.is_empty() {
+        frame.render_widget(Paragraph::new(Line::from(spans)), rows[1]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::display_dir_in;
+
+    #[test]
+    fn the_home_directory_collapses_to_a_tilde() {
+        assert_eq!(
+            display_dir_in("/home/dev/project", Some("/home/dev")),
+            "~/project"
+        );
+        assert_eq!(display_dir_in("/home/dev", Some("/home/dev")), "~");
+        assert_eq!(display_dir_in("/srv/app", Some("/home/dev")), "/srv/app");
+        assert_eq!(display_dir_in("/srv/app", None), "/srv/app");
     }
 }

@@ -99,18 +99,16 @@ fn a_fresh_session_shows_the_welcome_block() {
     let buffer = render(&mut app, 80, 24);
     let screen = text(&buffer);
     for needle in [
+        ">_ ",
         "NIKI AGENT",
-        concat!("v", env!("CARGO_PKG_VERSION")),
-        "an approval gate in front of every change",
-        "mock:mock-model",
-        "manual mode",
+        concat!("(v", env!("CARGO_PKG_VERSION"), ")"),
         "/work",
-        "To get started",
-        "/init",
-        "/status",
-        "/theme",
-        "/help",
-        "Type a prompt to begin",
+        "To get started, describe a task or try one of these commands:",
+        "/init - write an AGENTS.md",
+        "/status - model, mode, session and token usage",
+        "/model - choose a model",
+        "/theme - choose a palette",
+        "/help - every command and key binding",
     ] {
         assert!(screen.contains(needle), "{needle} missing from\n{screen}");
     }
@@ -142,7 +140,7 @@ fn a_prompt_and_its_answer_are_drawn_in_the_transcript() {
     let screen = text(&buffer);
     assert!(screen.contains("› hi"), "{screen}");
     assert!(screen.contains("⏺ Hello there."), "{screen}");
-    assert!(screen.contains("working"), "{screen}");
+    assert!(screen.contains("• Working ("), "{screen}");
 }
 
 #[test]
@@ -165,8 +163,8 @@ fn tool_rows_and_failures_carry_their_markers() {
     let buffer = render(&mut app, 60, 14);
     let screen = text(&buffer);
     assert!(screen.contains("⚙ shell {\"command\":\"ls\"}"), "{screen}");
-    assert!(screen.contains("⚙ shell Cargo.toml"), "{screen}");
-    assert!(screen.contains("! shell refused by policy"), "{screen}");
+    assert!(screen.contains("✓ shell Cargo.toml"), "{screen}");
+    assert!(screen.contains("× shell refused by policy"), "{screen}");
 }
 
 #[test]
@@ -376,10 +374,9 @@ fn the_keymap_overlay_lists_the_shared_bindings() {
     let _ = app.handle_key(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE));
     let buffer = render(&mut app, 90, 30);
     let screen = text(&buffer);
-    assert!(screen.contains("Keys"), "{screen}");
-    assert!(screen.contains("ctrl+c"), "{screen}");
-    assert!(screen.contains("Leave the app"), "{screen}");
-    assert!(screen.contains("Cycle manual, auto and yolo"), "{screen}");
+    for needle in ["Keys", "Compose", "Session", "Transcript", "ctrl+c", "Quit"] {
+        assert!(screen.contains(needle), "{needle} missing from\n{screen}");
+    }
 }
 
 #[test]
@@ -483,7 +480,7 @@ fn the_footer_hints_degrade_one_key_at_a_time() {
 }
 
 #[test]
-fn the_footer_yields_its_second_line_to_accounting_once_a_turn_starts() {
+fn the_footer_keeps_the_hints_and_puts_the_counts_on_the_right() {
     let mut app = app();
     type_text(&mut app, "hi");
     let _ = app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -493,13 +490,41 @@ fn the_footer_yields_its_second_line_to_accounting_once_a_turn_starts() {
     }));
     let buffer = render(&mut app, 80, 12);
     assert!(
-        row(&buffer, 10).contains("working"),
-        "the state line: {:?}",
+        row(&buffer, 7).contains("Working"),
+        "the live row carries the state: {:?}",
+        row(&buffer, 7)
+    );
+    assert!(
+        !row(&buffer, 10).contains("working"),
+        "the state line does not repeat it: {:?}",
         row(&buffer, 10)
     );
-    let accounting = row(&buffer, 11);
-    assert!(accounting.contains("6 tok"), "{accounting:?}");
-    assert!(!accounting.contains("commands"), "{accounting:?}");
+    let footer = row(&buffer, 11);
+    assert!(footer.contains("commands"), "the hints stay: {footer:?}");
+    assert!(footer.contains("6 tok"), "{footer:?}");
+    assert!(
+        footer.trim_end().ends_with("6 tok"),
+        "the counts sit on the right: {footer:?}"
+    );
+    assert!(
+        footer.starts_with("/ commands"),
+        "the hints sit on the left: {footer:?}"
+    );
+}
+
+#[test]
+fn a_narrow_footer_gives_the_row_to_the_counts() {
+    let mut app = app();
+    type_text(&mut app, "hi");
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.apply(AgentEvent::Usage(Usage {
+        input_tokens: 4,
+        output_tokens: 2,
+    }));
+    let buffer = render(&mut app, 14, 12);
+    let footer = row(&buffer, 11);
+    assert_eq!(footer.trim(), "6 tok", "{footer:?}");
+    assert!(!footer.contains("commands"), "{footer:?}");
 }
 
 #[test]
@@ -797,4 +822,41 @@ fn the_status_card_draws_over_the_screen_and_fits_a_twenty_by_six_terminal() {
 
 fn press(app: &mut App, code: KeyCode) -> Option<Command> {
     app.handle_key(KeyEvent::new(code, KeyModifiers::NONE))
+}
+
+#[test]
+fn a_busy_turn_gets_a_clocked_row_above_the_composer() {
+    let mut app = app();
+    app.status.turn = TurnState::Working;
+    let buffer = render(&mut app, 60, 12);
+    // Twelve rows: seven of transcript, the live row, the rule and one line of
+    // composer, then the two-line footer.
+    let live = row(&buffer, 7);
+    assert!(live.contains("Working (0s"), "{live:?}");
+    assert!(live.contains("esc to interrupt"), "{live:?}");
+    assert!(row(&buffer, 8).starts_with('─'), "{}", row(&buffer, 8));
+
+    app.status.turn = TurnState::Idle;
+    let buffer = render(&mut app, 60, 12);
+    assert!(
+        !row(&buffer, 7).contains("esc to interrupt"),
+        "the row goes away with the turn: {:?}",
+        row(&buffer, 7)
+    );
+}
+
+#[test]
+fn the_help_overlay_opens_in_three_columns_on_a_wide_screen() {
+    let mut app = app();
+    let _ = app.handle_key(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE));
+    let buffer = render(&mut app, 120, 40);
+    let screen = text(&buffer);
+    let header = (0..buffer.area.height)
+        .map(|y| row(&buffer, y))
+        .find(|line| line.contains("Compose"))
+        .unwrap_or_default();
+    for needle in ["Compose", "Session", "Transcript"] {
+        assert!(header.contains(needle), "{needle} not in header {header:?}");
+    }
+    assert!(screen.contains("Commands"), "{screen}");
 }

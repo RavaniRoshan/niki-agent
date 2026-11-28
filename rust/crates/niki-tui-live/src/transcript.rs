@@ -119,6 +119,13 @@ impl Transcript {
     /// Record what a tool returned.
     pub fn push_tool_result(&mut self, name: &str, output: &str, is_error: bool) {
         self.streaming = false;
+        // An empty result is evidence: the call ran and printed nothing. A
+        // blank row would read as a lost event instead.
+        let text = if output.trim().is_empty() {
+            "(no output)".to_owned()
+        } else {
+            shorten(output)
+        };
         self.rows.push(Row {
             kind: if is_error {
                 RowKind::Error
@@ -126,7 +133,7 @@ impl Transcript {
                 RowKind::ToolResult
             },
             title: Some(name.to_owned()),
-            text: shorten(output),
+            text,
             rendered: None,
         });
     }

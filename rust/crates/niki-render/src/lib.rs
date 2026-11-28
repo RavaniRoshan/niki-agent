@@ -44,6 +44,8 @@ pub struct Glyphs {
     pub user: &'static str,
     pub assistant: &'static str,
     pub tool: &'static str,
+    pub ok: &'static str,
+    pub failed: &'static str,
     pub separator: &'static str,
     pub cursor: &'static str,
 }
@@ -52,6 +54,8 @@ pub const UNICODE_GLYPHS: Glyphs = Glyphs {
     user: "›",
     assistant: "⏺",
     tool: "⚙",
+    ok: "✓",
+    failed: "×",
     separator: "─",
     cursor: "▌",
 };
@@ -60,6 +64,8 @@ pub const ASCII_GLYPHS: Glyphs = Glyphs {
     user: ">",
     assistant: "*",
     tool: "#",
+    ok: "+",
+    failed: "x",
     separator: "-",
     cursor: "|",
 };
