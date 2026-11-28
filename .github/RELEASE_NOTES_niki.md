@@ -41,6 +41,38 @@ No key is needed to look around — `niki` boots to a working composer.
 
 The full guides are at **<https://niki-docs.vercel.app>**.
 
+## What changed in 2.3.0
+
+**Providers are set up inside the app.** `/connect` opens a catalog: pick one of
+the eleven built-in providers or name a custom endpoint, paste a key, choose a
+model. The key goes to `credentials.toml` beside your configuration with
+owner-only permissions, and the session switches without a restart. Eleven
+providers ship built in; any other OpenAI-compatible endpoint is a config block.
+
+**The agent can read the web, with the gate in front of it.** `web_fetch` and
+`web_search` are built-in tools. Both ask before the first call, like any gated
+command, and `Always` covers the rest of the session. Pages are capped at 4 MiB
+and the text returned is capped so one call cannot fill the context window.
+
+**More of the session is addressable from the keyboard.** `Ctrl+N` starts a new
+session, `Ctrl+R` opens the session browser, and the command list matches
+loosely — prefix, then substring, then letters in order — so `/cmpct` reaches
+`/compact`. `/copy`, `/editor` and `/cost` work as commands as well as chords.
+
+**The screen says what it is doing.** A busy row above the composer shows the
+elapsed clock and the interrupt key while a turn runs; a second footer line
+carries key hints before the first turn and context and token counts after it; a
+finished tool call gets a `✓` or `×` and `(no output)` when it printed nothing.
+
+**Settings that are actually settings.** `/settings` lists the `[ui]` keys —
+theme, motion, welcome, progress, shimmer, title — applies a change live, and
+writes it back to `config.toml`. `/mcp` lists every configured MCP server with
+its transport and what became of it.
+
+**Two mistakes fixed.** A narrow terminal cut the welcome sentence mid-word; it
+now wraps at word boundaries. `--root .` printed as a literal `.`; the workspace
+root is resolved at start-up.
+
 ## What changed in 2.2.0
 
 **The first thing you see is the product.** A fresh session now opens on a
@@ -62,187 +94,9 @@ from `CHANGELOG.md` and checked in CI, so it cannot drift.
 could fail to start with `ETXTBSY` and be dropped with a warning. Niki now
 retries for up to a second.
 
-## What changed in 2.1.4
-
-This release changes what the project publishes, not how the agent behaves.
-`niki` runs as it did in 2.1.3; the only binary change is the version string.
-
-**The README is the product's own.** The old recording was replaced with a
-session recorded from the shipped binary against a loopback provider: a read, an
-approval card, a test run, and the answer. The README now leads with what the
-product is, how to install it, and the approval gate.
-
-**A changelog ships with it.** `CHANGELOG.md` covers 2.0.0 through this release
-and is included in every archive. The documentation site has the same history at
-<https://niki-docs.vercel.app/changelog>.
-
-**The security policy matches the gate.** `SECURITY.md` said writes were not
-approval-gated and that Auto asked like Manual; both stopped being true in
-2.1.0. It now describes the shipped gate, and the supported-versions table names
-2.1.x.
-
-**Beta builds have a documented channel.** A tag that contains a hyphen — for
-example `v2.2.0-beta.1` — is published as a GitHub pre-release, so `latest` keeps
-pointing at the newest stable release. The beta page lists supported platforms,
-the known gaps, and how to report a problem:
-<https://niki-docs.vercel.app/beta>.
-
-## What changed in 2.1.3
-
-**A checkout has to be trusted before its code runs.** A repository can ship
-`.niki/hooks.json`, `.niki/skills/` and `AGENTS.md`, and the first two execute
-as you. `niki trust` records the canonical workspace path in
-`trusted_workspaces.toml`; until then every entry point loads user-level and
-built-in content only and prints one line naming the command. `niki untrust`
-withdraws the grant and `niki trust --list` shows what you allowed. The match is
-exact: a subdirectory does not inherit a parent's grant.
-
-**Sessions have a lifecycle.** `niki sessions fork <id>` copies a session's
-messages under a new id and prints it; `niki sessions archive <id>` hides one
-from the default list and `--undo` restores it. Archived sessions stay
-addressable by id but disappear from `--continue`, the `/resume` list, the
-`/threads` browser and `niki sessions list` unless `--all` is passed.
-
-**The model can ask you a question.** `request_user_input` opens a card with
-two to four options and an optional free-text row. `Up`/`Down`/`Tab` move,
-`Enter` answers, `Esc` cancels and the model is told the question was cancelled.
-A single choice is returned, so there is no multi-select.
-
-**MCP configuration takes the environment into account.** `${VAR}` in an MCP
-server entry expands from the environment at read time and `$$` is a literal
-`$`; an unset variable is an error that names the server, the field and the
-variable. A per-server `timeout` in whole seconds bounds the handshake and every
-later request, and beats `NIKI_MCP_STARTUP_TIMEOUT_SECS`.
-
-**The help overlay tells the truth.** The `Ctrl+T` entry now says it opens the
-whole conversation in a scrollable overlay, which is what the key does.
-
-## What changed in 2.1.2
-
-**A prompt now offers three answers.** `y` or `a` allows the call once, `s`
-allows it for the rest of the session, and `d`, `n`, or `Esc` refuses. The body
-names the exact command, or the absolute path a write would touch and whether it
-resolves inside the workspace. A session rule for a shell program never covers a
-command that chains, redirects, or substitutes another command: approving
-`git status` cannot later run `git status; rm -rf ~`. A write rule re-checks the
-workspace boundary on every call. `/clear` and a new session drop every rule, and
-nothing is written to `config.toml`.
-
-**`niki doctor` tells you what is broken.** One command, nine checks: version,
-config file, resolved model, provider credential (set or unset, never the
-value), session store, instruction files, skills, MCP servers and hooks. It
-exits 1 when a turn cannot run and names the environment variable to set.
-
-**Native macOS archives.** `niki-<version>-macos-aarch64.tar.gz` and
-`niki-<version>-macos-x86_64.tar.gz` join the Linux and Windows archives. The
-installer picks one by `uname -m`, the release workflow runs the installer and a
-headless smoke turn on macOS arm64, and `SHA256SUMS` covers all four archives.
-The macOS binaries are not notarized: a file fetched with `curl` carries no
-quarantine attribute, while a browser download may need the Gatekeeper prompt or
-`xattr -d com.apple.quarantine`.
-
-**Output and reads are bounded.** A shell command can no longer exhaust memory:
-each stream keeps its first 64 KiB and the header says the output was truncated.
-`grep` skips files above 32 MiB and `edit_file` refuses them with the size and
-the limit named, instead of loading a database or a core dump into memory.
-
-**`/status` answers where you are.** One read-only card, opened from the
-composer, shows the model and its provider, the approval mode, the session and
-whether it has been written yet, the workspace, the context the next request
-would carry, how many skills and MCP tools are loaded, and the client version.
-`Esc` or `q` closes it; it adds no transcript row.
-
-**The saved sessions are readable from the shell.** `niki sessions list` prints
-one line per session — id, stored time, title and message count, newest first —
-and `niki sessions list --json` gives the same rows as an array of `id`,
-`updated_at`, `title`, `messages` and `workspace`. `--root <dir>` narrows the
-list to one workspace. An empty or missing store prints `no saved sessions` and
-exits 0.
-
-**`Ctrl+G` hands the composer to your editor.** The draft goes to a private
-temporary file, the screen steps aside while `$VISUAL`, `$EDITOR` or `vi` edits
-it, and the text comes back into the composer — replaced, with one trailing
-newline trimmed, capped at 1 MiB. A failed launch or a non-zero exit keeps the
-draft you had and reports it; no turn starts on any path.
-
-## What changed in 2.1.1
-
-**The whole conversation, when you need it.** `Ctrl+T` opens the transcript
-overlay: every prompt, answer, tool call and result, scrollable with
-`Up`/`Down`, `PageUp`/`PageDown` and `Home`/`End`, and closed with `Esc`. The
-composer is untouched while it is open.
-
-**A transient failure no longer ends the turn.** A provider request that is
-rate-limited, returns 500/502/503/504, or loses the connection is retried twice
-(three attempts total) with a short exponential backoff and jitter, honouring a
-small `Retry-After`. Once the first token has arrived the stream is never
-retried, so text cannot be duplicated. Authentication and validation errors are
-not retried.
-
-## What changed in 2.1.0
-
-**The composer keeps up with the turn.** Press Enter while a turn is running and
-the message is queued — a dim `queued:` row and `queued N` in the status bar —
-then submitted when the turn ends. Alt+Enter or Ctrl+Enter steers the running
-turn instead. Esc-Esc, twice within two seconds on an empty composer, restores
-the last message and truncates the whole turn from the view and the history. A
-line beginning with `!` runs locally through the same allow-list, costs no
-tokens, and is not written to the session.
-
-**The working tree is visible from the composer.** `/diff [staged|unstaged|untracked]`
-runs `git` directly — no shell — and renders the result inside the transcript,
-capped at 20 files and 400 lines with the withheld amount reported. Untracked
-files are shown as additions; an empty tree says `no changes`.
-
-**Sessions are inspectable.** `/threads` browses saved sessions with a first-prompt
-preview and a filter, and restores the chosen one. `/rename` titles a session,
-`/export` writes it out as Markdown, `/context` shows what the window is
-holding, and `/compact` actually rewrites the running history.
-
-**A finished turn can call a program.** `[notify] program` in the config runs
-one detached executable per finished turn, with a JSON payload on stdin
-(session, model, cwd, reason, steps, tool calls, and the last answer clipped to
-2000 characters). It never runs through a shell and the turn does not wait for
-it.
-
-**Instructions are files.** `AGENTS.md` and `.niki/AGENTS.md` are read from the
-repository root down to the working directory, with the user-level file first,
-under a 32 KiB budget that truncates by line and says so. Symbolic links that
-leave the workspace are skipped. `/init` writes a starter file only when one is
-missing.
-
-**Every built-in write asks.** `write_file` and `edit_file` are now gated like a
-shell command: Manual asks, Auto asks unless the target resolves inside the
-workspace, YOLO runs. Shell commands keep the allow-list rule, and a chained
-command is no longer allowed by a prefix match.
-
-**Modes are a command too.** `/manual`, `/auto`, and `/yolo` switch modes
-mid-session — the same three states Shift+Tab cycles.
-
-**Headless output can be parsed.** `--output-format jsonl` (also `--output`)
-streams `start`, `text`, `tool_call`, `tool_result`, `usage`, and exactly one
-`end` event per turn. Tool arguments that failed to parse are passed through as
-raw text; tool results are truncated at 4 KiB with `"truncated": true`.
-
-## What changed in 2.0.0
-
-**The product is a Rust binary.** The turn loop, provider clients, tool
-execution, permission policy, session store, MCP client, and terminal UI are one
-workspace compiled into `niki`. Startup no longer imports a language runtime,
-and an idle session does not redraw.
-
-**Every surface is in the binary.** The interactive TUI, headless `-n` runs,
-JSON output, editor integration over the Agent Client Protocol, skills, hooks,
-slash commands, and session resume all ship in the same executable.
-
-**Installation is one file.** The installer downloads a platform archive,
-checks its SHA-256 against the release, and copies the binary into place.
-There is nothing to compile and nothing to resolve.
-
-**The interpreter-based client is retired.** It is no longer installed, no longer shipped,
-and no longer the supported product. If you installed 1.1.x, re-run the install
-command: the installer replaces the application under `~/.local/niki`. Your
-configuration, sessions, and skills in `~/.niki` are untouched.
+Older releases are recorded in
+[`CHANGELOG.md`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/CHANGELOG.md).
+This page keeps the two most recent.
 
 ## What makes it different
 
@@ -289,12 +143,11 @@ To verify by hand:
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-## Upgrading from 1.x
+## Upgrading
 
 Re-run the install command. The installer replaces the application under
 `~/.local/niki` (`%LOCALAPPDATA%\niki` on Windows) and leaves `~/.niki` — your
-configuration, sessions, and skills — untouched. The old interpreter environment
-is no longer used and can be removed.
+configuration, sessions, and skills — untouched.
 
 ## Uninstalling
 
@@ -307,7 +160,7 @@ Remove the `PATH` line from your shell profile if you added one.
 
 ## Attribution
 
-Niki Agent is an independent implementation. It includes MIT-licensed components;
-their copyright notices and licences are retained verbatim in
-[`NOTICE`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/NOTICE) and
-in the `LICENSE` and `PROVENANCE.md` files beside each included directory.
+Niki Agent is an independent implementation. The binary links third-party Rust
+crates, each under its own licence, with the exact versions recorded in
+`Cargo.lock`. The MIT licence at the repository root applies to Niki Agent; see
+[`NOTICE`](https://github.com/RavaniRoshan/niki-agent/blob/niki-agent/NOTICE).

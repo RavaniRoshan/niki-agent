@@ -7,9 +7,9 @@
 //   2. Sources: docs/**/*.md, .vitepress/config.ts, and .vitepress/theme/**.
 //   3. Build output: .vitepress/dist/**, when a build exists.
 //
-// NOTICE, LICENSE, and PROVENANCE files keep their upstream text. They are not
-// served by this site, and they are skipped here so attribution is never
-// mistaken for branding.
+// NOTICE, LICENSE, and PROVENANCE files carry third-party notices verbatim.
+// They are not served by this site, and they are skipped here so attribution is
+// never mistaken for branding.
 //
 // Every hit is reported as `path:line:column — term` with the offending line.
 
