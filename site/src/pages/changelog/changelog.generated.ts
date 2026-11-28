@@ -18,7 +18,14 @@ export const CHANGELOG: ChangelogRelease[] = [
     "version": "Unreleased",
     "date": null,
     "unreleased": true,
-    "sections": []
+    "sections": [
+      {
+        "title": "Added",
+        "items": [
+          "Every turn now ends with one quiet line: how it ended, how long it took, how many tokens it spent, how many files it changed and how many tools it ran. A failed turn says so in the error colour, keeps the full message above it, and names the next step. A fact the provider did not report is left out rather than shown as a zero, and the line is never written to the session, so a resumed conversation does not repeat it."
+        ]
+      }
+    ]
   },
   {
     "version": "2.3.0",
