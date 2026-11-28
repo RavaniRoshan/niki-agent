@@ -1,7 +1,7 @@
 <!--
   Mirrored from SECURITY.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 5ff4be28b4b651cd2abf58c051c3f223b500e575ba867a7938bdc7d01a69d51f
+  source-sha256: df7b5c1b212a265adbac98696e8a621c2ad90b01d7a32299c39da2ff8015ba97
 -->
 # Security policy
 
@@ -80,6 +80,7 @@ flag in this build.
 | Configuration and keys | Niki reads `config.toml` and reads provider keys from the environment variables it names. It does not write the configuration and does not store keys. |
 | Network | The only outbound requests are to the provider endpoint and the MCP endpoints you configure. This build makes no update check, telemetry request, pricing refresh, or remote-configuration fetch. |
 | Session data | `sessions.db` holds prompts, answers and tool output under `~/.niki` (or `NIKI_HOME`). Protect that directory like any other transcript. |
+| The composer | A draft is cleaned of invisible characters — the tag block, bidi overrides, zero-width spaces, joiners' non-printing neighbours — before it is sent. The cleaned text goes back into the composer with a notice, and the next Enter sends it, so an instruction hidden in a paste is never sent unseen. |
 
 ## Out of scope
 

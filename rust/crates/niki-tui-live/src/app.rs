@@ -1273,6 +1273,9 @@ impl App {
     }
 
     fn submit(&mut self) -> Option<Command> {
+        if self.clean_draft() {
+            return None;
+        }
         let text = self.composer.text().trim().to_owned();
         if text.is_empty() {
             return None;
@@ -1292,6 +1295,27 @@ impl App {
         Some(self.begin_turn(text))
     }
 
+    /// Strip invisible characters from the draft before it can be sent.
+    ///
+    /// A tag character or a bidi override is invisible, survives a paste and
+    /// carries an instruction nobody read. The cleaned text goes back into the
+    /// composer with a notice, and the send waits for the next Enter: what the
+    /// model receives is what the person can see. Returns whether the draft was
+    /// rewritten, in which case nothing is sent this time.
+    fn clean_draft(&mut self) -> bool {
+        let (cleaned, removed) = niki_render::strip_invisible(self.composer.text());
+        if removed == 0 {
+            return false;
+        }
+        self.composer.clear();
+        self.composer.insert_str(&cleaned);
+        self.transcript.push_notice(format!(
+            "removed {}; press enter again to send",
+            plural(removed, "invisible character")
+        ));
+        true
+    }
+
     /// Hold a prompt until the turn in flight ends.
     fn queue(&mut self, text: String) -> Option<Command> {
         self.composer.clear();
@@ -1303,6 +1327,9 @@ impl App {
 
     /// Hand the draft to the running turn, without starting another one.
     fn steer(&mut self) -> Option<Command> {
+        if self.clean_draft() {
+            return None;
+        }
         let text = self.composer.text().trim().to_owned();
         if text.is_empty() {
             return None;
@@ -4471,6 +4498,68 @@ mod tests {
             app.hints(16).contains("takes one back"),
             "{}",
             app.hints(16)
+        );
+    }
+
+    #[test]
+    fn a_draft_with_invisible_characters_is_cleaned_before_it_is_sent() {
+        let mut app = app();
+        app.composer.insert_str("summarise");
+        app.composer.insert_str("\u{E0049}\u{E0047}");
+        assert_eq!(press(&mut app, KeyCode::Enter), None, "nothing is sent");
+        assert_eq!(
+            app.composer.text(),
+            "summarise",
+            "the draft is the clean one"
+        );
+        let notice = app.transcript.rows().last().expect("a notice");
+        assert_eq!(notice.kind, RowKind::Notice);
+        assert!(
+            notice.text.contains("2 invisible characters"),
+            "{}",
+            notice.text
+        );
+        assert!(notice.text.contains("press enter again"), "{}", notice.text);
+
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("summarise".to_owned())),
+            "the second enter sends what the person saw"
+        );
+    }
+
+    #[test]
+    fn a_steer_is_cleaned_too() {
+        let mut app = app();
+        app.status.turn = TurnState::Working;
+        app.composer.insert_str("also check\u{200B}the tests");
+        assert_eq!(
+            app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL)),
+            None,
+            "the invisible character is reported first"
+        );
+        assert_eq!(app.composer.text(), "also checkthe tests");
+        assert_eq!(
+            app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL)),
+            Some(Command::Steer("also checkthe tests".to_owned()))
+        );
+    }
+
+    #[test]
+    fn a_clean_draft_is_sent_on_the_first_enter() {
+        let mut app = app();
+        type_text(&mut app, "no tricks");
+        assert_eq!(
+            press(&mut app, KeyCode::Enter),
+            Some(Command::Submit("no tricks".to_owned()))
+        );
+        assert!(
+            app.transcript
+                .rows()
+                .iter()
+                .all(|row| row.kind != RowKind::Notice),
+            "no notice for a clean draft: {:?}",
+            app.transcript.rows()
         );
     }
 

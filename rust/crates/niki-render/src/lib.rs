@@ -320,6 +320,45 @@ pub fn display_width(text: &str) -> usize {
     text.chars().map(unicode_width).sum()
 }
 
+/// Remove characters that draw nothing but can still carry a hidden instruction.
+///
+/// A tag character, a bidi override or a zero-width space survives a paste,
+/// looks like nothing on screen, and reaches the model as text. Returns the
+/// cleaned string and how many characters left. Tabs and newlines stay, because
+/// they are visible structure; the zero-width joiners stay too, because an
+/// emoji made of several people is written with them.
+#[must_use]
+pub fn strip_invisible(text: &str) -> (String, usize) {
+    let mut cleaned = String::with_capacity(text.len());
+    let mut removed = 0;
+    for character in text.chars() {
+        if is_visible(character) {
+            cleaned.push(character);
+        } else {
+            removed += 1;
+        }
+    }
+    (cleaned, removed)
+}
+
+/// Whether a character is one a person can see in a terminal.
+fn is_visible(character: char) -> bool {
+    match character {
+        '\n' | '\t' => true,
+        '\u{200B}' | '\u{200E}' | '\u{200F}' // zero width space, left and right marks
+        | '\u{202A}'..='\u{202E}' // bidi embedding and overrides
+        | '\u{2060}'..='\u{2064}' // word joiner and the invisible operators
+        | '\u{2066}'..='\u{2069}' // bidi isolates
+        | '\u{00AD}' // soft hyphen
+        | '\u{180E}' // Mongolian vowel separator
+        | '\u{FEFF}' // zero width no-break space
+        | '\u{FFF9}'..='\u{FFFB}' // interlinear annotation
+        | '\u{E0000}'..='\u{E007F}' // tag characters
+        => false,
+        character => !character.is_control(),
+    }
+}
+
 /// Split `text` into lines no wider than `width` terminal cells, breaking on
 /// whitespace and splitting a word that is longer than a line.
 #[must_use]
@@ -505,5 +544,50 @@ mod tests {
         model.apply(&partial("Hello"));
         assert_eq!(model.messages.len(), 1);
         assert_eq!(model.messages[0].text, "Hello");
+    }
+
+    #[test]
+    fn strip_invisible_keeps_what_a_person_can_see() {
+        assert_eq!(
+            strip_invisible("fix the parser"),
+            ("fix the parser".to_owned(), 0)
+        );
+        assert_eq!(
+            strip_invisible("two\nlines\tand a tab"),
+            ("two\nlines\tand a tab".to_owned(), 0)
+        );
+        assert_eq!(
+            strip_invisible("👨\u{200D}👩\u{200D}👧"),
+            ("👨\u{200D}👩\u{200D}👧".to_owned(), 0),
+            "a joined emoji keeps its joiners"
+        );
+    }
+
+    #[test]
+    fn strip_invisible_removes_what_draws_nothing() {
+        assert_eq!(
+            strip_invisible("hi\u{200B}there"),
+            ("hithere".to_owned(), 1),
+            "a zero-width space"
+        );
+        assert_eq!(
+            strip_invisible("abc\u{202E}def"),
+            ("abcdef".to_owned(), 1),
+            "a bidi override"
+        );
+        assert_eq!(
+            strip_invisible("\u{E0049}\u{E0047}\u{E004E}\u{E004F}\u{E0052}\u{E0045}"),
+            (String::new(), 6),
+            "an instruction hidden in the tag block"
+        );
+        assert_eq!(
+            strip_invisible("soft\u{00AD}hyphen"),
+            ("softhyphen".to_owned(), 1)
+        );
+        assert_eq!(
+            strip_invisible("\u{7}bell"),
+            ("bell".to_owned(), 1),
+            "a control"
+        );
     }
 }

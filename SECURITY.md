@@ -75,6 +75,7 @@ flag in this build.
 | Configuration and keys | Niki reads `config.toml` and reads provider keys from the environment variables it names. It does not write the configuration and does not store keys. |
 | Network | The only outbound requests are to the provider endpoint and the MCP endpoints you configure. This build makes no update check, telemetry request, pricing refresh, or remote-configuration fetch. |
 | Session data | `sessions.db` holds prompts, answers and tool output under `~/.niki` (or `NIKI_HOME`). Protect that directory like any other transcript. |
+| The composer | A draft is cleaned of invisible characters — the tag block, bidi overrides, zero-width spaces, joiners' non-printing neighbours — before it is sent. The cleaned text goes back into the composer with a notice, and the next Enter sends it, so an instruction hidden in a paste is never sent unseen. |
 
 ## Out of scope
 
