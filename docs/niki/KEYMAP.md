@@ -27,7 +27,7 @@ These apply when no dialog is open.
 | `Shift+Tab` | Cycle Manual, Auto and YOLO. |
 | `?` | Open the key list, when the composer is empty. |
 | `PageUp` / `PageDown` | Scroll the transcript one page. |
-| `Up` / `Down` | Move the command-list highlight while it is open, recall older prompts in an empty composer, and otherwise move the cursor between lines. |
+| `Up` / `Down` | Move the command-list highlight while it is open, take a queued prompt back into an empty composer while a turn runs, recall older prompts in an empty composer, and otherwise move the cursor between lines. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
 | `Backspace` / `Delete` | Delete the character before or after the cursor. |
 | Mouse wheel | Scroll the transcript. |
