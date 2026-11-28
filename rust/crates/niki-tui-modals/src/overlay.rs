@@ -5,7 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph, Wrap};
 
 use crate::approval::{ApprovalModal, ellipsize};
-use crate::help::HelpOverlay;
+use crate::help::{HelpOverlay, ShortcutGroup};
 use crate::model::ModelPicker;
 use crate::question::{QuestionModal, QuestionRow};
 use crate::status::StatusCard;
@@ -13,6 +13,10 @@ use crate::threads::ThreadPicker;
 
 /// Widest the overlay grows, so a line of help stays readable on a wide screen.
 const MAX_WIDTH: u16 = 76;
+
+/// Width the key map may use: three columns of chords stop fitting at the
+/// width a prose panel wants, and the map is the one surface with no prose.
+const HELP_WIDTH: u16 = 104;
 
 /// Column the status card's labels reserve, matching the help overlay's chords.
 const LABEL_WIDTH: usize = 12;
@@ -100,7 +104,7 @@ pub(crate) fn question(
     let natural = u16::try_from(rows.len())
         .unwrap_or(u16::MAX)
         .saturating_add(2);
-    let rect = centered(area, natural);
+    let rect = centered(area, natural, MAX_WIDTH);
     if rect.is_empty() {
         return;
     }
@@ -317,35 +321,11 @@ pub(crate) fn help(
     palette: &Palette,
     glyphs: GlyphMode,
 ) {
-    let entries = HelpOverlay::entries();
-    let mut lines: Vec<Line> = entries
-        .iter()
-        .map(|(chord, description)| {
-            Line::from(vec![
-                Span::styled(format!("{chord:<12}"), palette.accent_style()),
-                Span::styled(*description, palette.body_style()),
-            ])
-        })
-        .collect();
+    let width = usize::from(area.width.min(HELP_WIDTH).saturating_sub(2));
+    let mut lines: Vec<Line> = vec![Line::default()];
+    lines.extend(column_lines(HelpOverlay::groups(), width, palette));
     lines.push(Line::default());
-    lines.push(Line::from(Span::styled(
-        "enter sends | alt+enter adds a line | escape clears the draft",
-        palette.muted_style(),
-    )));
-    lines.push(Line::from(Span::styled(
-        "escape closes this list | page up and page down scroll it",
-        palette.muted_style(),
-    )));
-    lines.push(Line::default());
-    lines.push(Line::from(Span::styled("composer", palette.accent_style())));
-    for (chord, description) in HelpOverlay::composer_entries() {
-        lines.push(Line::from(vec![
-            Span::styled(format!("{chord:<12}"), palette.accent_style()),
-            Span::styled(*description, palette.body_style()),
-        ]));
-    }
-    lines.push(Line::default());
-    lines.push(Line::from(Span::styled("commands", palette.accent_style())));
+    lines.push(Line::from(Span::styled("Commands", palette.accent_style())));
     for (name, summary) in HelpOverlay::command_entries() {
         lines.push(Line::from(vec![
             Span::styled(format!("{name:<12}"), palette.accent_style()),
@@ -353,8 +333,110 @@ pub(crate) fn help(
         ]));
     }
     let lines: Vec<Line> = lines.into_iter().skip(modal.offset()).collect();
-    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
-    render(frame, area, "Keys", lines, palette, glyphs, height);
+    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 3;
+    render_with_footer(
+        frame,
+        area,
+        "Keys",
+        lines,
+        palette,
+        glyphs,
+        height,
+        HELP_WIDTH,
+        "? or escape closes; page up and page down scroll",
+    );
+}
+
+/// The columns a gap of four cells separates.
+const COLUMN_GAP: usize = 4;
+
+/// The groups as columns: three when they fit, then two, then one.
+///
+/// The narrow fallbacks matter more than they look. At 80 columns a terminal is
+/// wide enough for three, at 60 only two, and over ssh on a phone one — and in
+/// every case the reader should see whole chords rather than a truncated one.
+fn column_lines(groups: &[ShortcutGroup], width: usize, palette: &Palette) -> Vec<Line<'static>> {
+    let columns: Vec<(Vec<Line<'static>>, usize)> = groups
+        .iter()
+        .map(|group| {
+            let key_width = group
+                .entries
+                .iter()
+                .map(|(key, _)| niki_render::display_width(key))
+                .max()
+                .unwrap_or(0);
+            let action_width = group
+                .entries
+                .iter()
+                .map(|(_, action)| niki_render::display_width(action))
+                .max()
+                .unwrap_or(0);
+            let mut lines = vec![Line::from(Span::styled(
+                group.title,
+                palette.accent_style(),
+            ))];
+            for (key, action) in group.entries {
+                let padding = key_width.saturating_sub(niki_render::display_width(key)) + 2;
+                lines.push(Line::from(vec![
+                    Span::styled((*key).to_owned(), palette.body_style()),
+                    Span::raw(" ".repeat(padding)),
+                    Span::styled(*action, palette.muted_style()),
+                ]));
+            }
+            (lines, key_width + 2 + action_width)
+        })
+        .collect();
+
+    let fitted: Vec<(Vec<Line<'static>>, usize)> = columns;
+    let total: usize = fitted.iter().map(|(_, width)| *width).sum();
+    if fitted.len() == 3 && total + COLUMN_GAP * 2 <= width {
+        return side_by_side(&fitted);
+    }
+    if fitted.len() == 3 && width >= 40 {
+        let right_width = fitted[1].1.max(fitted[2].1);
+        if fitted[0].1 + COLUMN_GAP + right_width <= width {
+            let mut right = fitted[1].0.clone();
+            right.push(Line::default());
+            right.extend(fitted[2].0.clone());
+            return side_by_side(&[(fitted[0].0.clone(), fitted[0].1), (right, right_width)]);
+        }
+    }
+    let mut stacked = Vec::new();
+    for (index, (lines, _)) in fitted.iter().enumerate() {
+        if index > 0 {
+            stacked.push(Line::default());
+        }
+        stacked.extend(lines.clone());
+    }
+    stacked
+}
+
+fn side_by_side(columns: &[(Vec<Line<'static>>, usize)]) -> Vec<Line<'static>> {
+    let height = columns
+        .iter()
+        .map(|(lines, _)| lines.len())
+        .max()
+        .unwrap_or(0);
+    (0..height)
+        .map(|row| {
+            let mut line = Line::default();
+            for (column, (lines, width)) in columns.iter().enumerate() {
+                let entry = lines.get(row).cloned().unwrap_or_default();
+                let used: usize = entry
+                    .spans
+                    .iter()
+                    .map(|span| niki_render::display_width(&span.content))
+                    .sum();
+                line.extend(entry.spans);
+                if column + 1 < columns.len() {
+                    line.push_span(ratatui::text::Span::raw(
+                        " ".repeat(width.saturating_sub(used) + COLUMN_GAP),
+                    ));
+                }
+            }
+            line
+        })
+        .collect()
 }
 
 pub(crate) fn status(
@@ -402,7 +484,93 @@ fn render(
     glyphs: GlyphMode,
     height: u16,
 ) {
-    render_in(frame, centered(area, height), title, lines, palette, glyphs);
+    render_with(
+        frame, area, title, lines, palette, glyphs, height, MAX_WIDTH,
+    );
+}
+
+/// A box whose last inner row is a fixed hint, so the way out stays visible
+/// when the body scrolls past the bottom of the terminal.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the frame, the box and the paint are all already named at the call site"
+)]
+fn render_with_footer(
+    frame: &mut Frame,
+    area: Rect,
+    title: &str,
+    lines: Vec<Line<'static>>,
+    palette: &Palette,
+    glyphs: GlyphMode,
+    height: u16,
+    max_width: u16,
+    footer: &str,
+) {
+    let rect = centered(area, height, max_width);
+    if rect.is_empty() {
+        return;
+    }
+    frame.render_widget(Clear, rect);
+    let block = Block::bordered()
+        .border_set(glyphs.border())
+        .border_style(palette.accent_style())
+        .style(palette.panel_style())
+        .title(Line::from(Span::styled(
+            title.to_owned(),
+            palette.accent_style(),
+        )));
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+    if inner.height == 0 {
+        return;
+    }
+    let body = Rect {
+        height: inner.height.saturating_sub(1),
+        ..inner
+    };
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(palette.panel_style())
+            .wrap(Wrap { trim: false }),
+        body,
+    );
+    let hint = Rect {
+        y: inner.y + inner.height - 1,
+        height: 1,
+        ..inner
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(Span::styled(
+            footer.to_owned(),
+            palette.muted_style(),
+        )))
+        .style(palette.panel_style()),
+        hint,
+    );
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the frame, the box and the paint are all already named at the call site"
+)]
+fn render_with(
+    frame: &mut Frame,
+    area: Rect,
+    title: &str,
+    lines: Vec<Line<'static>>,
+    palette: &Palette,
+    glyphs: GlyphMode,
+    height: u16,
+    max_width: u16,
+) {
+    render_in(
+        frame,
+        centered(area, height, max_width),
+        title,
+        lines,
+        palette,
+        glyphs,
+    );
 }
 
 fn render_in(
@@ -432,9 +600,9 @@ fn render_in(
     frame.render_widget(paragraph, rect);
 }
 
-/// A box of `height` rows, as wide as the screen allows, centred in `area`.
-fn centered(area: Rect, height: u16) -> Rect {
-    let width = area.width.min(MAX_WIDTH);
+/// A box of `height` rows, as wide as `max_width` allows, centred in `area`.
+fn centered(area: Rect, height: u16, max_width: u16) -> Rect {
+    let width = area.width.min(max_width);
     let height = height.min(area.height);
     let vertical = Layout::vertical([Constraint::Length(height)])
         .flex(ratatui::layout::Flex::Center)
@@ -494,6 +662,54 @@ mod tests {
             .map(|y| row(buffer, y))
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    fn render_help(width: u16, height: u16) -> Buffer {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                help(
+                    frame,
+                    area,
+                    &HelpOverlay::new(),
+                    &PALETTE,
+                    GlyphMode::Unicode,
+                );
+            })
+            .expect("draw");
+        terminal.backend().buffer().clone()
+    }
+
+    fn headings(buffer: &Buffer) -> String {
+        (0..buffer.area.height)
+            .map(|y| row(buffer, y))
+            .find(|line| line.contains("Compose"))
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn the_key_map_folds_from_three_columns_to_one() {
+        for (width, expected) in [(120u16, 3usize), (70, 2), (40, 1)] {
+            let buffer = render_help(width, 40);
+            let header = headings(&buffer);
+            let found = ["Compose", "Session", "Transcript"]
+                .iter()
+                .filter(|needle| header.contains(*needle))
+                .count();
+            assert_eq!(found, expected, "at {width} columns: {header:?}");
+        }
+    }
+
+    #[test]
+    fn the_way_out_stays_visible_when_the_body_overflows() {
+        let buffer = render_help(120, 16);
+        let screen = text(&buffer);
+        assert!(
+            screen.contains("? or escape closes"),
+            "the hint must survive a short terminal:\n{screen}"
+        );
     }
 
     #[test]

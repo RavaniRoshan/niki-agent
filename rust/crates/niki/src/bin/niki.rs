@@ -860,6 +860,7 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
         cwd: root,
     });
     app.set_allow_list(allow.clone());
+    app.set_branch(git_branch(&ctx.root));
     app.set_approver(true);
     app.set_skills(skills);
     app.set_palette(palette_or_default(config.theme.as_deref()));
@@ -1362,6 +1363,25 @@ fn workspace_root(options: &Options) -> Result<PathBuf> {
         .context("resolve the workspace")
 }
 
+/// The checked-out branch, when the workspace is a Git repository.
+///
+/// Run once at start-up, off the draw path. A missing `git`, a detached HEAD,
+/// and a directory that is not a repository all leave the state line without a
+/// branch rather than delaying the first frame.
+fn git_branch(root: &Path) -> Option<String> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let branch = String::from_utf8(output.stdout).ok()?.trim().to_owned();
+    (!branch.is_empty() && branch != "HEAD").then_some(branch)
+}
+
 /// Discover the project skills, the user's skills and the built-ins.
 ///
 /// The user directory follows `NIKI_HOME`, so a profile selected for this run is
@@ -1793,6 +1813,49 @@ fn one_line(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_directory_outside_a_repository_has_no_branch() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        assert_eq!(git_branch(temp.path()), None);
+    }
+
+    #[test]
+    fn a_repository_reports_its_checked_out_branch() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let init = std::process::Command::new("git")
+            .arg("-C")
+            .arg(temp.path())
+            .args(["init", "-b", "a-branch"])
+            .output();
+        // A machine without git is not a failure of the product.
+        let Ok(init) = init else { return };
+        if !init.status.success() {
+            return;
+        }
+        std::fs::write(temp.path().join("f"), "x").expect("file");
+        let _ = std::process::Command::new("git")
+            .arg("-C")
+            .arg(temp.path())
+            .args(["-c", "user.email=a@b", "-c", "user.name=a", "add", "f"])
+            .output();
+        let commit = std::process::Command::new("git")
+            .arg("-C")
+            .arg(temp.path())
+            .args([
+                "-c",
+                "user.email=a@b",
+                "-c",
+                "user.name=a",
+                "commit",
+                "-m",
+                "one",
+            ])
+            .output()
+            .expect("commit");
+        assert!(commit.status.success());
+        assert_eq!(git_branch(temp.path()).as_deref(), Some("a-branch"));
+    }
 
     #[test]
     fn tool_output_cannot_drive_the_terminal() {
