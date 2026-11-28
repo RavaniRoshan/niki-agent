@@ -610,7 +610,11 @@ mod tests {
             tool_calls: 0,
             ..ended()
         };
-        assert_eq!(summary.line(" · "), "done", "no clock, no tokens, no tallies");
+        assert_eq!(
+            summary.line(" · "),
+            "done",
+            "no clock, no tokens, no tallies"
+        );
 
         let plural = TurnSummary {
             files: 2,

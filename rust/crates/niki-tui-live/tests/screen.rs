@@ -4,8 +4,9 @@
 //! are all read back out of the buffer the widget tree painted.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use niki_agent::{AgentEvent, Usage};
+use niki_agent::{AgentEvent, RunOutcome, Usage};
 use niki_policy::Mode;
+use niki_provider::StopReason;
 use niki_tools::{AskOption, AskRequest};
 use niki_tui_live::{App, Command, PLACEHOLDER, SessionInfo, TurnState, draw};
 use niki_tui_themes::{Effects, GlyphMode, MONO, Palette};
@@ -919,4 +920,63 @@ fn the_help_overlay_opens_in_three_columns_on_a_wide_screen() {
         assert!(header.contains(needle), "{needle} not in header {header:?}");
     }
     assert!(screen.contains("Commands"), "{screen}");
+}
+
+/// Run one turn to its end, the way the worker does.
+fn finished_turn(app: &mut App) -> TurnState {
+    type_text(app, "fix the login redirect");
+    stroke(app, KeyCode::Enter);
+    app.apply(AgentEvent::Text("Patched auth.py.".to_owned()));
+    let outcome = RunOutcome {
+        text: String::new(),
+        steps: 1,
+        tool_calls: 3,
+        stop: StopReason::EndTurn,
+        usage: Usage {
+            input_tokens: 12,
+            output_tokens: 2_800,
+        },
+    };
+    let _ = app.finish(Ok(outcome));
+    app.status.turn
+}
+
+#[test]
+fn a_finished_turn_closes_with_one_summary_row_on_screen() {
+    let mut app = app();
+    assert_eq!(finished_turn(&mut app), TurnState::Idle);
+    let buffer = render(&mut app, 80, 24);
+    let screen = text(&buffer);
+    let closing: Vec<&str> = screen
+        .lines()
+        .filter(|line| line.starts_with("done"))
+        .collect();
+    assert_eq!(closing.len(), 1, "{screen}");
+    assert!(closing[0].contains("2.8k out"), "{screen}");
+    assert!(closing[0].contains("3 tool calls"), "{screen}");
+}
+
+#[test]
+fn a_narrow_screen_elides_the_summary_instead_of_wrapping_it() {
+    let mut app = app();
+    let _ = finished_turn(&mut app);
+    let buffer = render(&mut app, 40, 24);
+    let screen = text(&buffer);
+    let closing: Vec<&str> = screen
+        .lines()
+        .filter(|line| line.starts_with("done"))
+        .collect();
+    assert_eq!(closing.len(), 1, "one row, never two: {screen}");
+    assert!(closing[0].chars().count() <= 40, "{screen}");
+}
+
+#[test]
+fn a_tiny_screen_still_draws_a_failed_summary() {
+    let mut app = app();
+    type_text(&mut app, "do the thing");
+    stroke(&mut app, KeyCode::Enter);
+    let _ = app.finish(Err("provider mock failed: 503".to_owned()));
+    let buffer = render(&mut app, 12, 24);
+    let screen = text(&buffer);
+    assert!(screen.contains("fail"), "{screen}");
 }

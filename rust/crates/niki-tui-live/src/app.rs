@@ -1132,7 +1132,7 @@ impl App {
             }
         };
         if ran {
-            if matches!(result, Err(_)) {
+            if result.is_err() {
                 self.transcript.push_failed_summary(closing);
             } else {
                 self.transcript.push_summary(closing);
@@ -4346,7 +4346,13 @@ mod tests {
         outcome.tool_calls = 3;
         assert_eq!(app.finish(Ok(outcome)), None);
 
-        let text = app.transcript.rows().last().expect("a summary").text.clone();
+        let text = app
+            .transcript
+            .rows()
+            .last()
+            .expect("a summary")
+            .text
+            .clone();
         assert!(text.contains("2 files changed"), "{text}");
         assert!(text.contains("3 tool calls"), "{text}");
     }
@@ -4369,7 +4375,13 @@ mod tests {
         outcome.tool_calls = 1;
         assert_eq!(app.finish(Ok(outcome)), None);
 
-        let text = app.transcript.rows().last().expect("a summary").text.clone();
+        let text = app
+            .transcript
+            .rows()
+            .last()
+            .expect("a summary")
+            .text
+            .clone();
         assert!(!text.contains("file changed"), "{text}");
         assert!(text.contains("1 tool call"), "{text}");
     }
