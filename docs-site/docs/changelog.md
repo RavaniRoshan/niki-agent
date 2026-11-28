@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 83b3724b804b726b75b025836348d4329cf4b283d85547a0c690b9c0a076a8ca
+  source-sha256: 2884f458308ef042e0ae48ffa7862e1fa832a2d3c1375c721b80cfd95301ea28
 -->
 # Changelog
 
@@ -27,6 +27,10 @@ The product is a single Rust binary, distributed as one archive per platform.
   typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
+- `/copy`, `/editor` and `/cost` are commands as well as chords: the newest
+  answer to the clipboard, the draft in `$EDITOR`, and the session's token
+  totals. `/cost` prints tokens only — a built-in price table would be wrong
+  the day a provider changed it.
 - `/mcp` lists every configured MCP server with its transport and what became
   of it: the tool count it advertised, or the error that stopped it.
 - `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
