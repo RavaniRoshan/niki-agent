@@ -29,17 +29,17 @@ quarantine attribute; a browser download may need the Gatekeeper prompt or
 
 Pin the exact pre-release with `NIKI_VERSION` (no leading `v`). Beta tags are
 published as GitHub pre-releases; take the number from the tag you are testing,
-which the examples below show as `2.2.0-beta.1`.
+which the examples below show as `2.3.0-beta.1`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \
-  | NIKI_VERSION=2.2.0-beta.1 bash
+  | NIKI_VERSION=2.3.0-beta.1 bash
 ```
 
 On Windows, pass the same value to the PowerShell installer:
 
 ```powershell
-$env:NIKI_VERSION = "2.2.0-beta.1"
+$env:NIKI_VERSION = "2.3.0-beta.1"
 irm https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.ps1 | iex
 ```
 

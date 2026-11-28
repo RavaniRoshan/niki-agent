@@ -67,9 +67,6 @@ The product is a single Rust binary, distributed as one archive per platform.
   so a finished step is visibly finished.
 - The key overlay opens in up to three columns (`Compose`, `Session`,
   `Transcript`) that fold to two and then one by measured width.
-
-### Changed
-
 - The first screen is the brand mark, the home-relative directory, one sentence
   and five `  /cmd - description` rows. The tagline moved to the site; the
   command list no longer sits below two lines of prose.

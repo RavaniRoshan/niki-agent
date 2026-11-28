@@ -76,6 +76,7 @@ node_modules/
 # Windows alternate data streams copied into the tree by Explorer
 *:Zone.Identifier
 
-# Local scratch: evaluation harnesses and one-off tools, never tracked
+# Local scratch: one-off tools, never tracked
 /libs/
 .vercel
+.env*

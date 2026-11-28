@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 70315cba57046dd904a4c3f76b48e2d81ccc09dc3a0fde81eeae3cafadebb2ff
+  source-sha256: 304d3742851161b7e6596729309e473f263850eea8cf21f03d7081c50a8d856a
 -->
 # Changelog
 
@@ -72,9 +72,6 @@ The product is a single Rust binary, distributed as one archive per platform.
   so a finished step is visibly finished.
 - The key overlay opens in up to three columns (`Compose`, `Session`,
   `Transcript`) that fold to two and then one by measured width.
-
-### Changed
-
 - The first screen is the brand mark, the home-relative directory, one sentence
   and five `  /cmd - description` rows. The tagline moved to the site; the
   command list no longer sits below two lines of prose.

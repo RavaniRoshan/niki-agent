@@ -53,12 +53,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           "A busy row above the composer while a turn runs, with an elapsed clock and the interrupt key: `• Working (12s · esc to interrupt)`.",
           "The checked-out branch on the state line, read once at start-up from the workspace.",
           "`✓` and `×` result markers, and `(no output)` for a call that printed nothing, so a finished step is visibly finished.",
-          "The key overlay opens in up to three columns (`Compose`, `Session`, `Transcript`) that fold to two and then one by measured width."
-        ]
-      },
-      {
-        "title": "Changed",
-        "items": [
+          "The key overlay opens in up to three columns (`Compose`, `Session`, `Transcript`) that fold to two and then one by measured width.",
           "The first screen is the brand mark, the home-relative directory, one sentence and five `  /cmd - description` rows. The tagline moved to the site; the command list no longer sits below two lines of prose.",
           "The composer hint is `Ask Niki to do anything`. The key list lives on the footer's hint row, where it survives every width.",
           "Hints stay on the footer for the whole session and the token and context counts are right-aligned beside them. Below twelve columns of room the counts take the row alone.",

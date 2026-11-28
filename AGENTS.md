@@ -18,8 +18,8 @@ for the crates and the turn loop.
   `niki-mcp`, `niki-session`, `niki-acp`, `niki-tui-live`, `niki-tui`,
   `niki-render`, `niki-tui-themes`, `niki-engine-client` (the legacy HTTP/SSE
   front end), and the small protocol crates.
-- `libs/` — local scratch space for evaluation harnesses. Nothing here is
-  tracked by git and nothing here ships.
+- `libs/` — local scratch space. Nothing here is tracked by git and nothing
+  here ships.
 - `install/` — the release installers, `install.sh` and `install.ps1`. They
   unpack a release archive and place the binary; they do not build anything.
 - `docs/niki` — architecture, independence, keymap, and provider guides.

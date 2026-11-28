@@ -181,7 +181,7 @@ change behaviour between builds. Pin one by its version (no leading `v`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \
-  | NIKI_VERSION=2.3.0-beta.1 bash
+  | NIKI_VERSION=2.3.0 bash
 ```
 
 Known gaps, the support matrix, and how to report a problem are on the
