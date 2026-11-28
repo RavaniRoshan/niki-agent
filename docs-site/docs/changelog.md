@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 2d6ddf6af38dac84ba6753135d02bd42229e835721f7850af340b271d9a8e154
+  source-sha256: 0c30cb0cae592cf7f825418a0e4cda39a4e0f3ac4bd53e0d3848d7b4a77fa34d
 -->
 # Changelog
 
@@ -27,6 +27,9 @@ The product is a single Rust binary, distributed as one archive per platform.
   typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
+- `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
+  and title — and changes them from the app. Each row applies live and is
+  written back to `config.toml`.
 
 - A second footer line: key hints before the first turn, then context and token
   accounting once a turn has started. The state line no longer carries counts,

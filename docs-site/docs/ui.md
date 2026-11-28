@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/UI.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 305d7bec3502a1d20479065d5a6e6418d5e9b34d801ec9baed31976f09745f37
+  source-sha256: 157a8992a0caff5412a1f6007090917101c31084048f99768c768ab8238a2112
 -->
 # Niki Agent — the interface
 
@@ -175,6 +175,12 @@ Every effect defaults to on. Turning one off removes that feature, never the
 information behind it: with `progress = false` the state word still says
 `working`; with `welcome = false` the footer still carries the model, mode and
 directory.
+
+`/settings` opens the same keys as a list. `Enter` or space cycles the
+highlighted row, `Up`/`Down` move, `Esc` closes. Each change applies to the
+running screen immediately and is written back to this file, so the next launch
+starts the same way. A session started without a configuration file still
+applies the change, but has nowhere to write it.
 
 ## Accessibility
 

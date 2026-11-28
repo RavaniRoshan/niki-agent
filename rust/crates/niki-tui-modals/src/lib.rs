@@ -16,6 +16,7 @@ mod help;
 mod model;
 mod overlay;
 mod question;
+mod settings;
 mod status;
 mod threads;
 
@@ -24,6 +25,7 @@ pub use connect::{CatalogEntry, ConnectModal, ConnectRequest, Stage};
 pub use help::{HelpOverlay, describe};
 pub use model::{ModelChoice, ModelPicker};
 pub use question::{QuestionModal, QuestionReply, QuestionRow};
+pub use settings::{Setting, SettingsModal, SettingsState};
 pub use status::{StatusCard, StatusField};
 pub use threads::{NO_PROMPT, ThreadEntry, ThreadPicker};
 
@@ -46,6 +48,8 @@ pub enum Modal {
     Connect(ConnectModal),
     /// The saved sessions, filterable, to resume one.
     Threads(ThreadPicker),
+    /// The `[ui]` settings.
+    Settings(SettingsModal),
     /// The keymap.
     Help(HelpOverlay),
     /// The running session's facts, read-only.
@@ -69,6 +73,8 @@ pub enum Outcome {
     Connected(ConnectRequest),
     /// The person chose a session to resume.
     Session(String),
+    /// The person changed one setting; the modal stays open.
+    Setting(Setting),
 }
 
 impl Modal {
@@ -81,6 +87,7 @@ impl Modal {
             Self::Models(_) => "Model",
             Self::Connect(_) => "Connect a provider",
             Self::Threads(_) => "Sessions",
+            Self::Settings(_) => "Settings",
             Self::Help(_) => "Keys",
             Self::Status(_) => "Status",
         }
@@ -94,6 +101,7 @@ impl Modal {
             Self::Models(modal) => modal.handle_key(key),
             Self::Connect(modal) => modal.handle_key(key),
             Self::Threads(modal) => modal.handle_key(key),
+            Self::Settings(modal) => modal.handle_key(key),
             Self::Help(modal) => modal.handle_key(key),
             Self::Status(modal) => modal.handle_key(key),
         }
@@ -107,6 +115,7 @@ impl Modal {
             Self::Models(modal) => overlay::models(frame, area, modal, palette, glyphs),
             Self::Connect(modal) => overlay::connect(frame, area, modal, palette, glyphs),
             Self::Threads(modal) => overlay::threads(frame, area, modal, palette, glyphs),
+            Self::Settings(modal) => overlay::settings(frame, area, modal, palette, glyphs),
             Self::Help(modal) => overlay::help(frame, area, modal, palette, glyphs),
             Self::Status(modal) => overlay::status(frame, area, modal, palette, glyphs),
         }

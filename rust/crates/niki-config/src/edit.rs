@@ -10,8 +10,23 @@
 /// Replace `[models].default`, adding the table when it is absent.
 #[must_use]
 pub fn set_default_model(text: &str, spec: &str) -> String {
-    let value = quote(spec);
-    let Some(header) = find_table(text, "models") else {
+    set_in_table(text, "models", "default", &quote(spec))
+}
+
+/// Set one `[ui]` key, adding the table when it is absent.
+///
+/// `value` is a TOML literal: a quoted string for `theme` and `motion`, `true`
+/// or `false` for the effect switches. The rest of the file keeps its comments
+/// and ordering, like every other edit here.
+#[must_use]
+pub fn set_ui(text: &str, key: &str, value: &str) -> String {
+    set_in_table(text, "ui", key, value)
+}
+
+/// Set `key = value` inside `[table]`, adding the table when it is absent.
+#[must_use]
+fn set_in_table(text: &str, table: &str, key: &str, value: &str) -> String {
+    let Some(header) = find_table(text, table) else {
         let mut output = text.to_owned();
         if !output.is_empty() && !output.ends_with('\n') {
             output.push('\n');
@@ -19,8 +34,8 @@ pub fn set_default_model(text: &str, spec: &str) -> String {
         if !output.is_empty() && !output.ends_with("\n\n") {
             output.push('\n');
         }
-        output.push_str("[models]\n");
-        output.push_str(&format!("default = {value}\n"));
+        output.push_str(&format!("[{table}]\n"));
+        output.push_str(&format!("{key} = {value}\n"));
         return output;
     };
 
@@ -29,15 +44,15 @@ pub fn set_default_model(text: &str, spec: &str) -> String {
     let mut out: Vec<String> = lines[..=header].to_vec();
     let mut replaced = false;
     for line in &lines[header + 1..end] {
-        if !replaced && key_of(line) == Some("default") {
-            out.push(format!("default = {value}"));
+        if !replaced && key_of(line) == Some(key) {
+            out.push(format!("{key} = {value}"));
             replaced = true;
         } else {
             out.push(line.clone());
         }
     }
     if !replaced {
-        out.insert(header + 1, format!("default = {value}"));
+        out.insert(header + 1, format!("{key} = {value}"));
     }
     out.extend(lines[end..].iter().cloned());
     finish(out)
