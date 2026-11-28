@@ -24,7 +24,8 @@ use niki_skills::SkillCatalog;
 use niki_tools::AskRequest;
 use niki_tui_modals::{
     ApprovalModal, ConnectModal, ConnectRequest, HelpOverlay, Modal, ModelPicker, Outcome,
-    QuestionModal, QuestionReply, StatusCard, StatusField, ThreadEntry, ThreadPicker,
+    QuestionModal, QuestionReply, Setting, SettingsModal, SettingsState, StatusCard, StatusField,
+    ThreadEntry, ThreadPicker,
 };
 use niki_tui_themes::{Effects, GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -889,6 +890,73 @@ impl App {
         self.modal = Some(Modal::Threads(ThreadPicker::new(entries)));
     }
 
+    /// Open the `[ui]` settings on their current values.
+    pub fn open_settings(&mut self) {
+        let state = SettingsState {
+            theme: self.palette.name.to_owned(),
+            motion: match self.motion {
+                Motion::Full => "full",
+                Motion::Reduced => "reduced",
+            }
+            .to_owned(),
+            glyphs: if self.glyphs.is_ascii() {
+                "ascii"
+            } else {
+                "unicode"
+            }
+            .to_owned(),
+            welcome: self.effects.welcome,
+            progress: self.effects.progress,
+            shimmer: self.effects.shimmer,
+            title: self.effects.title,
+        };
+        let themes = PALETTES
+            .iter()
+            .map(|palette| palette.name.to_owned())
+            .collect();
+        self.modal = Some(Modal::Settings(SettingsModal::new(state, themes)));
+    }
+
+    /// Apply one changed setting to the running screen and write it back.
+    fn apply_setting(&mut self, setting: &Setting) {
+        match setting {
+            Setting::Theme(name) => self.palette = palette(name).unwrap_or(&NIKI),
+            Setting::Motion(value) => self.motion = Motion::from_value(Some(value)),
+            Setting::Glyphs(value) => self.glyphs = GlyphMode::from_value(Some(value)),
+            Setting::Welcome(on) => self.effects.welcome = *on,
+            Setting::Progress(on) => self.effects.progress = *on,
+            Setting::Shimmer(on) => self.effects.shimmer = *on,
+            Setting::Title(on) => self.effects.title = *on,
+        }
+        self.write_ui(setting);
+    }
+
+    /// Persist one `[ui]` key, when the host named a configuration file.
+    ///
+    /// A screen without a file keeps the change for the session and says
+    /// nothing: there is nowhere to write, and a notice on every keystroke
+    /// would be noise.
+    fn write_ui(&mut self, setting: &Setting) {
+        let Some(path) = &self.config_path else {
+            return;
+        };
+        let mut text = std::fs::read_to_string(path).unwrap_or_default();
+        text = niki_config::edit::set_ui(&text, setting.key(), &setting.toml());
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                if let Err(error) = std::fs::create_dir_all(parent) {
+                    self.transcript
+                        .push_error(format!("could not create {}: {error}", parent.display()));
+                    return;
+                }
+            }
+        }
+        if let Err(error) = std::fs::write(path, &text) {
+            self.transcript
+                .push_error(format!("could not write {}: {error}", path.display()));
+        }
+    }
+
     fn modal_key(&mut self, key: KeyEvent) -> Option<Command> {
         let outcome = self.modal.as_mut()?.handle_key(key);
         match outcome {
@@ -923,6 +991,10 @@ impl App {
             Outcome::Connected(request) => {
                 self.modal = None;
                 self.apply_connect(request)
+            }
+            Outcome::Setting(setting) => {
+                self.apply_setting(&setting);
+                None
             }
             Outcome::Session(id) => {
                 self.modal = None;
@@ -1437,6 +1509,10 @@ impl App {
                         "connect needs a configuration file; start niki with --config",
                     ),
                 }
+                None
+            }
+            SlashCommand::Settings => {
+                self.open_settings();
                 None
             }
             SlashCommand::Compact => {

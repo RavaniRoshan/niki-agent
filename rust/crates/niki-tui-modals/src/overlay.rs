@@ -8,6 +8,7 @@ use crate::approval::{ApprovalModal, ellipsize};
 use crate::help::{HelpOverlay, ShortcutGroup};
 use crate::model::ModelPicker;
 use crate::question::{QuestionModal, QuestionRow};
+use crate::settings::SettingsModal;
 use crate::status::StatusCard;
 use crate::threads::ThreadPicker;
 
@@ -552,6 +553,47 @@ fn side_by_side(columns: &[(Vec<Line<'static>>, usize)]) -> Vec<Line<'static>> {
             line
         })
         .collect()
+}
+
+pub(crate) fn settings(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &SettingsModal,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
+    let rows = modal.rows();
+    let label_width = rows
+        .iter()
+        .map(|(label, _)| niki_render::display_width(label))
+        .max()
+        .unwrap_or(0);
+    let width = usize::from(area.width.min(MAX_WIDTH).saturating_sub(2));
+    let mut lines = Vec::new();
+    for (index, (label, value)) in rows.iter().enumerate() {
+        let chosen = index == modal.selected();
+        let lead = if chosen { "> " } else { "  " };
+        let style = if chosen {
+            palette.accent_style()
+        } else {
+            palette.body_style()
+        };
+        let pad = " ".repeat(label_width.saturating_sub(niki_render::display_width(label)) + 2);
+        lines.push(Line::from(vec![
+            Span::styled(format!("{lead}{label}{pad}"), style),
+            Span::styled(value.clone(), palette.muted_style()),
+        ]));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        ellipsize(
+            "enter or space changes | up and down move | escape closes",
+            width,
+        ),
+        palette.muted_style(),
+    )));
+    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
+    render(frame, area, "Settings", lines, palette, glyphs, height);
 }
 
 pub(crate) fn status(

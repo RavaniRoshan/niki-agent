@@ -171,6 +171,12 @@ information behind it: with `progress = false` the state word still says
 `working`; with `welcome = false` the footer still carries the model, mode and
 directory.
 
+`/settings` opens the same keys as a list. `Enter` or space cycles the
+highlighted row, `Up`/`Down` move, `Esc` closes. Each change applies to the
+running screen immediately and is written back to this file, so the next launch
+starts the same way. A session started without a configuration file still
+applies the change, but has nowhere to write it.
+
 ## Accessibility
 
 - **Contrast.** Every palette is gated on WCAG AA by a test that computes the

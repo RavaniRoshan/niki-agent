@@ -22,6 +22,9 @@ The product is a single Rust binary, distributed as one archive per platform.
   typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
+- `/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer
+  and title — and changes them from the app. Each row applies live and is
+  written back to `config.toml`.
 
 - A second footer line: key hints before the first turn, then context and token
   accounting once a turn has started. The state line no longer carries counts,
