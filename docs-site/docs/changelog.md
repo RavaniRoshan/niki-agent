@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: 304d3742851161b7e6596729309e473f263850eea8cf21f03d7081c50a8d856a
+  source-sha256: 4ce7fc143161016c3850e9b8553e56e899ab493690c216d5503a21c3b54c4e70
 -->
 # Changelog
 
@@ -12,6 +12,15 @@ All notable changes to Niki Agent are recorded here. The format follows
 The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
+
+### Added
+
+- Every turn now ends with one quiet line: how it ended, how long it took, how
+  many tokens it spent, how many files it changed and how many tools it ran.
+  A failed turn says so in the error colour, keeps the full message above it,
+  and names the next step. A fact the provider did not report is left out
+  rather than shown as a zero, and the line is never written to the session, so
+  a resumed conversation does not repeat it.
 
 ## [2.3.0] - 2026-11-28
 

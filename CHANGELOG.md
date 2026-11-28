@@ -8,6 +8,15 @@ The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
 
+### Added
+
+- Every turn now ends with one quiet line: how it ended, how long it took, how
+  many tokens it spent, how many files it changed and how many tools it ran.
+  A failed turn says so in the error colour, keeps the full message above it,
+  and names the next step. A fact the provider did not report is left out
+  rather than shown as a zero, and the line is never written to the session, so
+  a resumed conversation does not repeat it.
+
 ## [2.3.0] - 2026-11-28
 
 ### Added
