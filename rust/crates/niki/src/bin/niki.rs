@@ -19,7 +19,7 @@ use anyhow::{Context, Result, bail};
 use niki_agent::{Agent, AgentConfig, AgentEvent, AllowList, CancelHandle, Mode, RunOutcome};
 use niki_config::instructions::Instructions;
 use niki_config::trust::{ProjectTrust, TrustStore};
-use niki_config::{Config, Protocol, config_home};
+use niki_config::{Config, McpTransport, Protocol, config_home};
 use niki_hooks::{Event, HookRunner, Hooks, Loaded, Notify};
 use niki_mcp::ToolBridge;
 use niki_provider::{
@@ -30,7 +30,9 @@ use niki_session::{SessionId, SessionStore};
 use niki_skills::SkillCatalog;
 use niki_subagents::{SubagentTool, TOOL_NAME};
 use niki_tools::{Registry, ToolContext};
-use niki_tui_live::{App, ModelPicker, SessionInfo, WorkerHandle, diff_source, run as run_screen};
+use niki_tui_live::{
+    App, McpServerInfo, ModelPicker, SessionInfo, WorkerHandle, diff_source, run as run_screen,
+};
 use niki_tui_themes::{Effects, GlyphMode, Motion, palette_or_default};
 use serde_json::json;
 
@@ -1102,7 +1104,29 @@ fn load_mcp(runtime: &tokio::runtime::Runtime, config: &Config, app: &mut App) -
     for error in &errors {
         app.transcript.push_notice(format!("warning: {error}"));
     }
+    let catalog = config
+        .mcp_servers
+        .iter()
+        .map(|(name, server)| McpServerInfo {
+            name: name.clone(),
+            transport: describe_transport(&server.transport),
+            tools: tools.iter().filter(|tool| tool.server() == name).count(),
+            error: errors
+                .iter()
+                .find(|error| error.server() == name)
+                .map(ToString::to_string),
+        })
+        .collect();
+    app.set_mcp(catalog);
     tools
+}
+
+/// One line naming where an MCP server runs.
+fn describe_transport(transport: &McpTransport) -> String {
+    match transport {
+        McpTransport::Stdio { command, .. } => format!("stdio {command}"),
+        McpTransport::Http { url, .. } => format!("http {url}"),
+    }
 }
 
 /// What a `task` child inherits from the session that started it.

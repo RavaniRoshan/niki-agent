@@ -26,6 +26,7 @@ export const CHANGELOG: ChangelogRelease[] = [
           "`web_search` and `web_fetch` are built-in tools. Both ask before the first call, like a gated shell command, and `Always` covers the rest of the session.",
           "`/new` and `Ctrl+N` start a fresh session, the same reset `/clear` performs under the name people reach for. `Ctrl+R` opens the session browser without typing `/threads`.",
           "The command list matches loosely: prefix, then substring, then letters in order, so `/cmpct` reaches `/compact`.",
+          "`/mcp` lists every configured MCP server with its transport and what became of it: the tool count it advertised, or the error that stopped it.",
           "`/settings` lists the `[ui]` keys — theme, motion, welcome, progress, shimmer and title — and changes them from the app. Each row applies live and is written back to `config.toml`.",
           "A second footer line: key hints before the first turn, then context and token accounting once a turn has started. The state line no longer carries counts, so a long session cannot push the working directory off the screen.",
           "A terminal window title, `project — state`, with a marker that blinks while a turn waits for an answer. It is cleared when the app leaves.",

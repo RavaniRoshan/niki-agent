@@ -50,6 +50,19 @@ const RESUME_LIMIT: usize = 20;
 /// How long after one Esc a second one restores the last prompt.
 const BACKTRACK_WINDOW: Duration = Duration::from_secs(2);
 
+/// One configured MCP server and what became of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpServerInfo {
+    /// Name after `[mcp_servers.<name>]`.
+    pub name: String,
+    /// Transport in one line: the command or the URL.
+    pub transport: String,
+    /// Tools the server advertised; zero when it failed.
+    pub tools: usize,
+    /// Why the server is not usable, when it is not.
+    pub error: Option<String>,
+}
+
 /// What a session starts with.
 #[derive(Debug, Clone)]
 pub struct SessionInfo {
@@ -132,6 +145,8 @@ pub struct App {
     config_path: Option<PathBuf>,
     /// The skills discovery found for this session, shown by `/skills`.
     skills: SkillCatalog,
+    /// The MCP servers the host connected, shown by `/mcp`.
+    mcp: Vec<McpServerInfo>,
     /// Recomposes the system prompt after `/init` writes a file.
     refresh_system: Option<Arc<dyn Fn() -> String + Send + Sync>>,
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
@@ -195,6 +210,7 @@ impl App {
             config: None,
             config_path: None,
             skills: SkillCatalog::default(),
+            mcp: Vec::new(),
             refresh_system: None,
             page: 10,
             sessions: None,
@@ -234,6 +250,11 @@ impl App {
         self.models = ModelPicker::from_config(&config);
         self.config = Some(config);
         self.config_path = Some(path);
+    }
+
+    /// Record the MCP servers the host tried, which `/mcp` prints.
+    pub fn set_mcp(&mut self, servers: Vec<McpServerInfo>) {
+        self.mcp = servers;
     }
 
     /// Offer the skills discovery found, which `/skills` prints.
@@ -1582,6 +1603,10 @@ impl App {
                 self.transcript.push_notice(line);
                 None
             }
+            SlashCommand::Mcp => {
+                self.list_mcp();
+                None
+            }
             SlashCommand::Tools => {
                 self.list_tools();
                 None
@@ -1872,6 +1897,23 @@ impl App {
     }
 
     /// `/tools`: every registered tool, MCP ones included, one row each.
+    /// `/mcp`: every configured server, its transport and its state.
+    fn list_mcp(&mut self) {
+        if self.mcp.is_empty() {
+            self.transcript.push_notice("no MCP servers are configured");
+            return;
+        }
+        for server in &self.mcp {
+            let state = match &server.error {
+                Some(error) => format!("failed: {error}"),
+                None if server.tools == 1 => "1 tool".to_owned(),
+                None => format!("{} tools", server.tools),
+            };
+            self.transcript
+                .push_notice(format!("{}  {}  {state}", server.name, server.transport));
+        }
+    }
+
     fn list_tools(&mut self) {
         if self.tools.is_empty() {
             self.transcript.push_notice("no tools are registered");
@@ -2114,6 +2156,47 @@ mod tests {
         for character in text.chars() {
             stroke(app, KeyCode::Char(character));
         }
+    }
+
+    #[test]
+    fn mcp_lists_each_server_with_its_transport_and_state() {
+        let mut app = app();
+        app.set_mcp(vec![
+            McpServerInfo {
+                name: "files".to_owned(),
+                transport: "stdio mcp-files".to_owned(),
+                tools: 3,
+                error: None,
+            },
+            McpServerInfo {
+                name: "remote".to_owned(),
+                transport: "http https://example.test/mcp".to_owned(),
+                tools: 0,
+                error: Some("connect timed out".to_owned()),
+            },
+        ]);
+        type_text(&mut app, "/mcp");
+        assert!(press(&mut app, KeyCode::Enter).is_none());
+        let texts: Vec<&str> = app
+            .transcript
+            .rows()
+            .iter()
+            .map(|row| row.text.as_str())
+            .collect();
+        assert_eq!(texts[0], "files  stdio mcp-files  3 tools");
+        assert_eq!(
+            texts[1],
+            "remote  http https://example.test/mcp  failed: connect timed out"
+        );
+    }
+
+    #[test]
+    fn mcp_without_servers_says_so() {
+        let mut app = app();
+        type_text(&mut app, "/mcp");
+        assert!(press(&mut app, KeyCode::Enter).is_none());
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(last.text, "no MCP servers are configured");
     }
 
     #[test]

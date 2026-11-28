@@ -26,7 +26,7 @@ mod transcript_overlay;
 mod ui;
 mod worker;
 
-pub use app::{App, Command, SessionInfo, WHEEL_LINES};
+pub use app::{App, Command, McpServerInfo, SessionInfo, WHEEL_LINES};
 pub use completion::{Completion, MAX_COMPLETIONS};
 pub use composer::Composer;
 pub use history::History;

@@ -100,3 +100,20 @@ pub enum McpError {
         detail: String,
     },
 }
+
+impl McpError {
+    /// The configured server the failure belongs to.
+    #[must_use]
+    pub fn server(&self) -> &str {
+        match self {
+            Self::Io { server, .. }
+            | Self::Timeout { server, .. }
+            | Self::Exited { server, .. }
+            | Self::Malformed { server, .. }
+            | Self::Rpc { server, .. }
+            | Self::Http { server, .. }
+            | Self::Setup { server, .. }
+            | Self::Closed { server, .. } => server,
+        }
+    }
+}
