@@ -30,6 +30,29 @@ The product is a single Rust binary, distributed as one archive per platform.
   shows a static `◌` instead of nothing.
 - A tool call that is still running carries a `•`/`◦` activity marker, so a long
   step reads as alive.
+- A busy row above the composer while a turn runs, with an elapsed clock and the
+  interrupt key: `• Working (12s · esc to interrupt)`.
+- The checked-out branch on the state line, read once at start-up from the
+  workspace.
+- `✓` and `×` result markers, and `(no output)` for a call that printed nothing,
+  so a finished step is visibly finished.
+- The key overlay opens in up to three columns (`Compose`, `Session`,
+  `Transcript`) that fold to two and then one by measured width.
+
+### Changed
+
+- The first screen is the brand mark, the home-relative directory, one sentence
+  and five `  /cmd - description` rows. The tagline moved to the site; the
+  command list no longer sits below two lines of prose.
+- The composer hint is `Ask Niki to do anything`. The key list lives on the
+  footer's hint row, where it survives every width.
+- Hints stay on the footer for the whole session and the token and context
+  counts are right-aligned beside them. Below twelve columns of room the counts
+  take the row alone.
+- While a turn works, the state word and spinner move to the busy row, so the
+  screen no longer says `working` twice, one line apart.
+- The key overlay's way out is pinned to its last row, so it stays readable when
+  the command list is taller than the terminal.
 
 ## [2.2.0] - 2026-11-27
 

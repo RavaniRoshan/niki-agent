@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/UI.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: f0a16a8ae69ec7428796e48046d7c85efde5ee2619542f072e5e24b586d53585
+  source-sha256: 17902e289e02406c268704927c739811b4cece558f60357dd47af4132aa1c327
 -->
 # Niki Agent — the interface
 
@@ -13,36 +13,44 @@ claim here is covered by a `TestBackend` buffer test in
 
 ## The screen
 
-```
-NIKI AGENT  v2.2.0
-one binary · sessions on your disk · an approval gate in front of every change
+```text
+  >_ NIKI AGENT (v2.2.0)
+     ~/project
 
-ollama:test-model · manual mode · /home/you/project
+  To get started, describe a task or try one of these commands:
 
-To get started
-  /init    write an AGENTS.md for this repository
-  /status  model, mode, session, and token usage
-  /theme   pick a palette
-  /help    every command and key binding
-
-Type a prompt to begin. Ctrl+D quits.
+  /init - write an AGENTS.md for this repository
+  /status - model, mode, session and token usage
+  /model - choose a model
+  /theme - choose a palette
+  /help - every command and key binding
 
 ──────────────────────────────────────────────────────────────────────────
-› Type a prompt; / for commands, ctrl+d to quit
-ollama:test-model · manual · idle · /home/you/project
+› Ask Niki to do anything
+ollama:test-model · manual · idle · ~/project
 / commands · ? keys · ctrl+t transcript · ctrl+d quit
-```
+```text
 
-Four regions, top to bottom:
+Five regions, top to bottom:
 
 - **Transcript.** Answer text, tool calls and results, diffs, notices, and the
   prompt queue. It scrolls with `PageUp`/`PageDown` and the wheel.
+- **Busy row.** One line, drawn only while a turn runs; see below.
 - **Composer.** One hairline rule, then the draft. The `›` marks where input
   begins; the cursor sits after it.
 - **Command list.** When the draft starts with `/`, the matching commands and
   the highlighted one's description sit under the composer.
-- **Footer.** Two lines: the state contract, then the second line described
-  below.
+- **Footer.** Two lines: the state contract, then hints and counts.
+
+On the first screen — before any prompt has been sent — the transcript region
+holds the welcome block. A notice such as a trust warning is drawn *beneath* the
+welcome rather than replacing it, so the first thing a new person sees is never
+a warning and blank space.
+
+The welcome block is brand mark, location, one sentence and five commands. It is
+not a README: the tagline belongs to the site, and prose here pushes the command
+list off a 24-row terminal. The directory is shown relative to `$HOME` so a deep
+checkout still fits on one line.
 
 On the first screen — before any prompt has been sent — the transcript region
 holds the welcome block. A notice such as a trust warning is drawn *beneath* the
@@ -53,40 +61,75 @@ a warning and blank space.
 
 Line one is the state contract and never carries counts:
 
-```
-model · approval mode · turn state · working directory
-```
+```text
+model · approval mode · branch · turn state · working directory
+```text
 
-While a turn runs the state field carries the spinner. When prompts are queued
-the count is appended (`queued 2`).
+The branch field appears only inside a repository, and never for a detached
+HEAD. While a turn waits for an answer the state field carries the spinner; a
+working turn does not, because the busy row already says so, one line up. When
+prompts are queued the count is appended (`queued 2`).
 
-Line two changes with the session:
+Line two carries both halves of what is left:
 
-- **Before the first prompt:** key hints, ordered most useful first and dropped
-  a whole key at a time as the terminal narrows:
-  `/ commands · ? keys · ctrl+t transcript · ctrl+d quit`.
-- **After a turn has started:** context and token accounting,
-  `ctx 13% · 1,234 tok`, once the agent has reported them.
+```text
+/ commands · ? keys · ctrl+t transcript · ctrl+d quit            ctx 13% · 1,234 tok
+```text
+
+The hints stay for the life of the session — a person who has run a hundred
+turns still forgets a chord — and are ordered most useful first. They drop a
+whole key at a time as the terminal narrows. The counts are right-aligned and
+are the last thing to go: below twelve columns of room the counts take the row
+alone, because at that width `ctx 13%` is the more useful half.
 
 Keeping counts off line one means a long session cannot push the working
-directory off the screen, and the second line teaches keys exactly once — when
-they are needed.
+directory off the screen.
+
+## The busy row
+
+While a turn runs, one line sits directly above the composer:
+
+```text
+• Working (12s · esc to interrupt)
+```text
+
+The bullet is the activity marker (see Motion); the clock is seconds, then
+`1m 05s`, then `1h 00m 05s`. The clock starts on the first frame that sees a
+working turn and is cleared when the turn stops, so it survives steering,
+approval and cancellation without any of those paths having to remember it.
+
+The row is the answer to "is it stuck?". Without it, second two and second two
+hundred look identical. It never appears while the app waits for an approval:
+the approval card is the thing to read then.
+
+## The key overlay
+
+`?` opens the key map, drawn in up to three columns — `Compose`, `Session`,
+`Transcript` — that fold to two and then one as the terminal narrows. The
+collapse is by measured width, not by a breakpoint, so a chord is never cut in
+half. Below the columns come the slash commands, and the last row is always
+`? or escape closes; page up and page down scroll`, even when the body is
+taller than the terminal.
 
 ## Glyphs
 
 | Glyph | Where | Meaning |
 | --- | --- | --- |
 | `›` | composer, prompts | input starts here; `>` in ASCII mode |
-| `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` | state field | a turn is running, one frame per 100 ms |
-| `◌` | state field | reduced motion: still working, not moving |
-| `•` / `◦` | a running tool call | the step is alive; dims every 600 ms |
+| `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` | state field while waiting | a turn needs you, one frame per 100 ms |
+| `◌` | state field | reduced motion: waiting, not moving |
+| `•` / `◦` | busy row, a running call | the step is alive; dims every 600 ms |
 | `⏺` | answer rows | the model's text |
-| `⚙` | tool rows | a call that has finished or is not the newest |
-| `!` | error rows | a failed call or turn |
+| `⚙` | tool rows | the call the model made |
+| `✓` | result rows | the call ran; `+` in ASCII mode |
+| `×` | error rows | the call failed or was refused; `x` in ASCII mode |
 | `-` | notice rows | a note from the app |
 
+A result with nothing to show still gets a row: `✓ shell (no output)`. An empty
+row would read as a lost event.
+
 ASCII mode (`NIKI_ASCII=1`) replaces every marker with an ASCII one: `>`, `|`,
-`/`, `-`, `\`, `o`, `*`, `#`.
+`*`, `o`, `#`, `+`, `x`, `-`.
 
 ## Motion
 
@@ -126,7 +169,7 @@ welcome = true          # the first-screen block
 progress = true         # the spinner beside the turn state
 shimmer = true          # the running-tool marker
 title = true            # the terminal window title
-```
+```text
 
 Every effect defaults to on. Turning one off removes that feature, never the
 information behind it: with `progress = false` the state word still says
@@ -148,20 +191,25 @@ directory.
 
 ## Deliberately not done
 
-Two effects other terminal agents ship are left out on purpose. Both were
-considered and declined, not forgotten:
+Effects other terminal agents ship are left out on purpose. Each was considered
+and declined, not forgotten:
 
-- **A rotating verb above the composer** ("thinking", "cooking", "noodling" on a
-  3.5 s cycle). It occupies a row to say what the spinner already says, and a
-  rotating word is the first thing a screen reader announces on every wake. The
-  state field is a contract: `working` means working.
+- **A rotating verb heading** ("thinking", "cooking", "noodling" on a 3.5 s
+  cycle). The busy row says `Working` and does not change its word. A rotating
+  label is the first thing a screen reader announces on every wake, and the row
+  is a contract: `Working` means working.
 - **A per-cell composer animation** (a drifting starfield or travelling
   highlight in the input area). It redraws the region the person is typing in,
   which is the one place in the app where motion actively costs legibility, and
   it defeats the reduced-motion switch because the effect *is* the content.
+- **Collapsible activity sections.** The transcript is append-only by design
+  (a cancelled turn keeps its output); collapsing needs a height model and a
+  key, and is planned with the task list rather than before it.
+- **A live task checklist.** It needs a model-callable plan tool, which the
+  tool registry does not have yet.
 
-The rule behind both: motion may show that work is happening, and may orient
-someone in the window. It may not decorate the thing they are reading.
+The rule behind all of them: motion may show that work is happening, and may
+orient someone in the window. It may not decorate the thing they are reading.
 
 ---
 
