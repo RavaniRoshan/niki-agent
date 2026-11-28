@@ -19,6 +19,7 @@ mod question;
 mod settings;
 mod status;
 mod threads;
+mod trust;
 
 pub use approval::{ApprovalModal, ellipsize};
 pub use connect::{CatalogEntry, ConnectModal, ConnectRequest, Stage};
@@ -28,6 +29,7 @@ pub use question::{QuestionModal, QuestionReply, QuestionRow};
 pub use settings::{Setting, SettingsModal, SettingsState};
 pub use status::{StatusCard, StatusField};
 pub use threads::{NO_PROMPT, ThreadEntry, ThreadPicker};
+pub use trust::TrustModal;
 
 use crossterm::event::KeyEvent;
 use niki_agent::Approval;
@@ -54,6 +56,8 @@ pub enum Modal {
     Help(HelpOverlay),
     /// The running session's facts, read-only.
     Status(StatusCard),
+    /// The one-time workspace trust question.
+    Trust(TrustModal),
 }
 
 /// What a key press did to the modal it reached.
@@ -75,6 +79,8 @@ pub enum Outcome {
     Session(String),
     /// The person changed one setting; the modal stays open.
     Setting(Setting),
+    /// The person granted this workspace their trust.
+    Trust,
 }
 
 impl Modal {
@@ -90,6 +96,7 @@ impl Modal {
             Self::Settings(_) => "Settings",
             Self::Help(_) => "Keys",
             Self::Status(_) => "Status",
+            Self::Trust(_) => "Trust this workspace",
         }
     }
 
@@ -104,6 +111,7 @@ impl Modal {
             Self::Settings(modal) => modal.handle_key(key),
             Self::Help(modal) => modal.handle_key(key),
             Self::Status(modal) => modal.handle_key(key),
+            Self::Trust(modal) => modal.handle_key(key),
         }
     }
 
@@ -118,6 +126,7 @@ impl Modal {
             Self::Settings(modal) => overlay::settings(frame, area, modal, palette, glyphs),
             Self::Help(modal) => overlay::help(frame, area, modal, palette, glyphs),
             Self::Status(modal) => overlay::status(frame, area, modal, palette, glyphs),
+            Self::Trust(modal) => overlay::trust(frame, area, modal, palette, glyphs),
         }
     }
 }
