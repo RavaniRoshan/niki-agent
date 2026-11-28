@@ -219,6 +219,7 @@ fn pump(app: &mut App, worker: &mut WorkerHandle) -> Vec<AgentEvent> {
                     app.set_context(report, usage);
                 }
             }
+            Some(WorkerEvent::Audit(audit)) => app.show_audit(audit),
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             Some(WorkerEvent::Approval { .. }) => panic!("this worker installs no approver"),
             Some(WorkerEvent::Question { .. }) => panic!("this worker installs no asker"),
@@ -375,6 +376,7 @@ fn compact_without_a_provider_falls_back_and_says_so() {
                 break;
             }
             WorkerEvent::Context { .. } => {}
+            WorkerEvent::Audit(_) => {}
             other => panic!("unexpected {other:?}"),
         }
     }
@@ -500,6 +502,7 @@ fn cancelling_keeps_the_text_the_turn_already_wrote() {
                     app.set_context(report, usage);
                 }
             }
+            WorkerEvent::Audit(audit) => app.show_audit(audit),
             WorkerEvent::Compacted { result, fallback } => app.compacted(result, fallback),
             WorkerEvent::Approval { .. } => panic!("this worker installs no approver"),
             WorkerEvent::Question { .. } => panic!("this worker installs no asker"),
@@ -577,6 +580,7 @@ fn pump_answering(app: &mut App, worker: &mut WorkerHandle, keys: &[KeyCode]) ->
                     app.set_context(report, usage);
                 }
             }
+            Some(WorkerEvent::Audit(audit)) => app.show_audit(audit),
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             Some(WorkerEvent::Question { .. }) => panic!("no question in this test"),
             None => panic!("the worker went quiet before the turn finished"),
@@ -644,6 +648,7 @@ fn pump_question(app: &mut App, worker: &mut WorkerHandle, keys: &[KeyCode]) -> 
                     app.set_context(report, usage);
                 }
             }
+            Some(WorkerEvent::Audit(audit)) => app.show_audit(audit),
             Some(WorkerEvent::Compacted { result, fallback }) => app.compacted(result, fallback),
             Some(WorkerEvent::Approval { .. }) => panic!("no approval in this test"),
             None => panic!("the worker went quiet before the turn finished"),

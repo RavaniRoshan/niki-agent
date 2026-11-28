@@ -193,6 +193,9 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                         worker.submit(prompt);
                     }
                 }
+                WorkerEvent::Audit(audit) => {
+                    app.show_audit(audit);
+                }
                 WorkerEvent::Context {
                     report,
                     usage,
@@ -275,6 +278,9 @@ fn event_loop(screen: &mut Screen, app: &mut App, worker: &mut WorkerHandle) -> 
                 }
                 Some(Command::Context) => {
                     worker.context();
+                }
+                Some(Command::Audit) => {
+                    worker.audit();
                 }
                 Some(Command::RefreshSystem(system)) => {
                     worker.set_system(system);

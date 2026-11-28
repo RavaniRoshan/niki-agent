@@ -34,6 +34,8 @@ pub enum SlashCommand {
     Connect,
     /// Show the conversation's size and what the session has spent.
     Context,
+    /// Show the split of what the next request would inject.
+    ContextDoctor,
     /// Show the working tree's staged, unstaged and untracked changes.
     Diff(Option<String>),
     /// List saved sessions, or resume one by id or one-based index.
@@ -108,6 +110,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/context",
         summary: "Show the conversation's size and the session's token total",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/context-doctor",
+        summary: "Split the next request's tokens: system, tools and messages",
         aliases: &[],
     },
     CommandInfo {
@@ -254,11 +261,6 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/context-doctor",
-        summary: "Report what a session injects and its estimated token cost",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/effort",
         summary: "Set reasoning effort for the current model",
         aliases: &[],
@@ -360,6 +362,7 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/cost" => SlashCommand::Cost,
         "/editor" => SlashCommand::Editor,
         "/context" => SlashCommand::Context,
+        "/context-doctor" => SlashCommand::ContextDoctor,
         "/diff" => SlashCommand::Diff(argument),
         "/docs" => SlashCommand::Docs,
         "/feedback" => SlashCommand::Feedback,
@@ -407,6 +410,7 @@ mod tests {
             (SlashCommand::Cost, "/cost"),
             (SlashCommand::Cost, "/tokens"),
             (SlashCommand::Context, "/context"),
+            (SlashCommand::ContextDoctor, "/context-doctor"),
             (SlashCommand::Diff(None), "/diff"),
             (SlashCommand::Editor, "/editor"),
             (SlashCommand::Docs, "/docs"),
@@ -440,7 +444,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 30);
+        assert_eq!(listed.len(), 31);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);

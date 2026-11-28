@@ -103,6 +103,8 @@ pub enum Command {
     Compact,
     /// Ask the agent for its context report.
     Context,
+    /// Ask for the split of what the next request would inject.
+    Audit,
     /// Replace the agent's system prompt, recomposed after `/init`.
     RefreshSystem(String),
     /// Put this text on the terminal clipboard.
@@ -1607,6 +1609,13 @@ impl App {
                 self.list_mcp();
                 None
             }
+            SlashCommand::ContextDoctor => {
+                if self.refuse_while_busy("/context-doctor") {
+                    return None;
+                }
+                self.status.turn = TurnState::Working;
+                Some(Command::Audit)
+            }
             SlashCommand::Docs => {
                 self.transcript.push_notice(
                     "documentation: https://github.com/RavaniRoshan/niki-agent/tree/niki-agent/docs/niki",
@@ -1751,6 +1760,19 @@ impl App {
     }
 
     /// Print the report `/context` asked for and remember it.
+    /// Print the `/context-doctor` split and return to idle.
+    pub fn show_audit(&mut self, audit: niki_agent::ContextAudit) {
+        self.status.turn = TurnState::Idle;
+        self.transcript.push_notice(format!(
+            "context: {} system + {} tool schemas + {} messages = {} tokens across {} tools",
+            format_tokens(u64::try_from(audit.system_tokens).unwrap_or(u64::MAX)),
+            format_tokens(u64::try_from(audit.tool_schema_tokens).unwrap_or(u64::MAX)),
+            format_tokens(u64::try_from(audit.message_tokens).unwrap_or(u64::MAX)),
+            format_tokens(u64::try_from(audit.total_tokens()).unwrap_or(u64::MAX)),
+            audit.tool_count
+        ));
+    }
+
     pub fn show_context(&mut self, report: ContextReport, usage: SessionUsage) {
         self.status.set_context(report, usage);
         self.status.turn = TurnState::Idle;
@@ -2199,6 +2221,31 @@ mod tests {
         for character in text.chars() {
             stroke(app, KeyCode::Char(character));
         }
+    }
+
+    #[test]
+    fn context_doctor_splits_the_next_request() {
+        let mut app = app();
+        app.show_audit(niki_agent::ContextAudit {
+            system_tokens: 800,
+            tool_schema_tokens: 1200,
+            message_tokens: 200,
+            tool_count: 12,
+        });
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(
+            last.text,
+            "context: 800 system + 1,200 tool schemas + 200 messages = 2,200 tokens across 12 tools"
+        );
+        assert_eq!(app.status.turn, TurnState::Idle);
+    }
+
+    #[test]
+    fn context_doctor_asks_the_worker() {
+        let mut app = app();
+        type_text(&mut app, "/context-doctor");
+        assert_eq!(press(&mut app, KeyCode::Enter), Some(Command::Audit));
+        assert_eq!(app.status.turn, TurnState::Working);
     }
 
     #[test]
