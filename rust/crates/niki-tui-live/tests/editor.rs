@@ -404,3 +404,40 @@ fn a_bang_line_is_not_a_slash_command() {
     type_text(&mut app, "!");
     assert!(app.completion().is_none(), "{:?}", app.completion());
 }
+
+#[test]
+fn ctrl_n_starts_a_fresh_session_and_drops_the_old_view() {
+    let mut app = app();
+    app.transcript.push_notice("an old row");
+    assert_eq!(control(&mut app, 'n'), Some(Command::ClearApprovals));
+    let texts: Vec<&str> = app
+        .transcript
+        .rows()
+        .iter()
+        .map(|row| row.text.as_str())
+        .collect();
+    assert_eq!(texts, ["started a fresh session"]);
+    assert_eq!(app.composer.text(), "", "the chord is not typed");
+}
+
+#[test]
+fn ctrl_r_opens_the_session_browser() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let store =
+        niki_session::SessionStore::open(temp.path().join("sessions.db")).expect("session store");
+    let mut app = app();
+    app.attach_sessions(store);
+    assert_eq!(control(&mut app, 'r'), None);
+    assert!(
+        matches!(app.modal, Some(niki_tui_live::Modal::Threads(_))),
+        "ctrl+r must open the picker"
+    );
+}
+
+#[test]
+fn ctrl_r_without_a_store_says_sessions_are_unavailable() {
+    let mut app = app();
+    assert_eq!(control(&mut app, 'r'), None);
+    let last = app.transcript.rows().last().expect("a notice");
+    assert_eq!(last.text, "no sessions are saved in this build");
+}

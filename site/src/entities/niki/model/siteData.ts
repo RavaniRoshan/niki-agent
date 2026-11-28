@@ -400,7 +400,7 @@ export const LIFECYCLE_STAGES: LifecycleStage[] = [
       { lead: 'Approve', text: 'a tool call with y and reject it with n' },
       { lead: 'Cycle', text: 'Manual → Auto → YOLO approval modes with Shift+Tab' },
       { lead: 'Steer', text: 'a running turn with Alt+Enter; Enter queues the next prompt and the status bar counts it' },
-      { lead: 'Open', text: 'the searchable command palette with Ctrl+Shift+P' },
+      { lead: 'Start', text: 'a fresh session with Ctrl+N; type / for the searchable command palette' },
     ],
     links: [
       { label: 'Live Keymap', detailId: 'keymap' },
@@ -578,7 +578,7 @@ export const BENCHMARK_STORIES: BenchmarkStory[] = [
     beforePct: 62,
     afterPct: 100,
     method:
-      'One table in crates/niki-tui backs ctrl+shift+p, Shift+Tab, y and n approvals, ?, and the scroll keys.',
+      'One table in crates/niki-tui backs Ctrl+N, Shift+Tab, y and n approvals, ?, and the scroll keys.',
     verification:
       'A test parses every advertised chord label back to its action, so a documented key cannot drift from its handler.',
     command: 'cargo test -j 4 -p niki-tui',
@@ -692,7 +692,8 @@ export const FEATURE_DETAILS: Record<string, FeatureDetail> = {
     capabilities: [
       'y / a, s, d / n — allow once, allow for the session, or refuse',
       'Shift+Tab — cycle Manual → Auto → YOLO approval modes',
-      'Ctrl+Shift+P — start a slash command in the composer',
+      'Ctrl+N — start a fresh session; Ctrl+R opens the session browser',
+      '/ — start a slash command in the composer',
       'Ctrl+T — the whole transcript, including rows that scrolled out of view',
       '? opens the help overlay; PageUp and PageDown move through the transcript',
     ],

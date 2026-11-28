@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: adc2340ab245b002785d52afc08af47e9aa80f208e9456a8d39a07dfde8b8a6b
+  source-sha256: 2d6ddf6af38dac84ba6753135d02bd42229e835721f7850af340b271d9a8e154
 -->
 # Changelog
 
@@ -22,8 +22,9 @@ The product is a single Rust binary, distributed as one archive per platform.
   restart. A stored key outranks its environment variable.
 - `web_search` and `web_fetch` are built-in tools. Both ask before the first
   call, like a gated shell command, and `Always` covers the rest of the session.
-- `/new` starts a fresh session, the same reset `/clear` performs under the
-  name people reach for.
+- `/new` and `Ctrl+N` start a fresh session, the same reset `/clear` performs
+  under the name people reach for. `Ctrl+R` opens the session browser without
+  typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
 

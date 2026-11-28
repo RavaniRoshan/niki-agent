@@ -17,8 +17,9 @@ The product is a single Rust binary, distributed as one archive per platform.
   restart. A stored key outranks its environment variable.
 - `web_search` and `web_fetch` are built-in tools. Both ask before the first
   call, like a gated shell command, and `Always` covers the rest of the session.
-- `/new` starts a fresh session, the same reset `/clear` performs under the
-  name people reach for.
+- `/new` and `Ctrl+N` start a fresh session, the same reset `/clear` performs
+  under the name people reach for. `Ctrl+R` opens the session browser without
+  typing `/threads`.
 - The command list matches loosely: prefix, then substring, then letters in
   order, so `/cmpct` reaches `/compact`.
 
