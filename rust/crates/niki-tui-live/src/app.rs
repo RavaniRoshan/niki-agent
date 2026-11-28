@@ -1607,6 +1607,12 @@ impl App {
                 self.list_mcp();
                 None
             }
+            SlashCommand::Copy => self.copy(),
+            SlashCommand::Editor => Some(Command::EditPrompt),
+            SlashCommand::Cost => {
+                self.show_cost();
+                None
+            }
             SlashCommand::Tools => {
                 self.list_tools();
                 None
@@ -1897,6 +1903,26 @@ impl App {
     }
 
     /// `/tools`: every registered tool, MCP ones included, one row each.
+    /// `/cost`: the tokens the provider has reported for this session.
+    ///
+    /// Dollars are deliberately absent: a price table would be stale the day a
+    /// provider changes it, and a wrong number is worse than none. The token
+    /// totals are what every provider reports and what a person can price.
+    fn show_cost(&mut self) {
+        let Some(usage) = self.status.usage else {
+            self.transcript
+                .push_notice("no tokens have been reported yet");
+            return;
+        };
+        self.transcript.push_notice(format!(
+            "tokens: {} in / {} out / {} total over {} steps",
+            format_tokens(usage.input_tokens),
+            format_tokens(usage.output_tokens),
+            format_tokens(usage.total_tokens()),
+            usage.steps
+        ));
+    }
+
     /// `/mcp`: every configured server, its transport and its state.
     fn list_mcp(&mut self) {
         if self.mcp.is_empty() {
@@ -2156,6 +2182,46 @@ mod tests {
         for character in text.chars() {
             stroke(app, KeyCode::Char(character));
         }
+    }
+
+    #[test]
+    fn cost_reports_the_tokens_the_provider_counted() {
+        let mut app = app();
+        app.set_context(
+            ContextReport::default(),
+            SessionUsage {
+                input_tokens: 1200,
+                output_tokens: 345,
+                steps: 3,
+            },
+        );
+        type_text(&mut app, "/cost");
+        assert!(press(&mut app, KeyCode::Enter).is_none());
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(
+            last.text,
+            "tokens: 1,200 in / 345 out / 1,545 total over 3 steps"
+        );
+    }
+
+    #[test]
+    fn cost_before_any_turn_says_nothing_has_been_counted() {
+        let mut app = app();
+        type_text(&mut app, "/cost");
+        assert!(press(&mut app, KeyCode::Enter).is_none());
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(last.text, "no tokens have been reported yet");
+    }
+
+    #[test]
+    fn copy_and_editor_are_the_commands_behind_the_chords() {
+        let mut app = app();
+        type_text(&mut app, "/editor");
+        assert_eq!(press(&mut app, KeyCode::Enter), Some(Command::EditPrompt));
+        type_text(&mut app, "/copy");
+        assert!(press(&mut app, KeyCode::Enter).is_none());
+        let last = app.transcript.rows().last().expect("a notice");
+        assert_eq!(last.text, "no answer to copy yet");
     }
 
     #[test]

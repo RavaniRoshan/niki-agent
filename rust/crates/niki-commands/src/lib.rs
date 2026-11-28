@@ -56,6 +56,12 @@ pub enum SlashCommand {
     Status,
     /// Write an `AGENTS.md` template when the workspace has none.
     Init,
+    /// Copy the newest answer to the clipboard.
+    Copy,
+    /// Compose the prompt in the external editor.
+    Editor,
+    /// Show what the session has spent.
+    Cost,
     /// Show the version line.
     Version,
 }
@@ -99,8 +105,23 @@ pub const COMMANDS: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/copy",
+        summary: "Copy the latest answer to the terminal clipboard",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/cost",
+        summary: "Show the session's token totals",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/diff",
         summary: "Show the working tree's staged, unstaged and untracked changes",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/editor",
+        summary: "Compose the prompt in $EDITOR",
         aliases: &[],
     },
     CommandInfo {
@@ -222,23 +243,8 @@ pub const ROADMAP: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
-        name: "/copy",
-        summary: "Copy the latest answer",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/cost",
-        summary: "Show the token cost of this session",
-        aliases: &[],
-    },
-    CommandInfo {
         name: "/docs",
         summary: "Open the documentation",
-        aliases: &[],
-    },
-    CommandInfo {
-        name: "/editor",
-        summary: "Compose the prompt in $EDITOR",
         aliases: &[],
     },
     CommandInfo {
@@ -353,6 +359,9 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/new" => SlashCommand::New,
         "/compact" => SlashCommand::Compact,
         "/connect" => SlashCommand::Connect,
+        "/copy" => SlashCommand::Copy,
+        "/cost" => SlashCommand::Cost,
+        "/editor" => SlashCommand::Editor,
         "/context" => SlashCommand::Context,
         "/diff" => SlashCommand::Diff(argument),
         "/resume" => SlashCommand::Resume(argument),
@@ -393,8 +402,11 @@ mod tests {
             (SlashCommand::Clear, "/clear"),
             (SlashCommand::Compact, "/compact"),
             (SlashCommand::Connect, "/connect"),
+            (SlashCommand::Copy, "/copy"),
+            (SlashCommand::Cost, "/cost"),
             (SlashCommand::Context, "/context"),
             (SlashCommand::Diff(None), "/diff"),
+            (SlashCommand::Editor, "/editor"),
             (SlashCommand::Export(None), "/export"),
             (SlashCommand::Help, "/help"),
             (SlashCommand::Init, "/init"),
@@ -423,7 +435,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 24);
+        assert_eq!(listed.len(), 27);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);
