@@ -20,6 +20,8 @@ These apply when no dialog is open.
 | `Ctrl+C` | Close an open dialog and stop the running turn. It does not leave the app. |
 | `Ctrl+D` | Leave the app. |
 | `Ctrl+G` | Open the draft in `$VISUAL`, then `$EDITOR`, then `vi` (`notepad` on Windows). What you save replaces the draft. |
+| `Ctrl+N` | Start a fresh session in place: clears the transcript and the queue, and asks for approvals again. |
+| `Ctrl+R` | Open the session browser, the same list `/threads` draws. |
 | `Ctrl+T` | Open the whole conversation in a scrollable overlay: `Up`/`Down`, `PageUp`/`PageDown`, `Home`/`End`, `Esc` closes. |
 | `Ctrl+Y` | Copy the newest answer to the terminal clipboard (OSC 52). `NIKI_NO_CLIPBOARD=1` turns it off. |
 | `Shift+Tab` | Cycle Manual, Auto and YOLO. |
@@ -162,9 +164,8 @@ session with no prompt previews as `(no prompt)`.
 The Session column lists `Ctrl+Shift+P` (`Slash command`). The shipped app does
 not act on that chord; type `/` in the composer instead.
 
-Two more bindings exist in the widget registry but are no longer drawn in the
-map, and neither does anything in this build: `Ctrl+O` (tool output) and
-`Ctrl+N` (notifications).
+One binding remains in the widget registry but is no longer drawn in the map,
+and it does nothing in this build: `Ctrl+O` (tool output).
 
 ## Connect a provider
 

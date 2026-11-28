@@ -61,7 +61,8 @@ pub const GROUPS: [ShortcutGroup; 3] = [
         title: "Session",
         entries: &[
             ("shift+tab", "Cycle mode"),
-            ("ctrl+shift+p", "Slash command"),
+            ("ctrl+n", "New session"),
+            ("ctrl+r", "Sessions"),
             ("?", "This list"),
             ("ctrl+c", "Stop, then quit"),
             ("ctrl+d", "Quit"),

@@ -67,10 +67,10 @@ const KEYMAP_BINDINGS = [
     output: 'Approval mode: manual → auto',
   },
   {
-    key: 'ctrl+shift+p',
-    short: 'Palette',
-    handler: 'command_palette',
-    output: 'Slash command started in the composer',
+    key: 'ctrl+n',
+    short: 'New',
+    handler: 'new_session',
+    output: 'Fresh session · transcript cleared, approvals asked again',
   },
 ];
 
@@ -216,7 +216,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
     } else if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       handleSelectKeycap(2, 'keyboard');
-    } else if (e.ctrlKey && e.shiftKey && key === 'p') {
+    } else if (e.ctrlKey && !e.shiftKey && key === 'n') {
       e.preventDefault();
       handleSelectKeycap(3, 'keyboard');
     }
@@ -615,7 +615,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                 Keyboard-native bindings with zero dead shortcuts
               </h3>
               <p className="mt-2 font-normal text-[16px] leading-[1.55] text-muted-foreground">
-                The help overlay and handlers share one binding table checked by cargo test. Focus the preview and press y, n, shift+tab, or ctrl+shift+p.
+                The help overlay and handlers share one binding table checked by cargo test. Focus the preview and press y, n, shift+tab, or ctrl+n.
               </p>
             </div>
             <button
@@ -631,7 +631,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
           <div
             tabIndex={0}
             onKeyDown={handleKeymapKeyDown}
-            aria-label="Interactive keymap terminal preview. Press y, n, Shift+Tab, or Control+Shift+P to test bindings."
+            aria-label="Interactive keymap terminal preview. Press y, n, Shift+Tab, or Control+N to test bindings."
             data-testid="bento-keymap-stage"
             data-active-key={currentKey.key}
             className={`${CARD.stageFrame} h-[260px] sm:h-[272px] border-t font-tech focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
@@ -657,7 +657,7 @@ export function FeatureBentoSection({ onSelectDetail }: FeatureBentoSectionProps
                     <span className="text-[#9ec8f8] mr-1.5">$</span>cargo test -j 4 -p niki-tui
                   </div>
                   <div className="truncate text-[#c5d6ea]">
-                    <span className="text-[#9ec8f8] mr-1.5">✓</span>every advertised chord parses back to its action · press y, n, shift+tab, ctrl+shift+p
+                    <span className="text-[#9ec8f8] mr-1.5">✓</span>every advertised chord parses back to its action · press y, n, shift+tab, ctrl+n
                   </div>
                 </div>
               </div>

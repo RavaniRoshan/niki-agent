@@ -676,6 +676,11 @@ impl App {
                 self.open_transcript();
                 None
             }
+            KeyCode::Char('n') if control => self.clear_session("/new"),
+            KeyCode::Char('r') if control => {
+                self.open_threads();
+                None
+            }
             KeyCode::Char('?') if self.composer.is_empty() => {
                 self.open_help();
                 None
