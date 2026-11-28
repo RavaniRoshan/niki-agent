@@ -113,7 +113,14 @@ offers one answer, so there is no multi-select. A question whose arguments set
 
 ## Help overlay
 
-Opened with `?` on an empty composer, or with `/help`.
+Opened with `?` on an empty composer, or with `/help`. The top of the box is a
+key map in three columns -- Compose, Session and Transcript -- followed by the
+slash commands with a one-line summary each.
+
+The map folds to two columns when three stop fitting, and to one column in a
+narrow terminal, so whole chords stay readable down to a phone over ssh. The
+closing hint is pinned to the last row of the box, so it stays visible when the
+body scrolls past the bottom of the terminal.
 
 | Key | What it does |
 | --- | --- |
@@ -152,14 +159,12 @@ session with no prompt previews as `(no prompt)`.
 
 ## Keys the help overlay lists that do nothing
 
-The overlay is drawn from a registry that still carries three bindings the app
-does not act on. They are not shortcuts in this build:
+The Session column lists `Ctrl+Shift+P` (`Slash command`). The shipped app does
+not act on that chord; type `/` in the composer instead.
 
-- `Ctrl+Shift+P` (it would start a slash command)
-- `Ctrl+O` (tool output)
-- `Ctrl+N` (notifications)
-
-Those actions are unbuilt; the overlay marks them as such.
+Two more bindings exist in the widget registry but are no longer drawn in the
+map, and neither does anything in this build: `Ctrl+O` (tool output) and
+`Ctrl+N` (notifications).
 
 ## Slash commands
 
