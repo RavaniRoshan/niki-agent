@@ -216,6 +216,112 @@ pub fn format_tokens(count: u64) -> String {
     formatted
 }
 
+/// A token count in the shortest form a closing line can carry.
+///
+/// `480`, `1.2k`, `2k`, `28k`, `1.3M` — one decimal, rounded to the nearest
+/// tenth, and a trailing `.0` dropped.
+#[must_use]
+pub fn format_compact_tokens(count: u64) -> String {
+    if count < 1_000 {
+        return count.to_string();
+    }
+    let (unit, scale) = if count < 1_000_000 {
+        ("k", 100)
+    } else {
+        ("M", 100_000)
+    };
+    let tenths = (count + scale / 2) / scale;
+    if tenths % 10 == 0 {
+        format!("{}{unit}", tenths / 10)
+    } else {
+        format!("{}.{}{unit}", tenths / 10, tenths % 10)
+    }
+}
+
+/// How a turn ended, in the words its closing line uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnResult {
+    /// The turn ended on its own terms.
+    Done,
+    /// The person stopped it; what it produced is kept.
+    Stopped,
+    /// The turn ended on a provider or tool failure.
+    Failed,
+}
+
+/// What one finished turn did, ready to be written as one line.
+///
+/// Every field except `result` may be unknown, and an unknown field is left out
+/// rather than printed as a zero: a provider that reports no tokens has not
+/// spent none, and a turn whose clock never ran has no duration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TurnSummary {
+    /// How the turn ended.
+    pub result: TurnResult,
+    /// Wall time from the first event to the last, when the clock was running.
+    pub elapsed: Option<Duration>,
+    /// Completion tokens the provider reported for the turn.
+    pub output_tokens: u64,
+    /// Files a successful tool call wrote or edited.
+    pub files: usize,
+    /// Tool calls the run made.
+    pub tool_calls: usize,
+    /// The provider's message, for a failed turn.
+    pub failure: Option<String>,
+}
+
+impl TurnSummary {
+    /// The closing line, fields joined by `separator`.
+    #[must_use]
+    pub fn line(&self, separator: &str) -> String {
+        let mut parts = vec![match self.result {
+            TurnResult::Done => "done".to_owned(),
+            TurnResult::Stopped => "stopped".to_owned(),
+            TurnResult::Failed => "failed".to_owned(),
+        }];
+        if let Some(elapsed) = self.elapsed {
+            parts.push(format_elapsed(elapsed));
+        }
+        if self.output_tokens > 0 {
+            parts.push(format!("{} out", format_compact_tokens(self.output_tokens)));
+        }
+        if self.files > 0 {
+            parts.push(count_of(self.files, "file changed", "files changed"));
+        }
+        if self.tool_calls > 0 {
+            parts.push(count_of(self.tool_calls, "tool call", "tool calls"));
+        }
+        if self.result == TurnResult::Failed {
+            if let Some(failure) = &self.failure {
+                let failure = clip_line(failure, 120);
+                if !failure.is_empty() {
+                    parts.push(failure);
+                }
+            }
+            parts.push("send a new prompt to continue".to_owned());
+        }
+        parts.join(separator)
+    }
+}
+
+fn count_of(count: usize, one: &str, many: &str) -> String {
+    if count == 1 {
+        format!("1 {one}")
+    } else {
+        format!("{count} {many}")
+    }
+}
+
+/// The first line of a message, shortened to `limit` characters.
+fn clip_line(text: &str, limit: usize) -> String {
+    let line = text.lines().next().unwrap_or("").trim();
+    if line.chars().count() > limit {
+        format!("{}…", line.chars().take(limit).collect::<String>())
+    } else {
+        line.to_owned()
+    }
+}
+
 /// One line describing what `/context` prints.
 #[must_use]
 pub fn describe_context(report: ContextReport, usage: SessionUsage) -> String {
@@ -431,5 +537,102 @@ mod tests {
         assert!(TurnState::Waiting.is_busy());
         assert!(!TurnState::Idle.is_busy());
         assert!(!TurnState::Cancelled.is_busy());
+    }
+
+    #[test]
+    fn compact_tokens_round_to_one_decimal() {
+        assert_eq!(format_compact_tokens(0), "0");
+        assert_eq!(format_compact_tokens(480), "480");
+        assert_eq!(format_compact_tokens(1_234), "1.2k");
+        assert_eq!(format_compact_tokens(2_000), "2k");
+        assert_eq!(format_compact_tokens(28_000), "28k");
+        assert_eq!(format_compact_tokens(1_250_000), "1.3M");
+    }
+
+    fn ended() -> TurnSummary {
+        TurnSummary {
+            result: TurnResult::Done,
+            elapsed: Some(Duration::from_secs(14)),
+            output_tokens: 2_800,
+            files: 1,
+            tool_calls: 3,
+            failure: None,
+        }
+    }
+
+    #[test]
+    fn a_done_summary_names_the_time_the_tokens_and_what_changed() {
+        assert_eq!(
+            ended().line(" · "),
+            "done · 14s · 2.8k out · 1 file changed · 3 tool calls"
+        );
+        assert_eq!(
+            ended().line(" | "),
+            "done | 14s | 2.8k out | 1 file changed | 3 tool calls"
+        );
+    }
+
+    #[test]
+    fn a_stopped_summary_says_stopped_and_keeps_the_tallies() {
+        let summary = TurnSummary {
+            result: TurnResult::Stopped,
+            output_tokens: 1_200,
+            ..ended()
+        };
+        assert_eq!(
+            summary.line(" · "),
+            "stopped · 14s · 1.2k out · 1 file changed · 3 tool calls"
+        );
+    }
+
+    #[test]
+    fn a_failed_summary_names_the_failure_and_the_next_step() {
+        let summary = TurnSummary {
+            result: TurnResult::Failed,
+            output_tokens: 0,
+            files: 0,
+            tool_calls: 0,
+            failure: Some("provider mock failed: 503".to_owned()),
+            ..ended()
+        };
+        assert_eq!(
+            summary.line(" · "),
+            "failed · 14s · provider mock failed: 503 · send a new prompt to continue"
+        );
+    }
+
+    #[test]
+    fn a_summary_omits_what_it_does_not_know() {
+        let summary = TurnSummary {
+            elapsed: None,
+            output_tokens: 0,
+            files: 0,
+            tool_calls: 0,
+            ..ended()
+        };
+        assert_eq!(summary.line(" · "), "done", "no clock, no tokens, no tallies");
+
+        let plural = TurnSummary {
+            files: 2,
+            tool_calls: 1,
+            ..summary
+        };
+        assert_eq!(plural.line(" · "), "done · 2 files changed · 1 tool call");
+    }
+
+    #[test]
+    fn a_failure_message_keeps_to_one_line() {
+        let summary = TurnSummary {
+            result: TurnResult::Failed,
+            output_tokens: 0,
+            files: 0,
+            tool_calls: 0,
+            failure: Some("the stream broke\nafter one chunk".to_owned()),
+            ..ended()
+        };
+        assert_eq!(
+            summary.line(" · "),
+            "failed · 14s · the stream broke · send a new prompt to continue"
+        );
     }
 }
