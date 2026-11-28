@@ -1033,6 +1033,7 @@ version = "2.2.0"
 dependencies = [
  "globset",
  "regex",
+ "reqwest",
  "serde_json",
  "tempfile",
  "thiserror",

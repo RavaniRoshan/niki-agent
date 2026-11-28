@@ -76,11 +76,11 @@ impl Provider for Silent {
 #[test]
 fn the_tool_array_costs_each_declared_schema_and_counts_every_tool() {
     let baseline = audit_context("", &[], &Registry::new());
-    assert_eq!(baseline.tool_count, 8, "eight built-in tools");
+    assert_eq!(baseline.tool_count, 10, "ten built-in tools");
 
     let audit = audit_context("", &[], &registry_with_stubs());
 
-    assert_eq!(audit.tool_count, 10);
+    assert_eq!(audit.tool_count, 12);
     assert_eq!(
         audit.tool_schema_tokens,
         baseline.tool_schema_tokens + stub_tokens(),
@@ -151,7 +151,7 @@ fn the_agent_audits_the_registry_it_dispatches_through() {
     .with_registry(registry);
 
     assert_eq!(agent.context_audit(), expected);
-    assert_eq!(agent.context_audit().tool_count, 10);
+    assert_eq!(agent.context_audit().tool_count, 12);
     assert_eq!(agent.context_audit().system_tokens, 2);
     assert_eq!(agent.context_audit().message_tokens, 0);
 }

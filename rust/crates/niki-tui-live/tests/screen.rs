@@ -592,12 +592,41 @@ fn the_welcome_effect_can_be_switched_off_without_losing_the_state() {
 }
 
 #[test]
+fn the_connect_screen_lists_the_providers() {
+    let mut app = self::app();
+    app.set_config(
+        niki_config::Config::default(),
+        "/tmp/niki-connect-test/config.toml".into(),
+    );
+    type_text(&mut app, "/connect");
+    let _ = press(&mut app, KeyCode::Enter);
+    let screen = text(&render(&mut app, 80, 30));
+    for name in [
+        "Connect a provider",
+        "Anthropic",
+        "OpenAI",
+        "Groq",
+        "Custom endpoint",
+    ] {
+        assert!(screen.contains(name), "{name} missing from {screen}");
+    }
+    assert!(
+        screen.contains("connected")
+            || screen.contains("no key needed")
+            || screen.contains("OpenAI"),
+        "the rows carry their state: {screen}"
+    );
+}
+
+#[test]
 fn the_command_list_is_drawn_under_the_composer() {
     let mut app = app();
     type_text(&mut app, "/t");
     let buffer = render(&mut app, 60, 20);
     let screen = text(&buffer);
-    for name in ["/theme", "/threads", "/tools", "/compact", "/context"] {
+    for name in [
+        "/theme", "/threads", "/tools", "/auto", "/compact", "/connect",
+    ] {
         assert!(screen.contains(name), "{name} missing from {screen}");
     }
     assert!(

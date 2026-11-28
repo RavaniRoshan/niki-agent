@@ -16,14 +16,15 @@ use niki_agent::{
     StopReason, Usage,
 };
 use niki_commands::SlashCommand;
+use niki_config::{Config, Protocol};
 use niki_policy::{AllowList, Decision, Mode, ProgramAllow, decide};
 use niki_render::{DiffTheme, Glyphs};
 use niki_session::{SessionId, SessionStore, Summary};
 use niki_skills::SkillCatalog;
 use niki_tools::AskRequest;
 use niki_tui_modals::{
-    ApprovalModal, HelpOverlay, Modal, ModelPicker, Outcome, QuestionModal, QuestionReply,
-    StatusCard, StatusField, ThreadEntry, ThreadPicker,
+    ApprovalModal, ConnectModal, ConnectRequest, HelpOverlay, Modal, ModelPicker, Outcome,
+    QuestionModal, QuestionReply, StatusCard, StatusField, ThreadEntry, ThreadPicker,
 };
 use niki_tui_themes::{Effects, GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -124,6 +125,10 @@ pub struct App {
     pub transcript_overlay: Option<TranscriptOverlay>,
     /// The models the configuration offers, for `/model`.
     pub models: ModelPicker,
+    /// The configuration the session started from, for `/connect`.
+    config: Option<Config>,
+    /// The file it came from, when the host named one.
+    config_path: Option<PathBuf>,
     /// The skills discovery found for this session, shown by `/skills`.
     skills: SkillCatalog,
     /// Recomposes the system prompt after `/init` writes a file.
@@ -186,6 +191,8 @@ impl App {
             modal: None,
             transcript_overlay: None,
             models: ModelPicker::default(),
+            config: None,
+            config_path: None,
             skills: SkillCatalog::default(),
             refresh_system: None,
             page: 10,
@@ -218,6 +225,14 @@ impl App {
     /// Offer these models to the model picker.
     pub fn set_models(&mut self, models: ModelPicker) {
         self.models = models;
+    }
+
+    /// Remember the configuration and the file it came from, which `/connect`
+    /// reads and writes.
+    pub fn set_config(&mut self, config: Config, path: PathBuf) {
+        self.models = ModelPicker::from_config(&config);
+        self.config = Some(config);
+        self.config_path = Some(path);
     }
 
     /// Offer the skills discovery found, which `/skills` prints.
@@ -900,6 +915,10 @@ impl App {
                 self.modal = None;
                 Some(Command::SelectModel(spec))
             }
+            Outcome::Connected(request) => {
+                self.modal = None;
+                self.apply_connect(request)
+            }
             Outcome::Session(id) => {
                 self.modal = None;
                 self.resume(Some(&id));
@@ -1073,6 +1092,32 @@ impl App {
         Some(Command::Rewind)
     }
 
+    /// Run the command the open list highlights when the draft is still a
+    /// fragment of it.
+    ///
+    /// Typing `/con` and pressing Enter runs `/connect`: the list already says
+    /// which command the fragment means, so asking for a second keystroke would
+    /// be bookkeeping. A draft with an argument is sent as typed, and an exact
+    /// name is left alone.
+    fn adopt_completion(&mut self, text: &str) -> String {
+        if text.chars().any(char::is_whitespace) {
+            return text.to_owned();
+        }
+        let Some(selected) = self
+            .completion
+            .as_ref()
+            .map(|completion| completion.selected().name)
+        else {
+            return text.to_owned();
+        };
+        if selected == text {
+            return text.to_owned();
+        }
+        self.set_draft(selected);
+        self.completion = None;
+        selected.to_owned()
+    }
+
     fn submit(&mut self) -> Option<Command> {
         let text = self.composer.text().trim().to_owned();
         if text.is_empty() {
@@ -1083,6 +1128,7 @@ impl App {
         }
         if text.starts_with('/') {
             self.history.reset();
+            let text = self.adopt_completion(&text);
             return self.slash(&text);
         }
         if self.status.turn.is_busy() {
@@ -1375,7 +1421,19 @@ impl App {
                     .as_ref()
                     .map(|refresh| Command::RefreshSystem(refresh()))
             }
-            SlashCommand::Clear => self.clear_session(),
+            SlashCommand::Clear => self.clear_session("/clear"),
+            SlashCommand::New => self.clear_session("/new"),
+            SlashCommand::Connect => {
+                match &self.config {
+                    Some(config) => {
+                        self.modal = Some(Modal::Connect(ConnectModal::new(config)));
+                    }
+                    None => self.transcript.push_notice(
+                        "connect needs a configuration file; start niki with --config",
+                    ),
+                }
+                None
+            }
             SlashCommand::Compact => {
                 if self.refuse_while_busy("/compact") {
                     return None;
@@ -1455,8 +1513,75 @@ impl App {
     }
 
     /// `/clear`: empty the view and start a session of its own.
-    fn clear_session(&mut self) -> Option<Command> {
-        if self.refuse_while_busy("/clear") {
+    /// Store the provider's credential and default model, then switch to it.
+    ///
+    /// The key goes to `credentials.toml` beside the configuration; everything
+    /// else is a line edit of `config.toml` itself. Both land before the screen
+    /// reports success, so a failed write leaves the session unchanged.
+    fn apply_connect(&mut self, request: ConnectRequest) -> Option<Command> {
+        let (Some(config), Some(path)) = (&self.config, &self.config_path) else {
+            self.transcript
+                .push_error("connect needs a configuration file; start niki with --config");
+            return None;
+        };
+        let name = if request.name == "custom" {
+            unique_connect_name(config)
+        } else {
+            request.name.clone()
+        };
+
+        if let Some(key) = &request.key {
+            let keys = niki_config::credentials::path_for(path);
+            if let Err(error) = niki_config::credentials::set(&keys, &name, key) {
+                self.transcript
+                    .push_error(format!("could not store the key: {error}"));
+                return None;
+            }
+        }
+
+        let mut text = std::fs::read_to_string(path).unwrap_or_default();
+        if let Some(base) = &request.base_url {
+            let protocol = match request.protocol {
+                Protocol::Anthropic => "anthropic",
+                Protocol::OpenAi => "openai",
+            };
+            text = niki_config::edit::set_provider(&text, &name, base, protocol, request.keyless);
+        }
+        let spec = format!("{name}:{}", request.model);
+        text = niki_config::edit::set_default_model(&text, &spec);
+
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                if let Err(error) = std::fs::create_dir_all(parent) {
+                    self.transcript
+                        .push_error(format!("could not create {}: {error}", parent.display()));
+                    return None;
+                }
+            }
+        }
+        if let Err(error) = std::fs::write(path, &text) {
+            self.transcript
+                .push_error(format!("could not write {}: {error}", path.display()));
+            return None;
+        }
+
+        match Config::load(path) {
+            Ok(reloaded) => {
+                self.models = ModelPicker::from_config(&reloaded);
+                self.config = Some(reloaded);
+            }
+            Err(error) => self.transcript.push_error(format!(
+                "the configuration was written but does not read back: {error}"
+            )),
+        }
+        self.status.model.clone_from(&spec);
+        self.transcript
+            .push_notice(format!("connected {name}; the default model is {spec}"));
+        Some(Command::SelectModel(spec))
+    }
+
+    fn clear_session(&mut self, name: &str) -> Option<Command> {
+        if self.refuse_while_busy(name) {
             return None;
         }
         self.transcript.clear();
@@ -1838,6 +1963,20 @@ fn add_usage(total: &mut Usage, usage: Usage) {
 
 fn is_cancelled(stop: &StopReason) -> bool {
     matches!(stop, StopReason::Other(reason) if reason == "cancelled")
+}
+
+/// A name for a custom provider that no table already uses.
+fn unique_connect_name(config: &Config) -> String {
+    if !config.providers.contains_key("custom") {
+        return "custom".to_owned();
+    }
+    for suffix in 2..1000 {
+        let candidate = format!("custom{suffix}");
+        if !config.providers.contains_key(&candidate) {
+            return candidate;
+        }
+    }
+    "custom".to_owned()
 }
 
 fn clipboard_disabled() -> bool {

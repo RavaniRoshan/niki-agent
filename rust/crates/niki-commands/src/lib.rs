@@ -26,8 +26,12 @@ pub enum SlashCommand {
     Model(Option<String>),
     /// Empty the transcript view and start a new session.
     Clear,
+    /// Start a new session, which is what `/clear` has always meant.
+    New,
     /// Fold older transcript rows out of the view, keeping the session store.
     Compact,
+    /// Add a provider and store its key and model.
+    Connect,
     /// Show the conversation's size and what the session has spent.
     Context,
     /// Show the working tree's staged, unstaged and untracked changes.
@@ -81,6 +85,11 @@ pub const COMMANDS: &[CommandInfo] = &[
         aliases: &[],
     },
     CommandInfo {
+        name: "/connect",
+        summary: "Add a provider: pick one, store its key and choose a model",
+        aliases: &[],
+    },
+    CommandInfo {
         name: "/context",
         summary: "Show the conversation's size and the session's token total",
         aliases: &[],
@@ -113,6 +122,11 @@ pub const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "/model",
         summary: "Choose a model, or name one with /model provider:model",
+        aliases: &[],
+    },
+    CommandInfo {
+        name: "/new",
+        summary: "Start a fresh session",
         aliases: &[],
     },
     CommandInfo {
@@ -326,7 +340,9 @@ pub fn parse(text: &str) -> Result<SlashCommand, UnknownCommand> {
         "/theme" => SlashCommand::Theme(argument),
         "/model" => SlashCommand::Model(argument),
         "/clear" => SlashCommand::Clear,
+        "/new" => SlashCommand::New,
         "/compact" => SlashCommand::Compact,
+        "/connect" => SlashCommand::Connect,
         "/context" => SlashCommand::Context,
         "/diff" => SlashCommand::Diff(argument),
         "/resume" => SlashCommand::Resume(argument),
@@ -365,6 +381,7 @@ mod tests {
             (SlashCommand::Mode(Mode::Auto), "/auto"),
             (SlashCommand::Clear, "/clear"),
             (SlashCommand::Compact, "/compact"),
+            (SlashCommand::Connect, "/connect"),
             (SlashCommand::Context, "/context"),
             (SlashCommand::Diff(None), "/diff"),
             (SlashCommand::Export(None), "/export"),
@@ -372,6 +389,7 @@ mod tests {
             (SlashCommand::Init, "/init"),
             (SlashCommand::Mode(Mode::Manual), "/manual"),
             (SlashCommand::Model(None), "/model"),
+            (SlashCommand::New, "/new"),
             (SlashCommand::Quit, "/quit"),
             (SlashCommand::Rename(None), "/rename"),
             (SlashCommand::Resume(None), "/resume"),
@@ -392,7 +410,7 @@ mod tests {
     #[test]
     fn the_command_list_and_the_parser_agree() {
         let listed: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(listed.len(), 20);
+        assert_eq!(listed.len(), 22);
         for (index, info) in COMMANDS.iter().enumerate() {
             assert!(parse(info.name).is_ok(), "{} does not parse", info.name);
             assert!(!info.summary.is_empty(), "{} has no summary", info.name);

@@ -166,15 +166,38 @@ Two more bindings exist in the widget registry but are no longer drawn in the
 map, and neither does anything in this build: `Ctrl+O` (tool output) and
 `Ctrl+N` (notifications).
 
+## Connect a provider
+
+Opened with `/connect`. The list holds every provider the product ships, then
+`Custom endpoint` for anything OpenAI-compatible the list does not name.
+
+| Key | What it does |
+| --- | --- |
+| `Up`, `k` | Move the highlight up. |
+| `Down`, `j` | Move the highlight down. |
+| `Home` / `End` | Jump to the first or last row. |
+| `Enter` | Take the highlighted row and move to the next step. |
+| `Esc` | Step back one stage; on the list, close. |
+
+The walk is endpoint (custom rows only), key, model. A shipped provider that
+needs no credential skips the key step. On the key step `Enter` with an empty
+field means "use the environment variable"; on a custom endpoint it means the
+endpoint is keyless. The key is written to `credentials.toml` beside the
+configuration with owner-only permissions, and never to `config.toml`. The
+model becomes `[models].default` and the session switches to it immediately.
+
 ## Slash commands
 
-Type these in the composer. `/help` lists the same set.
+Type these in the composer. `/help` lists the same set. The list under the
+composer matches loosely: a prefix first, then a name that contains the letters,
+then a name whose letters appear in order, so `/cmpct` reaches `/compact`.
 
 | Command | What it does |
 | --- | --- |
 | `/auto` | Switch to Auto approval mode without restarting. |
 | `/clear` | Start a fresh session and empty the view. |
 | `/compact` | Fold older rows out of the view; the session store keeps them. |
+| `/connect` | Add a provider: pick one, paste its key, name a model. The key lands in `credentials.toml`, the model in `config.toml`. |
 | `/context` | Show the conversation's size and the session's token total. |
 | `/diff` | Show the working tree's staged, unstaged and untracked changes; `/diff staged`, `/diff unstaged`, `/diff untracked` narrow it. |
 | `/export` | Write the session to `niki-<id>.md` in the workspace, or to a path you give. |
@@ -182,6 +205,7 @@ Type these in the composer. `/help` lists the same set.
 | `/init` | Write a starter `AGENTS.md` when the workspace has none. |
 | `/manual` | Switch to Manual approval mode without restarting. |
 | `/model` | Choose a model, or name one with `/model provider:model`. |
+| `/new` | Start a fresh session; the same reset `/clear` performs, under the name people reach for. |
 | `/quit` | Leave the app. `/exit` is an alias. |
 | `/rename` | Name the current session; with no argument, report the current name. |
 | `/resume` | List saved sessions, or resume one by id or one-based index. |

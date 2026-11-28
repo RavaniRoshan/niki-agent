@@ -267,6 +267,117 @@ pub(crate) fn models(
     render(frame, area, "Model", lines, palette, glyphs, height);
 }
 
+pub(crate) fn connect(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &crate::connect::ConnectModal,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
+    use crate::connect::Stage;
+
+    let width = usize::from(area.width.min(MAX_WIDTH).saturating_sub(2));
+    let mut lines: Vec<Line> = Vec::new();
+    match modal.stage() {
+        Stage::Choose => {
+            for (index, entry) in modal.entries().iter().enumerate() {
+                let chosen = index == modal.selected();
+                let (lead, style) = if chosen {
+                    ("> ", palette.accent_style())
+                } else {
+                    ("  ", palette.body_style())
+                };
+                let state = if entry.connected {
+                    "connected"
+                } else if entry.keyless {
+                    "no key needed"
+                } else {
+                    ""
+                };
+                lines.push(Line::from(vec![
+                    Span::styled(format!("{lead}{}", entry.label), style),
+                    Span::styled(format!("  {state}"), palette.muted_style()),
+                ]));
+            }
+            lines.push(Line::default());
+            lines.push(Line::from(Span::styled(
+                "enter choose | up and down move | escape cancel".to_owned(),
+                palette.muted_style(),
+            )));
+        }
+        stage => {
+            let entry = modal.highlighted();
+            let (heading, prompt): (String, String) = match stage {
+                Stage::BaseUrl => (
+                    "Endpoint".to_owned(),
+                    "the base URL, for example https://example.test/v1".to_owned(),
+                ),
+                Stage::Key => {
+                    let hint = entry
+                        .and_then(|entry| entry.key_var.as_deref())
+                        .map(|var| format!("paste the key, or press enter to use {var}"))
+                        .unwrap_or_else(|| "paste the key".to_owned());
+                    ("API key".to_owned(), hint)
+                }
+                Stage::Model => (
+                    "Model".to_owned(),
+                    "the model id this provider exposes".to_owned(),
+                ),
+                Stage::Choose => unreachable!("handled above"),
+            };
+            if let Some(entry) = entry {
+                lines.push(Line::from(Span::styled(
+                    format!("{} ({})", entry.label, entry.base_url),
+                    palette.body_style(),
+                )));
+                lines.push(Line::default());
+            }
+            lines.push(Line::from(Span::styled(heading, palette.muted_style())));
+            let draft = modal.draft();
+            let shown = if stage == Stage::Key && !draft.is_empty() {
+                "*".repeat(draft.chars().count())
+            } else {
+                draft.to_owned()
+            };
+            let (text, style) = if shown.is_empty() {
+                (
+                    if stage == Stage::Model {
+                        format!("  {}", modal.placeholder())
+                    } else {
+                        format!("  {prompt}")
+                    },
+                    palette.muted_style(),
+                )
+            } else {
+                (format!("  {shown}"), palette.accent_style())
+            };
+            lines.push(Line::from(Span::styled(ellipsize(&text, width), style)));
+            if let Some(error) = modal.error() {
+                lines.push(Line::default());
+                lines.push(Line::from(Span::styled(
+                    ellipsize(error, width),
+                    palette.error_style(),
+                )));
+            }
+            lines.push(Line::default());
+            lines.push(Line::from(Span::styled(
+                "enter continue | escape back".to_owned(),
+                palette.muted_style(),
+            )));
+        }
+    }
+    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
+    render(
+        frame,
+        area,
+        "Connect a provider",
+        lines,
+        palette,
+        glyphs,
+        height,
+    );
+}
+
 pub(crate) fn threads(
     frame: &mut Frame,
     area: Rect,

@@ -433,8 +433,8 @@ fn json_output_prints_one_object_with_the_answer_and_usage() {
     assert!(part("messages") > 0, "{stdout}");
     assert_eq!(
         part("tools"),
-        9,
-        "the eight built-in tools and the task tool"
+        11,
+        "the ten built-in tools and the task tool"
     );
     assert_eq!(
         part("total"),

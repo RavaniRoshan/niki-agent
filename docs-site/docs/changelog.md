@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: fc0b7c6d91ac849db05649dd5dcdaa26e92cfc5bd33247ceab1d81c079ad0609
+  source-sha256: adc2340ab245b002785d52afc08af47e9aa80f208e9456a8d39a07dfde8b8a6b
 -->
 # Changelog
 
@@ -14,6 +14,18 @@ The product is a single Rust binary, distributed as one archive per platform.
 ## [Unreleased]
 
 ### Added
+
+- `/connect` opens a provider catalog in the app: pick a shipped provider or a
+  custom endpoint, paste a key, name a model. The key is written to
+  `credentials.toml` beside the configuration with owner-only permissions, the
+  model becomes `[models].default`, and the session switches over without a
+  restart. A stored key outranks its environment variable.
+- `web_search` and `web_fetch` are built-in tools. Both ask before the first
+  call, like a gated shell command, and `Always` covers the rest of the session.
+- `/new` starts a fresh session, the same reset `/clear` performs under the
+  name people reach for.
+- The command list matches loosely: prefix, then substring, then letters in
+  order, so `/cmpct` reaches `/compact`.
 
 - A second footer line: key hints before the first turn, then context and token
   accounting once a turn has started. The state line no longer carries counts,

@@ -381,6 +381,8 @@ async fn registry_specs_cover_every_tool() {
             "read_file",
             "request_user_input",
             "shell",
+            "web_fetch",
+            "web_search",
             "write_file"
         ]
     );

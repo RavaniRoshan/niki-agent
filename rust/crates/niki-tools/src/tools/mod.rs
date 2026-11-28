@@ -5,6 +5,7 @@ mod list_dir;
 mod read_file;
 mod request_user_input;
 mod shell;
+mod web;
 mod write_file;
 
 pub use edit_file::EditFile;
@@ -14,4 +15,5 @@ pub use list_dir::ListDir;
 pub use read_file::ReadFile;
 pub use request_user_input::RequestUserInput;
 pub use shell::Shell;
+pub use web::{WebFetch, WebSearch};
 pub use write_file::WriteFile;

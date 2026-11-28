@@ -22,6 +22,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         "title": "Added",
         "items": [
+          "`/connect` opens a provider catalog in the app: pick a shipped provider or a custom endpoint, paste a key, name a model. The key is written to `credentials.toml` beside the configuration with owner-only permissions, the model becomes `[models].default`, and the session switches over without a restart. A stored key outranks its environment variable.",
+          "`web_search` and `web_fetch` are built-in tools. Both ask before the first call, like a gated shell command, and `Always` covers the rest of the session.",
+          "`/new` starts a fresh session, the same reset `/clear` performs under the name people reach for.",
+          "The command list matches loosely: prefix, then substring, then letters in order, so `/cmpct` reaches `/compact`.",
           "A second footer line: key hints before the first turn, then context and token accounting once a turn has started. The state line no longer carries counts, so a long session cannot push the working directory off the screen.",
           "A terminal window title, `project — state`, with a marker that blinks while a turn waits for an answer. It is cleared when the app leaves.",
           "`[ui].motion` and the named switches `[ui].welcome`, `.progress`, `.shimmer` and `.title`, so animation is a setting rather than a mood.",
