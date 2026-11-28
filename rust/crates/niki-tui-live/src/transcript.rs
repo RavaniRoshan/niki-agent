@@ -17,6 +17,10 @@ pub enum RowKind {
     Notice,
     /// A file's diff, drawn line for line instead of wrapped.
     Diff,
+    /// The line that closes a turn: how it ended and what it cost.
+    Summary,
+    /// The same line for a turn that failed, painted in the error tone.
+    SummaryFailed,
 }
 
 /// One entry in the transcript.
@@ -140,9 +144,23 @@ impl Transcript {
 
     /// Record a note from the app.
     pub fn push_notice(&mut self, text: impl Into<String>) {
+        self.push_closing(RowKind::Notice, text);
+    }
+
+    /// Record the line that closes a turn.
+    pub fn push_summary(&mut self, text: impl Into<String>) {
+        self.push_closing(RowKind::Summary, text);
+    }
+
+    /// Record the closing line of a failed turn.
+    pub fn push_failed_summary(&mut self, text: impl Into<String>) {
+        self.push_closing(RowKind::SummaryFailed, text);
+    }
+
+    fn push_closing(&mut self, kind: RowKind, text: impl Into<String>) {
         self.streaming = false;
         self.rows.push(Row {
-            kind: RowKind::Notice,
+            kind,
             title: None,
             text: text.into(),
             rendered: None,
@@ -365,6 +383,32 @@ mod tests {
         assert!(!transcript.is_streaming());
         transcript.push_assistant("new");
         assert_eq!(transcript.rows().len(), 1, "a new answer starts a row");
+    }
+
+    #[test]
+    fn a_summary_row_closes_the_stream_and_is_not_a_notice() {
+        let mut transcript = Transcript::default();
+        transcript.push_assistant("half");
+        transcript.push_summary("done · 14s");
+        assert!(!transcript.is_streaming());
+        assert_eq!(
+            transcript.rows().last().map(|row| row.kind),
+            Some(RowKind::Summary)
+        );
+        assert!(
+            transcript.has_conversation(),
+            "a summary is the app closing a turn, not furniture"
+        );
+    }
+
+    #[test]
+    fn a_failed_summary_is_its_own_kind() {
+        let mut transcript = Transcript::default();
+        transcript.push_failed_summary("failed · 12s");
+        assert_eq!(
+            transcript.rows().last().map(|row| row.kind),
+            Some(RowKind::SummaryFailed)
+        );
     }
 
     #[test]

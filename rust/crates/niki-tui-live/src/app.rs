@@ -2095,8 +2095,9 @@ impl App {
 ///
 /// Roles are `user`, `assistant`, `tool_call`, `tool_result`, `tool_error` and
 /// `error`; a tool row's first line is its name and the rest is its arguments or
-/// output, so a resumed transcript shows the same rows. Notices are view
-/// furniture and stay out of the store.
+/// output, so a resumed transcript shows the same rows. Notices, diffs and the
+/// closing line of a turn are view furniture and stay out of the store: a
+/// resumed session must not show a second summary for a turn already read.
 fn persisted(row: &Row) -> Option<(&'static str, String)> {
     let record = match row.kind {
         RowKind::User => ("user", row.text.clone()),
@@ -2105,7 +2106,7 @@ fn persisted(row: &Row) -> Option<(&'static str, String)> {
         RowKind::ToolResult => ("tool_result", titled(row)),
         RowKind::Error if row.title.is_some() => ("tool_error", titled(row)),
         RowKind::Error => ("error", row.text.clone()),
-        RowKind::Notice | RowKind::Diff => return None,
+        RowKind::Notice | RowKind::Diff | RowKind::Summary | RowKind::SummaryFailed => return None,
     };
     Some(record)
 }
@@ -4161,6 +4162,16 @@ mod tests {
         assert_eq!(value(&fields, "tokens"), Some("not measured yet"));
         assert_eq!(value(&fields, "session"), Some("not saved"));
         assert_eq!(value(&fields, "session file"), Some("unknown"));
+    }
+
+    #[test]
+    fn a_summary_is_view_furniture_and_stays_out_of_the_session() {
+        let mut app = app();
+        app.transcript.push_user("hello");
+        app.transcript.push_summary("done · 14s");
+        app.transcript.push_failed_summary("failed · 12s");
+        assert!(persisted(&app.transcript.rows()[1]).is_none());
+        assert!(persisted(&app.transcript.rows()[2]).is_none());
     }
 
     #[test]
