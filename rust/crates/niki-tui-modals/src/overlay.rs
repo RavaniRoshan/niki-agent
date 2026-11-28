@@ -18,6 +18,12 @@ const MAX_WIDTH: u16 = 76;
 /// width a prose panel wants, and the map is the one surface with no prose.
 const HELP_WIDTH: u16 = 104;
 
+/// The way out, printed in the key map's last row.
+const HELP_FOOTER: &str = "? or escape closes; page up and page down scroll";
+
+/// The same hint without the scroll reminder, for a terminal too narrow for it.
+const HELP_FOOTER_SHORT: &str = "? or escape closes";
+
 /// Column the status card's labels reserve, matching the help overlay's chords.
 const LABEL_WIDTH: usize = 12;
 
@@ -334,16 +340,14 @@ pub(crate) fn help(
     }
     let lines: Vec<Line> = lines.into_iter().skip(modal.offset()).collect();
     let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 3;
+    let footer = if width >= niki_render::display_width(HELP_FOOTER) {
+        HELP_FOOTER
+    } else {
+        HELP_FOOTER_SHORT
+    };
+    let footer = ellipsize(footer, width);
     render_with_footer(
-        frame,
-        area,
-        "Keys",
-        lines,
-        palette,
-        glyphs,
-        height,
-        HELP_WIDTH,
-        "? or escape closes; page up and page down scroll",
+        frame, area, "Keys", lines, palette, glyphs, height, HELP_WIDTH, &footer,
     );
 }
 
@@ -700,6 +704,17 @@ mod tests {
                 .count();
             assert_eq!(found, expected, "at {width} columns: {header:?}");
         }
+    }
+
+    #[test]
+    fn a_narrow_key_map_keeps_the_way_out_whole() {
+        let buffer = render_help(40, 16);
+        let screen = text(&buffer);
+        assert!(screen.contains("? or escape closes"), "{screen}");
+        assert!(
+            !screen.contains("page d"),
+            "the hint must not be cut mid-word:\n{screen}"
+        );
     }
 
     #[test]

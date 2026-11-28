@@ -113,7 +113,7 @@ impl ApprovalModal {
 /// Clip one line to `width` display cells, ending in an ellipsis when it does
 /// not fit. A line break in the action's own text is drawn as a space, because
 /// the prompt is one line per detail.
-pub(crate) fn ellipsize(text: &str, width: usize) -> String {
+pub fn ellipsize(text: &str, width: usize) -> String {
     if width == 0 {
         return String::new();
     }

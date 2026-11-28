@@ -18,7 +18,7 @@ mod question;
 mod status;
 mod threads;
 
-pub use approval::ApprovalModal;
+pub use approval::{ApprovalModal, ellipsize};
 pub use help::{HelpOverlay, describe};
 pub use model::{ModelChoice, ModelPicker};
 pub use question::{QuestionModal, QuestionReply, QuestionRow};

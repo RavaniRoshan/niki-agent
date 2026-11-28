@@ -1356,11 +1356,14 @@ fn build_provider(config: &Config, provider_name: &str) -> Result<Box<dyn Provid
 }
 
 fn workspace_root(options: &Options) -> Result<PathBuf> {
-    options
+    let root = options
         .root
         .clone()
         .map_or_else(std::env::current_dir, Ok)
-        .context("resolve the workspace")
+        .context("resolve the workspace")?;
+    // A relative `--root` would otherwise reach the screen as `.`; the trust
+    // store and the tools already compare canonical paths.
+    Ok(root.canonicalize().unwrap_or(root))
 }
 
 /// The checked-out branch, when the workspace is a Git repository.
