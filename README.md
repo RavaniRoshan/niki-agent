@@ -16,7 +16,7 @@ An approval card in front of anything that changes your machine.
 </div>
 
 <div align="center">
-  <img src="intro.gif" width="1000" alt="A Niki Agent session: it reads src/lib.rs, asks before rewriting it so backoff caps at three attempts, runs cargo test, and reports that both tests pass">
+  <img src="intro.gif" width="1000" alt="A Niki Agent session: it reads src/lib.rs, asks before rewriting it so backoff caps at three attempts, runs cargo test, reports that both tests pass, then opens the key map">
 </div>
 
 <p align="center"><sub>Recorded from the shipped binary against a loopback model, with no key and no network. The card in the middle is the approval gate.</sub></p>

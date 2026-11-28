@@ -92,7 +92,7 @@ descriptions are a future improvement, not a launch blocker.
 | Homepage field | `https://niki-site.vercel.app` |
 | Roadmap issue #114 | 2.2.0 comment posted |
 | `SECURITY.md` | Declares 2.2.x supported |
-| README demo | `intro.gif`, recorded from the 2.2.0 binary, 31.5 s |
+| README demo | `intro.gif`, recorded from the 2.2.0 binary, 38 s |
 | Launch gallery | Four slides rendered from the same recording, OCR-verified |
 
 ## Known non-blockers
