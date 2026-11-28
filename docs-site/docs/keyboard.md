@@ -1,7 +1,7 @@
 <!--
   Mirrored from docs/niki/KEYMAP.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: fdf79c9d2c9f8c5f313cb3d4d47baff5bf8d864e52954e7761465463a7a1bd92
+  source-sha256: 4335d84504d6897ace008a3302474dd2d45a09fa04e52846231e3eb957118f38
 -->
 # Niki Agent -- Keymap
 
@@ -32,7 +32,7 @@ These apply when no dialog is open.
 | `Shift+Tab` | Cycle Manual, Auto and YOLO. |
 | `?` | Open the key list, when the composer is empty. |
 | `PageUp` / `PageDown` | Scroll the transcript one page. |
-| `Up` / `Down` | Move the command-list highlight while it is open, recall older prompts in an empty composer, and otherwise move the cursor between lines. |
+| `Up` / `Down` | Move the command-list highlight while it is open, take a queued prompt back into an empty composer while a turn runs, recall older prompts in an empty composer, and otherwise move the cursor between lines. |
 | `Home` / `End` | Move the cursor to the start or end of its line. |
 | `Backspace` / `Delete` | Delete the character before or after the cursor. |
 | Mouse wheel | Scroll the transcript. |
