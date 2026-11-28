@@ -881,7 +881,17 @@ fn screen(options: Options, config: Config, config_path: PathBuf) -> Result<i32>
     ));
     attach_sessions(&mut app);
     let session_id = app.session_id().map(str::to_owned);
-    if !workspace_trust(&ctx.root).is_trusted() {
+    let untrusted = !workspace_trust(&ctx.root).is_trusted();
+    // A workspace with nothing of its own to load has nothing to ask about, so
+    // the question is only put when trust would actually admit something.
+    if untrusted && project_content_present(&ctx.root) {
+        app.prompt_trust(ctx.root.clone());
+        let grant_root = ctx.root.clone();
+        app.set_trust_grant(move || {
+            let mut store = TrustStore::load();
+            store.trust(&grant_root).map_err(|error| error.to_string())
+        });
+    } else if untrusted {
         app.transcript
             .push_notice(format!("warning: {}", untrusted_notice(&ctx.root)));
     }
@@ -1454,6 +1464,15 @@ fn untrusted_notice(root: &Path) -> String {
         "project hooks, skills and instruction files are not loaded: {} is not trusted; run niki trust to allow them",
         root.display()
     )
+}
+
+/// Whether the workspace holds project content that a grant would admit.
+///
+/// The same two places the loaders look: instruction files beside the root and
+/// the `.niki` directory that holds project skills and hooks. A directory with
+/// neither has nothing to trust, so the app does not ask.
+fn project_content_present(root: &Path) -> bool {
+    root.join("AGENTS.md").is_file() || root.join(".niki").is_dir()
 }
 
 /// The system prompt one turn is sent with: the base text, the project

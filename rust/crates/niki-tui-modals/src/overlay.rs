@@ -11,6 +11,7 @@ use crate::question::{QuestionModal, QuestionRow};
 use crate::settings::SettingsModal;
 use crate::status::StatusCard;
 use crate::threads::ThreadPicker;
+use crate::trust::TrustModal;
 
 /// Widest the overlay grows, so a line of help stays readable on a wide screen.
 const MAX_WIDTH: u16 = 76;
@@ -630,6 +631,54 @@ pub(crate) fn status(
         .collect();
     let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
     render(frame, area, "Status", lines, palette, glyphs, height);
+}
+
+pub(crate) fn trust(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &TrustModal,
+    palette: &Palette,
+    glyphs: GlyphMode,
+) {
+    let width = usize::from(area.width.min(MAX_WIDTH).saturating_sub(2));
+    let mut lines: Vec<Line> = Vec::new();
+    for (index, detail) in modal.body(width).into_iter().enumerate() {
+        let style = if index == 0 {
+            palette.accent_style()
+        } else {
+            palette.muted_style()
+        };
+        lines.push(Line::from(Span::styled(detail, style)));
+    }
+    lines.push(Line::default());
+    for (index, label) in modal.options().into_iter().enumerate() {
+        let chosen = index == modal.selected();
+        let style = if chosen {
+            palette.accent_style()
+        } else {
+            palette.body_style()
+        };
+        let marker = if chosen { "> " } else { "  " };
+        lines.push(Line::from(Span::styled(format!("{marker}{label}"), style)));
+    }
+    lines.push(Line::default());
+    lines.push(Line::from(Span::styled(
+        ellipsize(
+            "y trust | n/escape not now | enter takes the highlight",
+            width,
+        ),
+        palette.muted_style(),
+    )));
+    let height = u16::try_from(lines.len()).unwrap_or(u16::MAX) + 2;
+    render(
+        frame,
+        area,
+        "Trust this workspace",
+        lines,
+        palette,
+        glyphs,
+        height,
+    );
 }
 
 fn render(

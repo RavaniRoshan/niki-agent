@@ -91,10 +91,13 @@ flag in this build.
   approved command can do.
 - There is no separate read-only mode: "what may run" and "what may write" are
   one axis.
-- The workspace trust decision is a command, not a prompt: `niki trust` grants
-  it and `niki untrust` withdraws it. The full-screen app shows a warning and
-  runs without project content until you grant it; there is no in-app dialog
-  yet. The decision is per directory and does not inherit to subdirectories.
+- The workspace trust decision is asked once, in the app, when the workspace
+  holds project content: "Trust this workspace" writes the same grant `niki
+  trust` records, and declining writes nothing so the next launch asks again.
+  The question starts on "Not now", so Enter alone never grants. Project hooks
+  are loaded at startup, so they begin on the next launch; skills and
+  instruction files are recomposed for the next turn. The decision is per
+  directory and does not inherit to subdirectories.
 - MCP `permissionDecision` values other than `deny` are not implemented; the
   hook runner reports them as warnings.
 
@@ -108,9 +111,10 @@ niki --allow 'git*,cargo*'           # a narrow shell allow-list
 
 - Do not set the shell allow-list to `all` outside a throwaway container.
 - Review `.niki/hooks.json` and every `.niki/skills/` directory in a repository
-  before you run `niki trust` there. Project hooks, project skills and project
-  instruction files are not loaded until that grant exists; `niki trust --list`
-  shows what you have allowed and `niki untrust` withdraws it.
+  before you run `niki trust` there or answer the app's question. Project hooks,
+  project skills and project instruction files are not loaded until that grant
+  exists; `niki trust --list` shows what you have allowed and `niki untrust`
+  withdraws it.
 - Keep provider keys in the environment, not in a file Niki reads.
 - Run Niki as a user that cannot write outside the project when you need a hard
   boundary.

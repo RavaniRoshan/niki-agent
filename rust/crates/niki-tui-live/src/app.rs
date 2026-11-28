@@ -25,7 +25,7 @@ use niki_tools::AskRequest;
 use niki_tui_modals::{
     ApprovalModal, ConnectModal, ConnectRequest, HelpOverlay, Modal, ModelPicker, Outcome,
     QuestionModal, QuestionReply, Setting, SettingsModal, SettingsState, StatusCard, StatusField,
-    ThreadEntry, ThreadPicker,
+    ThreadEntry, ThreadPicker, TrustModal,
 };
 use niki_tui_themes::{Effects, GlyphMode, Motion, NIKI, PALETTES, Palette, next_palette, palette};
 
@@ -157,6 +157,8 @@ pub struct App {
     mcp: Vec<McpServerInfo>,
     /// Recomposes the system prompt after `/init` writes a file.
     refresh_system: Option<Arc<dyn Fn() -> String + Send + Sync>>,
+    /// Records the workspace trust grant the app asked for, if the host can.
+    trust_grant: Option<Arc<dyn Fn() -> Result<(), String> + Send + Sync>>,
     /// Rows the transcript viewport had at the last draw, so one PageUp moves
     /// one screenful.
     pub page: usize,
@@ -227,6 +229,7 @@ impl App {
             skills: SkillCatalog::default(),
             mcp: Vec::new(),
             refresh_system: None,
+            trust_grant: None,
             page: 10,
             sessions: None,
             session: None,
@@ -292,6 +295,28 @@ impl App {
     /// calls it.
     pub fn set_system_refresh(&mut self, refresh: impl Fn() -> String + Send + Sync + 'static) {
         self.refresh_system = Some(Arc::new(refresh));
+    }
+
+    /// Let the app record the workspace trust grant it asks about at startup.
+    ///
+    /// The host owns the store, so the screen only calls this closure when the
+    /// person answers the question. A host that never calls it shows no
+    /// question: the grant stays a command, and its notice still names it.
+    pub fn set_trust_grant(
+        &mut self,
+        grant: impl Fn() -> Result<(), String> + Send + Sync + 'static,
+    ) {
+        self.trust_grant = Some(Arc::new(grant));
+    }
+
+    /// Ask whether this workspace may load its own hooks, skills and
+    /// instruction files.
+    ///
+    /// The question is put once, at startup, and only for a workspace that has
+    /// project content and no grant. Declining leaves nothing behind, so the
+    /// next launch asks again.
+    pub fn prompt_trust(&mut self, workspace: impl Into<PathBuf>) {
+        self.modal = Some(Modal::Trust(TrustModal::new(workspace)));
     }
 
     /// Save turns and resume earlier ones through this store.
@@ -1056,6 +1081,35 @@ impl App {
             Outcome::Session(id) => {
                 self.modal = None;
                 self.resume(Some(&id));
+                None
+            }
+            Outcome::Trust => {
+                self.modal = None;
+                self.grant_trust()
+            }
+        }
+    }
+
+    /// Record the grant the question asked for, then recompose the system
+    /// prompt so the project's instruction files reach the next turn.
+    ///
+    /// Project hooks are loaded once at startup, so they wait for the next
+    /// launch; the notice says so rather than implying otherwise.
+    fn grant_trust(&mut self) -> Option<Command> {
+        let grant = self.trust_grant.as_ref()?;
+        match grant() {
+            Ok(()) => {
+                let root = self.status.cwd.clone();
+                self.transcript.push_notice(format!(
+                    "trusted {root} · project skills and instruction files load from the next turn; project hooks load on the next launch"
+                ));
+                self.refresh_system
+                    .as_ref()
+                    .map(|refresh| Command::RefreshSystem(refresh()))
+            }
+            Err(error) => {
+                self.transcript
+                    .push_error(format!("could not record trust: {error}"));
                 None
             }
         }
@@ -2892,6 +2946,87 @@ mod tests {
         );
         assert!(app.modal.is_none());
         assert!(app.question.is_none());
+    }
+
+    #[test]
+    fn the_trust_question_grants_and_recomposes_the_prompt() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let mut app = app();
+        app.set_system_refresh(|| "fresh system prompt".to_owned());
+        let granted = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&granted);
+        app.set_trust_grant(move || {
+            flag.store(true, Ordering::SeqCst);
+            Ok(())
+        });
+        app.prompt_trust("/work");
+        assert!(matches!(app.modal, Some(Modal::Trust(_))));
+
+        assert_eq!(
+            press(&mut app, KeyCode::Char('y')),
+            Some(Command::RefreshSystem("fresh system prompt".to_owned())),
+            "the project instructions must reach the next turn"
+        );
+        assert!(granted.load(Ordering::SeqCst), "the grant was recorded");
+        assert!(app.modal.is_none());
+        let last = app.transcript.rows().last().expect("a notice");
+        assert!(last.text.contains("trusted /work"), "{}", last.text);
+        assert!(last.text.contains("next launch"), "{}", last.text);
+    }
+
+    #[test]
+    fn declining_the_trust_question_records_nothing_and_asks_again() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let mut app = app();
+        let granted = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&granted);
+        app.set_trust_grant(move || {
+            flag.store(true, Ordering::SeqCst);
+            Ok(())
+        });
+        app.prompt_trust("/work");
+        assert_eq!(press(&mut app, KeyCode::Esc), None);
+        assert!(!granted.load(Ordering::SeqCst), "escape must not grant");
+        assert!(app.modal.is_none());
+
+        // The default highlight declines too, so a stray Enter cannot grant.
+        app.prompt_trust("/work");
+        assert_eq!(press(&mut app, KeyCode::Enter), None);
+        assert!(!granted.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn a_grant_that_cannot_be_written_says_so_and_keeps_the_notice_off() {
+        let mut app = app();
+        app.set_trust_grant(|| Err("permission denied".to_owned()));
+        app.prompt_trust("/work");
+        assert_eq!(press(&mut app, KeyCode::Char('y')), None);
+        let last = app.transcript.rows().last().expect("an error row");
+        assert!(
+            last.text
+                .contains("could not record trust: permission denied"),
+            "{}",
+            last.text
+        );
+    }
+
+    #[test]
+    fn without_a_host_grant_the_question_does_nothing() {
+        let mut app = app();
+        app.prompt_trust("/work");
+        assert_eq!(press(&mut app, KeyCode::Char('y')), None);
+        assert!(app.modal.is_none());
+        assert!(
+            !app.transcript
+                .rows()
+                .iter()
+                .any(|row| row.text.contains("trusted")),
+            "nothing must claim a grant that was never written"
+        );
     }
 
     #[test]

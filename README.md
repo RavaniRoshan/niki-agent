@@ -118,8 +118,10 @@ working directory, under a 32 KiB budget that truncates by line and says so.
 `/init` writes a starter file only when one is missing.
 
 Project hooks, skills, and instruction files run as you, so they load only after
-`niki trust` records the workspace. `niki untrust` withdraws the grant and
-`niki trust --list` shows what you allowed.
+the workspace is trusted — `niki trust` records that from the shell, and a
+workspace holding project content is asked once in the app, starting on "Not
+now". `niki untrust` withdraws the grant and `niki trust --list` shows what you
+allowed.
 
 ## The approval gate
 
