@@ -18,6 +18,12 @@ export const CHANGELOG: ChangelogRelease[] = [
     "version": "Unreleased",
     "date": null,
     "unreleased": true,
+    "sections": []
+  },
+  {
+    "version": "2.3.0",
+    "date": "2026-11-28",
+    "unreleased": false,
     "sections": [
       {
         "title": "Added",

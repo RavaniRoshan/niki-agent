@@ -9,7 +9,7 @@ claim here is covered by a `TestBackend` buffer test in
 ## The screen
 
 ```text
-  >_ NIKI AGENT (v2.2.0)
+  >_ NIKI AGENT (v2.3.0)
      ~/project
 
   To get started, describe a task or try one of these commands:

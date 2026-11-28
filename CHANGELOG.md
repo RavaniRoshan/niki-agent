@@ -8,6 +8,8 @@ The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-28
+
 ### Added
 
 - `/connect` opens a provider catalog in the app: pick a shipped provider or a

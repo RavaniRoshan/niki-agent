@@ -2,4 +2,4 @@
 // release entry. `rust/Cargo.toml` stays authoritative for the binary; this
 // constant keeps the download page and the prerendered metadata in step when
 // the site is built without the rest of the repository on disk.
-export const VERSION = '2.2.0';
+export const VERSION = '2.3.0';

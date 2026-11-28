@@ -7,7 +7,7 @@
 One native binary. Eleven providers. Sessions on your disk.
 An approval card in front of anything that changes your machine.
 
-[![Release](https://img.shields.io/badge/release-v2.2.0-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
+[![Release](https://img.shields.io/badge/release-v2.3.0-8ec7ff?style=flat-square)](https://github.com/RavaniRoshan/niki-agent/releases)
 [![Rust](https://img.shields.io/badge/rust-2024-b7410e?style=flat-square)](rust/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-silver?style=flat-square)](LICENSE)
 
@@ -181,7 +181,7 @@ change behaviour between builds. Pin one by its version (no leading `v`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RavaniRoshan/niki-agent/niki-agent/install/install.sh \
-  | NIKI_VERSION=2.2.0-beta.1 bash
+  | NIKI_VERSION=2.3.0-beta.1 bash
 ```
 
 Known gaps, the support matrix, and how to report a problem are on the

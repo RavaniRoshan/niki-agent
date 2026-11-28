@@ -1,7 +1,7 @@
 <!--
   Mirrored from CHANGELOG.md by docs-site/scripts/sync-docs.mjs.
   Do not edit this copy: edit the source file and run `npm run sync`.
-  source-sha256: d22c01e653aab182f17eaa691d899d88094ca1f352916000f2407b8d2e96cdeb
+  source-sha256: 70315cba57046dd904a4c3f76b48e2d81ccc09dc3a0fde81eeae3cafadebb2ff
 -->
 # Changelog
 
@@ -12,6 +12,8 @@ All notable changes to Niki Agent are recorded here. The format follows
 The product is a single Rust binary, distributed as one archive per platform.
 
 ## [Unreleased]
+
+## [2.3.0] - 2026-11-28
 
 ### Added
 
@@ -31,6 +33,8 @@ The product is a single Rust binary, distributed as one archive per platform.
   answer to the clipboard, the draft in `$EDITOR`, and the session's token
   totals. `/cost` prints tokens only — a built-in price table would be wrong
   the day a provider changed it.
+- `/context-doctor` splits what the next request would inject: the system
+  prompt, the tool schemas and the conversation, with the tool count.
 - `/docs`, `/feedback` and `/update` print the documentation URL, the issue
   tracker and the installer line. `/auth` and `/tokens` now reach `/connect`
   and `/cost` instead of being refused.
